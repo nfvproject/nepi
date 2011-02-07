@@ -5,7 +5,7 @@
 #TODO: DEF ERRORCODES
 #TODO: DEF PROTOCOL
 
-class Testbed(object):
+class Controller(object):
     def __init__(self):
         self._testbeds = dict()
 
