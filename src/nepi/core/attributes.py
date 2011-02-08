@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# vim:ts=4:sw=4:et:ai:sts=4
 
 class AttributesMap(object):
     """AttributesMap is the base class for every object whose attributes 
@@ -13,14 +12,8 @@ class AttributesMap(object):
     def attributes_name(self):
         return set(self._attributes.keys())
 
-    def is_valid_attribute_value(self, name, value):
-        raise NotImplementedError
-
     def set_attribute_value(self, name, value):
-        if self.is_valid_attribute_value(name, value):
-            self._attributes[name].value = value
-            return True
-        return False
+        self._attributes[name].value = value
 
     def set_attribute_readonly(self, name, value):
         self._attributes[name].readonly = value
@@ -44,10 +37,11 @@ class AttributesMap(object):
         return self._attributes[name].readonly
 
     def add_attribute(self, name, help, type, value = None, range = None,
-        allowed = None, readonly = False):
+        allowed = None, readonly = False, validation_function = None):
         if name in self._attributes:
             raise AttributeError('Attribute %s already exists' % name))
-        attribute = Attribute(name, help, type, value, range, allowed, readonly)
+        attribute = Attribute(name, help, type, value, range, allowed, readonly,
+                validation_function)
         self._attributes[name] = attribute
 
     def del_attribute(self, name):
@@ -66,17 +60,31 @@ class Attribute(object):
     types = [STRING, BOOL, ENUM, DOUBLE, INTEGER, ENDPOINT, TIME]
 
     def __init__(self, name, help, type, value = None, range = None,
-        allowed = None, readonly = False):
+        allowed = None, readonly = False, validation_function = None):
         if not type in Attribute.types:
             raise AttributeError("invalid type %s " % type)
         self.name = name
-        self.value = value
         self.type = type
         self.help = help
+        self._value = value
+        self._validation_function = validation_function
         self.readonly = (readonly == True)
         self.modified = False
         # range: max and min possible values
         self.range = range
         # list of possible values
         self.allowed = allowed
+
+    def get_value(self):
+        return self._value
+
+    def set_value(self, value):
+        func = self._validation_function
+        if not func or func(value):
+            self._value = value
+        else:
+            raise RuntimeError("Invalid value %s for attribute %s" %
+                    (str(value), self.name))
+
+    value = property(get_value, set_value)
 
