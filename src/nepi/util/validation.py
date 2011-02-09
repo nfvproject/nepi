@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import ipaddr
+import re
 
 def is_bool(value):
     return isinstance(value, bool)
@@ -23,6 +24,13 @@ def is_ip6_address(value):
     try:
         ipaddr.IPv6(value)
     except ipaddr.Error:
+        return False
+    return True
+
+def is_mac_address(value):
+    regex = r'^([0-9a-zA-Z]{0,2}:)*[0-9a-zA-Z]{0,2}'
+    found = re.search(regex, value)
+    if not found or value.count(':') != 5:
         return False
     return True
 

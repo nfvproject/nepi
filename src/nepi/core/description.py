@@ -34,7 +34,9 @@ class ConnectorType(object):
         self._name = name
         self._max = max
         self._min = min
-        self._allowed_connections = list()
+        # list of connector_type_ids with which this connector_type is allowed
+        # to connect
+        self._allowed_connector_type_ids = list()
 
     @property
     def connector_type_id(self):
@@ -56,11 +58,11 @@ class ConnectorType(object):
     def min(self):
         return self._min
 
-    def add_allowed_connection(self, connector_type_id):
-        self._allowed_connections.append(connector_type_id)
+    def add_allowed_connector_type_id(self, connector_type_id):
+        self._allowed_connector_type_ids.append(connector_type_id)
 
     def can_connect(self, connector_type_id):
-        return connector_type_id in self._allowed_connections
+        return connector_type_id in self._allowed_connector_type_ids
 
 class Connector(object):
     """A Connector sepcifies the connection points in an Object"""
@@ -327,11 +329,12 @@ class RoutingTableElement(Element):
         self._route = None
 
 class ElementFactory(AttributesMap):
-    def __init__(self, factory_id, help = None, category = None):
+    def __init__(self, factory_id, display_name, help = None, category = None):
         super(ElementFactory, self).__init__()
         self._factory_id = factory_id
         self._help = help
         self._category = category
+        self._display_name = display_name
         self._connector_types = set()
         self._traces = list()
         self._element_attributes = list()
@@ -349,6 +352,10 @@ class ElementFactory(AttributesMap):
         return self._category
 
     @property
+    def display_name(self):
+        return self._display_name
+
+    @property
     def connector_types(self):
         return self._connector_types
 
@@ -360,8 +367,11 @@ class ElementFactory(AttributesMap):
     def element_attributes(self):
         return self._element_attributes
 
-    def add_connector_type(self, connector_id, help, name, max = -1, min = 0):
-        connector_type = ConnectorType(connector_id, help, name, max, min)            
+    def add_connector_type(self, connector_type_id, help, name, max = -1, 
+            min = 0, allowed_connector_type_ids = []):
+        connector_type = ConnectorType(connector_type_id, help, name, max, min)
+        for connector_type_id in allowed_connector_type_ids:
+            connector_type.add_allowed_connector_type_id(connector_type_id)
         self._connector_types.add(connector_type)
 
     def add_trace(self, name, help, enabled = False):
@@ -382,21 +392,24 @@ class ElementFactory(AttributesMap):
         self._connector_types = None
 
 class AddressableElementFactory(ElementFactory):
-    def __init__(self, factory_id, family, max_addresses = 1, help = None, category = None):
-        super(AddressableElementFactory, self).__init__(factory_id, help, category)
+    def __init__(self, factory_id, display_name, family, max_addresses = 1,
+            help = None, category = None):
+        super(AddressableElementFactory, self).__init__(factory_id,
+                display_name, help, category)
         self._family = family
         self._max_addresses = 1
 
     def create(self, guid, testbed_description):
-        return AddressableElement(guid, self, self._family, self._max_addresses)
+        return AddressableElement(guid, self, self._family, 
+                self._max_addresses)
 
 class RoutingTableElementFactory(ElementFactory):
     def create(self, guid, testbed_description):
         return RoutingTableElement(guid, self)
 
-class Provider(object):
+class FactoriesProvider(object):
     def __init__(self):
-        super(Provider, self).__init__()
+        super(FactoriesProvider, self).__init__()
         self._factories = dict()
 
     def factory(self, factory_id):

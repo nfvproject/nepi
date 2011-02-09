@@ -19,8 +19,7 @@ class ExperimentDescription(object):
         testbed_module = self._testbed_module(testbed_id)
         testbed_provider = self._testbed_provider(testbed_id, testbed_version)
         testbed_description = testbed_module.create_description_instance(
-                self._guid_generator, tesbed_id, testbed_version, 
-                testbed_provider)
+                self._guid_generator, testbed_version, testbed_provider)
         guid = testbed_description.guid
         self._testbed_descriptions[guid] = testbed_description
 

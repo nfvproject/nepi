@@ -4,7 +4,7 @@
 from nepi.core.experiment import ExperimentDescription
 
 testbed_id = "netns"
-testbed_version = "0.1"
+testbed_version = "v0.1"
 experiment = ExperimentDescription()
 netns = experiment.add_testbed_description(testbed_id, testbed_version)
 node1 = netns.create("Node")
