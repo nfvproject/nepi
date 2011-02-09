@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from nepi.core.attributes import AttributesMap
+
+from nepi.core.attributes import AttributesMap, Attribute
+from nepi.util import validation
+
+AF_INET = 0
+AF_INET6 = 1
 
 class ConnectorType(object):
     """A ConnectorType defines a kind of connector that can be used in an Object.
@@ -115,11 +120,11 @@ class Connector(object):
                 self.connector_type.connector_type_id)
 
 class Trace(AttributesMap):
-    def __init__(self, name, help, enabled=False):
+    def __init__(self, name, help, enabled = False):
         super(Trace, self).__init__()
         self._name = name
         self._help = help       
-        self._enabled = enabled
+        self.enabled = enabled
     
     @property
     def name(self):
@@ -129,18 +134,68 @@ class Trace(AttributesMap):
     def help(self):
         return self._help
 
-    @property
-    def is_enabled(self):
-        return self._enabled
-
-    def enable(self):
-        self._enabled = True
-
-    def disable(self):
-        self._enabled = False
+class Address(AttributesMap):
+    def __init__(self, family):
+        super(Address, self).__init__()
+        self.add_attribute(name = "AutoConfigure", 
+                help = "If set, this address will automatically be assigned", 
+                type = Attribute.BOOL,
+                value = False,
+                validation_function = validation.is_bool)
+        self.add_attribute(name = "Family",
+                help = "Address family type: AF_INET, AFT_INET6", 
+                type = Attribute.INTEGER, 
+                value = family
+                readonly = True)
+        address_validation = validation.is_ip4_address if family == AF_INET \
+                        else validation.is_ip6_address
+        self.add_attribute(name = "Address",
+                help = "Address number", 
+                type = Attribute.STRING,
+                validation_function = address_validation)
+        prefix_range = (0, 32) if family == AF_INET else (0, 128)
+        self.add_attribute(name = "NetPrefix",
+                help = "Network prefix for the address", 
+                type = Attribute.INTEGER, 
+                prefix_range = prefix_range,
+                validation_function = validation.is_integer)
+        if family == AF_INET:
+            self.add_attribute(name = "Broadcast",
+                    help = "Broadcast address", 
+                    type = Attribute.STRING
+                    validation_function = validation.is_ip4_address)
+                
+class Route(AttributesMap):
+    def __init__(self, family):
+        super(Route, self).__init__()
+        self.add_attribute(name = "Family",
+                help = "Address family type: AF_INET, AFT_INET6", 
+                type = Attribute.INTEGER, 
+                value = family
+                readonly = True)
+        address_validation = validation.is_ip4_address if family == AF_INET \
+                        else validation.is_ip6_address
+        self.add_attribute(name = "Destination", 
+                help = "Network destintation",
+                type = Attribute.STRING, 
+                validation_function = address_validation)
+        prefix_range = (0, 32) if family == AF_INET else (0, 128)
+        self.add_attribute(name = "NetPrefix",
+                help = "Network destination prefix", 
+                type = Attribute.INTEGER, 
+                prefix_range = prefix_range,
+                validation_function = validation.is_integer)
+        self.add_attribute(name = "NextHop",
+                help = "Address for the next hop", 
+                type = Attribute.STRING,
+                validation_function = address_validation)
+        self.add_attribute(name = "Interface",
+                help = "Local interface address", 
+                type = Attribute.STRING,
+                validation_function = address_validation)
 
 class Element(AttributesMap):
-    def __init__(self, guid, testbed_id, factory, container = None):
+    def __init__(self, guid, factory, container = None):
         super(Element, self).__init__()
         # general unique id
         self._guid = guid
@@ -152,9 +207,21 @@ class Element(AttributesMap):
         self._traces = dict()
         # connectors for the element
         self._connectors = dict()
+        # factory attributes for element construction
+        self._factory_attributes = list()
+
         for connector_type in factory.connector_types:
             connector = Connector(self, connector_type)
             self._connectors[connector_type.connector_id] = connector
+        for trace in factory.traces:
+            tr = Trace(trace.name, trace.help, trace.enabled)
+            self._traces[trace.name] = tr
+        for attr in factory.element_attributes:
+            self.add_attribute(attr.name, attr.help, attr.type, attr.value, 
+                    attr.range, attr.allowed, attr.readonly, 
+                    attr.validation_function)
+        for attr in factory._attributes:
+            self._factory_attributes.append(attr)
 
     @property
     def guid(self):
@@ -176,6 +243,18 @@ class Element(AttributesMap):
     def traces(self):
         return self._traces.values()
 
+    @property
+    def factory_attributes(self):
+        return self._factory_attributes
+
+    @property
+    def addresses(self):
+        return []
+
+    @property
+    def routes(self):
+        return []
+
     def connector(self, name):
         return self._connectors[name]
 
@@ -188,15 +267,74 @@ class Element(AttributesMap):
             c.destroy()         
         for t in self.traces:
             t.destroy()
-        self._connectors = self._traces = None
+        self._connectors = self._traces = self._factory_attributes = None
 
-class Factory(AttributesMap):
+class AddressableElement(Element):
+    def __init__(self, guid, factory, family, max_addresses = 1, container = None):
+        super(AddressableElement, self).__init__(guid, factory, container)
+        self._family = family
+        # maximum number of addresses this element can have
+        self._max_addresses = max_addressess
+        self._addresses = list()
+
+    @property
+    def addresses(self):
+        return self._addresses
+
+    @property
+    def max_addresses(self):
+        return self._max_addresses
+
+    def add_address(self):
+        if len(self._addresses) == self.max_addresses:
+            raise RuntimeError("Maximun number of addresses for this element reached.")
+        address = Address(family = self._family)
+        self._addresses.append(address)
+        return address
+
+    def delete_address(self, address):
+        self._addresses.remove(address)
+        del address
+
+    def destroy(self):
+        super(AddressableElement, self).destroy()
+        for address in self.addresses:
+            self.delete_address(address)
+        self._addresses = None
+
+class RoutingTableElement(Element):
+    def __init__(self, guid, factory, container = None):
+        super(RoutingTableElement, self).__init__(guid, factory, container)
+        self._routes = list()
+
+    @property
+    def routes(self):
+        return self._routes
+
+    def add_route(self, family):
+        route = Route(family = family)
+        self._routes.append(route)
+        return route
+
+    def delete_route(self, route):
+        self._route.remove(route)
+        del route
+
+    def destroy(self):
+        super(RoutingTableElement, self).destroy()
+        for route in self.routes:
+            self.delete_route(route)
+        self._route = None
+
+class ElementFactory(AttributesMap):
     def __init__(self, factory_id, help = None, category = None):
-        super(Factory, self).__init__()
+        super(ElementFactory, self).__init__()
         self._factory_id = factory_id
         self._help = help
         self._category = category
         self._connector_types = set()
+        self._traces = list()
+        self._element_attributes = list()
 
     @property
     def factory_id(self):
@@ -214,19 +352,48 @@ class Factory(AttributesMap):
     def connector_types(self):
         return self._connector_types
 
+    @property
+    def traces(self):
+        return self._traces
+
+    @property
+    def element_attributes(self):
+        return self._element_attributes
+
     def add_connector_type(self, connector_id, help, name, max = -1, min = 0):
         connector_type = ConnectorType(connector_id, help, name, max, min)            
         self._connector_types.add(connector_type)
 
-    def create(self, guid, testbed_design, container = None):
-        raise NotImplementedError
+    def add_trace(self, name, help, enabled = False):
+        trace = Trace(name, help, enabled)
+        self._traces.append(trace)
+
+    def add_element_attribute(self, name, help, type, value = None, range = None,
+        allowed = None, readonly = False, validation_function = None):
+        attribute = Attribute(name, help, type, value, range, allowed, readonly,
+                validation_function)
+        self._element_attributes.append(attribute)
+
+    def create(self, guid, testbed_description):
+        return Element(guid, self)
 
     def destroy(self):
-        super(Factory, self).destroy()
+        super(ElementFactory, self).destroy()
         self._connector_types = None
 
-#TODO: Provide some way to identify that the providers and the factories
-# belong to a specific testbed version
+class AddressableElementFactory(ElementFactory):
+    def __init__(self, factory_id, family, max_addresses = 1, help = None, category = None):
+        super(AddressableElementFactory, self).__init__(factory_id, help, category)
+        self._family = family
+        self._max_addresses = 1
+
+    def create(self, guid, testbed_description):
+        return AddressableElement(guid, self, self._family, self._max_addresses)
+
+class RoutingTableElementFactory(ElementFactory):
+    def create(self, guid, testbed_description):
+        return RoutingTableElement(guid, self)
+
 class Provider(object):
     def __init__(self):
         super(Provider, self).__init__()

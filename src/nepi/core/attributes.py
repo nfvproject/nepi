@@ -54,37 +54,73 @@ class AttributesMap(object):
         self._attributes = dict()
 
 class Attribute(object):
-    STRING , BOOL, ENUM, DOUBLE, INTEGER, ENDPOINT, TIME = (
-		"STRING", "BOOL", "ENUM", "DOUBLE", "INTEGER", "ENDPOINT", "TIME")
+    STRING, BOOL, ENUM, DOUBLE, INTEGER = (
+		"STRING", "BOOL", "ENUM", "DOUBLE", "INTEGER")
 
-    types = [STRING, BOOL, ENUM, DOUBLE, INTEGER, ENDPOINT, TIME]
+    types = [STRING, BOOL, ENUM, DOUBLE, INTEGER]
 
     def __init__(self, name, help, type, value = None, range = None,
         allowed = None, readonly = False, validation_function = None):
         if not type in Attribute.types:
             raise AttributeError("invalid type %s " % type)
         self.name = name
-        self.type = type
-        self.help = help
+        self._type = type
+        self._help = help
         self._value = value
         self._validation_function = validation_function
-        self.readonly = (readonly == True)
-        self.modified = False
+        self._readonly = (readonly == True)
+        self._modified = False
         # range: max and min possible values
-        self.range = range
+        self._range = range
         # list of possible values
-        self.allowed = allowed
+        self._allowed = allowed
+
+    @property
+    def type(self):
+        return self._type
+
+    @property
+    def help(self):
+        return self._help
+
+    @property
+    def readornly(self):
+        return self._readonly
+
+    @property
+    def modified(self):
+        return self._modified
+
+    @property
+    def range(self):
+        return self._range
+
+    @property
+    def allowed(self):
+        return self._allowed
 
     def get_value(self):
         return self._value
 
     def set_value(self, value):
-        func = self._validation_function
-        if not func or func(value):
+        if self._is_in_range(value) and \
+                self._is_in_allowed_values(value) and \
+                self._is_valid(value):
             self._value = value
+            self._modified = True
         else:
             raise RuntimeError("Invalid value %s for attribute %s" %
                     (str(value), self.name))
 
     value = property(get_value, set_value)
+
+    def _is_in_range(self, value):
+        return not self.range or 
+                (value >= self.range[0] and value <= self.range[1])
+
+    def _is_in_allowed_values(self, value):
+        return not self.allowed or value in self._allowed
+
+    def _is_valid(self, value):
+        return not self._validation_function or self._validation_function(value)
 

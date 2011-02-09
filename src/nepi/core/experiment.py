@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from nepi.utils.guid import GuidGenerator 
+from nepi.util.guid import GuidGenerator 
 import sys
 
 class ExperimentDescription(object):
