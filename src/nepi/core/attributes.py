@@ -39,7 +39,7 @@ class AttributesMap(object):
     def add_attribute(self, name, help, type, value = None, range = None,
         allowed = None, readonly = False, validation_function = None):
         if name in self._attributes:
-            raise AttributeError('Attribute %s already exists' % name))
+            raise AttributeError("Attribute %s already exists" % name)
         attribute = Attribute(name, help, type, value, range, allowed, readonly,
                 validation_function)
         self._attributes[name] = attribute
@@ -115,7 +115,7 @@ class Attribute(object):
     value = property(get_value, set_value)
 
     def _is_in_range(self, value):
-        return not self.range or 
+        return not self.range or \
                 (value >= self.range[0] and value <= self.range[1])
 
     def _is_in_allowed_values(self, value):

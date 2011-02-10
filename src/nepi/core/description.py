@@ -3,6 +3,7 @@
 
 from nepi.core.attributes import AttributesMap, Attribute
 from nepi.util import validation
+import sys
 
 AF_INET = 0
 AF_INET6 = 1
@@ -101,8 +102,8 @@ class Connector(object):
         connector._connections[self._key] = self
 
     def disconnect(self, connector):
-        if connector._key not in self._connections or 
-            self._key not in connector._connections:
+        if connector._key not in self._connections or\
+                self._key not in connector._connections:
                 raise RuntimeError("Could not disconnect.")
         del self._connections[connector._key]
         del connector._connections[self._key]
@@ -147,7 +148,7 @@ class Address(AttributesMap):
         self.add_attribute(name = "Family",
                 help = "Address family type: AF_INET, AFT_INET6", 
                 type = Attribute.INTEGER, 
-                value = family
+                value = family,
                 readonly = True)
         address_validation = validation.is_ip4_address if family == AF_INET \
                         else validation.is_ip6_address
@@ -164,7 +165,7 @@ class Address(AttributesMap):
         if family == AF_INET:
             self.add_attribute(name = "Broadcast",
                     help = "Broadcast address", 
-                    type = Attribute.STRING
+                    type = Attribute.STRING,
                     validation_function = validation.is_ip4_address)
                 
 class Route(AttributesMap):
@@ -173,7 +174,7 @@ class Route(AttributesMap):
         self.add_attribute(name = "Family",
                 help = "Address family type: AF_INET, AFT_INET6", 
                 type = Attribute.INTEGER, 
-                value = family
+                value = family,
                 readonly = True)
         address_validation = validation.is_ip4_address if family == AF_INET \
                         else validation.is_ip6_address
@@ -424,7 +425,7 @@ class FactoriesProvider(object):
     def list_factories(self):
         return self._factories.keys()
 
-class TestbedDescription(AttributeMap):
+class TestbedDescription(AttributesMap):
     def __init__(self, guid_generator, testbed_id, testbed_version, provider):
         super(TestbedDescription, self).__init__()
         self._guid_generator = guid_generator

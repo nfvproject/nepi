@@ -4,7 +4,7 @@
 from nepi.core.experiment import ExperimentDescription
 
 testbed_id = "netns"
-testbed_version = "v0.1"
+testbed_version = "01"
 experiment = ExperimentDescription()
 netns = experiment.add_testbed_description(testbed_id, testbed_version)
 node1 = netns.create("Node")
@@ -27,7 +27,7 @@ app = netns.create("Application")
 app.set_attribute_value("command", "ping -qc10 10.0.0.2")
 app.connector("node").connect(node1.connector("apps"))
 
-print experiment.xml_description
+#print experiment.xml_description
 
 description = """
 <experiment>
