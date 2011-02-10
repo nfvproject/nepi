@@ -36,13 +36,13 @@ def create_factory_from_metadata(factory_id, info):
         if factory_type == "addressable":
             family = info["family"]
             max_addresses = info["max_addresses"]
-            factory = description.AddressableElementFactory(factory_id, 
+            factory = description.AddressableBoxFactory(factory_id, 
                     display_name, family, max_addresses, help, category)
         elif factory_type == "routing":
-            factory = description.RoutingTableElementFactory(factory_id, 
+            factory = description.RoutingCapableBoxFactory(factory_id, 
                     display_name, help, category)
         else:
-            factory = description.ElementFactory(factory_id, display_name, help, category)
+            factory = description.BoxFactory(factory_id, display_name, help, category)
         if "connector_types" in info:
             add_connector_types(factory, info["connector_types"])
         if "traces" in info:

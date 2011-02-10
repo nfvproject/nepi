@@ -197,9 +197,9 @@ class Route(AttributesMap):
                 type = Attribute.STRING,
                 validation_function = address_validation)
 
-class Element(AttributesMap):
+class Box(AttributesMap):
     def __init__(self, guid, factory, container = None):
-        super(Element, self).__init__()
+        super(Box, self).__init__()
         # general unique id
         self._guid = guid
         # factory identifier or name
@@ -265,16 +265,16 @@ class Element(AttributesMap):
         return self._traces[name]
 
     def destroy(self):
-        super(Element, self).destroy()
+        super(Box, self).destroy()
         for c in self.connectors:
             c.destroy()         
         for t in self.traces:
             t.destroy()
         self._connectors = self._traces = self._factory_attributes = None
 
-class AddressableElement(Element):
+class AddressableBox(Box):
     def __init__(self, guid, factory, family, max_addresses = 1, container = None):
-        super(AddressableElement, self).__init__(guid, factory, container)
+        super(AddressableBox, self).__init__(guid, factory, container)
         self._family = family
         # maximum number of addresses this element can have
         self._max_addresses = max_addressess
@@ -300,14 +300,14 @@ class AddressableElement(Element):
         del address
 
     def destroy(self):
-        super(AddressableElement, self).destroy()
+        super(AddressableBox, self).destroy()
         for address in self.addresses:
             self.delete_address(address)
         self._addresses = None
 
-class RoutingTableElement(Element):
+class RoutingCapableBox(Box):
     def __init__(self, guid, factory, container = None):
-        super(RoutingTableElement, self).__init__(guid, factory, container)
+        super(RoutingCapableBox, self).__init__(guid, factory, container)
         self._routes = list()
 
     @property
@@ -324,14 +324,14 @@ class RoutingTableElement(Element):
         del route
 
     def destroy(self):
-        super(RoutingTableElement, self).destroy()
+        super(RoutingCapableBox, self).destroy()
         for route in self.routes:
             self.delete_route(route)
         self._route = None
 
-class ElementFactory(AttributesMap):
+class BoxFactory(AttributesMap):
     def __init__(self, factory_id, display_name, help = None, category = None):
-        super(ElementFactory, self).__init__()
+        super(BoxFactory, self).__init__()
         self._factory_id = factory_id
         self._help = help
         self._category = category
@@ -386,27 +386,27 @@ class ElementFactory(AttributesMap):
         self._element_attributes.append(attribute)
 
     def create(self, guid, testbed_description):
-        return Element(guid, self)
+        return Box(guid, self)
 
     def destroy(self):
-        super(ElementFactory, self).destroy()
+        super(BoxFactory, self).destroy()
         self._connector_types = None
 
-class AddressableElementFactory(ElementFactory):
+class AddressableBoxFactory(BoxFactory):
     def __init__(self, factory_id, display_name, family, max_addresses = 1,
             help = None, category = None):
-        super(AddressableElementFactory, self).__init__(factory_id,
+        super(AddressableBoxFactory, self).__init__(factory_id,
                 display_name, help, category)
         self._family = family
         self._max_addresses = 1
 
     def create(self, guid, testbed_description):
-        return AddressableElement(guid, self, self._family, 
+        return AddressableBox(guid, self, self._family, 
                 self._max_addresses)
 
-class RoutingTableElementFactory(ElementFactory):
+class RoutingCapableBoxFactory(BoxFactory):
     def create(self, guid, testbed_description):
-        return RoutingTableElement(guid, self)
+        return RoutingCapableBox(guid, self)
 
 class FactoriesProvider(object):
     def __init__(self):
