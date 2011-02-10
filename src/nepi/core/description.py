@@ -67,15 +67,15 @@ class ConnectorType(object):
 
 class Connector(object):
     """A Connector sepcifies the connection points in an Object"""
-    def __init__(self, element, connector_type):
+    def __init__(self, box, connector_type):
         super(Connector, self).__init__()
-        self._element = element
+        self._box = box
         self._connector_type = connector_type
         self._connections = dict()
 
     @property
-    def element(self):
-        return self._element
+    def box(self):
+        return self._box
 
     @property
     def connector_type(self):
@@ -115,11 +115,11 @@ class Connector(object):
     def destroy(self):
         for connector in self._connections:
             self.disconnect(connector)
-        self._element = self._connectors = None
+        self._box = self._connectors = None
 
     @property
     def _key(self):
-        return "%d_%s" % (self.element.guid, 
+        return "%d_%s" % (self.box.guid, 
                 self.connector_type.connector_type_id)
 
 class Trace(AttributesMap):
@@ -204,13 +204,13 @@ class Box(AttributesMap):
         self._guid = guid
         # factory identifier or name
         self._factory_id = factory.factory_id
-        # elements can be nested inside other 'container' elements
+        # boxes can be nested inside other 'container' boxes
         self._container = container
-        # traces for the element
+        # traces for the box
         self._traces = dict()
-        # connectors for the element
+        # connectors for the box
         self._connectors = dict()
-        # factory attributes for element construction
+        # factory attributes for box construction
         self._factory_attributes = list()
 
         for connector_type in factory.connector_types:
@@ -219,7 +219,7 @@ class Box(AttributesMap):
         for trace in factory.traces:
             tr = Trace(trace.name, trace.help, trace.enabled)
             self._traces[trace.name] = tr
-        for attr in factory.element_attributes:
+        for attr in factory.box_attributes:
             self.add_attribute(attr.name, attr.help, attr.type, attr.value, 
                     attr.range, attr.allowed, attr.readonly, 
                     attr.validation_function)
@@ -276,7 +276,7 @@ class AddressableBox(Box):
     def __init__(self, guid, factory, family, max_addresses = 1, container = None):
         super(AddressableBox, self).__init__(guid, factory, container)
         self._family = family
-        # maximum number of addresses this element can have
+        # maximum number of addresses this box can have
         self._max_addresses = max_addressess
         self._addresses = list()
 
@@ -290,7 +290,7 @@ class AddressableBox(Box):
 
     def add_address(self):
         if len(self._addresses) == self.max_addresses:
-            raise RuntimeError("Maximun number of addresses for this element reached.")
+            raise RuntimeError("Maximun number of addresses for this box reached.")
         address = Address(family = self._family)
         self._addresses.append(address)
         return address
@@ -305,9 +305,9 @@ class AddressableBox(Box):
             self.delete_address(address)
         self._addresses = None
 
-class RoutingCapableBox(Box):
+class RoutingTableBox(Box):
     def __init__(self, guid, factory, container = None):
-        super(RoutingCapableBox, self).__init__(guid, factory, container)
+        super(RoutingTableBox, self).__init__(guid, factory, container)
         self._routes = list()
 
     @property
@@ -338,7 +338,7 @@ class BoxFactory(AttributesMap):
         self._display_name = display_name
         self._connector_types = set()
         self._traces = list()
-        self._element_attributes = list()
+        self._box_attributes = list()
 
     @property
     def factory_id(self):
@@ -365,8 +365,8 @@ class BoxFactory(AttributesMap):
         return self._traces
 
     @property
-    def element_attributes(self):
-        return self._element_attributes
+    def box_attributes(self):
+        return self._box_attributes
 
     def add_connector_type(self, connector_type_id, help, name, max = -1, 
             min = 0, allowed_connector_type_ids = []):
@@ -379,11 +379,11 @@ class BoxFactory(AttributesMap):
         trace = Trace(name, help, enabled)
         self._traces.append(trace)
 
-    def add_element_attribute(self, name, help, type, value = None, range = None,
+    def add_box_attribute(self, name, help, type, value = None, range = None,
         allowed = None, readonly = False, validation_function = None):
         attribute = Attribute(name, help, type, value, range, allowed, readonly,
                 validation_function)
-        self._element_attributes.append(attribute)
+        self._box_attributes.append(attribute)
 
     def create(self, guid, testbed_description):
         return Box(guid, self)
@@ -404,9 +404,9 @@ class AddressableBoxFactory(BoxFactory):
         return AddressableBox(guid, self, self._family, 
                 self._max_addresses)
 
-class RoutingCapableBoxFactory(BoxFactory):
+class RoutingTableBoxFactory(BoxFactory):
     def create(self, guid, testbed_description):
-        return RoutingCapableBox(guid, self)
+        return RoutingTableBox(guid, self)
 
 class FactoriesProvider(object):
     def __init__(self):
@@ -433,7 +433,7 @@ class TestbedDescription(AttributesMap):
         self._testbed_id = testbed_id
         self._testbed_version = testbed_version
         self._provider = provider
-        self._elements = dict()
+        self._boxes = dict()
 
     @property
     def guid(self):
@@ -452,23 +452,23 @@ class TestbedDescription(AttributesMap):
         return provider
 
     @property
-    def elements(self):
-        return self._elements.values()
+    def boxes(self):
+        return self._boxes.values()
 
     def create(self, factory_id):
         guid = self.guid_generator.next()
         factory = self._provider.factories(factory_id)
-        element = factory.create(guid, self)
-        self._elements[guid] = element
+        box = factory.create(guid, self)
+        self._boxes[guid] = box
 
     def delete(self, guid):
-        element = self._elements[guid]
-        del self._elements[guid]
-        element.destroy()
+        box = self._boxes[guid]
+        del self._boxes[guid]
+        box.destroy()
 
     def destroy(self):
-        for guid, element in self._elements.iteitems():
-            del self._elements[guid]
-            element.destroy()
-        self._elements = None
+        for guid, box in self._boxes.iteitems():
+            del self._boxes[guid]
+            box.destroy()
+        self._boxes = None
 

@@ -10,7 +10,7 @@ def get_metadata():
              "node": dict({
                     "factory_type": "routing",
                     "display_name": "Node",
-                    "help": "Node element",
+                    "help": "Node",
                     "category": "topology",
                     "connector_types": [
                         ("netns_node_apps", 
@@ -26,7 +26,7 @@ def get_metadata():
                                 "netns_p2piface_node"
                             ])
                         ],
-                    "element_attributes": [
+                    "box_attributes": [
                         ("forward_X11", 
                             "Forward x11 from main namespace to the node", 
                             Attribute.BOOL, 
@@ -51,7 +51,7 @@ def get_metadata():
                                 "p2p", 1, 0, 
                                 ["netns_p2piface_p2p"])
                         ],
-                    "element_attributes": [
+                    "box_attributes": [
                         ("lladdr", "Mac address", Attribute.STRING, 
                             None, None, None, False, 
                             validation.is_mac_address),
@@ -96,7 +96,7 @@ def get_metadata():
                             # TODO: Doesn't exist yet!
                            ["ns3_fdnetdev_fd"])
                        ],
-                    "element_attributes": [
+                    "box_attributes": [
                         ("lladdr", "Mac address", Attribute.STRING, 
                             None, None, None, False, 
                             validation.is_mac_address),
@@ -138,7 +138,7 @@ def get_metadata():
                             "switch", 1, 0,
                             ["netns_switch_devs"])
                         ],
-                    "element_attributes": [
+                    "box_attributes": [
                         ("lladdr", "Mac address", Attribute.STRING, 
                             None, None, None, False, 
                             validation.is_mac_address),
@@ -174,7 +174,7 @@ def get_metadata():
                             "devs", -1, 0, 
                             ["netns_nodeiface_switch"])
                         ],
-                    "element_attributes": [
+                    "box_attributes": [
                         ("up", "Link up", Attribute.BOOL, 
                             False, None, None, False,
                             validation.is_bool),
@@ -209,7 +209,7 @@ def get_metadata():
                             ("StdoutTrace", "Standard output"),
                             ("StderrTrace", "Standard error")
                         ],
-                    "element_attributes": [
+                    "box_attributes": [
                         ("command", "Command line",
                             Attribute.STRING,
                             None, None, None, False,

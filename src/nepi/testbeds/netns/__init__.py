@@ -22,10 +22,10 @@ def add_attributes(factory, attributes_metadata):
         factory.add_attribute(name, help, type, value, range, allowed,
             readonly, validation_function)
 
-def add_element_attributes(factory, element_attributes_metadata):
+def add_box_attributes(factory, box_attributes_metadata):
     for (name, help, type, value, range, allowed, readonly, 
-            validation_function) in element_attributes_metadata:
-            factory.add_element_attribute(name, help, type, value, range,
+            validation_function) in box_attributes_metadata:
+            factory.add_box_attribute(name, help, type, value, range,
                     allowed, readonly, validation_function)
            
 def create_factory_from_metadata(factory_id, info):
@@ -39,7 +39,7 @@ def create_factory_from_metadata(factory_id, info):
             factory = description.AddressableBoxFactory(factory_id, 
                     display_name, family, max_addresses, help, category)
         elif factory_type == "routing":
-            factory = description.RoutingCapableBoxFactory(factory_id, 
+            factory = description.RoutingTableBoxFactory(factory_id, 
                     display_name, help, category)
         else:
             factory = description.BoxFactory(factory_id, display_name, help, category)
@@ -49,8 +49,8 @@ def create_factory_from_metadata(factory_id, info):
             add_traces(factory, info["traces"])
         if "attributes" in info:
             add_attributes(factory, info["attributes"])
-        if "element_attributes" in info:
-            add_element_attributes(factory, info["element_attributes"])
+        if "box_attributes" in info:
+            add_box_attributes(factory, info["box_attributes"])
         return factory
 
 def create_factories(version):
