@@ -110,7 +110,7 @@ class Connector(object):
 
     def can_connect(self, connector):
         connector_type_id = connector.connector_type.connector_type_id
-        self.connector_type.can_connect(connector_type_id) 
+        return self.connector_type.can_connect(connector_type_id) 
 
     def destroy(self):
         for connector in self._connections:
@@ -160,7 +160,7 @@ class Address(AttributesMap):
         self.add_attribute(name = "NetPrefix",
                 help = "Network prefix for the address", 
                 type = Attribute.INTEGER, 
-                prefix_range = prefix_range,
+                range = prefix_range,
                 validation_function = validation.is_integer)
         if family == AF_INET:
             self.add_attribute(name = "Broadcast",
@@ -215,7 +215,7 @@ class Box(AttributesMap):
 
         for connector_type in factory.connector_types:
             connector = Connector(self, connector_type)
-            self._connectors[connector_type.connector_id] = connector
+            self._connectors[connector_type.name] = connector
         for trace in factory.traces:
             tr = Trace(trace.name, trace.help, trace.enabled)
             self._traces[trace.name] = tr
@@ -277,7 +277,7 @@ class AddressableBox(Box):
         super(AddressableBox, self).__init__(guid, factory, container)
         self._family = family
         # maximum number of addresses this box can have
-        self._max_addresses = max_addressess
+        self._max_addresses = max_addresses
         self._addresses = list()
 
     @property
@@ -456,10 +456,11 @@ class TestbedDescription(AttributesMap):
         return self._boxes.values()
 
     def create(self, factory_id):
-        guid = self.guid_generator.next()
-        factory = self._provider.factories(factory_id)
+        guid = self._guid_generator.next()
+        factory = self._provider.factory(factory_id)
         box = factory.create(guid, self)
         self._boxes[guid] = box
+        return box
 
     def delete(self, guid):
         box = self._boxes[guid]

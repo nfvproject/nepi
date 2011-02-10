@@ -84,7 +84,7 @@ class Attribute(object):
         return self._help
 
     @property
-    def readornly(self):
+    def readonly(self):
         return self._readonly
 
     @property
@@ -98,6 +98,10 @@ class Attribute(object):
     @property
     def allowed(self):
         return self._allowed
+
+    @property
+    def validation_function(self):
+        return self._validation_function
 
     def get_value(self):
         return self._value

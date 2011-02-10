@@ -13,7 +13,7 @@ iface1 = netns.create("NodeInterface")
 iface1.set_attribute_value("up", True)
 node1.connector("devs").connect(iface1.connector("node"))
 ip1 = iface1.add_address()
-p1.set_attribute_value("Address", "10.0.0.1")
+ip1.set_attribute_value("Address", "10.0.0.1")
 iface2 = netns.create("NodeInterface")
 iface2.set_attribute_value("up", True)
 node2.connector("devs").connect(iface2.connector("node"))
@@ -27,7 +27,7 @@ app = netns.create("Application")
 app.set_attribute_value("command", "ping -qc10 10.0.0.2")
 app.connector("node").connect(node1.connector("apps"))
 
-#print experiment.xml_description
+print experiment.xml_description
 
 description = """
 <experiment>

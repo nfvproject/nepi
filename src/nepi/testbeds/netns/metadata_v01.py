@@ -7,7 +7,7 @@ from nepi.util import validation
 
 def get_metadata():
     return dict({
-             "node": dict({
+             "Node": dict({
                     "factory_type": "routing",
                     "display_name": "Node",
                     "help": "Node",
@@ -34,7 +34,7 @@ def get_metadata():
                             validation.is_bool)
                         ]
                 }),
-            "p2piface": dict({
+            "P2PInterface": dict({
                     "factory_type": "addressable",
                     "family": AF_INET,
                     "max_addresses": 1,
@@ -78,7 +78,7 @@ def get_metadata():
                             validation.is_bool),
                     ]
                 }),
-                "tapiface": dict({
+                "TapNodeInterface": dict({
                     "factory_type": "addressable",
                     "family": AF_INET,
                     "max_addresses": 1,
@@ -123,7 +123,7 @@ def get_metadata():
                             validation.is_bool),
                     ]
                 }),
-            "nodeiface": dict({ #TODO: Addresses!
+            "NodeInterface": dict({
                     "factory_type": "addressable",
                     "family": AF_INET,
                     "max_addresses": 1,
@@ -165,7 +165,7 @@ def get_metadata():
                             validation.is_bool),
                     ]
                 }),
-            "switch": dict({
+            "Switch": dict({
                     "display_name": "Switch",
                     "help": "Switch interface",
                     "category": "devices",
@@ -196,7 +196,7 @@ def get_metadata():
                         #TODO:("MaxAge", help, type, value, range, allowed, readonly, validation_function)
                         ]
                 }),
-                "application": dict({
+               "Application": dict({
                     "display_name": "Application",
                     "help": "Generic executable command line application",
                     "category": "applications",

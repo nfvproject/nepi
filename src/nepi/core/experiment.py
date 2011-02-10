@@ -22,6 +22,7 @@ class ExperimentDescription(object):
                 self._guid_generator, testbed_version, testbed_provider)
         guid = testbed_description.guid
         self._testbed_descriptions[guid] = testbed_description
+        return testbed_description
 
     def remove_testbed_description(self, testbed_description):
         guid = testbed_description.guid

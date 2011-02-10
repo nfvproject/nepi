@@ -15,15 +15,15 @@ def is_string(value):
 
 def is_ip4_address(value):
     try:
-        ipaddr.IPv4(value)
-    except ipaddr.Error:
+        ipaddr.IPv4Address(value)
+    except ipaddr.AddressValueError:
         return False
     return True
 
 def is_ip6_address(value):
     try:
-        ipaddr.IPv6(value)
-    except ipaddr.Error:
+        ipaddr.IPv6Address(value)
+    except ipaddr.AddressValueError:
         return False
     return True
 
