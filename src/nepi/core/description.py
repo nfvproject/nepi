@@ -91,7 +91,10 @@ class Connector(object):
 
     def is_complete(self):
         """Return True if the connector has the minimum number of connections"""
-        return len(self.connections) >= self.connector_type.min 
+        return len(self.connections) >= self.connector_type.min
+
+    def is_connected(self, connector):
+        return connector._key in self._connections
 
     def connect(self, connector):
         if self.is_full() or connector.is_full():
@@ -223,7 +226,7 @@ class Box(AttributesMap):
             self.add_attribute(attr.name, attr.help, attr.type, attr.value, 
                     attr.range, attr.allowed, attr.readonly, 
                     attr.validation_function)
-        for attr in factory._attributes:
+        for attr in factory.attributes:
             self._factory_attributes.append(attr)
 
     @property
@@ -454,6 +457,9 @@ class TestbedDescription(AttributesMap):
     @property
     def boxes(self):
         return self._boxes.values()
+
+    def box(self, guid):
+        return self._boxes[guid] if guid in self._boxes else None
 
     def create(self, factory_id):
         guid = self._guid_generator.next()

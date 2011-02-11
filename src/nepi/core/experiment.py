@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from nepi.util.guid import GuidGenerator 
+from nepi.util.guid import GuidGenerator
+from nepi.util.parser.xml import XmlParser
 import sys
 
 class ExperimentDescription(object):
@@ -12,8 +13,23 @@ class ExperimentDescription(object):
         self._testbed_providers = dict()
 
     @property
+    def testbed_descriptions(self):
+        return self._testbed_descriptions.values()
+
+    @property
     def xml_description(self):
-        raise NotImplementedError
+        parser = XmlParser()
+        return parser.to_xml(self)
+
+    def testbed_description(self, guid):
+        return self._testbed_descriptions[guid] \
+                if guid in self._testbed_descriptions else None
+
+    def box(self, guid):
+        for testbed_description in self._testbed_descriptions.values():
+            box = testbed_description.box(guid)
+            if box: return box
+        return None
 
     def add_testbed_description(self, testbed_id, testbed_version):
         testbed_module = self._testbed_module(testbed_id)

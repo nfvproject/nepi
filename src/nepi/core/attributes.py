@@ -9,8 +9,12 @@ class AttributesMap(object):
         self._attributes = dict()
 
     @property
+    def attributes(self):
+        return self._attributes.values()
+
+    @property
     def attributes_name(self):
-        return set(self._attributes.keys())
+        return self._attributes.keys()
 
     def set_attribute_value(self, name, value):
         self._attributes[name].value = value

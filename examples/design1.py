@@ -27,30 +27,15 @@ app = netns.create("Application")
 app.set_attribute_value("command", "ping -qc10 10.0.0.2")
 app.connector("node").connect(node1.connector("apps"))
 
-print experiment.xml_description
+#from nepi.util.parser.base import Parser
+#p = Parser()
+#data = p.to_data(experiment)
+#print data
+#e2 = p.from_data(data)
+#data2 = p.to_data(e2)
+#print data2
 
-description = """
-<experiment>
-  <testbeds>
-    <testbed testbed_id="netns" testbed_version="1.0" guid="1">
-      <elements>
-        <element factory_id="Node" guid="2">
-          <construct-parameters>
-          </construct-parameters>
-          <attributes>
-          </attributes>
-          <traces>
-          </traces>
-          <addresses>
-          </addresses>
-          <routes>
-          </routes>
-        </element>
-      </elements>
-      <connections>
-      </connections>
-    </testbed>
-  </testbeds>
-</experiment>
-"""
+#print data == data2
+#print experiment.xml_description
+
 
