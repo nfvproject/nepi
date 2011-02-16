@@ -3,174 +3,312 @@
 
 import sys
 
+class ExperimentData(object):
+    def __init__(self):
+        self.data = dict()
+
+    @property
+    def guids(self):
+        return self.data.keys()
+
+    def add_testbed_data(self, guid, testbed_id, testbed_version):
+        testbed_data = dict()
+        testbed_data["testbed_id"] = testbed_id
+        testbed_data["testbed_version"] = testbed_version
+        self.data[guid] = testbed_data
+
+    def add_box_data(self, guid, testbed_guid, factory_id):
+        box_data = dict()
+        box_data["testbed_guid"] = testbed_guid
+        box_data["factory_id"] = factory_id
+        self.data[guid] = box_data
+
+    def add_factory_attribute_data(self, guid, name, value):
+        data = self.data[guid]
+        if not "factory_attributes" in data:
+            data["factory_attributes"] = dict()
+        factory_attributes_data = data["factory_attributes"]
+        factory_attributes_data[name] = value
+
+    def add_attribute_data(self, guid, name, value):
+        data = self.data[guid]
+        if not "attributes" in data:
+            data["attributes"] = dict()
+        attributes_data = data["attributes"]
+        attributes_data[name] = value
+
+    def add_trace_data(self, guid, trace_name):
+        data = self.data[guid]
+        if not "traces" in data:
+            data["traces"] = list()
+        traces_data = data["traces"]
+        traces_data.append(trace_name)
+
+    def add_connection_data(self, guid, connector_type_name, other_guid,
+            other_connector_type_name):
+        data = self.data[guid]
+        if not "connections" in data:
+            data["connections"] = dict()
+        connections_data = data["connections"]
+        if not connector_type_name in connections_data:
+            connections_data[connector_type_name] = dict()
+        connection_data = connections_data[connector_type_name]
+        connection_data[other_guid] = other_connector_type_name
+
+    def add_address_data(self, guid, autoconf, address, family, netprefix, 
+            broadcast):
+        data = self.data[guid]
+        if not "addresses" in data:
+            data["addresses"] = list()
+        addresses_data = data["addresses"]
+        address_data = dict()
+        if autoconf:
+            address_data["AutoConfigure"] = autoconf
+        if address:
+            address_data["Address"] = address
+        if family:
+            address_data["Family"] = family
+        if netprefix:
+            address_data["NetPrefix"] = netprefix
+        if broadcast:
+            address_data["Broadcast"] = broadcast
+        addresses_data.append(address_data)
+
+    def add_route_data(self, guid, family, destination, netprefix, nexthop, 
+            interface):
+        data = self.data[guid]
+        if not "routes" in data:
+            data["routes"] = list()
+        routes_data = data["routes"]
+        route_data = dict({
+            "Family": family, 
+            "Destination": destination,
+            "NetPrefix": netprefix, 
+            "NextHop": nexthop, 
+            "Interface": Interface
+            })
+        routes_data.append(route_data)
+
+    def is_testbed_data(self, guid):
+        return True if "testbed_id" in self.data[guid] else None
+
+    def get_testbed_data(self, guid):
+        testbed_data = self.data[guid]
+        return (testbed_data["testbed_id"], testbed_data["testbed_version"])
+
+    def get_box_data(self, guid):
+        box_data = self.data[guid]
+        return (box_data["testbed_guid"], box_data["factory_id"])
+
+    def get_factory_attribute_data(self, guid):
+        data = self.data[guid]
+        if not "factory_attributes" in data:
+            return []
+        factory_attributes_data = data["factory_attributes"]
+        return [(name, value) for name, value \
+                in factory_attributes_data.iteritems()]
+
+    def get_attribute_data(self, guid):
+        data = self.data[guid]
+        if not "attributes" in data:
+            return []
+        attributes_data = data["attributes"]
+        return [(name, value) for name, value \
+                in attributes_data.iteritems()]
+
+    def get_trace_data(self, guid):
+        data = self.data[guid]
+        if not "traces" in data:
+            return []
+        return [trace_name for trace_name in data["traces"]]
+
+    def get_connection_data(self, guid):
+        data = self.data[guid]
+        if not "connections" in data:
+            return []
+        connections_data = data["connections"]
+        return [(connector_type_name, other_guid, other_connector_type_name) \
+                    for connector_type_name, connection_data \
+                        in connections_data.iteritems() \
+                            for other_guid, other_connector_type_name \
+                                in connection_data.iteritems()]
+
+    def get_address_data(self, guid):
+        data = self.data[guid]
+        if not "addresses" in data:
+            return []
+        addresses_data = data["addresses"]
+        return [(data["AutoConfigure"] if "AutoConfigure" in data else None,
+                 data["Address"] if "Address" in data else None,
+                 data["Family"] if "Family" in data else None,
+                 data["NetPrefix"] if "NetPrefix" in data else None,
+                 data["Broadcast"] if "Broadcast" in data else None) \
+                 for data in addresses_data]
+
+    def get_route_data(self, guid):
+        data = self.data[guid]
+        if not "routes" in data:
+            return []
+        routes_data = data["routes"]
+        return [(data["Family"],
+                 data["Destination"],
+                 data["NetPrefix"],
+                 data["NextHop"],
+                 data["Interface"]) \
+                 for data in routes_data]
+
 class ExperimentParser(object):
     def to_data(self, experiment_description):
-        data = dict()
+        data = ExperimentData()
         for testbed_description in experiment_description.testbed_descriptions:
             guid = testbed_description.guid
-            data[guid] = self.testbed_to_data(testbed_description)
+            testbed_id = testbed_description.provider.testbed_id
+            testbed_version = testbed_description.provider.testbed_version
+            data.add_testbed_data(guid, testbed_id, testbed_version)
+            self.attributes_to_data(data, guid, testbed_description.attributes)
             for box in testbed_description.boxes:
-                data[box.guid] = self.box_to_data(guid, box)
+                data.add_box_data(box.guid, guid, box.factory_id)
+                self.factory_attributes_to_data(data, box.guid, 
+                        box.factory_attributes)
+                self.attributes_to_data(data, box.guid, box.attributes)
+                self.traces_to_data(data, box.guid, box.traces)
+                self.connections_to_data(data, box.guid, box.connectors)
+                self.addresses_to_data(data, box.guid, box.addresses)
+                self.routes_to_data(data, box.guid, box.routes)
         return data
 
-    def testbed_to_data(self, testbed_description):
-        elem = dict()
-        elem["testbed_id"] = testbed_description.provider.testbed_id
-        elem["testbed_version"] = testbed_description.provider.testbed_version
-        return elem 
-
-    def box_to_data(self, testbed_guid, box):
-        elem = dict()
-        elem["testbed_guid"] = testbed_guid
-        elem["factory_id"] = box.factory_id
-        fattrs = self.factory_attributes_to_data(box.factory_attributes)
-        if fattrs:
-            elem["factory_attributes"] = fattrs
-        attrs = self.attributes_to_data(box.attributes)
-        if attrs:
-            elem["attributes"] = attrs
-        traces = self.traces_to_data(box.traces)
-        if traces:
-            elem["traces"] = traces
-        connections = self.connections_to_data(box.connectors)
-        if connections:
-            elem["connections"] = connections
-        addresses = self.addresses_to_data(box.addresses)
-        if addresses:
-            elem["addresses"] = addresses
-        routes = self.routes_to_data(box.routes)
-        if routes:
-            elem["routes"] = routes
-        return elem
-
-    def factory_attributes_to_data(self, attributes):
-        fattrs = dict()
+    def factory_attributes_to_data(self, data, guid, attributes):
         for attribute in attributes:
             if attribute.modified:
-                fattrs[attribute.name] = attribute.value
-        return fattrs if len(fattrs) > 0 else None
+                data.add_factory_attribute_data(guid, attribute.name, 
+                        attribute.value)
 
-    def attributes_to_data(self, attributes):
-        attrs = dict()
+    def attributes_to_data(self, data, guid, attributes):
         for attribute in attributes:
             if attribute.modified:
-                attrs[attribute.name] = attribute.value
-        return attrs if len(attrs) > 0 else None
+                data.add_attribute_data(guid, attribute.name, attribute.value)
 
-    def traces_to_data(self, traces):
-        trcs = list()
+    def traces_to_data(self, data, guid, traces):
         for trace in traces:
             if trace.enabled:
-                trcs.append(trace.name)
-        return trcs if len(trcs) > 0 else None
+                data.add_trace_data(guid, trace.name)
 
-    def connections_to_data(self, connectors):
-        cnctrs = dict()
+    def connections_to_data(self, data, guid, connectors):
         for connector in connectors:
-            cnxs = dict()
+            connector_type_name = connector.connector_type.name
             for other_connector in connector.connections:
-                guid = other_connector.box.guid
-                cnxs[guid] = other_connector.connector_type.name
-            if len(cnxs) > 0:
-                cnctrs[connector.connector_type.name] = cnxs
-        return cnctrs if len(cnctrs) > 0 else None
+                other_guid = other_connector.box.guid
+                other_connector_type_name = other_connector.connector_type.name
+                data.add_connection_data(guid, connector_type_name, other_guid,
+                        other_connector_type_name)
 
-    def addresses_to_data(self, addresses):
-        addrs = list()
-        for address in addresses:
-            addr = dict()
-            for attribute in address.attributes:
-                if attribute.modified:
-                    addr[attribute.name] = attribute.value
-            addrs.append(addr)
-        return addrs if len(addrs) > 0 else None
+    def addresses_to_data(self, data, guid, addresses):
+        for addr in addresses:
+             autoconf = addr.get_attribute_value("AutoConfigure") \
+                    if addr.is_attribute_modified("AutoConfigure") else None
+             address = addr.get_attribute_value("Address") \
+                    if addr.is_attribute_modified("Address") else None
+             netprefix = addr.get_attribute_value("NetPrefix") \
+                    if addr.is_attribute_modified("NetPrefix") else None
+             family = addr.get_attribute_value("Family") \
+                    if addr.is_attribute_modified("Family") else None
+             broadcast = addr.get_attribute_value("Broadcast") \
+                    if addr.has_attribute("Broadcast") and \
+                     addr.is_attribute_modified("Broadcast") else None
+             data.add_address_data(guid, autoconf, address, family, netprefix, 
+                    broadcast)
 
-    def routes_to_data(self, routes):
-        rts = list()
+    def routes_to_data(self, data, guid, routes):
         for route in routes:
-            rt = dict()
-            for attribute in route.attibutes:
-                if attribute.modified:
-                    rt[attribute.name] = attribute.value
-            rts.append(rt)
-        return rts if len(rts) > 0 else None
+             family = route.get_attribute_value("Family")
+             destination = route.get_attribute_value("Destination")
+             netprefix = route.get_attribute_value("NetPrefix")
+             nexthop = route.get_attribute_value("NextHop")
+             interface = route.get_attribute_value("Interface")
+             data.add_route_data(guid, family, destination, netprefix, nexthop, 
+                    interface)
 
     def from_data(self, experiment_description, data):
-        connections_data = dict()
-        for guid, elem_data in data.iteritems():
-            if "testbed_id" in elem_data:
-                self.testbed_from_data(experiment_description, elem_data)
+        box_guids = list()
+        for guid in data.guids:
+            if data.is_testbed_data(guid):
+                self.testbed_from_data(experiment_description, guid, data)
             else:
-                self.box_from_data(experiment_description, elem_data)
-                if "connections" in elem_data:
-                    connections_data[guid] = elem_data["connections"]
-        # Connections need all boxes to be created
-        self.connections_from_data(experiment_description, connections_data)
-        return experiment_description
+                self.box_from_data(experiment_description, guid, data)
+                box_guids.append(guid)
+        self.connections_from_data(experiment_description, box_guids, data)
 
-    def testbed_from_data(self, experiment_description, data):
-        testbed_id = data["testbed_id"]
-        testbed_version = data["testbed_version"]
+    def testbed_from_data(self, experiment_description, guid, data):
+        (testbed_id, testbed_version) = data.get_testbed_data(guid)
         mod_name = 'nepi.testbeds.%s' % testbed_id
         if not mod_name in sys.modules:
             __import__(mod_name)
         testbed_mod = sys.modules[mod_name]
         provider = testbed_mod.TestbedFactoriesProvider(testbed_version)
         experiment_description.add_testbed_description(provider)
+        testbed_description = experiment_description.testbed_description(guid)
+        self.attributes_from_data(testbed_description, data)
 
-    def box_from_data(self, experiment_description, data):
-        testbed_guid = data["testbed_guid"]
+    def box_from_data(self, experiment_description, guid, data):
+        (testbed_guid, factory_id) = data.get_box_data(guid)
         testbed_description = experiment_description.testbed_description(
                 testbed_guid)
-        factory_id = data["factory_id"]
-        if "factory_attributes" in data:
-            self.factory_attributes_from_data(factory_id, testbed_description, 
-                    data["factory_attributes"])
+        self.factory_attributes_from_data(testbed_description, factory_id,
+                guid, data)
         box = testbed_description.create(factory_id)
-        if "attributes" in data:
-            self.attributes_from_data(box, data["attributes"])
-        if "traces" in data:
-            self.traces_from_data(box, data["traces"])
-        if "addresses" in data:
-            self.addresses_from_data(box, data["addresses"])
-        if "routes" in data:
-            self.routes_from_data(box, experiment_description, data["routes"])
+        self.attributes_from_data(box, data)
+        self.traces_from_data(box, data)
+        self.addresses_from_data(box, data)
+        self.routes_from_data(box, data)
 
-    def factory_attributes_from_data(self, factory_id, testbed_description, 
-            data):
+    def factory_attributes_from_data(self, testbed_description, factory_id, 
+            guid, data):
         factory = testbed_description.provider.factory(factory_id)
-        for name, value in data.iteritems():
+        for (name, value) in data.get_factory_attribute_data(guid):
             factory.set_attribute_value(name, value)
 
-    def attributes_from_data(self, box, data):
-        for name, value in data.iteritems():
-            box.set_attribute_value(name, value)
+    def attributes_from_data(self, element, data):
+        for name, value in data.get_attribute_data(element.guid):
+            element.set_attribute_value(name, value)
 
     def traces_from_data(self, box, data):
-        for name in data:
+        for name in data.get_trace_data(box.guid):
             box.trace(name).enable()
 
-    def connections_from_data(self, experiment_description, data):
-        for guid, connector_data in data.iteritems():
+    def addresses_from_data(self, box, data):
+        for (autoconf, address, family, netprefix, broadcast) \
+                in data.get_address_data(box.guid):
+            addr = box.add_address()
+            if autoconf:
+                addr.set_attribute_value("AutoConfigure", autoconf)
+            if address:
+                addr.set_attribute_value("Address", address)
+            if family:
+                addr.set_attribute_value("Family", family)
+            if netprefix:
+                addr.set_attribute_value("NetPrefix", netprefix)
+            if broadcast:
+                addr.set_attribute_value("Broadcast", broadcast)
+
+    def routes_from_data(self, box, data):
+         for (family, destination, netprefix, nexthop, interface) \
+                in data.get_route_data(box.guid):
+            addr = box.add_route(family)
+            addr.set_attribute_value("Destination", destination)
+            addr.set_attribute_value("NetPrefix", netprefix)
+            addr.set_attribute_value("NextHop", nexthop)
+            addr.set_attribute_value("Interface", interface)
+
+    def connections_from_data(self, experiment_description, guids, data):
+        for guid in guids:
             box = experiment_description.box(guid)
-            for connector_type_name, connections in connector_data.iteritems():
-                for guid, other_connector_type_name in connections.iteritems():
-                    other_box = experiment_description.box(guid)
+            for (connector_type_name, other_guid, other_connector_type_name) \
+                    in data.get_connection_data(guid):
+                    other_box = experiment_description.box(other_guid)
                     connector = box.connector(connector_type_name)
                     other_connector = other_box.connector(
                             other_connector_type_name)
                     if not connector.is_connected(other_connector):
                         connector.connect(other_connector)
 
-    def addresses_from_data(self, box, data):
-        for address_attrs in data:
-            addr = box.add_address()
-            for name, value in address_attrs.iteritems():
-                addr.set_attribute_value(name, value)
-
-    def routes_from_data(self, box, experiment_description, data):
-        for route_attrs in data:
-            route = box.add_route()
-            for name, value in route_attrs.iteritems():
-                route.set_attribute_value(name, value)
 

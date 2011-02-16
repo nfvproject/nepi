@@ -40,6 +40,9 @@ class AttributesMap(object):
     def get_attribute_readonly(self, name):
         return self._attributes[name].readonly
 
+    def is_attribute_modified(self, name):
+        return self._attributes[name].modified
+
     def add_attribute(self, name, help, type, value = None, range = None,
         allowed = None, readonly = False, validation_function = None):
         if name in self._attributes:

@@ -32,12 +32,12 @@ app.connector("node").connect(node1.connector("apps"))
 from nepi.util.parser.base import ExperimentParser
 p = ExperimentParser()
 data = p.to_data(exp_desc)
-print data
+print data.data
 exp_desc2 = ExperimentDescription()
 p.from_data(exp_desc2, data)
 data2 = p.to_data(exp_desc2)
-print data2
-print data == data2
+print data2.data
+print data.data == data2.data
 
 from nepi.util.parser._xml import XmlExperimentParser
 p = XmlExperimentParser()

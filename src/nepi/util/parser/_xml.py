@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from nepi.core.attributes import Attribute
-from nepi.util.parser.base import ExperimentParser
+from nepi.util.parser.base import ExperimentData, ExperimentParser
 from xml.dom import minidom
 
 class XmlExperimentParser(ExperimentParser):
@@ -14,154 +14,148 @@ class XmlExperimentParser(ExperimentParser):
         exp_tag.appendChild(testbeds_tag)
 
         elements_tags = dict()
-        for guid, elem_data in data.iteritems():
-            if "testbed_id" in elem_data:
-                elements_tag = self.testbed_data_to_xml(doc, testbeds_tag, guid,
-                        elem_data)
+        for guid in data.guids:
+            if data.is_testbed_data(guid):
+                elements_tag = self.testbed_data_to_xml(doc, testbeds_tag, guid, data)
                 elements_tags[guid] = elements_tag
             else:
-                testbed_guid = elem_data["testbed_guid"]
-                elements_tag = elements_tags[testbed_guid]
-                self.box_data_to_xml(doc, elements_tag, guid, elem_data)
-
+                self.box_data_to_xml(doc, elements_tags, guid, data)
         doc.appendChild(exp_tag)
         xml = doc.toprettyxml(indent="    ", encoding="UTF-8")
         return xml
 
-    def testbed_data_to_xml(self, doc, parent_tag, guid, testbed_data):
+    def testbed_data_to_xml(self, doc, parent_tag, guid, data):
         testbed_tag = doc.createElement("testbed") 
         testbed_tag.setAttribute("guid", str(guid))
-        testbed_tag.setAttribute("testbed_id", str(testbed_data["testbed_id"]))
-        testbed_tag.setAttribute("testbed_version", 
-                str(testbed_data["testbed_version"]))
+        (testbed_id, testbed_version) = data.get_testbed_data(guid)
+        testbed_tag.setAttribute("testbed_id", str(testbed_id))
+        testbed_tag.setAttribute("testbed_version", str(testbed_version))
         parent_tag.appendChild(testbed_tag)
+        self.attributes_data_to_xml(doc, testbed_tag, guid, data)
         elements_tag = doc.createElement("elements")
         testbed_tag.appendChild(elements_tag)
         return elements_tag
 
-    def box_data_to_xml(self, doc, parent_tag, guid, box_data):
+    def box_data_to_xml(self, doc, elements_tags, guid, data):
+        (testbed_guid, factory_id) = data.get_box_data(guid)
         element_tag = doc.createElement("element")
+        parent_tag = elements_tags[testbed_guid]
         parent_tag.appendChild(element_tag)
-        element_tag.setAttribute("factory_id", str(box_data["factory_id"]))
+        element_tag.setAttribute("factory_id", factory_id)
         element_tag.setAttribute("guid", str(guid))
-        if "factory_attributes" in box_data:
-            self.factory_attributes_data_to_xml(doc, element_tag,
-                    box_data["factory_attributes"])
-        if "attributes" in box_data:
-            self.attributes_data_to_xml(doc, element_tag, 
-                    box_data["attributes"])
-        if "traces" in box_data:
-            self.traces_data_to_xml(doc, element_tag, box_data["traces"])
-        if "addresses" in box_data:
-            self.addresses_data_to_xml(doc, element_tag, 
-                    box_data["addresses"])
-        if "routes" in box_data:
-            self.routes_data_to_xml(doc, element_tag, box_data["routes"])
-        if "connections" in box_data:
-            self.connections_data_to_xml(doc, element_tag, 
-                    box_data["connections"])
+        self.factory_attributes_data_to_xml(doc, element_tag, guid, data)
+        self.attributes_data_to_xml(doc, element_tag, guid, data)
+        self.traces_data_to_xml(doc, element_tag, guid, data)
+        self.addresses_data_to_xml(doc, element_tag, guid, data)
+        self.routes_data_to_xml(doc, element_tag, guid, data)
+        self.connections_data_to_xml(doc, element_tag, guid, data)
         
-    def factory_attributes_data_to_xml(self, doc, parent_tag, data):
+    def factory_attributes_data_to_xml(self, doc, parent_tag, guid, data):
         factory_attributes_tag = doc.createElement("factory_attributes") 
         parent_tag.appendChild(factory_attributes_tag)
-        for name, value in data.iteritems():
+        for (name, value) in data.get_factory_attribute_data(guid):
             factory_attribute_tag = doc.createElement("factory_attribute") 
             factory_attributes_tag.appendChild(factory_attribute_tag)
             factory_attribute_tag.setAttribute("name", name)
             factory_attribute_tag.setAttribute("value", str(value))
             factory_attribute_tag.setAttribute("type", self.type_to_standard(value))
 
-    def attributes_data_to_xml(self, doc, parent_tag, data):
+    def attributes_data_to_xml(self, doc, parent_tag, guid, data):
         attributes_tag = doc.createElement("attributes") 
         parent_tag.appendChild(attributes_tag)
-        for name, value in data.iteritems():
+        for name, value in data.get_attribute_data(guid):
             attribute_tag = doc.createElement("attribute") 
             attributes_tag.appendChild(attribute_tag)
             attribute_tag.setAttribute("name", name)
             attribute_tag.setAttribute("value", str(value))
             attribute_tag.setAttribute("type", self.type_to_standard(value))
 
-    def traces_data_to_xml(self, doc, parent_tag, data):
+    def traces_data_to_xml(self, doc, parent_tag, guid, data):
         traces_tag = doc.createElement("traces") 
         parent_tag.appendChild(traces_tag)
-        for name in data:
+        for name in data.get_trace_data(guid):
             trace_tag = doc.createElement("trace") 
             traces_tag.appendChild(trace_tag)
             trace_tag.setAttribute("name", name)
 
-    def addresses_data_to_xml(self, doc, parent_tag, data):
+    def addresses_data_to_xml(self, doc, parent_tag, guid, data):
         addresses_tag = doc.createElement("addresses") 
         parent_tag.appendChild(addresses_tag)
-        for address in data:
+        for (autoconfigure, address, family, netprefix, broadcast) \
+                in data.get_address_data(guid):
             address_tag = doc.createElement("address") 
             addresses_tag.appendChild(address_tag)
-            for name, value in address.iteritems():
-                address_tag.setAttribute(name, str(value))
+            if autoconfigure:
+                address_tag.setAttribute("AutoConfigure", str(autoconf))
+            if address:
+                address_tag.setAttribute("Address", str(address))
+            if family:
+                address_tag.setAttribute("Family", str(family))
+            if netprefix:
+                address_tag.setAttribute("NetPrefix", str(netprefix))
+            if broadcast:
+                address_tag.setAttribute("Broadcast", str(broadcast))
 
-    def routes_data_to_xml(self, doc, parent_tag, data):
+    def routes_data_to_xml(self, doc, parent_tag, guid, data):
         routes_tag = doc.createElement("routes") 
         parent_tag.appendChild(routes_tag)
-        for route in data:
+        for (family, destination, netprefix, nexthop, interface) \
+                in data.get_route_data(guid):
             route_tag = doc.createElement("route") 
             routes_tag.appendChild(route_tag)
-            for name, value in route.iteritems():
-                route_tag.setAttribute(name, str(value))
+            route_tag.setAttribute("Family", str(family))
+            route_tag.setAttribute("Destination", str(destination))
+            route_tag.setAttribute("NetPrefix", str(netprefix))
+            route_tag.setAttribute("NextHop", str(nexthop))
+            route_tag.setAttribute("Interface", str(interface))
 
-    def connections_data_to_xml(self, doc, parent_tag, data):
+    def connections_data_to_xml(self, doc, parent_tag, guid, data):
         connections_tag = doc.createElement("connections") 
         parent_tag.appendChild(connections_tag)
-        for connector_type_id, connections in data.iteritems():
-            for other_guid, other_connector_type_id in connections.iteritems():
+        for (connector_type_name, other_guid, other_connector_type_name) \
+                in data.get_connection_data(guid):
                 connection_tag = doc.createElement("connection") 
                 connections_tag.appendChild(connection_tag)
-                connection_tag.setAttribute("connector", connector_type_id)
+                connection_tag.setAttribute("connector", connector_type_name)
                 connection_tag.setAttribute("other_guid", str(other_guid))
                 connection_tag.setAttribute("other_connector",
-                        other_connector_type_id)
+                        other_connector_type_name)
 
     def from_xml(self, experiment_description, xml):
-        data = dict()
+        data = ExperimentData()
         doc = minidom.parseString(xml)
         testbeds_tag = doc.getElementsByTagName("testbeds")[0] 
         testbed_tag_list = testbeds_tag.getElementsByTagName("testbed")
         for testbed_tag in testbed_tag_list:
             if testbed_tag.nodeType == doc.ELEMENT_NODE:
-                testbed_data = self.testbed_data_from_xml(testbed_tag)
-                testbed_guid = testbed_tag.getAttribute("guid")
-                data[int(testbed_guid)] = testbed_data
+                testbed_guid = int(testbed_tag.getAttribute("guid"))
+                self.testbed_data_from_xml(testbed_tag, data)
                 elements_tag = testbed_tag.getElementsByTagName("elements")[0] 
                 element_tag_list = elements_tag.getElementsByTagName("element")
                 for element_tag in element_tag_list:
                     if element_tag.nodeType == doc.ELEMENT_NODE:
-                        box_data = self.box_data_from_xml(testbed_guid, element_tag)
-                        guid = element_tag.getAttribute("guid")
-                        data[int(guid)] = box_data
-        print data
+                        self.box_data_from_xml(element_tag, testbed_guid, data)
         self.from_data(experiment_description, data)
 
-    def testbed_data_from_xml(self, tag):
-        testbed_id = tag.getAttribute("testbed_id")
-        testbed_version = tag.getAttribute("testbed_version")
-        return dict({
-            "testbed_id": str(testbed_id), 
-            "testbed_version": str(testbed_version),
-            })
+    def testbed_data_from_xml(self, tag, data):
+        testbed_guid = int(tag.getAttribute("guid"))
+        testbed_id = str(tag.getAttribute("testbed_id"))
+        testbed_version = str(tag.getAttribute("testbed_version"))
+        data.add_testbed_data(testbed_guid, testbed_id, testbed_version)
+        self.attributes_data_from_xml(tag, testbed_guid, data)
 
-    def box_data_from_xml(self, testbed_guid, tag):
-        factory_id = tag.getAttribute("factory_id")
-        data = dict({
-            "testbed_guid": int(testbed_guid),
-            "factory_id": str(factory_id)
-            })
-        self.factory_attributes_data_from_xml(data, tag)
-        self.attributes_data_from_xml(data, tag)
-        self.traces_data_from_xml(data, tag)
-        self.addresses_data_from_xml(data, tag)
-        self.routes_data_from_xml(data, tag)
-        self.connections_data_from_xml(data, tag)
-        return data
+    def box_data_from_xml(self, tag, testbed_guid, data):
+        guid = int(tag.getAttribute("guid"))
+        factory_id = str(tag.getAttribute("factory_id"))
+        data.add_box_data(guid, testbed_guid, factory_id)
+        self.factory_attributes_data_from_xml(tag, guid, data)
+        self.attributes_data_from_xml(tag, guid, data)
+        self.traces_data_from_xml(tag, guid, data)
+        self.addresses_data_from_xml(tag, guid, data)
+        self.routes_data_from_xml(tag, guid, data)
+        self.connections_data_from_xml(tag, guid, data)
         
-    def factory_attributes_data_from_xml(self, data, tag):
+    def factory_attributes_data_from_xml(self, tag, guid, data):
         factory_attributes_tag_list = tag.getElementsByTagName(
                 "factory_attributes")
         if len(factory_attributes_tag_list) == 0:
@@ -169,117 +163,95 @@ class XmlExperimentParser(ExperimentParser):
 
         factory_attribute_tag_list = factory_attributes_tag_list[0].\
                 getElementsByTagName("factory_attribute")
-        factory_attributes_data = dict()
         for factory_attribute_tag in factory_attribute_tag_list:
              if factory_attribute_tag.nodeType == tag.ELEMENT_NODE:
-                name = factory_attribute_tag.getAttribute("name")
+                name = str(factory_attribute_tag.getAttribute("name"))
                 value = factory_attribute_tag.getAttribute("value")
                 std_type = factory_attribute_tag.getAttribute("type")
                 value = self.type_from_standard(std_type, value)
-                factory_attributes_data[str(name)] = value
-        data["factory_attributes"] = factory_attributes_data
-    
-    def attributes_data_from_xml(self, data, tag):
+                data.add_factory_attribute_data(guid, name, value)
+
+    def attributes_data_from_xml(self, tag, guid, data):
         attributes_tag_list= tag.getElementsByTagName("attributes")
         if len(attributes_tag_list) == 0:
             return
 
         attribute_tag_list = attributes_tag_list[0].\
                 getElementsByTagName("attribute")
-        attributes_data = dict()
         for attribute_tag in attribute_tag_list:
              if attribute_tag.nodeType == tag.ELEMENT_NODE:
-                name = attribute_tag.getAttribute("name")
+                name = str(attribute_tag.getAttribute("name"))
                 value = attribute_tag.getAttribute("value")
                 std_type = attribute_tag.getAttribute("type")
                 value = self.type_from_standard(std_type, value)
-                attributes_data[str(name)] = value
-        data["attributes"] = attributes_data
+                data.add_attribute_data(guid, name, value)
 
-    def traces_data_from_xml(self, data, tag):
+    def traces_data_from_xml(self, tag, guid, data):
         traces_tag_list = tag.getElementsByTagName("traces")
         if len(traces_tag_list) == 0:
             return
 
         trace_tag_list = traces_tag_list[0].getElementsByTagName(
                 "trace")
-        traces_data = list()
         for trace_tag in trace_tag_list:
              if trace_tag.nodeType == tag.ELEMENT_NODE:
-                name = trace_tag.getAttribute("name")
-                traces_data.append(name)
-        data["traces"] = traces_data
+                name = str(trace_tag.getAttribute("name"))
+                data.add_trace_data(guid, name)
 
-    def addresses_data_from_xml(self, data, tag):
+    def addresses_data_from_xml(self, tag, guid, data):
         addresses_tag_list = tag.getElementsByTagName("addresses")
         if len(addresses_tag_list) == 0:
             return
 
         address_tag_list = addresses_tag_list[0].\
                 getElementsByTagName("address")
-        addresses_data = list()
-        address_attributes = dict({"AutoConfigure": Attribute.BOOL, 
-            "Address": Attribute.STRING,
-            "Family": Attribute.INTEGER,
-            "NetPrefix": Attribute.INTEGER,
-            "Broadcast": Attribute.STRING 
-            })
         for address_tag in address_tag_list:
             if address_tag.nodeType == tag.ELEMENT_NODE:
-                address_data = dict()
-                for attr_name in address_attributes.keys():
-                    if address_tag.hasAttribute(attr_name):
-                        value = address_tag.getAttribute(attr_name)
-                        type = address_attributes[attr_name]
-                        address_data[attr_name] = self.type_from_standard(
-                                type, value)
-                addresses_data.append(address_data)
-        data["addresses"] = addresses_data
+                autoconf = bool(address_tag.getAttribute("AutoConfigure")) \
+                       if address_tag.hasAttribute("AutoConfigure") else None
+                address = str(address_tag.getAttribute("Address")) \
+                       if address_tag.hasAttribute("Address") else None
+                family = int(address_tag.getAttribute("Family")) \
+                       if address_tag.hasAttribute("Family") else None
+                netprefix = int(address_tag.getAttribute("NetPrefix")) \
+                       if address_tag.hasAttribute("NetPrefix") else None
+                broadcast = str(address_tag.getAttribute("Broadcast")) \
+                       if address_tag.hasAttribute("Broadcast") else None
+                data.add_address_data(guid, autoconf, address, family, 
+                    netprefix, broadcast)
 
-    def routes_data_from_xml(self, data, tag):
+    def routes_data_from_xml(self, tag, guid, data):
         routes_tag_list = tag.getElementsByTagName("routes")
         if len(routes_tag_list) == 0:
             return
 
         route_tag_list = routes_tag_list[0].getElementsByTagName("route")
-        routes_data = list()
-        route_attributes = dict({"Family": Attribute.INTEGER,
-            "Destination": Attribute.STRING,
-            "NetPrefix": Attribute.INTEGER,
-            "NextHop": Attribute.STRING,
-            "Interface": Attribute.STRING,
-            })
         for route_tag in route_tag_list:
-            if address_tag.nodeType == tag.ELEMENT_NODE:
-                route_data = dict()
-                for attr_name in route_attributes.keys():
-                    if route_tag.hasAttribute(attr_name):
-                        value = route_tag.getAttribute(attr_name)
-                        type = route_attributes[attr_name]
-                        route_data[attr_name] = self.type_from_standard(
-                                type, value)
-                routes_data.append(route_data)
-        data["routes"] = routes_data
+            if route_tag.nodeType == tag.ELEMENT_NODE:
+                family = int(route_tag.getAttribute("Family"))
+                destination = str(route_tag.getAttribute("Destination"))
+                netprefix = int(route_tag.getAttribute("NetPrefix"))
+                nexthop = str(route_tag.getAttribute("NextHop"))
+                interface = str(route_tag.getAttribute("Interface"))
+                data.add_route_data(guid, family, destination, netprefix, 
+                        nexthop, interface)
 
-    def connections_data_from_xml(self, data, tag):
+    def connections_data_from_xml(self, tag, guid, data):
         connections_tag_list = tag.getElementsByTagName("connections")
         if len(connections_tag_list) == 0:
             return
 
         connection_tag_list = connections_tag_list[0].getElementsByTagName(
                 "connection")
-        connections_data = dict()
         for connection_tag in connection_tag_list:
              if connection_tag.nodeType == tag.ELEMENT_NODE:
-                 connector = connection_tag.getAttribute("connector")
-                 other_connector = connection_tag.getAttribute(
-                         "other_connector")
-                 other_guid = connection_tag.getAttribute("other_guid")
-                 if not connector in connections_data:
-                     connections_data[str(connector)] = dict()
-                 connection_data = connections_data[str(connector)]
-                 connection_data[int(other_guid)] = str(other_connector)
-        data["connections"] = connections_data
+                 connector_type_name = str(connection_tag.getAttribute(
+                     "connector"))
+                 other_connector_type_name = str(connection_tag.getAttribute(
+                         "other_connector"))
+                 other_guid = int(connection_tag.getAttribute("other_guid"))
+                 data.add_connection_data(guid, connector_type_name, 
+                         other_guid, other_connector_type_name)
 
     def type_to_standard(self, value):
         if type(value) == str:
