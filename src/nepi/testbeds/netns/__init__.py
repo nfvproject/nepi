@@ -64,13 +64,10 @@ def create_factories(version):
         factories.append(factory)
     return factories
 
-def create_provider(version):
-    provider = description.FactoriesProvider()
-    for factory in create_factories(version):
-        provider.add_factory(factory)
-    return provider
-
-def create_description_instance(guid_generator, version, provider):
-    return description.TestbedDescription(guid_generator, TESTBED_ID, version, 
-        provider)
+class TestbedFactoriesProvider(description.TestbedFactoriesProvider):
+    def __init__(self, testbed_version):
+        super(TestbedFactoriesProvider, self).__init__(TESTBED_ID, 
+                testbed_version)
+        for factory in create_factories(testbed_version):
+            self.add_factory(factory)
 

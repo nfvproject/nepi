@@ -3,6 +3,8 @@
 
 from nepi.core.attributes import AttributesMap, Attribute
 from nepi.util import validation
+from nepi.util.guid import GuidGenerator
+from nepi.util.parser._xml import XmlExperimentParser
 import sys
 
 AF_INET = 0
@@ -411,10 +413,20 @@ class RoutingTableBoxFactory(BoxFactory):
     def create(self, guid, testbed_description):
         return RoutingTableBox(guid, self)
 
-class FactoriesProvider(object):
-    def __init__(self):
-        super(FactoriesProvider, self).__init__()
+class TestbedFactoriesProvider(object):
+    def __init__(self, testbed_id, testbed_version):
+        super(TestbedFactoriesProvider, self).__init__()
+        self._testbed_id = testbed_id
+        self._testbed_version = testbed_version
         self._factories = dict()
+
+    @property
+    def testbed_id(self):
+        return self._testbed_id
+
+    @property
+    def testbed_version(self):
+        return self._testbed_version
 
     def factory(self, factory_id):
         return self._factories[factory_id]
@@ -429,12 +441,10 @@ class FactoriesProvider(object):
         return self._factories.keys()
 
 class TestbedDescription(AttributesMap):
-    def __init__(self, guid_generator, testbed_id, testbed_version, provider):
+    def __init__(self, guid_generator, provider):
         super(TestbedDescription, self).__init__()
         self._guid_generator = guid_generator
         self._guid = guid_generator.next()
-        self._testbed_id = testbed_id
-        self._testbed_version = testbed_version
         self._provider = provider
         self._boxes = dict()
 
@@ -443,16 +453,8 @@ class TestbedDescription(AttributesMap):
         return self._guid
 
     @property
-    def testbed_id(self):
-        return self._testbed_id
-
-    @property
-    def testbed_version(self):
-        return self._testbed_version
-
-    @property
     def provider(self):
-        return provider
+        return self._provider
 
     @property
     def boxes(self):
@@ -478,4 +480,43 @@ class TestbedDescription(AttributesMap):
             del self._boxes[guid]
             box.destroy()
         self._boxes = None
+
+class ExperimentDescription(object):
+    def __init__(self, guid = 0):
+        self._guid_generator = GuidGenerator(guid)
+        # testbed design instances
+        self._testbed_descriptions = dict()
+
+    @property
+    def testbed_descriptions(self):
+        return self._testbed_descriptions.values()
+
+    def to_xml(self):
+        parser = XmlExperimentParser()
+        return parser.to_xml(self)
+
+    def from_xml(self, xml):
+        parser = XmlExperimentParser()
+        parser.from_xml(self, xml)
+
+    def testbed_description(self, guid):
+        return self._testbed_descriptions[guid] \
+                if guid in self._testbed_descriptions else None
+
+    def box(self, guid):
+        for testbed_description in self._testbed_descriptions.values():
+            box = testbed_description.box(guid)
+            if box: return box
+        return None
+
+    def add_testbed_description(self, provider):
+        testbed_description = TestbedDescription(self._guid_generator, 
+                provider)
+        guid = testbed_description.guid
+        self._testbed_descriptions[guid] = testbed_description
+        return testbed_description
+
+    def remove_testbed_description(self, testbed_description):
+        guid = testbed_description.guid
+        del self._testbed_descriptions[guid]
 

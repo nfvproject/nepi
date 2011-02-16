@@ -1,22 +1,22 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from nepi.core.experiment import ExperimentDescription
+import sys
 
-class Parser(object):
+class ExperimentParser(object):
     def to_data(self, experiment_description):
-        exp = dict()
+        data = dict()
         for testbed_description in experiment_description.testbed_descriptions:
             guid = testbed_description.guid
-            exp[guid] = self.testbed_to_data(testbed_description)
+            data[guid] = self.testbed_to_data(testbed_description)
             for box in testbed_description.boxes:
-                exp[box.guid] = self.box_to_data(guid, box)
-        return exp
+                data[box.guid] = self.box_to_data(guid, box)
+        return data
 
     def testbed_to_data(self, testbed_description):
         elem = dict()
-        elem["testbed_id"] = testbed_description.testbed_id
-        elem["testbed_version"] = testbed_description.testbed_version
+        elem["testbed_id"] = testbed_description.provider.testbed_id
+        elem["testbed_version"] = testbed_description.provider.testbed_version
         return elem 
 
     def box_to_data(self, testbed_guid, box):
@@ -95,28 +95,33 @@ class Parser(object):
             rts.append(rt)
         return rts if len(rts) > 0 else None
 
-    def from_data(self, data):
-        experiment = ExperimentDescription()
+    def from_data(self, experiment_description, data):
         connections_data = dict()
         for guid, elem_data in data.iteritems():
             if "testbed_id" in elem_data:
-                self.testbed_from_data(experiment, elem_data)
+                self.testbed_from_data(experiment_description, elem_data)
             else:
-                self.box_from_data(experiment, elem_data)
+                self.box_from_data(experiment_description, elem_data)
                 if "connections" in elem_data:
                     connections_data[guid] = elem_data["connections"]
         # Connections need all boxes to be created
-        self.connections_from_data(experiment, connections_data)
-        return experiment
+        self.connections_from_data(experiment_description, connections_data)
+        return experiment_description
 
-    def testbed_from_data(self, experiment, data):
+    def testbed_from_data(self, experiment_description, data):
         testbed_id = data["testbed_id"]
         testbed_version = data["testbed_version"]
-        experiment.add_testbed_description(testbed_id, testbed_version)
+        mod_name = 'nepi.testbeds.%s' % testbed_id
+        if not mod_name in sys.modules:
+            __import__(mod_name)
+        testbed_mod = sys.modules[mod_name]
+        provider = testbed_mod.TestbedFactoriesProvider(testbed_version)
+        experiment_description.add_testbed_description(provider)
 
-    def box_from_data(self, experiment, data):
+    def box_from_data(self, experiment_description, data):
         testbed_guid = data["testbed_guid"]
-        testbed_description = experiment.testbed_description(testbed_guid)
+        testbed_description = experiment_description.testbed_description(
+                testbed_guid)
         factory_id = data["factory_id"]
         if "factory_attributes" in data:
             self.factory_attributes_from_data(factory_id, testbed_description, 
@@ -129,7 +134,7 @@ class Parser(object):
         if "addresses" in data:
             self.addresses_from_data(box, data["addresses"])
         if "routes" in data:
-            self.routes_from_data(box, experiment, data["routes"])
+            self.routes_from_data(box, experiment_description, data["routes"])
 
     def factory_attributes_from_data(self, factory_id, testbed_description, 
             data):
@@ -145,12 +150,12 @@ class Parser(object):
         for name in data:
             box.trace(name).enable()
 
-    def connections_from_data(self, experiment, data):
+    def connections_from_data(self, experiment_description, data):
         for guid, connector_data in data.iteritems():
-            box = experiment.box(guid)
+            box = experiment_description.box(guid)
             for connector_type_name, connections in connector_data.iteritems():
                 for guid, other_connector_type_name in connections.iteritems():
-                    other_box = experiment.box(guid)
+                    other_box = experiment_description.box(guid)
                     connector = box.connector(connector_type_name)
                     other_connector = other_box.connector(
                             other_connector_type_name)
@@ -163,7 +168,7 @@ class Parser(object):
             for name, value in address_attrs.iteritems():
                 addr.set_attribute_value(name, value)
 
-    def routes_from_data(self, box, experiment, data):
+    def routes_from_data(self, box, experiment_description, data):
         for route_attrs in data:
             route = box.add_route()
             for name, value in route_attrs.iteritems():

@@ -1,41 +1,54 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from nepi.core.experiment import ExperimentDescription
+from nepi.core.description import ExperimentDescription
+from nepi.testbeds import netns
 
-testbed_id = "netns"
+exp_desc = ExperimentDescription()
 testbed_version = "01"
-experiment = ExperimentDescription()
-netns = experiment.add_testbed_description(testbed_id, testbed_version)
-node1 = netns.create("Node")
-node2 = netns.create("Node")
-iface1 = netns.create("NodeInterface")
+netns_provider = netns.TestbedFactoriesProvider(testbed_version)
+netns_desc = exp_desc.add_testbed_description(netns_provider)
+
+node1 = netns_desc.create("Node")
+node2 = netns_desc.create("Node")
+iface1 = netns_desc.create("NodeInterface")
 iface1.set_attribute_value("up", True)
 node1.connector("devs").connect(iface1.connector("node"))
 ip1 = iface1.add_address()
 ip1.set_attribute_value("Address", "10.0.0.1")
-iface2 = netns.create("NodeInterface")
+iface2 = netns_desc.create("NodeInterface")
 iface2.set_attribute_value("up", True)
 node2.connector("devs").connect(iface2.connector("node"))
 ip2 = iface2.add_address()
 ip2.set_attribute_value("Address", "10.0.0.2")
-switch = netns.create("Switch")
+switch = netns_desc.create("Switch")
 switch.set_attribute_value("up", True)
 iface1.connector("switch").connect(switch.connector("devs"))
 iface2.connector("switch").connect(switch.connector("devs"))
-app = netns.create("Application")
+app = netns_desc.create("Application")
 app.set_attribute_value("command", "ping -qc10 10.0.0.2")
 app.connector("node").connect(node1.connector("apps"))
 
-#from nepi.util.parser.base import Parser
-#p = Parser()
-#data = p.to_data(experiment)
-#print data
-#e2 = p.from_data(data)
-#data2 = p.to_data(e2)
-#print data2
+from nepi.util.parser.base import ExperimentParser
+p = ExperimentParser()
+data = p.to_data(exp_desc)
+print data
+exp_desc2 = ExperimentDescription()
+p.from_data(exp_desc2, data)
+data2 = p.to_data(exp_desc2)
+print data2
+print data == data2
 
-#print data == data2
+from nepi.util.parser._xml import XmlExperimentParser
+p = XmlExperimentParser()
+xml = p.to_xml(exp_desc)
+print xml
+exp_desc2 = ExperimentDescription()
+p.from_xml(exp_desc2, xml)
+xml2 = p.to_xml(exp_desc2)
+print xml2
+print xml == xml2
+
 #print experiment.xml_description
 
 
