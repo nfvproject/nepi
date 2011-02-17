@@ -31,6 +31,7 @@ class XmlExperimentParser(ExperimentParser):
         testbed_tag.setAttribute("testbed_id", str(testbed_id))
         testbed_tag.setAttribute("testbed_version", str(testbed_version))
         parent_tag.appendChild(testbed_tag)
+        self.graphical_info_data_to_xml(doc, testbed_tag, guid, data)
         self.attributes_data_to_xml(doc, testbed_tag, guid, data)
         elements_tag = doc.createElement("elements")
         testbed_tag.appendChild(elements_tag)
@@ -43,15 +44,26 @@ class XmlExperimentParser(ExperimentParser):
         parent_tag.appendChild(element_tag)
         element_tag.setAttribute("factory_id", factory_id)
         element_tag.setAttribute("guid", str(guid))
+        self.graphical_info_data_to_xml(doc, element_tag, guid, data)
         self.factory_attributes_data_to_xml(doc, element_tag, guid, data)
         self.attributes_data_to_xml(doc, element_tag, guid, data)
         self.traces_data_to_xml(doc, element_tag, guid, data)
         self.addresses_data_to_xml(doc, element_tag, guid, data)
         self.routes_data_to_xml(doc, element_tag, guid, data)
         self.connections_data_to_xml(doc, element_tag, guid, data)
-        
+
+    def graphical_info_data_to_xml(self, doc, parent_tag, guid, data):
+        graphical_info_tag = doc.createElement("graphical_info") 
+        parent_tag.appendChild(graphical_info_tag)
+        (x, y, width, height, label) = data.get_graphical_info_data(guid)
+        graphical_info_tag.setAttribute("x", str(x))
+        graphical_info_tag.setAttribute("y", str(y))
+        graphical_info_tag.setAttribute("width", str(width))
+        graphical_info_tag.setAttribute("height", str(height))
+        graphical_info_tag.setAttribute("label", str(label))
+
     def factory_attributes_data_to_xml(self, doc, parent_tag, guid, data):
-        factory_attributes_tag = doc.createElement("factory_attributes") 
+        factory_attributes_tag = doc.createElement("factory_attributes")
         parent_tag.appendChild(factory_attributes_tag)
         for (name, value) in data.get_factory_attribute_data(guid):
             factory_attribute_tag = doc.createElement("factory_attribute") 
@@ -142,19 +154,36 @@ class XmlExperimentParser(ExperimentParser):
         testbed_id = str(tag.getAttribute("testbed_id"))
         testbed_version = str(tag.getAttribute("testbed_version"))
         data.add_testbed_data(testbed_guid, testbed_id, testbed_version)
+        self.graphical_info_data_from_xml(tag, testbed_guid, data)
         self.attributes_data_from_xml(tag, testbed_guid, data)
 
     def box_data_from_xml(self, tag, testbed_guid, data):
         guid = int(tag.getAttribute("guid"))
         factory_id = str(tag.getAttribute("factory_id"))
         data.add_box_data(guid, testbed_guid, factory_id)
+        self.graphical_info_data_from_xml(tag, guid, data)
         self.factory_attributes_data_from_xml(tag, guid, data)
         self.attributes_data_from_xml(tag, guid, data)
         self.traces_data_from_xml(tag, guid, data)
         self.addresses_data_from_xml(tag, guid, data)
         self.routes_data_from_xml(tag, guid, data)
         self.connections_data_from_xml(tag, guid, data)
-        
+
+    def graphical_info_data_from_xml(self, tag, guid, data):
+        graphical_info_tag_list = tag.getElementsByTagName(
+                "graphical_info")
+        if len(graphical_info_tag_list) == 0:
+            return
+
+        graphical_info_tag = graphical_info_tag_list[0]
+        if graphical_info_tag.nodeType == tag.ELEMENT_NODE:
+            x = int(graphical_info_tag.getAttribute("x"))
+            y = int(graphical_info_tag.getAttribute("y"))
+            width = int(graphical_info_tag.getAttribute("width"))
+            height = int(graphical_info_tag.getAttribute("height"))
+            label = str(graphical_info_tag.getAttribute("label"))
+            data.add_graphical_info_data(guid, x, y, width, height, label)
+
     def factory_attributes_data_from_xml(self, tag, guid, data):
         factory_attributes_tag_list = tag.getElementsByTagName(
                 "factory_attributes")

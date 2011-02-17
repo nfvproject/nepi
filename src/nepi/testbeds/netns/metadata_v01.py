@@ -46,7 +46,7 @@ def get_metadata():
                                 "Connector from P2PInterface to Node", 
                                 "node", 1, 1, 
                                 ["netns_node_devs"]),
-                            ("netns_p2pinterface_p2p", 
+                            ("netns_p2piface_p2p", 
                                 "Connector to another P2PInterface", 
                                 "p2p", 1, 0, 
                                 ["netns_p2piface_p2p"])

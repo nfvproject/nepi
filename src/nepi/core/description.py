@@ -4,6 +4,7 @@
 from nepi.core.attributes import AttributesMap, Attribute
 from nepi.util import validation
 from nepi.util.guid import GuidGenerator
+from nepi.util.graphical_info import GraphicalInfo
 from nepi.util.parser._xml import XmlExperimentParser
 import sys
 
@@ -218,6 +219,8 @@ class Box(AttributesMap):
         # factory attributes for box construction
         self._factory_attributes = list()
 
+        self.graphical_info = GraphicalInfo(str(self._guid))
+
         for connector_type in factory.connector_types:
             connector = Connector(self, connector_type)
             self._connectors[connector_type.name] = connector
@@ -428,6 +431,10 @@ class TestbedFactoriesProvider(object):
     def testbed_version(self):
         return self._testbed_version
 
+    @property
+    def factories(self):
+        return self._factories.values()
+
     def factory(self, factory_id):
         return self._factories[factory_id]
 
@@ -437,9 +444,6 @@ class TestbedFactoriesProvider(object):
     def remove_factory(self, factory_id):
         del self._factories[factory_id]
 
-    def list_factories(self):
-        return self._factories.keys()
-
 class TestbedDescription(AttributesMap):
     def __init__(self, guid_generator, provider):
         super(TestbedDescription, self).__init__()
@@ -447,6 +451,7 @@ class TestbedDescription(AttributesMap):
         self._guid = guid_generator.next()
         self._provider = provider
         self._boxes = dict()
+        self.graphical_info = GraphicalInfo(str(self._guid))
 
     @property
     def guid(self):
@@ -484,7 +489,6 @@ class TestbedDescription(AttributesMap):
 class ExperimentDescription(object):
     def __init__(self, guid = 0):
         self._guid_generator = GuidGenerator(guid)
-        # testbed design instances
         self._testbed_descriptions = dict()
 
     @property

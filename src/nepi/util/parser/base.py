@@ -23,6 +23,17 @@ class ExperimentData(object):
         box_data["factory_id"] = factory_id
         self.data[guid] = box_data
 
+    def add_graphical_info_data(self, guid, x, y, width, height, label):
+        data = self.data[guid]
+        if not "graphical_info" in data:
+            data["graphical_info"] = dict()
+        graphical_info_data = data["graphical_info"]
+        graphical_info_data["x"] = x
+        graphical_info_data["y"] = y
+        graphical_info_data["width"] = width
+        graphical_info_data["height"] = height
+        graphical_info_data["label"] = label
+
     def add_factory_attribute_data(self, guid, name, value):
         data = self.data[guid]
         if not "factory_attributes" in data:
@@ -100,6 +111,17 @@ class ExperimentData(object):
         box_data = self.data[guid]
         return (box_data["testbed_guid"], box_data["factory_id"])
 
+    def get_graphical_info_data(self, guid):
+        data = self.data[guid]
+        if not "graphical_info" in data:
+            return (0, 0, 0, 0, "") 
+        graphical_info_data = data["graphical_info"]
+        return (graphical_info_data["x"],
+                graphical_info_data["y"],
+                graphical_info_data["width"],
+                graphical_info_data["height"],
+                graphical_info_data["label"])
+
     def get_factory_attribute_data(self, guid):
         data = self.data[guid]
         if not "factory_attributes" in data:
@@ -165,9 +187,12 @@ class ExperimentParser(object):
             testbed_id = testbed_description.provider.testbed_id
             testbed_version = testbed_description.provider.testbed_version
             data.add_testbed_data(guid, testbed_id, testbed_version)
+            self.graphical_info_to_data(data, guid, 
+                    testbed_description.graphical_info)
             self.attributes_to_data(data, guid, testbed_description.attributes)
             for box in testbed_description.boxes:
                 data.add_box_data(box.guid, guid, box.factory_id)
+                self.graphical_info_to_data(data, box.guid, box.graphical_info)
                 self.factory_attributes_to_data(data, box.guid, 
                         box.factory_attributes)
                 self.attributes_to_data(data, box.guid, box.attributes)
@@ -176,6 +201,10 @@ class ExperimentParser(object):
                 self.addresses_to_data(data, box.guid, box.addresses)
                 self.routes_to_data(data, box.guid, box.routes)
         return data
+
+    def graphical_info_to_data(self, data, guid, g_info):
+        data.add_graphical_info_data(guid, g_info.x, g_info.y, g_info.width, 
+                g_info.height, g_info.label)
 
     def factory_attributes_to_data(self, data, guid, attributes):
         for attribute in attributes:
@@ -256,10 +285,20 @@ class ExperimentParser(object):
         self.factory_attributes_from_data(testbed_description, factory_id,
                 guid, data)
         box = testbed_description.create(factory_id)
+        self.graphical_info_from_data(box, data)
         self.attributes_from_data(box, data)
         self.traces_from_data(box, data)
         self.addresses_from_data(box, data)
         self.routes_from_data(box, data)
+
+    def graphical_info_from_data(self, element, data):
+        (x, y, width, height, label) =  data.get_graphical_info_data(
+                element.guid)
+        element.graphical_info.x = x
+        element.graphical_info.y = y
+        element.graphical_info.width = width
+        element.graphical_info.height = height
+        element.graphical_info.label = label
 
     def factory_attributes_from_data(self, testbed_description, factory_id, 
             guid, data):
