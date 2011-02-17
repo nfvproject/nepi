@@ -119,7 +119,7 @@ class Connector(object):
         return self.connector_type.can_connect(connector_type_id) 
 
     def destroy(self):
-        for connector in self._connections:
+        for connector in self.connections:
             self.disconnect(connector)
         self._box = self._connectors = None
 
@@ -332,7 +332,7 @@ class RoutingTableBox(Box):
         del route
 
     def destroy(self):
-        super(RoutingCapableBox, self).destroy()
+        super(RoutingTableBox, self).destroy()
         for route in self.routes:
             self.delete_route(route)
         self._route = None
@@ -481,8 +481,7 @@ class TestbedDescription(AttributesMap):
         box.destroy()
 
     def destroy(self):
-        for guid, box in self._boxes.iteitems():
-            del self._boxes[guid]
+        for guid, box in self._boxes.iteritems():
             box.destroy()
         self._boxes = None
 
@@ -524,3 +523,6 @@ class ExperimentDescription(object):
         guid = testbed_description.guid
         del self._testbed_descriptions[guid]
 
+    def destroy(self):
+        for testbed_description in self.testbed_descriptions:
+            testbed_description.destroy()

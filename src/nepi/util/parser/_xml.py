@@ -177,10 +177,10 @@ class XmlExperimentParser(ExperimentParser):
 
         graphical_info_tag = graphical_info_tag_list[0]
         if graphical_info_tag.nodeType == tag.ELEMENT_NODE:
-            x = int(graphical_info_tag.getAttribute("x"))
-            y = int(graphical_info_tag.getAttribute("y"))
-            width = int(graphical_info_tag.getAttribute("width"))
-            height = int(graphical_info_tag.getAttribute("height"))
+            x = float(graphical_info_tag.getAttribute("x"))
+            y = float(graphical_info_tag.getAttribute("y"))
+            width = float(graphical_info_tag.getAttribute("width"))
+            height = float(graphical_info_tag.getAttribute("height"))
             label = str(graphical_info_tag.getAttribute("label"))
             data.add_graphical_info_data(guid, x, y, width, height, label)
 
