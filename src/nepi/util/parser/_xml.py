@@ -22,6 +22,7 @@ class XmlExperimentParser(ExperimentParser):
                 self.box_data_to_xml(doc, elements_tags, guid, data)
         doc.appendChild(exp_tag)
         xml = doc.toprettyxml(indent="    ", encoding="UTF-8")
+        print xml
         return xml
 
     def testbed_data_to_xml(self, doc, parent_tag, guid, data):
@@ -64,35 +65,37 @@ class XmlExperimentParser(ExperimentParser):
 
     def factory_attributes_data_to_xml(self, doc, parent_tag, guid, data):
         factory_attributes_tag = doc.createElement("factory_attributes")
-        parent_tag.appendChild(factory_attributes_tag)
         for (name, value) in data.get_factory_attribute_data(guid):
             factory_attribute_tag = doc.createElement("factory_attribute") 
             factory_attributes_tag.appendChild(factory_attribute_tag)
             factory_attribute_tag.setAttribute("name", name)
             factory_attribute_tag.setAttribute("value", str(value))
             factory_attribute_tag.setAttribute("type", self.type_to_standard(value))
+        if factory_attributes_tag.hasChildNodes():
+            parent_tag.appendChild(factory_attributes_tag)
 
     def attributes_data_to_xml(self, doc, parent_tag, guid, data):
         attributes_tag = doc.createElement("attributes") 
-        parent_tag.appendChild(attributes_tag)
         for name, value in data.get_attribute_data(guid):
             attribute_tag = doc.createElement("attribute") 
             attributes_tag.appendChild(attribute_tag)
             attribute_tag.setAttribute("name", name)
             attribute_tag.setAttribute("value", str(value))
             attribute_tag.setAttribute("type", self.type_to_standard(value))
+        if attributes_tag.hasChildNodes():
+            parent_tag.appendChild(attributes_tag)
 
     def traces_data_to_xml(self, doc, parent_tag, guid, data):
         traces_tag = doc.createElement("traces") 
-        parent_tag.appendChild(traces_tag)
         for name in data.get_trace_data(guid):
             trace_tag = doc.createElement("trace") 
             traces_tag.appendChild(trace_tag)
             trace_tag.setAttribute("name", name)
+        if traces_tag.hasChildNodes():
+            parent_tag.appendChild(traces_tag)
 
     def addresses_data_to_xml(self, doc, parent_tag, guid, data):
         addresses_tag = doc.createElement("addresses") 
-        parent_tag.appendChild(addresses_tag)
         for (autoconfigure, address, family, netprefix, broadcast) \
                 in data.get_address_data(guid):
             address_tag = doc.createElement("address") 
@@ -107,10 +110,11 @@ class XmlExperimentParser(ExperimentParser):
                 address_tag.setAttribute("NetPrefix", str(netprefix))
             if broadcast:
                 address_tag.setAttribute("Broadcast", str(broadcast))
+        if addresses_tag.hasChildNodes():
+            parent_tag.appendChild(addresses_tag)
 
     def routes_data_to_xml(self, doc, parent_tag, guid, data):
         routes_tag = doc.createElement("routes") 
-        parent_tag.appendChild(routes_tag)
         for (family, destination, netprefix, nexthop, interface) \
                 in data.get_route_data(guid):
             route_tag = doc.createElement("route") 
@@ -120,10 +124,11 @@ class XmlExperimentParser(ExperimentParser):
             route_tag.setAttribute("NetPrefix", str(netprefix))
             route_tag.setAttribute("NextHop", str(nexthop))
             route_tag.setAttribute("Interface", str(interface))
+        if routes_tag.hasChildNodes():
+            parent_tag.appendChild(routes_tag)
 
     def connections_data_to_xml(self, doc, parent_tag, guid, data):
         connections_tag = doc.createElement("connections") 
-        parent_tag.appendChild(connections_tag)
         for (connector_type_name, other_guid, other_connector_type_name) \
                 in data.get_connection_data(guid):
                 connection_tag = doc.createElement("connection") 
@@ -132,6 +137,8 @@ class XmlExperimentParser(ExperimentParser):
                 connection_tag.setAttribute("other_guid", str(other_guid))
                 connection_tag.setAttribute("other_connector",
                         other_connector_type_name)
+        if connections_tag.hasChildNodes():
+            parent_tag.appendChild(connections_tag)
 
     def from_xml(self, experiment_description, xml):
         data = ExperimentData()
@@ -141,8 +148,9 @@ class XmlExperimentParser(ExperimentParser):
         for testbed_tag in testbed_tag_list:
             if testbed_tag.nodeType == doc.ELEMENT_NODE:
                 testbed_guid = int(testbed_tag.getAttribute("guid"))
-                self.testbed_data_from_xml(testbed_tag, data)
                 elements_tag = testbed_tag.getElementsByTagName("elements")[0] 
+                elements_tag = testbed_tag.removeChild(elements_tag)
+                self.testbed_data_from_xml(testbed_tag, data)
                 element_tag_list = elements_tag.getElementsByTagName("element")
                 for element_tag in element_tag_list:
                     if element_tag.nodeType == doc.ELEMENT_NODE:

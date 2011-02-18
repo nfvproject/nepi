@@ -32,6 +32,8 @@ class AttributesMap(object):
         return self._attributes[name].type
 
     def get_attribute_range(self, name):
+        if not self._attributes[name].range:
+            return (None, None)
         return self._attributes[name].range
 
     def get_attribute_allowed(self, name):
