@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from nepi.core.description import ExperimentDescription
-from nepi.testbeds import netns
+from nepi.core.design import ExperimentDescription, FactoriesProvider
 
 exp_desc = ExperimentDescription()
 testbed_version = "01"
-netns_provider = netns.TestbedFactoriesProvider(testbed_version)
+testbed_id = "netns"
+netns_provider = FactoriesProvider(testbed_id, testbed_version)
 netns_desc = exp_desc.add_testbed_description(netns_provider)
 
 node1 = netns_desc.create("Node")

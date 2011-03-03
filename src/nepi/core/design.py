@@ -1,46 +1,47 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+"""
+Experiment design API
+"""
+
 from nepi.core.attributes import AttributesMap, Attribute
+from nepi.core.metadata import Metadata
 from nepi.util import validation
+from nepi.util.constants import AF_INET, AF_INET6
 from nepi.util.guid import GuidGenerator
 from nepi.util.graphical_info import GraphicalInfo
 from nepi.util.parser._xml import XmlExperimentParser
 import sys
 
-AF_INET = 0
-AF_INET6 = 1
-
 class ConnectorType(object):
-    """A ConnectorType defines a kind of connector that can be used in an Object.
-    """
-    def __init__(self, connector_type_id, help, name, max = -1, min = 0):
+    def __init__(self, testbed_id, factory_id, name, help, max = -1, min = 0):
         super(ConnectorType, self).__init__()
-        """
-        ConnectorType(name, help, display_name, max, min):
-        - connector_type_id: (unique) identifier for this type. 
-            Typically: testbed_id + factory_id + name
-        - name: descriptive name for the user
-        - help: help text
-        - max: amount of connections that this type support, -1 for no limit
-        - min: minimum amount of connections to this type of connector
-        """
         if max == -1:
             max = sys.maxint
         elif max <= 0:
                 raise RuntimeError(
-             'The maximum number of connections allowed need to be more than 0')
+             "The maximum number of connections allowed need to be more than 0")
         if min < 0:
             raise RuntimeError(
-             'The minimum number of connections allowed needs to be at least 0')
-        self._connector_type_id = connector_type_id
-        self._help = help
+             "The minimum number of connections allowed needs to be at least 0")
+        # connector_type_id -- univoquely identifies a connector type 
+        # across testbeds
+        self._connector_type_id = (testbed_id.lower(), factory_id.lower(), 
+                name.lower())
+        # name -- display name for the connector type
         self._name = name
+        # help -- help text
+        self._help = help
+        # max -- maximum amount of connections that this type support, 
+        # -1 for no limit
         self._max = max
+        # min -- minimum amount of connections required by this type of connector
         self._min = min
-        # list of connector_type_ids with which this connector_type is allowed
-        # to connect
-        self._allowed_connector_type_ids = list()
+        # allowed_connections -- keys in the dictionary correspond to the 
+        # connector_type_id for possible connections. The value indicates if
+        # the connection is allowed accros different testbed instances
+        self._allowed_connections = dict()
 
     @property
     def connector_type_id(self):
@@ -62,11 +63,15 @@ class ConnectorType(object):
     def min(self):
         return self._min
 
-    def add_allowed_connector_type_id(self, connector_type_id):
-        self._allowed_connector_type_ids.append(connector_type_id)
+    def add_allowed_connection(self, testbed_id, factory_id, name, can_cross):
+        self._allowed_connections[(testbed_id.lower(), 
+            factory_id.lower(), name.lower())] = can_cross
 
-    def can_connect(self, connector_type_id):
-        return connector_type_id in self._allowed_connector_type_ids
+    def can_connect(self, connector_type_id, testbed_guid1, testbed_guid2):
+        if not connector_type_id in self._allowed_connections.keys():
+            return False
+        can_cross = self._allowed_connections[connector_type_id]
+        return can_cross or (testbed_guid1 == testbed_guid2)
 
 class Connector(object):
     """A Connector sepcifies the connection points in an Object"""
@@ -74,7 +79,7 @@ class Connector(object):
         super(Connector, self).__init__()
         self._box = box
         self._connector_type = connector_type
-        self._connections = dict()
+        self._connections = list()
 
     @property
     def box(self):
@@ -86,58 +91,60 @@ class Connector(object):
 
     @property
     def connections(self):
-        return self._connections.values()
+        return self._connections
 
     def is_full(self):
-        """Return True if the connector has the maximum number of connections"""
+        """Return True if the connector has the maximum number of connections
+        """
         return len(self.connections) == self.connector_type.max
 
     def is_complete(self):
-        """Return True if the connector has the minimum number of connections"""
+        """Return True if the connector has the minimum number of connections
+        """
         return len(self.connections) >= self.connector_type.min
 
     def is_connected(self, connector):
-        return connector._key in self._connections
+        return connector in self._connections
 
     def connect(self, connector):
-        if self.is_full() or connector.is_full():
-            raise RuntimeError("Connector is full")    
         if not self.can_connect(connector) or not connector.can_connect(self):
             raise RuntimeError("Could not connect.")
-        self._connections[connector._key] = connector
-        connector._connections[self._key] = self
+        self._connections.append(connector)
+        connector._connections.append(self)
 
     def disconnect(self, connector):
-        if connector._key not in self._connections or\
-                self._key not in connector._connections:
+        if connector not in self._connections or\
+                self not in connector._connections:
                 raise RuntimeError("Could not disconnect.")
-        del self._connections[connector._key]
-        del connector._connections[self._key]
+        self._connections.remove(connector)
+        connector._connections.remove(self)
 
     def can_connect(self, connector):
+        if self.is_full() or connector.is_full():
+            return False
+        if self.is_connected(connector):
+            return False
         connector_type_id = connector.connector_type.connector_type_id
-        return self.connector_type.can_connect(connector_type_id) 
+        testbed_guid1 = self.box.testbed_guid
+        testbed_guid2 = connector.box.testbed_guid
+        return self.connector_type.can_connect(connector_type_id, 
+                testbed_guid1, testbed_guid2)
 
     def destroy(self):
         for connector in self.connections:
             self.disconnect(connector)
         self._box = self._connectors = None
 
-    @property
-    def _key(self):
-        return "%d_%s" % (self.box.guid, 
-                self.connector_type.connector_type_id)
-
 class Trace(AttributesMap):
-    def __init__(self, name, help, enabled = False):
+    def __init__(self, trace_id, help, enabled = False):
         super(Trace, self).__init__()
-        self._name = name
+        self._trace_id = trace_id
         self._help = help       
         self.enabled = enabled
     
     @property
-    def name(self):
-        return self._name
+    def trace_id(self):
+        return self._trace_id
 
     @property
     def help(self):
@@ -167,6 +174,7 @@ class Address(AttributesMap):
                 help = "Network prefix for the address", 
                 type = Attribute.INTEGER, 
                 range = prefix_range,
+                value = 24 if family == AF_INET else 64,
                 validation_function = validation.is_integer)
         if family == AF_INET:
             self.add_attribute(name = "Broadcast",
@@ -204,32 +212,34 @@ class Route(AttributesMap):
                 validation_function = address_validation)
 
 class Box(AttributesMap):
-    def __init__(self, guid, factory, container = None):
+    def __init__(self, guid, factory, testbed_guid, container = None):
         super(Box, self).__init__()
-        # general unique id
+        # guid -- global unique identifier
         self._guid = guid
-        # factory identifier or name
+        # factory_id -- factory identifier or name
         self._factory_id = factory.factory_id
-        # boxes can be nested inside other 'container' boxes
+        # testbed_guid -- parent testbed guid
+        self._testbed_guid = testbed_guid
+        # container -- boxes can be nested inside other 'container' boxes
         self._container = container
-        # traces for the box
+        # traces -- list of available traces for the box
         self._traces = dict()
-        # connectors for the box
+        # connectors -- list of available connectors for the box
         self._connectors = dict()
-        # factory attributes for box construction
+        # factory_attributes -- factory attributes for box construction
         self._factory_attributes = list()
-
+        # graphical_info -- GUI position information
         self.graphical_info = GraphicalInfo(str(self._guid))
 
         for connector_type in factory.connector_types:
             connector = Connector(self, connector_type)
             self._connectors[connector_type.name] = connector
         for trace in factory.traces:
-            tr = Trace(trace.name, trace.help, trace.enabled)
-            self._traces[trace.name] = tr
+            tr = Trace(trace.trace_id, trace.help, trace.enabled)
+            self._traces[trace.trace_id] = tr
         for attr in factory.box_attributes:
             self.add_attribute(attr.name, attr.help, attr.type, attr.value, 
-                    attr.range, attr.allowed, attr.readonly, 
+                    attr.range, attr.allowed, attr.readonly, attr.visible, 
                     attr.validation_function)
         for attr in factory.attributes:
             self._factory_attributes.append(attr)
@@ -241,6 +251,10 @@ class Box(AttributesMap):
     @property
     def factory_id(self):
         return self._factory_id
+
+    @property
+    def testbed_guid(self):
+        return self._testbed_guid
 
     @property
     def container(self):
@@ -269,8 +283,8 @@ class Box(AttributesMap):
     def connector(self, name):
         return self._connectors[name]
 
-    def trace(self, name):
-        return self._traces[name]
+    def trace(self, trace_id):
+        return self._traces[trace_id]
 
     def destroy(self):
         super(Box, self).destroy()
@@ -281,11 +295,12 @@ class Box(AttributesMap):
         self._connectors = self._traces = self._factory_attributes = None
 
 class AddressableBox(Box):
-    def __init__(self, guid, factory, family, max_addresses = 1, container = None):
-        super(AddressableBox, self).__init__(guid, factory, container)
-        self._family = family
+    def __init__(self, guid, factory, testbed_guid, container = None):
+        super(AddressableBox, self).__init__(guid, factory, testbed_guid, 
+                container)
+        self._family = factory.get_attribute_value("Family")
         # maximum number of addresses this box can have
-        self._max_addresses = max_addresses
+        self._max_addresses = factory.get_attribute_value("MaxAddresses")
         self._addresses = list()
 
     @property
@@ -337,14 +352,16 @@ class RoutingTableBox(Box):
             self.delete_route(route)
         self._route = None
 
-class BoxFactory(AttributesMap):
-    def __init__(self, factory_id, display_name, help = None, category = None):
-        super(BoxFactory, self).__init__()
+class Factory(AttributesMap):
+    def __init__(self, factory_id, allow_addresses = False, 
+            allow_routes = False, Help = None, category = None):
+        super(Factory, self).__init__()
         self._factory_id = factory_id
+        self._allow_addresses = (allow_addresses == True)
+        self._allow_routes = (allow_routes == True)
         self._help = help
         self._category = category
-        self._display_name = display_name
-        self._connector_types = set()
+        self._connector_types = list()
         self._traces = list()
         self._box_attributes = list()
 
@@ -353,16 +370,20 @@ class BoxFactory(AttributesMap):
         return self._factory_id
 
     @property
+    def allow_addresses(self):
+        return self._allow_addresses
+
+    @property
+    def allow_routes(self):
+        return self._allow_routes
+
+    @property
     def help(self):
         return self._help
 
     @property
     def category(self):
         return self._category
-
-    @property
-    def display_name(self):
-        return self._display_name
 
     @property
     def connector_types(self):
@@ -376,52 +397,42 @@ class BoxFactory(AttributesMap):
     def box_attributes(self):
         return self._box_attributes
 
-    def add_connector_type(self, connector_type_id, help, name, max = -1, 
-            min = 0, allowed_connector_type_ids = []):
-        connector_type = ConnectorType(connector_type_id, help, name, max, min)
-        for connector_type_id in allowed_connector_type_ids:
-            connector_type.add_allowed_connector_type_id(connector_type_id)
-        self._connector_types.add(connector_type)
+    def add_connector_type(self, connector_type):
+        self._connector_types.append(connector_type)
 
-    def add_trace(self, name, help, enabled = False):
-        trace = Trace(name, help, enabled)
+    def add_trace(self, trace_id, help, enabled = False):
+        trace = Trace(trace_id, help, enabled)
         self._traces.append(trace)
 
     def add_box_attribute(self, name, help, type, value = None, range = None,
-        allowed = None, readonly = False, validation_function = None):
+        allowed = None, readonly = False, visible = True, 
+        validation_function = None):
         attribute = Attribute(name, help, type, value, range, allowed, readonly,
-                validation_function)
+                visible, validation_function)
         self._box_attributes.append(attribute)
 
     def create(self, guid, testbed_description):
-        return Box(guid, self)
+        if self._allow_addresses:
+            return AddressableBox(guid, self, testbed_description.guid)
+        elif self._allow_routes:
+            return RoutingTableBox(guid, self, testbed_description.guid)
+        else:
+            return Box(guid, self, testbed_description.guid)
 
     def destroy(self):
-        super(BoxFactory, self).destroy()
+        super(Factory, self).destroy()
         self._connector_types = None
 
-class AddressableBoxFactory(BoxFactory):
-    def __init__(self, factory_id, display_name, family, max_addresses = 1,
-            help = None, category = None):
-        super(AddressableBoxFactory, self).__init__(factory_id,
-                display_name, help, category)
-        self._family = family
-        self._max_addresses = 1
-
-    def create(self, guid, testbed_description):
-        return AddressableBox(guid, self, self._family, 
-                self._max_addresses)
-
-class RoutingTableBoxFactory(BoxFactory):
-    def create(self, guid, testbed_description):
-        return RoutingTableBox(guid, self)
-
-class TestbedFactoriesProvider(object):
+class FactoriesProvider(object):
     def __init__(self, testbed_id, testbed_version):
-        super(TestbedFactoriesProvider, self).__init__()
+        super(FactoriesProvider, self).__init__()
         self._testbed_id = testbed_id
         self._testbed_version = testbed_version
         self._factories = dict()
+
+        metadata = Metadata(testbed_id, testbed_version) 
+        for factory in metadata.build_design_factories():
+            self.add_factory(factory)
 
     @property
     def testbed_id(self):
@@ -526,4 +537,16 @@ class ExperimentDescription(object):
     def destroy(self):
         for testbed_description in self.testbed_descriptions:
             testbed_description.destroy()
+
+# TODO: When the experiment xml is passed to the controller to execute it
+# NetReferences in the xml need to be solved
+#
+#targets = re.findall(r"%target:(.*?)%", command)
+#for target in targets:
+#   try:
+#      (family, address, port) = resolve_netref(target, AF_INET, 
+#          self.server.experiment )
+#      command = command.replace("%%target:%s%%" % target, address.address)
+#   except:
+#       continue
 

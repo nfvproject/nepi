@@ -268,12 +268,9 @@ class ExperimentParser(object):
         self.connections_from_data(experiment_description, box_guids, data)
 
     def testbed_from_data(self, experiment_description, guid, data):
+        from nepi.core.design import FactoriesProvider
         (testbed_id, testbed_version) = data.get_testbed_data(guid)
-        mod_name = 'nepi.testbeds.%s' % testbed_id
-        if not mod_name in sys.modules:
-            __import__(mod_name)
-        testbed_mod = sys.modules[mod_name]
-        provider = testbed_mod.TestbedFactoriesProvider(testbed_version)
+        provider = FactoriesProvider(testbed_id, testbed_version)
         experiment_description.add_testbed_description(provider)
         testbed_description = experiment_description.testbed_description(guid)
         self.attributes_from_data(testbed_description, data)
@@ -349,5 +346,4 @@ class ExperimentParser(object):
                             other_connector_type_name)
                     if not connector.is_connected(other_connector):
                         connector.connect(other_connector)
-
 

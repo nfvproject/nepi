@@ -19,8 +19,8 @@ class AttributesMap(object):
     def set_attribute_value(self, name, value):
         self._attributes[name].value = value
 
-    def set_attribute_readonly(self, name, value):
-        self._attributes[name].readonly = value
+    def set_attribute_readonly(self, name, readonly = True):
+        self._attributes[name].readonly = (readonly == True)
 
     def get_attribute_value(self, name):
         return self._attributes[name].value
@@ -42,15 +42,19 @@ class AttributesMap(object):
     def get_attribute_readonly(self, name):
         return self._attributes[name].readonly
 
+    def get_attribute_visible(self, name):
+        return self._attributes[name].visible
+
     def is_attribute_modified(self, name):
         return self._attributes[name].modified
 
     def add_attribute(self, name, help, type, value = None, range = None,
-        allowed = None, readonly = False, validation_function = None):
+        allowed = None, readonly = False, visible = True, 
+        validation_function = None):
         if name in self._attributes:
             raise AttributeError("Attribute %s already exists" % name)
         attribute = Attribute(name, help, type, value, range, allowed, readonly,
-                validation_function)
+                visible, validation_function)
         self._attributes[name] = attribute
 
     def del_attribute(self, name):
@@ -69,7 +73,8 @@ class Attribute(object):
     types = [STRING, BOOL, ENUM, DOUBLE, INTEGER]
 
     def __init__(self, name, help, type, value = None, range = None,
-        allowed = None, readonly = False, validation_function = None):
+        allowed = None, readonly = False, visible = True, 
+        validation_function = None):
         if not type in Attribute.types:
             raise AttributeError("invalid type %s " % type)
         self.name = name
@@ -77,7 +82,10 @@ class Attribute(object):
         self._help = help
         self._value = value
         self._validation_function = validation_function
+        # readonly attributes can be seen but not changed by users
         self._readonly = (readonly == True)
+        # invisible attributes cannot be seen or changed by users
+        self._visible = (visible == True)
         self._modified = False
         # range: max and min possible values
         self._range = range
@@ -91,6 +99,10 @@ class Attribute(object):
     @property
     def help(self):
         return self._help
+
+    @property
+    def visible(self):
+        return self._visible
 
     @property
     def readonly(self):

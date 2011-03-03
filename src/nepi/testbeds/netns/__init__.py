@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from description import TestbedFactoriesProvider
-from testbed import TestbedInstance
+from constants import TESTBED_ID
+from execute import TestbedConfiguration, TestbedInstance 
+
