@@ -85,8 +85,7 @@ class ExperimentData(object):
             address_data["Broadcast"] = broadcast
         addresses_data.append(address_data)
 
-    def add_route_data(self, guid, family, destination, netprefix, nexthop, 
-            interface):
+    def add_route_data(self, guid, family, destination, netprefix, nexthop): 
         data = self.data[guid]
         if not "routes" in data:
             data["routes"] = list()
@@ -95,8 +94,7 @@ class ExperimentData(object):
             "Family": family, 
             "Destination": destination,
             "NetPrefix": netprefix, 
-            "NextHop": nexthop, 
-            "Interface": Interface
+            "NextHop": nexthop 
             })
         routes_data.append(route_data)
 
@@ -175,9 +173,8 @@ class ExperimentData(object):
         return [(data["Family"],
                  data["Destination"],
                  data["NetPrefix"],
-                 data["NextHop"],
-                 data["Interface"]) \
-                 for data in routes_data]
+                 data["NextHop"]) \
+                         for data in routes_data]
 
 class ExperimentParser(object):
     def to_data(self, experiment_description):
@@ -253,9 +250,7 @@ class ExperimentParser(object):
              destination = route.get_attribute_value("Destination")
              netprefix = route.get_attribute_value("NetPrefix")
              nexthop = route.get_attribute_value("NextHop")
-             interface = route.get_attribute_value("Interface")
-             data.add_route_data(guid, family, destination, netprefix, nexthop, 
-                    interface)
+             data.add_route_data(guid, family, destination, netprefix, nexthop)
 
     def from_data(self, experiment_description, data):
         box_guids = list()
@@ -327,13 +322,12 @@ class ExperimentParser(object):
                 addr.set_attribute_value("Broadcast", broadcast)
 
     def routes_from_data(self, box, data):
-         for (family, destination, netprefix, nexthop, interface) \
-                in data.get_route_data(box.guid):
+         for (family, destination, netprefix, nexthop) \
+                 in data.get_route_data(box.guid):
             addr = box.add_route(family)
             addr.set_attribute_value("Destination", destination)
             addr.set_attribute_value("NetPrefix", netprefix)
             addr.set_attribute_value("NextHop", nexthop)
-            addr.set_attribute_value("Interface", interface)
 
     def connections_from_data(self, experiment_description, guids, data):
         for guid in guids:

@@ -8,7 +8,7 @@ from nepi.util import validation
 from nepi.util.constants import AF_INET
 
 NODE = "Node"
-P2PIFACE = "P2PInterface"
+P2PIFACE = "P2PNodeInterface"
 TAPIFACE = "TapNodeInterface"
 NODEIFACE = "NodeInterface"
 SWITCH = "Switch"
@@ -99,11 +99,13 @@ def start_application(testbed_instance, guid, parameters, traces):
     command = parameters["command"]
     stdout = stderr = None
     if "stdout" in traces:
-        filename = "%d_%s" % (guid, "stdout")
+        filename = testbed_instance.trace_filename(guid, "stdout")
         stdout = open(filename, "wb")
+        testbed_instance.follow_trace("stdout", stdout)
     if "stderr" in traces:
-        filename = "%d_%s" % (guid, "stderr")
+        filename = testbed_instance.trace_filename(guid, "stderr")
         stderr = open(filename, "wb")
+        testbed_instance.follow_trace("stderr", stderr)
 
     node_guid = testbed_instance.get_connected(guid, "node", "apps")
     if len(node_guid) == 0:
@@ -357,11 +359,11 @@ attributes = dict({
 
 traces = dict({
     "stdout": dict({
-                "name": "StdoutTrace",
+                "name": "stdout",
                 "help": "Standard output stream"
               }),
     "stderr": dict({
-                "name": "StderrTrace",
+                "name": "stderr",
                 "help": "Application standard error",
         }) 
     })

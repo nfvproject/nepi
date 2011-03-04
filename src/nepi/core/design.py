@@ -206,10 +206,6 @@ class Route(AttributesMap):
                 help = "Address for the next hop", 
                 type = Attribute.STRING,
                 validation_function = address_validation)
-        self.add_attribute(name = "Interface",
-                help = "Local interface address", 
-                type = Attribute.STRING,
-                validation_function = address_validation)
 
 class Box(AttributesMap):
     def __init__(self, guid, factory, testbed_guid, container = None):

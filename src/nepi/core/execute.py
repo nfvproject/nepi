@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from nepi.core.attributes import AttributesMap
+from nepi.core.attributes import Attribute, AttributesMap
+from nepi.util import validation
 import sys
 
 class ConnectorType(object):
@@ -141,11 +142,25 @@ class Factory(AttributesMap):
         self._traces.append(trace_id)
 
 class TestbedConfiguration(AttributesMap):
-    pass
+    def __init__(self):
+        super(TestbedConfiguration, self).__init__()
+        self.add_attribute("HomeDirectory", 
+                "Path to the local directory where traces and other files \
+                        will be stored",
+                Attribute.STRING, False, None, None, "", 
+                validation.is_string)
 
 class TestbedInstance(object):
-    def __init__(self, testbed_version, configuration):
-        pass
+    def __init__(self, testbed_id, testbed_version, configuration):
+        self._testbed_id = testbed_id
+        self._testbed_version = testbed_version
+        self._configuration = configuration
+        self._home_directory = configuration.get_attribute_value(
+                "HomeDirectory")
+
+    @property
+    def home_directory(self):
+        return self._home_directory
 
     def create(self, guid, factory_id):
         """Instructs creation of element """
@@ -177,8 +192,7 @@ class TestbedInstance(object):
     def add_adddress(self, guid, family, address, netprefix, broadcast): 
         raise NotImplementedError
 
-    def add_route(self, guid, family, destination, netprefix, nexthop, 
-            interface):
+    def add_route(self, guid, destination, netprefix, nexthop):
         raise NotImplementedError
 
     def do_configure(self):
