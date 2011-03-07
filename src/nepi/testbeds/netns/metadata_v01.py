@@ -5,7 +5,8 @@ from constants import TESTBED_ID
 from nepi.core import metadata
 from nepi.core.attributes import Attribute
 from nepi.util import validation
-from nepi.util.constants import AF_INET
+from nepi.util.constants import AF_INET, STATUS_NOT_STARTED, STATUS_RUNNING, \
+        STATUS_FINISHED
 
 NODE = "Node"
 P2PIFACE = "P2PNodeInterface"
@@ -45,6 +46,9 @@ def create_node(testbed_instance, guid, parameters):
     testbed_instance.elements[guid] = element
 
 def create_p2piface(testbed_instance, guid, parameters):
+    if guid in testbed_instance.elements:
+        # The interface pair was already instantiated
+        return
     # search for the node asociated with the p2piface
     node1_guid = testbed_instance.get_connected(guid, "node", "devs")
     if len(node1_guid) == 0:
@@ -120,9 +124,11 @@ def start_application(testbed_instance, guid, parameters, traces):
 
 def status_application(testbed_instance, guid):
     if guid not in testbed_instance.elements.keys():
-        return None
-    app = testbed.elements[guid]
-    return app.poll()
+        return STATUS_NOT_STARTED
+    app = testbed_instance.elements[guid]
+    if app.poll() == None:
+        return STATUS_RUNNING
+    return STATUS_FINISHED
 
 ### Factory information ###
 

@@ -5,7 +5,7 @@ from nepi.core import execute
 from nepi.core.attributes import Attribute
 from nepi.core.metadata import Metadata
 from nepi.util import validation
-from nepi.util.constants import AF_INET, AF_INET6
+from nepi.util.constants import AF_INET, AF_INET6, STATUS_UNDETERMINED
 
 TIME_NOW = "0s"
 
@@ -135,11 +135,14 @@ class TestbedInstance(execute.TestbedInstance):
 
     def do_create(self):
         guids = dict()
+        # order guids (elements) according to factory_id
         for guid, factory_id in self._create.iteritems():
             if not factory_id in guids:
                guids[factory_id] = list()
             guids[factory_id].append(guid)
+        # create elements following the factory_id order
         for factory_id in self._metadata.factories_order:
+            # omit the factories that have no element to create
             if factory_id not in guids:
                 continue
             factory = self._factories[factory_id]
@@ -218,11 +221,12 @@ class TestbedInstance(execute.TestbedInstance):
                 stop_function(self, guid, traces)
 
     def status(self, guid):
-          for guid, factory_id in self._create.iteritems():
+        for guid, factory_id in self._create.iteritems():
             factory = self._factories[factory_id]
             status_function = factory.status_function
             if status_function:
-                result = status_function(self, guid)
+                return status_function(self, guid)
+        return STATUS_UNDETERMINED
 
     def trace(self, guid, trace_id):
         raise NotImplementedError

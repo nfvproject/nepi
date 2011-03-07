@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import getpass
-from nepi.core.design import AF_INET
+from nepi.util.constants import AF_INET, STATUS_FINISHED
 from nepi.testbeds import netns
 import os
 import shutil
@@ -48,7 +48,8 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.do_connect()
         instance.do_configure()
         instance.start()
-        time.sleep(2)
+        while instance.status(7) != STATUS_FINISHED:
+            time.sleep(0.5)
         ping_result = instance.trace(7, "stdout")
         comp_result = """PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
 
@@ -82,12 +83,12 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.create_set(6, "user", user)
         instance.add_trace(6, "stdout")
         instance.connect(6, "node", 2, "apps")
-
         instance.do_create()
         instance.do_connect()
         instance.do_configure()
         instance.start()
-        time.sleep(2)
+        while instance.status(6) != STATUS_FINISHED:
+            time.sleep(0.5)
         ping_result = instance.trace(6, "stdout")
         comp_result = """PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
 
@@ -145,11 +146,12 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.do_connect()
         instance.do_configure()
         instance.start()
-        time.sleep(2)
+        while instance.status(11) != STATUS_FINISHED:
+            time.sleep(0.5)
         ping_result = instance.trace(11, "stdout")
-        comp_result = """PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
+        comp_result = """PING 10.0.1.2 (10.0.1.2) 56(84) bytes of data.
 
---- 10.0.0.2 ping statistics ---
+--- 10.0.1.2 ping statistics ---
 1 packets transmitted, 1 received, 0% packet loss, time 0ms
 """
         self.assertTrue(ping_result.startswith(comp_result))
