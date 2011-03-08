@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from nepi.core.attributes import AttributesMap
 import sys
 
 class VersionedMetadataInfo(object):
@@ -32,7 +33,7 @@ class VersionedMetadataInfo(object):
     @property
     def attributes(self):
         """ dictionary of dictionaries of all available attributes.
-            "attribute_id": dict({
+            attribute_id: dict({
                 "name": attribute name,
                 "help": help text,
                 "type": attribute type, 
@@ -82,7 +83,25 @@ class VersionedMetadataInfo(object):
            })
         """
         raise NotImplementedError
-    
+
+    @property
+    def testbed_attributes(self):
+        """ dictionary of attributes for testbed instance configuration
+            attributes_id = dict({
+                "name": attribute name,
+                "help": help text,
+                "type": attribute type, 
+                "value": default attribute value,
+                "range": (maximum, minimun) values else None if not defined,
+                "allowed": array of posible values,
+                "readonly": whether the attribute is read only for the user,
+                "visible": whether the attribute is visible for the user,
+                "validation_function": validation function for the attribute
+             })
+            ]
+        """
+        raise NotImplementedError
+
 class Metadata(object):
     def __init__(self, testbed_id, version):
         self._version = version
@@ -92,6 +111,22 @@ class Metadata(object):
     @property
     def factories_order(self):
         return self._metadata.factories_order
+
+    def testbed_attributes(self):
+        attributes = AttributesMap()
+        for attribute_info in self._metadata.testbed_attributes.values():
+            name = attribute_info["name"]
+            help = attribute_info["help"]
+            type = attribute_info["type"] 
+            value = attribute_info["value"]
+            range = attribute_info["range"]
+            allowed = attribute_info["allowed"]
+            readonly = attribute_info["readonly"]
+            visible = attribute_info["visible"]
+            validation_function = attribute_info["validation_function"]
+            attributes.add_attribute(name, help, type, value, 
+                    range, allowed, readonly, visible, validation_function)
+        return attributes            
 
     def build_design_factories(self):
         from nepi.core.design import Factory

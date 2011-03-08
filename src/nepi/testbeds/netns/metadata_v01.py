@@ -360,7 +360,6 @@ attributes = dict({
                 "visible": False,
                 "validation_function": validation.is_integer
             }),
-
     })
 
 traces = dict({
@@ -457,6 +456,32 @@ factories_info = dict({
         }),
 })
 
+testbed_attributes = dict({
+        "enable_debug": dict({
+                "name": "enableDebug",
+                "help": "Enable netns debug output",
+                "type": Attribute.BOOL,
+                "value": False,
+                "range": None,
+                "allowed": None,
+                "readonly": False,
+                "visible": True,
+                "validation_function": validation.is_bool
+            }),
+         "home_directory": dict({
+                "name": "homeDirectory",
+                "help": "Path to the directory where traces and other files \
+                        will be stored",
+                "type": Attribute.STRING,
+                "value": False,
+                "range": None,
+                "allowed": None,
+                "readonly": False,
+                "visible": True,
+                "validation_function": validation.is_string
+            })
+    })
+
 class VersionedMetadataInfo(metadata.VersionedMetadataInfo):
     @property
     def connections_types(self):
@@ -481,4 +506,8 @@ class VersionedMetadataInfo(metadata.VersionedMetadataInfo):
     @property
     def factories_info(self):
         return factories_info
+
+    @property
+    def testbed_attributes(self):
+        return testbed_attributes
 

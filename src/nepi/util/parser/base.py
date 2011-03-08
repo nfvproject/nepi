@@ -140,7 +140,7 @@ class ExperimentData(object):
         data = self.data[guid]
         if not "traces" in data:
             return []
-        return [trace_name for trace_name in data["traces"]]
+        return [trace_id for trace_id in data["traces"]]
 
     def get_connection_data(self, guid):
         data = self.data[guid]
@@ -203,11 +203,9 @@ class ExperimentParser(object):
         data.add_graphical_info_data(guid, g_info.x, g_info.y, g_info.width, 
                 g_info.height, g_info.label)
 
-    def factory_attributes_to_data(self, data, guid, attributes):
-        for attribute in attributes:
-            if attribute.modified:
-                data.add_factory_attribute_data(guid, attribute.name, 
-                        attribute.value)
+    def factory_attributes_to_data(self, data, guid, factory_attributes):
+        for name, value in factory_attributes.iteritems():
+            data.add_factory_attribute_data(guid, name, value)
 
     def attributes_to_data(self, data, guid, attributes):
         for attribute in attributes:
@@ -217,7 +215,7 @@ class ExperimentParser(object):
     def traces_to_data(self, data, guid, traces):
         for trace in traces:
             if trace.enabled:
-                data.add_trace_data(guid, trace.name)
+                data.add_trace_data(guid, trace.trace_id)
 
     def connections_to_data(self, data, guid, connectors):
         for connector in connectors:

@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 from nepi.core import execute
-from nepi.core.attributes import Attribute
 from nepi.core.metadata import Metadata
 from nepi.util import validation
 from nepi.util.constants import AF_INET, AF_INET6, STATUS_UNDETERMINED
@@ -10,26 +9,50 @@ from nepi.util.constants import AF_INET, AF_INET6, STATUS_UNDETERMINED
 TIME_NOW = "0s"
 
 class TestbedInstance(execute.TestbedInstance):
-    def __init__(self, testbed_id, testbed_version, configuration):
-        super(TestbedInstance, self).__init__(testbed_id, testbed_version,
-                configuration)
+    def __init__(self, testbed_id, testbed_version):
+        super(TestbedInstance, self).__init__(testbed_id, testbed_version)
+        # testbed attributes for validation
+        self._attributes = None
+        # element factories for validation
         self._factories = dict()
-        self._elements = dict()
+
+        # experiment construction instructions
         self._create = dict()
-        self._set = dict()
+        self._create_set = dict()
         self._connect = dict()
         self._cross_connect = dict()
         self._add_trace = dict()
         self._add_address = dict()
-        self._add_route = dict()        
+        self._add_route = dict()
+        self._configure = dict()
+
+        # log of set operations
+        self._set = dict()
+        # log of actions
+        self._actions = dict()
+
+        # testbed element instances
+        self._elements = dict()
 
         self._metadata = Metadata(self._testbed_id, self._testbed_version)
         for factory in self._metadata.build_execute_factories():
             self._factories[factory.factory_id] = factory
+        self._attributes = self._metadata.testbed_attributes()
+
+    @property
+    def guids(self):
+        return self._create.keys()
 
     @property
     def elements(self):
         return self._elements
+
+    def configure(self, name, value):
+        if not self._attributes.has_attribute(name):
+            raise RuntimeError("Invalid attribute %s for testbed" % name)
+        # Validation
+        self._attributes.set_attribute_value(name, value)
+        self._configure[name] = value
 
     def create(self, guid, factory_id):
         if factory_id not in self._factories:
@@ -49,9 +72,9 @@ class TestbedInstance(execute.TestbedInstance):
             raise RuntimeError("Invalid attribute %s for element type %s" %
                     (name, factory_id))
         factory.set_attribute_value(name, value)
-        if guid not in self._set:
-            self._set[guid] = dict()
-        self._set[guid][name] = value
+        if guid not in self._create_set:
+            self._create_set[guid] = dict()
+        self._create_set[guid][name] = value
        
     def connect(self, guid1, connector_type_name1, guid2, 
             connector_type_name2):
@@ -133,6 +156,9 @@ class TestbedInstance(execute.TestbedInstance):
             self._add_route[guid] = list()
         self._add_route[guid].append((destination, netprefix, nexthop)) 
 
+    def do_setup(self):
+        raise NotImplementedError
+
     def do_create(self):
         guids = dict()
         # order guids (elements) according to factory_id
@@ -147,8 +173,8 @@ class TestbedInstance(execute.TestbedInstance):
                 continue
             factory = self._factories[factory_id]
             for guid in guids[factory_id]:
-                parameters = dict() if guid not in self._set else \
-                        self._set[guid]
+                parameters = dict() if guid not in self._create_set else \
+                        self._create_set[guid]
                 factory.create_function(self, guid, parameters)
                 for name, value in parameters.iteritems():
                     self.set(TIME_NOW, guid, name, value)
@@ -192,7 +218,19 @@ class TestbedInstance(execute.TestbedInstance):
                     code_to_connect(element, cross_guid)       
 
     def set(self, time, guid, name, value):
-        raise NotImplementedError
+        if not guid in self._create:
+            raise RuntimeError("Element guid %d doesn't exist" % guid)
+        factory_id = self._create[guid]
+        factory = self._factories[factory_id]
+        if not factory.has_attribute(name):
+            raise RuntimeError("Invalid attribute %s for element type %s" %
+                    (name, factory_id))
+        factory.set_attribute_value(name, value)
+        if guid not in self._set:
+            self._set[guid] = dict()
+        if time not in self._set[guid]:
+            self._set[guid][time] = dict()
+        self._set[guid][time][name] = value
 
     def get(self, time, guid, name):
         raise NotImplementedError
@@ -204,8 +242,8 @@ class TestbedInstance(execute.TestbedInstance):
             if start_function:
                 traces = [] if guid not in self._add_trace else \
                         self._add_trace[guid]
-                parameters = dict() if guid not in self._set else \
-                        self._set[guid]
+                parameters = dict() if guid not in self._create_set else \
+                        self._create_set[guid]
                 start_function(self, guid, parameters, traces)
 
     def action(self, time, guid, action):
@@ -261,5 +299,4 @@ class TestbedInstance(execute.TestbedInstance):
                 self._cross_connect[guid]:
             cross_count = len(self._cross_connect[guid][connection_type_name])
         return count + cross_count
-
 

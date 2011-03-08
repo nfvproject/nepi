@@ -2,30 +2,31 @@
 # -*- coding: utf-8 -*-
 
 from constants import TESTBED_ID
-from nepi.core import execute
-from nepi.core import execute_impl
-from nepi.core.attributes import Attribute
+from nepi.core import testbed_impl
 from nepi.core.metadata import Metadata
 from nepi.util import validation
 from nepi.util.constants import AF_INET, AF_INET6
 import os
 
-class TestbedConfiguration(execute.TestbedConfiguration):
-    def __init__(self):
-        super(TestbedConfiguration, self).__init__()
-        self.add_attribute("EnableDebug", "Enable netns debug output", 
-                Attribute.BOOL, False, None, None, False, validation.is_bool)
-
-class TestbedInstance(execute_impl.TestbedInstance):
-    def __init__(self, testbed_version, configuration):
-        super(TestbedInstance, self).__init__(TESTBED_ID, testbed_version, 
-                configuration)
-        self._netns = self._load_netns_module(configuration)
+class TestbedInstance(testbed_impl.TestbedInstance):
+    def __init__(self, testbed_version):
+        super(TestbedInstance, self).__init__(TESTBED_ID, testbed_version)
+        self._netns = None
+        self._home_directory = None
         self._traces = dict()
+
+    @property
+    def home_directory(self):
+        return self._home_directory
 
     @property
     def netns(self):
         return self._netns
+
+    def do_setup(self):
+        self._home_directory = self._attributes.\
+            get_attribute_value("homeDirectory")
+        self._netns = self._load_netns_module()
 
     def do_configure(self):
         # TODO: add traces!
@@ -45,6 +46,7 @@ class TestbedInstance(execute_impl.TestbedInstance):
                         nexthop = nexthop)
 
     def set(self, time, guid, name, value):
+        super(TestbedInstance, self).set(time, guid, name, value)
         # TODO: take on account schedule time for the task 
         element = self._elements[guid]
         if element:
@@ -77,13 +79,13 @@ class TestbedInstance(execute_impl.TestbedInstance):
     def follow_trace(self, trace_id, trace):
         self._traces[trace_id] = trace
 
-    def _load_netns_module(self, configuration):
+    def _load_netns_module(self):
         # TODO: Do something with the configuration!!!
         import sys
         __import__("netns")
         netns_mod = sys.modules["netns"]
         # enable debug
-        enable_debug = configuration.get_attribute_value("EnableDebug")
+        enable_debug = self._attributes.get_attribute_value("enableDebug")
         if enable_debug:
             netns_mod.environ.set_log_level(netns_mod.environ.LOG_DEBUG)
         return netns_mod

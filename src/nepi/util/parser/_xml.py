@@ -138,7 +138,7 @@ class XmlExperimentParser(ExperimentParser):
         if connections_tag.hasChildNodes():
             parent_tag.appendChild(connections_tag)
 
-    def from_xml(self, experiment_description, xml):
+    def from_xml_to_data(self, xml):
         data = ExperimentData()
         doc = minidom.parseString(xml)
         testbeds_tag = doc.getElementsByTagName("testbeds")[0] 
@@ -153,6 +153,10 @@ class XmlExperimentParser(ExperimentParser):
                 for element_tag in element_tag_list:
                     if element_tag.nodeType == doc.ELEMENT_NODE:
                         self.box_data_from_xml(element_tag, testbed_guid, data)
+        return data
+
+    def from_xml(self, experiment_description, xml):
+        data = self.from_xml_to_data(xml)
         self.from_data(experiment_description, data)
 
     def testbed_data_from_xml(self, tag, data):

@@ -21,9 +21,8 @@ class NetnsExecuteTestCase(unittest.TestCase):
     def test_run_ping_if(self):
         user = getpass.getuser()
         testbed_version = "01"
-        config = netns.TestbedConfiguration()
-        config.set_attribute_value("HomeDirectory", self._home_dir)
-        instance = netns.TestbedInstance(testbed_version, config)
+        instance = netns.TestbedInstance(testbed_version)
+        instance.configure("homeDirectory", self._home_dir)
         instance.create(2, "Node")
         instance.create(3, "Node")
         instance.create(4, "NodeInterface")
@@ -44,6 +43,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.add_trace(7, "stdout")
         instance.connect(7, "node", 2, "apps")
 
+        instance.do_setup()
         instance.do_create()
         instance.do_connect()
         instance.do_configure()
@@ -64,9 +64,8 @@ class NetnsExecuteTestCase(unittest.TestCase):
     def test_run_ping_p2pif(self):
         user = getpass.getuser()
         testbed_version = "01"
-        config = netns.TestbedConfiguration()
-        config.set_attribute_value("HomeDirectory", self._home_dir)
-        instance = netns.TestbedInstance(testbed_version, config)
+        instance = netns.TestbedInstance(testbed_version)
+        instance.configure("homeDirectory", self._home_dir)
         instance.create(2, "Node")
         instance.create(3, "Node")
         instance.create(4, "P2PNodeInterface")
@@ -83,6 +82,8 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.create_set(6, "user", user)
         instance.add_trace(6, "stdout")
         instance.connect(6, "node", 2, "apps")
+
+        instance.do_setup()
         instance.do_create()
         instance.do_connect()
         instance.do_configure()
@@ -103,9 +104,8 @@ class NetnsExecuteTestCase(unittest.TestCase):
     def test_run_ping_routing(self):
         user = getpass.getuser()
         testbed_version = "01"
-        config = netns.TestbedConfiguration()
-        config.set_attribute_value("HomeDirectory", self._home_dir)
-        instance = netns.TestbedInstance(testbed_version, config)
+        instance = netns.TestbedInstance(testbed_version)
+        instance.configure("homeDirectory", self._home_dir)
         instance.create(2, "Node")
         instance.create(3, "Node")
         instance.create(4, "Node")
@@ -142,6 +142,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.add_route(2, "10.0.1.0", 24, "10.0.0.2")
         instance.add_route(4, "10.0.0.0", 24, "10.0.1.1")
 
+        instance.do_setup()
         instance.do_create()
         instance.do_connect()
         instance.do_configure()

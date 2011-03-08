@@ -223,7 +223,7 @@ class Box(AttributesMap):
         # connectors -- list of available connectors for the box
         self._connectors = dict()
         # factory_attributes -- factory attributes for box construction
-        self._factory_attributes = list()
+        self._factory_attributes = dict()
         # graphical_info -- GUI position information
         self.graphical_info = GraphicalInfo(str(self._guid))
 
@@ -238,7 +238,8 @@ class Box(AttributesMap):
                     attr.range, attr.allowed, attr.readonly, attr.visible, 
                     attr.validation_function)
         for attr in factory.attributes:
-            self._factory_attributes.append(attr)
+            if attr.modified:
+                self._factory_attributes[attr.name] = attr.value
 
     @property
     def guid(self):
@@ -265,6 +266,10 @@ class Box(AttributesMap):
         return self._traces.values()
 
     @property
+    def traces_name(self):
+        return self._traces.keys()
+
+    @property
     def factory_attributes(self):
         return self._factory_attributes
 
@@ -276,11 +281,17 @@ class Box(AttributesMap):
     def routes(self):
         return []
 
+    def trace_help(self, trace_id):
+        return self._traces[trace_id].help
+
+    def enable_trace(self, trace_id):
+        self._traces[trace_id].enabled = True
+
+    def disable_trace(self, trace_id):
+        self._traces[trace_id].enabled = False
+
     def connector(self, name):
         return self._connectors[name]
-
-    def trace(self, trace_id):
-        return self._traces[trace_id]
 
     def destroy(self):
         super(Box, self).destroy()
@@ -459,6 +470,12 @@ class TestbedDescription(AttributesMap):
         self._provider = provider
         self._boxes = dict()
         self.graphical_info = GraphicalInfo(str(self._guid))
+
+        metadata = Metadata(provider.testbed_id, provider.testbed_version)
+        for attr in metadata.testbed_attributes().attributes:
+            self.add_attribute(attr.name, attr.help, attr.type, attr.value, 
+                    attr.range, attr.allowed, attr.readonly, attr.visible, 
+                    attr.validation_function)
 
     @property
     def guid(self):
