@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from nepi.core.attributes import AttributesMap
+from nepi.core.attributes import Attribute, AttributesMap
 import sys
 
 class VersionedMetadataInfo(object):
@@ -40,8 +40,7 @@ class VersionedMetadataInfo(object):
                 "value": default attribute value,
                 "range": (maximum, minimun) values else None if not defined,
                 "allowed": array of posible values,
-                "readonly": whether the attribute is read only for the user,
-                "visible": whether the attribute is visible for the user,
+                "flags": attributes flags,
                 "validation_function": validation function for the attribute
             })
         """
@@ -94,8 +93,7 @@ class VersionedMetadataInfo(object):
                 "value": default attribute value,
                 "range": (maximum, minimun) values else None if not defined,
                 "allowed": array of posible values,
-                "readonly": whether the attribute is read only for the user,
-                "visible": whether the attribute is visible for the user,
+                "flags": attributes flags,
                 "validation_function": validation function for the attribute
              })
             ]
@@ -121,11 +119,11 @@ class Metadata(object):
             value = attribute_info["value"]
             range = attribute_info["range"]
             allowed = attribute_info["allowed"]
-            readonly = attribute_info["readonly"]
-            visible = attribute_info["visible"]
+            flags =  attribute_info["flags"] if "flags" in attribute_info \
+                    else Attribute.NoFlags
             validation_function = attribute_info["validation_function"]
             attributes.add_attribute(name, help, type, value, 
-                    range, allowed, readonly, visible, validation_function)
+                    range, allowed, flags, validation_function)
         return attributes            
 
     def build_design_factories(self):
@@ -187,15 +185,15 @@ class Metadata(object):
                 value = attribute_info["value"]
                 range = attribute_info["range"]
                 allowed = attribute_info["allowed"]
-                readonly = attribute_info["readonly"]
-                visible = attribute_info["visible"]
+                flags =  attribute_info["flags"] if "flags" in attribute_info \
+                    else Attribute.NoFlags
                 validation_function = attribute_info["validation_function"]
                 if box_attributes:
                     factory.add_box_attribute(name, help, type, value, range, 
-                            allowed, readonly, visible, validation_function)
+                            allowed, flags, validation_function)
                 else:
                     factory.add_attribute(name, help, type, value, range, 
-                            allowed, readonly, visible, validation_function)
+                            allowed, flags, validation_function)
 
     def _add_design_traces(self, factory, info):
         if "traces" in info:

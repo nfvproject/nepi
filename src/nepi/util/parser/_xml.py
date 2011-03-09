@@ -103,10 +103,8 @@ class XmlExperimentParser(ExperimentParser):
                 address_tag.setAttribute("AutoConfigure", str(autoconf))
             if address:
                 address_tag.setAttribute("Address", str(address))
-            if family:
-                address_tag.setAttribute("Family", str(family))
-            if netprefix:
-                address_tag.setAttribute("NetPrefix", str(netprefix))
+            address_tag.setAttribute("Family", str(family))
+            address_tag.setAttribute("NetPrefix", str(netprefix))
             if broadcast:
                 address_tag.setAttribute("Broadcast", str(broadcast))
         if addresses_tag.hasChildNodes():

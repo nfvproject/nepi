@@ -224,8 +224,7 @@ attributes = dict({
                 "value": False,
                 "range": None,
                 "allowed": None,
-                "readonly": False,
-                "visible": True,
+                "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_bool
             }),
     "lladdr": dict({      
@@ -235,8 +234,7 @@ attributes = dict({
                 "value": None,
                 "range": None,
                 "allowed": None,
-                "readonly": False,
-                "visible": True,
+                "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_mac_address
             }),
     "up": dict({
@@ -246,8 +244,6 @@ attributes = dict({
                 "value": False,
                 "range": None,
                 "allowed": None,
-                "readonly": False,
-                "visible": True,
                 "validation_function": validation.is_bool
             }),
     "device_name": dict({
@@ -257,8 +253,7 @@ attributes = dict({
                 "value": None,
                 "range": None,
                 "allowed": None,
-                "readonly": False,
-                "visible": True,
+                "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_string
             }),
     "mtu":  dict({
@@ -268,8 +263,6 @@ attributes = dict({
                 "value": None, 
                 "range": None, 
                 "allowed": None, 
-                "readonly": False, 
-                "visible": True,
                 "validation_function": validation.is_integer
             }),
     "broadcast": dict({ 
@@ -279,8 +272,6 @@ attributes = dict({
                 "value": None,
                 "range": None,
                 "allowed": None,
-                "readonly": False,
-                "visible": True,
                 "validation_function": validation.is_string # TODO: should be is address!
             }),
     "multicast": dict({      
@@ -290,8 +281,6 @@ attributes = dict({
                 "value": False,
                 "range": None,
                 "allowed": None,
-                "readonly": False,
-                "visible": True,
                 "validation_function": validation.is_bool
             }),
     "arp": dict({
@@ -301,8 +290,6 @@ attributes = dict({
                 "value": False,
                 "range": None,
                 "allowed": None,
-                "readonly": False,
-                "visible": True,
                 "validation_function": validation.is_bool
             }),
     "command": dict({
@@ -312,8 +299,7 @@ attributes = dict({
                 "value": None,
                 "range": None,
                 "allowed": None,
-                "readonly": False,
-                "visible": True,
+                "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_string
             }),
     "user": dict({
@@ -323,8 +309,7 @@ attributes = dict({
                 "value": None,
                 "range": None,
                 "allowed": None,
-                "readonly": False,
-                "visible": True,
+                "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_string
             }),
     "stdin": dict({
@@ -334,8 +319,7 @@ attributes = dict({
                 "value": None,
                 "range": None,
                 "allowed": None,
-                "readonly": False,
-                "visible": True,
+                "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_string
             }),
      "max_addresses": dict({
@@ -345,8 +329,7 @@ attributes = dict({
                 "value": None,
                 "range": None,
                 "allowed": None,
-                "readonly": True,
-                "visible": False,
+                "flags": Attribute.Invisible,
                 "validation_function": validation.is_integer
             }),
      "family": dict({
@@ -356,8 +339,7 @@ attributes = dict({
                 "value": AF_INET,
                 "range": None,
                 "allowed": None,
-                "readonly": True,
-                "visible": False,
+                "flags": Attribute.Invisible,
                 "validation_function": validation.is_integer
             }),
     })
@@ -464,8 +446,6 @@ testbed_attributes = dict({
                 "value": False,
                 "range": None,
                 "allowed": None,
-                "readonly": False,
-                "visible": True,
                 "validation_function": validation.is_bool
             }),
          "home_directory": dict({
@@ -476,8 +456,7 @@ testbed_attributes = dict({
                 "value": False,
                 "range": None,
                 "allowed": None,
-                "readonly": False,
-                "visible": True,
+                "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_string
             })
     })

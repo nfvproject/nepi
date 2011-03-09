@@ -77,10 +77,8 @@ class ExperimentData(object):
             address_data["AutoConfigure"] = autoconf
         if address:
             address_data["Address"] = address
-        if family:
-            address_data["Family"] = family
-        if netprefix:
-            address_data["NetPrefix"] = netprefix
+        address_data["Family"] = family
+        address_data["NetPrefix"] = netprefix
         if broadcast:
             address_data["Broadcast"] = broadcast
         addresses_data.append(address_data)
@@ -209,7 +207,7 @@ class ExperimentParser(object):
 
     def attributes_to_data(self, data, guid, attributes):
         for attribute in attributes:
-            if attribute.modified:
+            if attribute.modified or attribute.has_no_default_value:
                 data.add_attribute_data(guid, attribute.name, attribute.value)
 
     def traces_to_data(self, data, guid, traces):
@@ -228,17 +226,13 @@ class ExperimentParser(object):
 
     def addresses_to_data(self, data, guid, addresses):
         for addr in addresses:
-             autoconf = addr.get_attribute_value("AutoConfigure") \
-                    if addr.is_attribute_modified("AutoConfigure") else None
-             address = addr.get_attribute_value("Address") \
-                    if addr.is_attribute_modified("Address") else None
-             netprefix = addr.get_attribute_value("NetPrefix") \
-                    if addr.is_attribute_modified("NetPrefix") else None
-             family = addr.get_attribute_value("Family") \
-                    if addr.is_attribute_modified("Family") else None
+             autoconf = addr.get_attribute_value("AutoConfigure")
+             address = addr.get_attribute_value("Address")
+             netprefix = addr.get_attribute_value("NetPrefix")
+             family = addr.get_attribute_value("Family")
              broadcast = addr.get_attribute_value("Broadcast") \
                     if addr.has_attribute("Broadcast") and \
-                     addr.is_attribute_modified("Broadcast") else None
+                    addr.is_attribute_modified("Broadcast") else None
              data.add_address_data(guid, autoconf, address, family, netprefix, 
                     broadcast)
 
@@ -312,9 +306,9 @@ class ExperimentParser(object):
                 addr.set_attribute_value("AutoConfigure", autoconf)
             if address:
                 addr.set_attribute_value("Address", address)
-            if family:
+            if family != None:
                 addr.set_attribute_value("Family", family)
-            if netprefix:
+            if netprefix != None:
                 addr.set_attribute_value("NetPrefix", netprefix)
             if broadcast:
                 addr.set_attribute_value("Broadcast", broadcast)

@@ -287,9 +287,6 @@ class ExperimentController(object):
             for (autoconf, address, family, netprefix, broadcast) in \
                     data.get_address_data(guid):
                 if address != None:
-                    # TODO: BUG!!! Hardcodeado!!!!!! XXXXXXXXX CORREGIR!!!
-                    family = 0
-                    netprefix = 24
                     instance.add_adddress(guid, family, address, netprefix,
                         broadcast)
             for (family, destination, netprefix, nexthop) in \

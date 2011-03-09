@@ -11,6 +11,7 @@ TIME_NOW = "0s"
 class TestbedInstance(execute.TestbedInstance):
     def __init__(self, testbed_id, testbed_version):
         super(TestbedInstance, self).__init__(testbed_id, testbed_version)
+        self._started = False
         # testbed attributes for validation
         self._attributes = None
         # element factories for validation
@@ -225,6 +226,8 @@ class TestbedInstance(execute.TestbedInstance):
         if not factory.has_attribute(name):
             raise RuntimeError("Invalid attribute %s for element type %s" %
                     (name, factory_id))
+        if self._started and factory.is_attribute_design_only(name):
+            raise RuntimeError("Attribute %s can only be modified during experiment design" % name)
         factory.set_attribute_value(name, value)
         if guid not in self._set:
             self._set[guid] = dict()
@@ -245,6 +248,7 @@ class TestbedInstance(execute.TestbedInstance):
                 parameters = dict() if guid not in self._create_set else \
                         self._create_set[guid]
                 start_function(self, guid, parameters, traces)
+        self._started = True
 
     def action(self, time, guid, action):
         raise NotImplementedError

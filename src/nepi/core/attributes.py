@@ -1,96 +1,41 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-class AttributesMap(object):
-    """AttributesMap is the base class for every object whose attributes 
-    are going to be manipulated by the end-user in a script or GUI.
-    """
-    def __init__(self):
-        self._attributes = dict()
-
-    @property
-    def attributes(self):
-        return self._attributes.values()
-
-    @property
-    def attributes_name(self):
-        return self._attributes.keys()
-
-    def set_attribute_value(self, name, value):
-        self._attributes[name].value = value
-
-    def set_attribute_readonly(self, name, readonly = True):
-        self._attributes[name].readonly = (readonly == True)
-
-    def get_attribute_value(self, name):
-        return self._attributes[name].value
-
-    def get_attribute_help(self, name):
-        return self._attributes[name].help
-
-    def get_attribute_type(self, name):
-        return self._attributes[name].type
-
-    def get_attribute_range(self, name):
-        if not self._attributes[name].range:
-            return (None, None)
-        return self._attributes[name].range
-
-    def get_attribute_allowed(self, name):
-        return self._attributes[name].allowed
-
-    def get_attribute_readonly(self, name):
-        return self._attributes[name].readonly
-
-    def get_attribute_visible(self, name):
-        return self._attributes[name].visible
-
-    def is_attribute_modified(self, name):
-        return self._attributes[name].modified
-
-    def add_attribute(self, name, help, type, value = None, range = None,
-        allowed = None, readonly = False, visible = True, 
-        validation_function = None):
-        if name in self._attributes:
-            raise AttributeError("Attribute %s already exists" % name)
-        attribute = Attribute(name, help, type, value, range, allowed, readonly,
-                visible, validation_function)
-        self._attributes[name] = attribute
-
-    def del_attribute(self, name):
-        del self._attributes[name]
-
-    def has_attribute(self, name):
-        return name in self._attributes    
-    
-    def destroy(self):
-        self._attributes = dict()
-
 class Attribute(object):
+    ### Attribute types
     STRING, BOOL, ENUM, DOUBLE, INTEGER = (
 		"STRING", "BOOL", "ENUM", "DOUBLE", "INTEGER")
-
     types = [STRING, BOOL, ENUM, DOUBLE, INTEGER]
 
+    ### Attribute Flags
+    NoFlags     = 0x00
+    # Attribute is only modifiable during experiment design
+    DesignOnly  = 0x01
+    # Attribute is read only and can't be modified by the user
+    # Note: ReadOnly implies DesignOnly
+    ReadOnly    = 0x03
+    # Attribute is invisible to the user
+    # Note: Invisible implies ReadOnly and DesignOnly
+    Invisible   = 0x07
+    # Attribute has no default value in the testbed instance. 
+    # So it needs to be set explicitely
+    HasNoDefaultValue = 0x08
+
     def __init__(self, name, help, type, value = None, range = None,
-        allowed = None, readonly = False, visible = True, 
-        validation_function = None):
+        allowed = None, flags = NoFlags, validation_function = None):
         if not type in Attribute.types:
             raise AttributeError("invalid type %s " % type)
         self.name = name
         self._type = type
         self._help = help
         self._value = value
-        self._validation_function = validation_function
-        # readonly attributes can be seen but not changed by users
-        self._readonly = (readonly == True)
-        # invisible attributes cannot be seen or changed by users
-        self._visible = (visible == True)
-        self._modified = False
+        self._flags = flags
         # range: max and min possible values
         self._range = range
         # list of possible values
         self._allowed = allowed
+        self._validation_function = validation_function
+        self._modified = False
 
     @property
     def type(self):
@@ -101,12 +46,25 @@ class Attribute(object):
         return self._help
 
     @property
-    def visible(self):
-        return self._visible
+    def flags(self):
+        return self._flags
 
     @property
-    def readonly(self):
-        return self._readonly
+    def invsible(self):
+        return (self._flags & Attribute.Invisible) == Attribute.Invisible
+
+    @property
+    def read_only(self):
+        return (self._flags & Attribute.ReadOnly) == Attribute.ReadOnly
+
+    @property
+    def has_no_default_value(self):
+        return (self._flags & Attribute.HasNoDefaultValue) == \
+                Attribute.HasNoDefaultValue
+
+    @property
+    def design_only(self):
+        return (self._flags & Attribute.DesignOnly) == Attribute.DesignOnly
 
     @property
     def modified(self):
@@ -148,4 +106,71 @@ class Attribute(object):
 
     def _is_valid(self, value):
         return not self._validation_function or self._validation_function(value)
+
+class AttributesMap(object):
+    """AttributesMap is the base class for every object whose attributes 
+    are going to be manipulated by the end-user in a script or GUI.
+    """
+    def __init__(self):
+        self._attributes = dict()
+
+    @property
+    def attributes(self):
+        return self._attributes.values()
+
+    @property
+    def attributes_name(self):
+        return self._attributes.keys()
+
+    def set_attribute_value(self, name, value):
+        self._attributes[name].value = value
+
+    def get_attribute_value(self, name):
+        return self._attributes[name].value
+
+    def get_attribute_help(self, name):
+        return self._attributes[name].help
+
+    def get_attribute_type(self, name):
+        return self._attributes[name].type
+
+    def get_attribute_range(self, name):
+        if not self._attributes[name].range:
+            return (None, None)
+        return self._attributes[name].range
+
+    def get_attribute_allowed(self, name):
+        return self._attributes[name].allowed
+
+    def is_attribute_read_only(self, name):
+        return self._attributes[name].read_only
+
+    def is_attribute_invisible(self, name):
+        return self._attributes[name].invisible
+
+    def is_attribute_design_only(self, name):
+        return self._attributes[name].design_only
+
+    def has_attribute_no_default_value(self, name):
+        return self._attributes[name].has_no_default_value
+
+    def is_attribute_modified(self, name):
+        return self._attributes[name].modified
+
+    def add_attribute(self, name, help, type, value = None, range = None,
+        allowed = None, flags = Attribute.NoFlags, validation_function = None):
+        if name in self._attributes:
+            raise AttributeError("Attribute %s already exists" % name)
+        attribute = Attribute(name, help, type, value, range, allowed, flags,
+                validation_function)
+        self._attributes[name] = attribute
+
+    def del_attribute(self, name):
+        del self._attributes[name]
+
+    def has_attribute(self, name):
+        return name in self._attributes    
+    
+    def destroy(self):
+        self._attributes = dict()
 

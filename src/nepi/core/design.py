@@ -157,17 +157,20 @@ class Address(AttributesMap):
                 help = "If set, this address will automatically be assigned", 
                 type = Attribute.BOOL,
                 value = False,
+                flags = Attribute.DesignOnly,
                 validation_function = validation.is_bool)
         self.add_attribute(name = "Family",
                 help = "Address family type: AF_INET, AFT_INET6", 
                 type = Attribute.INTEGER, 
                 value = family,
-                readonly = True)
+                flags = Attribute.ReadOnly | Attribute.HasNoDefaultValue,
+                validation_function = validation.is_integer)
         address_validation = validation.is_ip4_address if family == AF_INET \
                         else validation.is_ip6_address
         self.add_attribute(name = "Address",
                 help = "Address number", 
                 type = Attribute.STRING,
+                flags = Attribute.HasNoDefaultValue,
                 validation_function = address_validation)
         prefix_range = (0, 32) if family == AF_INET else (0, 128)
         self.add_attribute(name = "NetPrefix",
@@ -175,6 +178,7 @@ class Address(AttributesMap):
                 type = Attribute.INTEGER, 
                 range = prefix_range,
                 value = 24 if family == AF_INET else 64,
+                flags = Attribute.HasNoDefaultValue,
                 validation_function = validation.is_integer)
         if family == AF_INET:
             self.add_attribute(name = "Broadcast",
@@ -189,7 +193,8 @@ class Route(AttributesMap):
                 help = "Address family type: AF_INET, AFT_INET6", 
                 type = Attribute.INTEGER, 
                 value = family,
-                readonly = True)
+                flags = Attribute.ReadOnly | Attribute.HasNoDefaultValue,
+                validation_function = validation.is_integer)
         address_validation = validation.is_ip4_address if family == AF_INET \
                         else validation.is_ip6_address
         self.add_attribute(name = "Destination", 
@@ -200,11 +205,13 @@ class Route(AttributesMap):
         self.add_attribute(name = "NetPrefix",
                 help = "Network destination prefix", 
                 type = Attribute.INTEGER, 
+                flags = Attribute.HasNoDefaultValue,
                 prefix_range = prefix_range,
                 validation_function = validation.is_integer)
         self.add_attribute(name = "NextHop",
                 help = "Address for the next hop", 
                 type = Attribute.STRING,
+                flags = Attribute.HasNoDefaultValue,
                 validation_function = address_validation)
 
 class Box(AttributesMap):
@@ -235,7 +242,7 @@ class Box(AttributesMap):
             self._traces[trace.trace_id] = tr
         for attr in factory.box_attributes:
             self.add_attribute(attr.name, attr.help, attr.type, attr.value, 
-                    attr.range, attr.allowed, attr.readonly, attr.visible, 
+                    attr.range, attr.allowed, attr.flags, 
                     attr.validation_function)
         for attr in factory.attributes:
             if attr.modified:
@@ -412,10 +419,9 @@ class Factory(AttributesMap):
         self._traces.append(trace)
 
     def add_box_attribute(self, name, help, type, value = None, range = None,
-        allowed = None, readonly = False, visible = True, 
-        validation_function = None):
-        attribute = Attribute(name, help, type, value, range, allowed, readonly,
-                visible, validation_function)
+        allowed = None, flags = Attribute.NoFlags, validation_function = None):
+        attribute = Attribute(name, help, type, value, range, allowed, flags,
+                validation_function)
         self._box_attributes.append(attribute)
 
     def create(self, guid, testbed_description):
@@ -474,7 +480,7 @@ class TestbedDescription(AttributesMap):
         metadata = Metadata(provider.testbed_id, provider.testbed_version)
         for attr in metadata.testbed_attributes().attributes:
             self.add_attribute(attr.name, attr.help, attr.type, attr.value, 
-                    attr.range, attr.allowed, attr.readonly, attr.visible, 
+                    attr.range, attr.allowed, attr.flags, 
                     attr.validation_function)
 
     @property
