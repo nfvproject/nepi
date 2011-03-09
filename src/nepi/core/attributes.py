@@ -105,7 +105,8 @@ class Attribute(object):
         return not self.allowed or value in self._allowed
 
     def _is_valid(self, value):
-        return not self._validation_function or self._validation_function(value)
+        return not self._validation_function or \
+                self._validation_function(self, value)
 
 class AttributesMap(object):
     """AttributesMap is the base class for every object whose attributes 

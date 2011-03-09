@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from nepi.core.execute import ExperimentController
 from nepi.core.design import ExperimentDescription, FactoriesProvider
 from nepi.util.constants import STATUS_FINISHED
+from nepi.util import proxy
 import mock
 import mock.metadata_v01 
 import sys
@@ -36,7 +36,8 @@ class ExecuteTestCase(unittest.TestCase):
         app.enable_trace("fake")
 
         xml = exp_desc.to_xml()
-        controller = ExperimentController(xml)
+        access_config = None
+        controller = proxy.create_controller(xml, access_config)
         controller.start()
         while not controller.is_finished(app.guid):
             time.sleep(0.5)

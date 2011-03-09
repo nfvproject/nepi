@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 from nepi.core.attributes import Attribute, AttributesMap
+from nepi.util import proxy, validation
 from nepi.util.constants import STATUS_FINISHED
 from nepi.util.parser._xml import XmlExperimentParser
-from nepi.util import validation
 import sys
 
 class ConnectorType(object):
@@ -255,8 +255,8 @@ class ExperimentController(object):
     def testbed_instance(self, guid):
         return self._testbeds[guid]
 
-    def set_testbed_access_config(self, guid, access_config):
-        self._access_config[guid] = access_config
+    def set_access_configuration(self, testbed_guid, access_config):
+        self._access_config[testbed_guid] = access_config
 
     def trace(self, testbed_guid, guid, trace_id):
         return self._testbeds[testbed_guid].trace(guid, trace_id)
@@ -289,13 +289,6 @@ class ExperimentController(object):
        for instance in self._testbeds.values():
            instance.shutdown()
 
-    def _build_testbed_instance(self, testbed_id, testbed_version):
-        mod_name = "nepi.testbeds.%s" % (testbed_id.lower())
-        if not mod_name in sys.modules:
-            __import__(mod_name)
-        module = sys.modules[mod_name]
-        return module.TestbedInstance(testbed_version)
-
     def _create_testbed_instances(self):
         parser = XmlExperimentParser()
         data = parser.from_xml_to_data(self._experiment_xml)
@@ -303,8 +296,10 @@ class ExperimentController(object):
         for guid in data.guids:
             if data.is_testbed_data(guid):
                 (testbed_id, testbed_version) = data.get_testbed_data(guid)
-                instance = self._build_testbed_instance(testbed_id, 
-                        testbed_version)
+                access_config = None if guid not in self._access_config else\
+                        self._access_config[guid]
+                instance = proxy.create_testbed_instance(testbed_id, 
+                        testbed_version, access_config)
                 for (name, value) in data.get_attribute_data(guid):
                     instance.configure(name, value)
                 self._testbeds[guid] = instance
