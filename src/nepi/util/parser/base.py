@@ -296,7 +296,7 @@ class ExperimentParser(object):
 
     def traces_from_data(self, box, data):
         for name in data.get_trace_data(box.guid):
-            box.trace(name).enable()
+            box.enable_trace(name)
 
     def addresses_from_data(self, box, data):
         for (autoconf, address, family, netprefix, broadcast) \

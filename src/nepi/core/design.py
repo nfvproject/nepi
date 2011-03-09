@@ -240,7 +240,7 @@ class Box(AttributesMap):
         for trace in factory.traces:
             tr = Trace(trace.trace_id, trace.help, trace.enabled)
             self._traces[trace.trace_id] = tr
-        for attr in factory.box_attributes:
+        for attr in factory.box_attributes.attributes:
             self.add_attribute(attr.name, attr.help, attr.type, attr.value, 
                     attr.range, attr.allowed, attr.flags, 
                     attr.validation_function)
@@ -377,7 +377,7 @@ class Factory(AttributesMap):
         self._category = category
         self._connector_types = list()
         self._traces = list()
-        self._box_attributes = list()
+        self._box_attributes = AttributesMap()
 
     @property
     def factory_id(self):
@@ -420,9 +420,8 @@ class Factory(AttributesMap):
 
     def add_box_attribute(self, name, help, type, value = None, range = None,
         allowed = None, flags = Attribute.NoFlags, validation_function = None):
-        attribute = Attribute(name, help, type, value, range, allowed, flags,
-                validation_function)
-        self._box_attributes.append(attribute)
+        self._box_attributes.add_attribute(name, help, type, value, range,
+                allowed, flags, validation_function)
 
     def create(self, guid, testbed_description):
         if self._allow_addresses:

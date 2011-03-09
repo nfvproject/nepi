@@ -18,7 +18,7 @@ BUILDDIR := $(BUILDDIR)/lib
 endif
 
 #PYPATH = $(BUILDDIR):$(TESTLIB):$(PYTHONPATH)
-PYPATH = "../nepi2/src:../nepi2/test/util:../netns/src"
+PYPATH = "../nepi2/src:../nepi2/test/lib:../netns/src"
 COVERAGE = $(or $(shell which coverage), $(shell which python-coverage), \
 	   coverage)
 

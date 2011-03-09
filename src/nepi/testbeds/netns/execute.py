@@ -3,8 +3,6 @@
 
 from constants import TESTBED_ID
 from nepi.core import testbed_impl
-from nepi.core.metadata import Metadata
-from nepi.util import validation
 from nepi.util.constants import AF_INET, AF_INET6
 import os
 

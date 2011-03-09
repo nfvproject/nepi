@@ -161,7 +161,7 @@ class Metadata(object):
                     stop_function, status_function, allow_addresses, 
                     allow_routes)
             self._add_attributes(factory, info, "factory_attributes")
-            self._add_attributes(factory, info, "box_attributes")
+            self._add_attributes(factory, info, "box_attributes", True)
             self._add_execute_traces(factory, info)
             self._add_execute_connector_types(factory, info)
             factories.append(factory)

@@ -37,7 +37,7 @@ def connect_fd_local(tap, fdnd):
 
 ### Creation functions ###
 
-def create_node(testbed_instance, guid, parameters):
+def create_node(testbed_instance, guid, parameters, factory_parameters):
     forward_X11 = False
     if "forward_X11" in parameters:
         forward_X11 = parameters["forward_X11"]
@@ -45,7 +45,7 @@ def create_node(testbed_instance, guid, parameters):
     element = testbed_instance.netns.Node(forward_X11 = forward_X11)
     testbed_instance.elements[guid] = element
 
-def create_p2piface(testbed_instance, guid, parameters):
+def create_p2piface(testbed_instance, guid, parameters, factory_parameters):
     if guid in testbed_instance.elements:
         # The interface pair was already instantiated
         return
@@ -71,7 +71,7 @@ def create_p2piface(testbed_instance, guid, parameters):
     testbed_instance.elements[guid] = element1
     testbed_instance.elements[guid2] = element2
 
-def create_tapiface(testbed_instance, guid, parameters):
+def create_tapiface(testbed_instance, guid, parameters, factory_parameters):
     node_guid = testbed_instance.get_connected(guid, "node", "devs")
     if len(node_guid) == 0:
         raise RuntimeError("Can't instantiate interface %d outside netns \
@@ -80,7 +80,7 @@ def create_tapiface(testbed_instance, guid, parameters):
     element = node.add_tap()
     testbed_instance.elements[guid] = element
 
-def create_nodeiface(testbed_instance, guid, parameters):
+def create_nodeiface(testbed_instance, guid, parameters, factory_parameters):
     node_guid = testbed_instance.get_connected(guid, "node", "devs")
     if len(node_guid) == 0:
         raise RuntimeError("Can't instantiate interface %d outside netns \
@@ -89,11 +89,11 @@ def create_nodeiface(testbed_instance, guid, parameters):
     element = node.add_if()
     testbed_instance.elements[guid] = element
 
-def create_switch(testbed_instance, guid, parameters):
+def create_switch(testbed_instance, guid, parameters, factory_parameters):
     element = testbed_instance.netns.Switch()
     testbed_instance.elements[guid] = element
 
-def create_application(testbed_instance, guid, parameters):
+def create_application(testbed_instance, guid, parameters, factory_parameters):
     testbed_instance.elements[guid] = None # Delayed construction 
 
 ### Start/Stop functions ###

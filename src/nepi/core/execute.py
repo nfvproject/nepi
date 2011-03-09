@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from nepi.core.attributes import AttributesMap
+from nepi.core.attributes import Attribute, AttributesMap
+from nepi.util.constants import STATUS_FINISHED
 from nepi.util.parser._xml import XmlExperimentParser
 from nepi.util import validation
 import sys
@@ -100,6 +101,7 @@ class Factory(AttributesMap):
         self._status_function = status_function
         self._connector_types = dict()
         self._traces = list()
+        self._box_attributes = AttributesMap()
 
     @property
     def factory_id(self):
@@ -112,6 +114,10 @@ class Factory(AttributesMap):
     @property
     def allow_routes(self):
         return self._allow_routes
+
+    @property
+    def box_attributes(self):
+        return self._box_attributes
 
     @property
     def create_function(self):
@@ -142,6 +148,11 @@ class Factory(AttributesMap):
     def add_trace(self, trace_id):
         self._traces.append(trace_id)
 
+    def add_box_attribute(self, name, help, type, value = None, range = None,
+        allowed = None, flags = Attribute.NoFlags, validation_function = None):
+        self._box_attributes.add_attribute(name, help, type, value, range, 
+                allowed, flags, validation_function)
+
 class TestbedInstance(object):
     def __init__(self, testbed_id, testbed_version):
         self._testbed_id = testbed_id
@@ -160,7 +171,11 @@ class TestbedInstance(object):
         raise NotImplementedError
 
     def create_set(self, guid, name, value):
-        """Instructs setting an attribute on an element"""
+        """Instructs setting an initial attribute on an element"""
+        raise NotImplementedError
+
+    def factory_set(self, guid, name, value):
+        """Instructs setting an attribute on a factory"""
         raise NotImplementedError
 
     def connect(self, guid1, connector_type_name1, guid2, 
@@ -247,6 +262,41 @@ class ExperimentController(object):
         return self._testbeds[testbed_guid].trace(guid, trace_id)
 
     def start(self):
+        self._create_testbed_instances()
+        for instance in self._testbeds.values():
+            instance.do_setup()
+        for instance in self._testbeds.values():
+            instance.do_create()
+            instance.do_connect()
+            instance.do_configure()
+        for instances in self._testbeds.values():
+            instance.do_cross_connect()
+        for instances in self._testbeds.values():
+            instance.start()
+
+    def stop(self):
+       for instance in self._testbeds.values():
+           instance.stop()
+
+    def is_finished(self, guid):
+        for instance in self._testbeds.values():
+            for guid_ in instance.guids:
+                if guid_ == guid:
+                    return instance.status(guid) == STATUS_FINISHED
+        raise RuntimeError("No element exists with guid %d" % guid)    
+
+    def shutdown(self):
+       for instance in self._testbeds.values():
+           instance.shutdown()
+
+    def _build_testbed_instance(self, testbed_id, testbed_version):
+        mod_name = "nepi.testbeds.%s" % (testbed_id.lower())
+        if not mod_name in sys.modules:
+            __import__(mod_name)
+        module = sys.modules[mod_name]
+        return module.TestbedInstance(testbed_version)
+
+    def _create_testbed_instances(self):
         parser = XmlExperimentParser()
         data = parser.from_xml_to_data(self._experiment_xml)
         element_guids = list()
@@ -260,7 +310,9 @@ class ExperimentController(object):
                 self._testbeds[guid] = instance
             else:
                 element_guids.append(guid)
+        self._program_testbed_instances(element_guids, data)
 
+    def _program_testbed_instances(self, element_guids, data):
         for guid in element_guids:
             (testbed_guid, factory_id) = data.get_box_data(guid)
             instance = self._testbeds[testbed_guid]
@@ -292,37 +344,4 @@ class ExperimentController(object):
             for (family, destination, netprefix, nexthop) in \
                     data.get_route_data(guid):
                 instance.add_route(guid, destination, netprefix, nexthop)
-
-        for instance in self._testbeds.values():
-            instance.do_setup()
-        for instance in self._testbeds.values():
-            instance.do_create()
-            instance.do_connect()
-            instance.do_configure()
-        for instances in self._testbeds.values():
-            instance.do_cross_connect()
-        for instances in self._testbeds.values():
-            instance.start()
-
-    def stop(self):
-       for instance in self._testbeds.values():
-           instance.stop()
-
-    def status(self, guid):
-        for instance in self._testbeds.values():
-            for guid_ in instance.guids:
-                if guid_ == guid:
-                    return instance.status(guid)
-        raise RuntimeError("No element exists with guid %d" % guid)    
-
-    def shutdown(self):
-       for instance in self._testbeds.values():
-           instance.shutdown()
-
-    def _build_testbed_instance(self, testbed_id, testbed_version):
-        mod_name = "nepi.testbeds.%s" % (testbed_id.lower())
-        if not mod_name in sys.modules:
-            __import__(mod_name)
-        module = sys.modules[mod_name]
-        return module.TestbedInstance(testbed_version)
 

@@ -20,6 +20,7 @@ class TestbedInstance(execute.TestbedInstance):
         # experiment construction instructions
         self._create = dict()
         self._create_set = dict()
+        self._factory_set = dict()
         self._connect = dict()
         self._cross_connect = dict()
         self._add_trace = dict()
@@ -29,8 +30,6 @@ class TestbedInstance(execute.TestbedInstance):
 
         # log of set operations
         self._set = dict()
-        # log of actions
-        self._actions = dict()
 
         # testbed element instances
         self._elements = dict()
@@ -69,14 +68,27 @@ class TestbedInstance(execute.TestbedInstance):
             raise RuntimeError("Element guid %d doesn't exist" % guid)
         factory_id = self._create[guid]
         factory = self._factories[factory_id]
+        if not factory.box_attributes.has_attribute(name):
+            raise RuntimeError("Invalid attribute %s for element type %s" %
+                    (name, factory_id))
+        factory.box_attributes.set_attribute_value(name, value)
+        if guid not in self._create_set:
+            self._create_set[guid] = dict()
+        self._create_set[guid][name] = value
+
+    def factory_set(self, guid, name, value):
+        if not guid in self._create:
+            raise RuntimeError("Element guid %d doesn't exist" % guid)
+        factory_id = self._create[guid]
+        factory = self._factories[factory_id]
         if not factory.has_attribute(name):
             raise RuntimeError("Invalid attribute %s for element type %s" %
                     (name, factory_id))
         factory.set_attribute_value(name, value)
-        if guid not in self._create_set:
-            self._create_set[guid] = dict()
-        self._create_set[guid][name] = value
-       
+        if guid not in self._factory_set:
+            self._factory_set[guid] = dict()
+        self._factory_set[guid][name] = value
+
     def connect(self, guid1, connector_type_name1, guid2, 
             connector_type_name2):
         factory_id1 = self._create[guid1]
@@ -176,7 +188,10 @@ class TestbedInstance(execute.TestbedInstance):
             for guid in guids[factory_id]:
                 parameters = dict() if guid not in self._create_set else \
                         self._create_set[guid]
-                factory.create_function(self, guid, parameters)
+                factory_parameters = dict() if guid not in \
+                        self._factory_set else self._create_set[guid]
+                factory.create_function(self, guid, parameters, 
+                        factory_parameters)
                 for name, value in parameters.iteritems():
                     self.set(TIME_NOW, guid, name, value)
 
@@ -223,12 +238,12 @@ class TestbedInstance(execute.TestbedInstance):
             raise RuntimeError("Element guid %d doesn't exist" % guid)
         factory_id = self._create[guid]
         factory = self._factories[factory_id]
-        if not factory.has_attribute(name):
+        if not factory.box_attributes.has_attribute(name):
             raise RuntimeError("Invalid attribute %s for element type %s" %
                     (name, factory_id))
         if self._started and factory.is_attribute_design_only(name):
             raise RuntimeError("Attribute %s can only be modified during experiment design" % name)
-        factory.set_attribute_value(name, value)
+        factory.box_attributes.set_attribute_value(name, value)
         if guid not in self._set:
             self._set[guid] = dict()
         if time not in self._set[guid]:

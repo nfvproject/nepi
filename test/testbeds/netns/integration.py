@@ -4,7 +4,6 @@
 import getpass
 from nepi.core.design import ExperimentDescription, FactoriesProvider
 from nepi.core.execute import ExperimentController
-from nepi.util.constants import AF_INET, STATUS_FINISHED
 import os
 import shutil
 import test_util
@@ -53,7 +52,7 @@ class NetnsIntegrationTestCase(unittest.TestCase):
 
         controller = ExperimentController(xml)
         controller.start()
-        while controller.status(app.guid) != STATUS_FINISHED:
+        while not controller.is_finished(app.guid):
             time.sleep(0.5)
         ping_result = controller.trace(netns_desc.guid, app.guid, "stdout")
         comp_result = """PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
