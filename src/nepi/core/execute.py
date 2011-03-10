@@ -189,7 +189,7 @@ class TestbedInstance(object):
     def add_trace(self, guid, trace_id):
         raise NotImplementedError
 
-    def add_adddress(self, guid, family, address, netprefix, broadcast): 
+    def add_address(self, guid, family, address, netprefix, broadcast): 
         raise NotImplementedError
 
     def add_route(self, guid, destination, netprefix, nexthop):
@@ -251,9 +251,6 @@ class ExperimentController(object):
     @property
     def experiment_xml(self):
         return self._experiment_xml
-
-    def testbed_instance(self, guid):
-        return self._testbeds[guid]
 
     def set_access_configuration(self, testbed_guid, access_config):
         self._access_config[testbed_guid] = access_config

@@ -25,6 +25,7 @@ class Server(object):
 
     def run(self):
         if self.daemonize():
+            self.post_daemonize()
             self.loop()
             self.cleanup()
             # ref: "os._exit(0)"
@@ -70,6 +71,9 @@ class Server(object):
         os.dup2(self._stderr.fileno(), sys.stderr.fileno())
         return 1
 
+    def post_daemonize(self):
+        pass
+
     def loop(self):
         self._ctrl_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self._ctrl_sock.bind(CTRL_SOCK)
@@ -85,11 +89,17 @@ class Server(object):
                     
                 if msg == STOP_MSG:
                     self._stop = True
-                    reply = self.stop_action()
+                    try:
+                        reply = self.stop_action()
+                    except e:
+                        sys.stderr.write("ERROR: %s\n" % sys.exc_info()[0])
                     self.send_reply(conn, reply)
                     break
                 else:
-                    reply = self.reply_action(msg)
+                    try:
+                        reply = self.reply_action(msg)
+                    except e:
+                        sys.stderr.write("ERROR: %s\n" % sys.exc_info()[0])
                     self.send_reply(conn, reply)
             conn.close()
 
@@ -107,7 +117,7 @@ class Server(object):
             self._ctrl_sock.close()
             os.remove(CTRL_SOCK)
         except e:
-            sys.stderr.write("ERROR: %s\n" % str(e))
+            sys.stderr.write("ERROR: %s\n" % sys.exc_info()[0])
 
     def stop_action(self):
         return "Stopping server"
