@@ -24,17 +24,21 @@ class Server(object):
         self._stderr = None 
 
     def run(self):
-        if self.daemonize():
-            self.post_daemonize()
-            self.loop()
-            self.cleanup()
-            # ref: "os._exit(0)"
-            # can not return normally after fork beacuse no exec was done.
-            # This means that if we don't do a os._exit(0) here the code that 
-            # follows the call to "Server.run()" in the "caller code" will be 
-            # executed... but by now it has already been executed after the 
-            # first process (the one that did the first fork) returned.
-            os._exit(0)
+        try:
+            if self.daemonize():
+                self.post_daemonize()
+                self.loop()
+                self.cleanup()
+                # ref: "os._exit(0)"
+                # can not return normally after fork beacuse no exec was done.
+                # This means that if we don't do a os._exit(0) here the code that 
+                # follows the call to "Server.run()" in the "caller code" will be 
+                # executed... but by now it has already been executed after the 
+                # first process (the one that did the first fork) returned.
+                os._exit(0)
+        except:
+            self.log_error()
+            raise
 
     def daemonize(self):
         pid1 = os.fork()
@@ -91,15 +95,15 @@ class Server(object):
                     self._stop = True
                     try:
                         reply = self.stop_action()
-                    except e:
-                        sys.stderr.write("ERROR: %s\n" % sys.exc_info()[0])
+                    except:
+                        self.log_error()
                     self.send_reply(conn, reply)
                     break
                 else:
                     try:
                         reply = self.reply_action(msg)
-                    except e:
-                        sys.stderr.write("ERROR: %s\n" % sys.exc_info()[0])
+                    except:
+                        self.log_error()
                     self.send_reply(conn, reply)
             conn.close()
 
@@ -117,13 +121,20 @@ class Server(object):
             self._ctrl_sock.close()
             os.remove(CTRL_SOCK)
         except e:
-            sys.stderr.write("ERROR: %s\n" % sys.exc_info()[0])
+            self.log_error()
 
     def stop_action(self):
         return "Stopping server"
 
     def reply_action(self, msg):
         return "Reply to: %s" % msg
+
+    def log_error(self, error = None):
+        if error == None:
+            import traceback
+            error = "%s\n" %  traceback.format_exc()
+        sys.stderr.write(error)
+        return error
 
 class Forwarder(object):
     def __init__(self, root_dir = "."):
