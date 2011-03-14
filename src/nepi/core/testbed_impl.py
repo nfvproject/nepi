@@ -4,9 +4,7 @@
 from nepi.core import execute
 from nepi.core.metadata import Metadata
 from nepi.util import validation
-from nepi.util.constants import AF_INET, AF_INET6, STATUS_UNDETERMINED
-
-TIME_NOW = "0s"
+from nepi.util.constants import AF_INET, AF_INET6, STATUS_UNDETERMINED, TIME_NOW
 
 class TestbedInstance(execute.TestbedInstance):
     def __init__(self, testbed_id, testbed_version):
