@@ -83,6 +83,41 @@ testbed_messages = dict({
     GUIDS:  "%d" % GUIDS,
     })
 
+instruction_text = dict({
+    OK:     "OK",
+    ERROR:  "ERROR",
+    XML:    "XML",
+    ACCESS: "ACCESS",
+    TRACE:  "TRACE",
+    FINISHED:   "FINISHED",
+    START:  "START",
+    STOP:   "STOP",
+    SHUTDOWN:   "SHUTDOWN",
+    CONFIGURE:  "CONFIGURE",
+    CREATE: "CREATE",
+    CREATE_SET: "CREATE_SET",
+    FACTORY_SET:    "FACTORY_SET",
+    CONNECT:    "CONNECT",
+    CROSS_CONNECT: "CROSS_CONNECT",
+    ADD_TRACE:  "ADD_TRACE",
+    ADD_ADDRESS:    "ADD_ADDRESS",
+    ADD_ROUTE:  "ADD_ROUTE",
+    DO_SETUP:   "DO_SETUP",
+    DO_CREATE:  "DO_CREATE",
+    DO_CONNECT: "DO_CONNECT",
+    DO_CONFIGURE:   "DO_CONFIGURE",
+    DO_CROSS_CONNECT:   "DO_CROSS_CONNECT",
+    GET:    "GET",
+    SET:    "SET",
+    ACTION: "ACTION",
+    STATUS: "STATUS",
+    GUIDS:  "GUIDS",
+    STRING: "STRING",
+    INTEGER:    "INTEGER",
+    BOOL:   "BOOL",
+    FLOAT:  "FLOAT"
+    })
+
 def get_type(value):
     if isinstance(value, bool):
         return BOOL
@@ -99,16 +134,32 @@ def set_type(type, value):
     elif type == FLOAT:
         value = float(value)
     elif type == BOOL:
-        value = bool(value)
+        value = value == "True"
     else:
         value = str(value)
     return value
+
+def log_msg(server, params):
+    instr = int(params[0])
+    instr_txt = instruction_text[instr]
+    server.log_debug("%s - msg: %s [%s]" % (server.__class__.__name__, 
+        instr_txt, ", ".join(map(str, params[1:]))))
+
+def log_reply(server, reply):
+    res = reply.split("|")
+    code = int(res[0])
+    code_txt = instruction_text[code]
+    txt = base64.b64decode(res[1])
+    server.log_debug("%s - reply: %s %s" % (server.__class__.__name__, 
+            code_txt, txt))
 
 class AccessConfiguration(AttributesMap):
     MODE_SINGLE_PROCESS = "SINGLE"
     MODE_DAEMON = "DAEMON"
     ACCESS_SSH = "SSH"
     ACCESS_LOCAL = "LOCAL"
+    ERROR_LEVEL = "Error"
+    DEBUG_LEVEL = "Debug"
 
     def __init__(self):
         super(AccessConfiguration, self).__init__()
@@ -150,15 +201,23 @@ class AccessConfiguration(AttributesMap):
                 type = Attribute.BOOL,
                 value = False,
                 validation_function = validation.is_bool)
+        self.add_attribute(name = "logLevel",
+                help = "Log level for instance",
+                type = Attribute.ENUM,
+                value = AccessConfiguration.ERROR_LEVEL,
+                allowed = [AccessConfiguration.ERROR_LEVEL,
+                    AccessConfiguration.DEBUG_LEVEL],
+                validation_function = validation.is_enum)
 
 def create_controller(xml, access_config = None):
     mode = None if not access_config else access_config.get_attribute_value("mode")
     if not mode or mode == AccessConfiguration.MODE_SINGLE_PROCESS:
         from nepi.core.execute import ExperimentController
         return ExperimentController(xml)
-    elif mode ==AccessConfiguration.MODE_DAEMON:
+    elif mode == AccessConfiguration.MODE_DAEMON:
         root_dir = access_config.get_attribute_value("rootDirectory")
-        return ExperimentControllerProxy(xml, root_dir)
+        log_level = access_config.get_attribute_value("logLevel")
+        return ExperimentControllerProxy(root_dir, log_level, experiment_xml = xml)
     raise RuntimeError("Unsupported access configuration 'mode'" % mode)
 
 def create_testbed_instance(testbed_id, testbed_version, access_config):
@@ -166,8 +225,10 @@ def create_testbed_instance(testbed_id, testbed_version, access_config):
     if not mode or mode == AccessConfiguration.MODE_SINGLE_PROCESS:
         return  _build_testbed_testbed(testbed_id, testbed_version)
     elif mode == AccessConfiguration.MODE_DAEMON:
-                root_dir = access_config.get_attribute_value("rootDirectory")
-                return TestbedIntanceProxy(testbed_id, testbed_version, root_dir)
+        root_dir = access_config.get_attribute_value("rootDirectory")
+        log_level = access_config.get_attribute_value("logLevel")
+        return TestbedIntanceProxy(root_dir, log_level, testbed_id = testbed_id, 
+                testbed_version = testbed_version)
     raise RuntimeError("Unsupported access configuration 'mode'" % mode)
 
 def _build_testbed_testbed(testbed_id, testbed_version):
@@ -178,7 +239,7 @@ def _build_testbed_testbed(testbed_id, testbed_version):
     return module.TestbedInstance(testbed_version)
 
 class TestbedInstanceServer(server.Server):
-    def __init__(self, testbed_id, testbed_version, root_dir):
+    def __init__(self, root_dir, testbed_id, testbed_version):
         super(TestbedInstanceServer, self).__init__(root_dir)
         self._testbed_id = testbed_id
         self._testbed_version = testbed_version
@@ -191,62 +252,65 @@ class TestbedInstanceServer(server.Server):
     def reply_action(self, msg):
         params = msg.split("|")
         instruction = int(params[0])
+        log_msg(self, params)
         try:
             if instruction == TRACE:
-                return self.trace(params)
+                reply = self.trace(params)
             elif instruction == START:
-                return self.start(params)
+                reply = self.start(params)
             elif instruction == STOP:
-                return self.stop(params)
+                reply = self.stop(params)
             elif instruction == SHUTDOWN:
-                return self.shutdown(params)
+                reply = self.shutdown(params)
             elif instruction == CONFIGURE:
-                return self.configure(params)
+                reply = self.configure(params)
             elif instruction == CREATE:
-                return self.create(params)
+                reply = self.create(params)
             elif instruction == CREATE_SET:
-                return self.create_set(params)
+                reply = self.create_set(params)
             elif instruction == FACTORY_SET:
-                return self.factory_set(params)
+                reply = self.factory_set(params)
             elif instruction == CONNECT:
-                return self.connect(params)
+                reply = self.connect(params)
             elif instruction == CROSS_CONNECT:
-                return self.cross_connect(params)
+                reply = self.cross_connect(params)
             elif instruction == ADD_TRACE:
-                return self.add_trace(params)
+                reply = self.add_trace(params)
             elif instruction == ADD_ADDRESS:
-                return self.add_address(params)
+                reply = self.add_address(params)
             elif instruction == ADD_ROUTE:
-                return self.add_route(params)
+                reply = self.add_route(params)
             elif instruction == DO_SETUP:
-                return self.do_setup(params)
+                reply = self.do_setup(params)
             elif instruction == DO_CREATE:
-                return self.do_create(params)
+                reply = self.do_create(params)
             elif instruction == DO_CONNECT:
-                return self.do_connect(params)
+                reply = self.do_connect(params)
             elif instruction == DO_CONFIGURE:
-                return self.do_configure(params)
+                reply = self.do_configure(params)
             elif instruction == DO_CROSS_CONNECT:
-                return self.do_cross_connect(params)
+                reply = self.do_cross_connect(params)
             elif instruction == GET:
-                return self.get(params)
+                reply = self.get(params)
             elif instruction == SET:
-                return self.set(params)
+                reply = self.set(params)
             elif instruction == ACTION:
-                return self.action(params)
+                reply = self.action(params)
             elif instruction == STATUS:
-                return self.status(params)
+                reply = self.status(params)
             elif instruction == GUIDS:
-                return self.guids(params)
+                reply = self.guids(params)
             else:
                 error = "Invalid instruction %s" % instruction
                 self.log_error(error)
                 result = base64.b64encode(error)
-                return "%d|%s" % (ERROR, result)
+                reply = "%d|%s" % (ERROR, result)
         except:
             error = self.log_error()
             result = base64.b64encode(error)
-            return "%d|%s" % (ERROR, result)
+            reply = "%d|%s" % (ERROR, result)
+        log_reply(self, reply)
+        return reply
 
     def guids(self, params):
         guids = self._testbed.guids
@@ -404,7 +468,7 @@ class TestbedInstanceServer(server.Server):
         return "%d|%s" % (OK, result)
  
 class ExperimentControllerServer(server.Server):
-    def __init__(self, experiment_xml, root_dir):
+    def __init__(self, root_dir, experiment_xml):
         super(ExperimentControllerServer, self).__init__(root_dir)
         self._experiment_xml = experiment_xml
         self._controller = None
@@ -416,30 +480,33 @@ class ExperimentControllerServer(server.Server):
     def reply_action(self, msg):
         params = msg.split("|")
         instruction = int(params[0])
+        log_msg(self, params)
         try:
             if instruction == XML:
-                return self.experiment_xml(params)
+                reply = self.experiment_xml(params)
             elif instruction == ACCESS:
-                return self.set_access_configuration(params)
+                reply = self.set_access_configuration(params)
             elif instruction == TRACE:
-                return self.trace(params)
+                reply = self.trace(params)
             elif instruction == FINISHED:
-                return self.is_finished(params)
+                reply = self.is_finished(params)
             elif instruction == START:
-                return self.start(params)
+                reply = self.start(params)
             elif instruction == STOP:
-                return self.stop(params)
+                reply = self.stop(params)
             elif instruction == SHUTDOWN:
-                return self.shutdown(params)
+                reply = self.shutdown(params)
             else:
                 error = "Invalid instruction %s" % instruction
                 self.log_error(error)
                 result = base64.b64encode(error)
-                return "%d|%s" % (ERROR, result)
+                reply = "%d|%s" % (ERROR, result)
         except:
             error = self.log_error()
             result = base64.b64encode(error)
-            return "%d|%s" % (ERROR, result)
+            reply = "%d|%s" % (ERROR, result)
+        log_reply(self, reply)
+        return reply
 
     def experiment_xml(self, params):
         xml = self._controller.experiment_xml
@@ -454,7 +521,7 @@ class ExperimentControllerServer(server.Server):
         user = params[5]
         port = int(params[6])
         root_dir = params[7]
-        use_agent = bool(params[8])
+        use_agent = params[8] == "True"
         access_config = AccessConfiguration()
         access_config.set_attribute_value("mode", mode)
         access_config.set_attribute_value("communication", communication)
@@ -473,12 +540,13 @@ class ExperimentControllerServer(server.Server):
         trace_id = params[3]
         trace = self._controller.trace(testbed_guid, guid, trace_id)
         result = base64.b64encode(trace)
-        return "%d|%s" % (OK, "%s" % result)
+        return "%d|%s" % (OK, result)
 
     def is_finished(self, params):
         guid = int(params[1])
-        result = self._controller.is_finished(guid)
-        return "%d|%s" % (OK, "%r" % result)
+        status = self._controller.is_finished(guid)
+        result = base64.b64encode(str(status))
+        return "%d|%s" % (OK, result)
 
     def start(self, params):
         self._controller.start()
@@ -493,11 +561,17 @@ class ExperimentControllerServer(server.Server):
         return "%d|%s" % (OK, "")
 
 class TestbedIntanceProxy(object):
-    def __init__(self, testbed_id, testbed_version, root_dir):
-        # launch daemon
-        s = TestbedInstanceServer(testbed_id, testbed_version, 
-                root_dir)
-        s.run()
+    def __init__(self, root_dir, log_level, testbed_id = None, 
+            testbed_version = None, launch = True):
+        if launch:
+            if testbed_id == None or testbed_version == None:
+                raise RuntimeError("To launch a TesbedInstance server a \
+                        testbed_id and testbed_version are required")
+            # launch daemon
+            s = TestbedInstanceServer(root_dir, testbed_id, testbed_version)
+            if log_level == AccessConfiguration.DEBUG_LEVEL:
+                s.set_debug_log_level()
+            s.run()
         # create_client
         self._client = server.Client(root_dir)
 
@@ -776,10 +850,16 @@ class TestbedIntanceProxy(object):
         self._client.send_stop()
 
 class ExperimentControllerProxy(object):
-    def __init__(self, experiment_xml, root_dir):
-        # launch daemon
-        s = ExperimentControllerServer(experiment_xml, root_dir)
-        s.run()
+    def __init__(self, root_dir, log_level, experiment_xml = None, launch = True):
+        if launch:
+            if experiment_xml == None:
+                raise RuntimeError("To launch a ExperimentControllerServer a \
+                        xml description of the experiment is required")
+            # launch daemon
+            s = ExperimentControllerServer(root_dir, experiment_xml)
+            if log_level == AccessConfiguration.DEBUG_LEVEL:
+                s.set_debug_log_level()
+            s.run()
         # create_client
         self._client = server.Client(root_dir)
 
@@ -790,10 +870,10 @@ class ExperimentControllerProxy(object):
         reply = self._client.read_reply()
         result = reply.split("|")
         code = int(result[0])
-        text =  base64.b64decode(result[1])
-        if code == OK:
-            return text
-        raise RuntimeError(text)
+        text = base64.b64decode(result[1])
+        if code == ERROR:
+            raise RuntimeError(text)
+        return text
 
     def set_access_configuration(self, testbed_guid, access_config):
         mode = access_config.get_attribute_value("mode")
@@ -853,10 +933,10 @@ class ExperimentControllerProxy(object):
         reply = self._client.read_reply()
         result = reply.split("|")
         code = int(result[0])
-        if code == OK:
-            return bool(result[1])
-        error =  base64.b64decode(result[1])
-        raise RuntimeError(error)
+        text = base64.b64decode(result[1])
+        if code == ERROR:
+            raise RuntimeError(text)
+        return text == "True"
 
     def shutdown(self):
         msg = controller_messages[SHUTDOWN]

@@ -83,6 +83,7 @@ class ExecuteTestCase(unittest.TestCase):
                 proxy.AccessConfiguration.MODE_DAEMON)
         access_config.set_attribute_value("rootDirectory", self._root_dir)
         controller = proxy.create_controller(xml, access_config)
+
         controller.start()
         while not controller.is_finished(app.guid):
             time.sleep(0.5)
@@ -123,6 +124,7 @@ class ExecuteTestCase(unittest.TestCase):
                 proxy.AccessConfiguration.MODE_DAEMON)
         access_config.set_attribute_value("rootDirectory", self._root_dir)
         controller.set_access_configuration(desc.guid, access_config)
+
         controller.start()
         while not controller.is_finished(app.guid):
             time.sleep(0.5)
@@ -161,14 +163,16 @@ class ExecuteTestCase(unittest.TestCase):
         access_config.set_attribute_value("mode", 
                 proxy.AccessConfiguration.MODE_DAEMON)
         access_config.set_attribute_value("rootDirectory", self._root_dir)
-        controller = proxy.create_controller(xml, access_config = None)
-        access_config = proxy.AccessConfiguration()
-        access_config.set_attribute_value("mode", 
+        controller = proxy.create_controller(xml, access_config)
+
+        access_config2 = proxy.AccessConfiguration()
+        access_config2.set_attribute_value("mode", 
                 proxy.AccessConfiguration.MODE_DAEMON)
         inst_root_dir = os.path.join(self._root_dir, "instance")
         os.mkdir(inst_root_dir)
-        access_config.set_attribute_value("rootDirectory", inst_root_dir)
-        controller.set_access_configuration(desc.guid, access_config)
+        access_config2.set_attribute_value("rootDirectory", inst_root_dir)
+        controller.set_access_configuration(desc.guid, access_config2)
+
         controller.start()
         while not controller.is_finished(app.guid):
             time.sleep(0.5)

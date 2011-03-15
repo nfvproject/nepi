@@ -260,31 +260,31 @@ class ExperimentController(object):
 
     def start(self):
         self._create_testbed_instances()
-        for instance in self._testbeds.values():
-            instance.do_setup()
-        for instance in self._testbeds.values():
-            instance.do_create()
-            instance.do_connect()
-            instance.do_configure()
-        for instances in self._testbeds.values():
-            instance.do_cross_connect()
-        for instances in self._testbeds.values():
-            instance.start()
+        for testbed in self._testbeds.values():
+            testbed.do_setup()
+        for testbed in self._testbeds.values():
+            testbed.do_create()
+            testbed.do_connect()
+            testbed.do_configure()
+        for testbed in self._testbeds.values():
+            testbed.do_cross_connect()
+        for testbed in self._testbeds.values():
+            testbed.start()
 
     def stop(self):
-       for instance in self._testbeds.values():
-           instance.stop()
+       for testbed in self._testbeds.values():
+           testbed.stop()
 
     def is_finished(self, guid):
-        for instance in self._testbeds.values():
-            for guid_ in instance.guids:
+        for testbed in self._testbeds.values():
+            for guid_ in testbed.guids:
                 if guid_ == guid:
-                    return instance.status(guid) == STATUS_FINISHED
+                    return testbed.status(guid) == STATUS_FINISHED
         raise RuntimeError("No element exists with guid %d" % guid)    
 
     def shutdown(self):
-       for instance in self._testbeds.values():
-           instance.shutdown()
+       for testbed in self._testbeds.values():
+           testbed.shutdown()
 
     def _create_testbed_instances(self):
         parser = XmlExperimentParser()
@@ -295,11 +295,11 @@ class ExperimentController(object):
                 (testbed_id, testbed_version) = data.get_testbed_data(guid)
                 access_config = None if guid not in self._access_config else\
                         self._access_config[guid]
-                instance = proxy.create_testbed_instance(testbed_id, 
+                testbed = proxy.create_testbed_instance(testbed_id, 
                         testbed_version, access_config)
                 for (name, value) in data.get_attribute_data(guid):
-                    instance.configure(name, value)
-                self._testbeds[guid] = instance
+                    testbed.configure(name, value)
+                self._testbeds[guid] = testbed
             else:
                 element_guids.append(guid)
         self._program_testbed_instances(element_guids, data)
@@ -307,33 +307,33 @@ class ExperimentController(object):
     def _program_testbed_instances(self, element_guids, data):
         for guid in element_guids:
             (testbed_guid, factory_id) = data.get_box_data(guid)
-            instance = self._testbeds[testbed_guid]
-            instance.create(guid, factory_id)
+            testbed = self._testbeds[testbed_guid]
+            testbed.create(guid, factory_id)
             for (name, value) in data.get_attribute_data(guid):
-                instance.create_set(guid, name, value)
+                testbed.create_set(guid, name, value)
 
         for guid in element_guids: 
             (testbed_guid, factory_id) = data.get_box_data(guid)
-            instance = self._testbeds[testbed_guid]
+            testbed = self._testbeds[testbed_guid]
             for (connector_type_name, other_guid, other_connector_type_name) \
                     in data.get_connection_data(guid):
                 (testbed_guid, factory_id) = data.get_box_data(guid)
                 (other_testbed_guid, other_factory_id) = data.get_box_data(
                         other_guid)
                 if testbed_guid == other_testbed_guid:
-                    instance.connect(guid, connector_type_name, other_guid, 
+                    testbed.connect(guid, connector_type_name, other_guid, 
                         other_connector_type_name)
                 else:
-                    instance.cross_connect(guid, connector_type_name, other_guid, 
+                    testbed.cross_connect(guid, connector_type_name, other_guid, 
                         other_testbed_id, other_factory_id, other_connector_type_name)
             for trace_id in data.get_trace_data(guid):
-                instance.add_trace(guid, trace_id)
+                testbed.add_trace(guid, trace_id)
             for (autoconf, address, family, netprefix, broadcast) in \
                     data.get_address_data(guid):
                 if address != None:
-                    instance.add_adddress(guid, family, address, netprefix,
+                    testbed.add_address(guid, family, address, netprefix,
                         broadcast)
             for (family, destination, netprefix, nexthop) in \
                     data.get_route_data(guid):
-                instance.add_route(guid, destination, netprefix, nexthop)
+                testbed.add_route(guid, destination, netprefix, nexthop)
 

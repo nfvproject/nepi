@@ -59,9 +59,9 @@ class TestbedInstance(testbed_impl.TestbedInstance):
         raise NotImplementedError
 
     def trace(self, guid, trace_id):
-        f = open(self.trace_filename(guid, trace_id), "r")
-        content = f.read()
-        f.close()
+        fd = open("%s" % self.trace_filename(guid, trace_id), "r")
+        content = fd.read()
+        fd.close()
         return content
 
     def shutdown(self):

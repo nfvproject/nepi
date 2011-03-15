@@ -244,7 +244,7 @@ class XmlExperimentParser(ExperimentParser):
                 getElementsByTagName("address")
         for address_tag in address_tag_list:
             if address_tag.nodeType == tag.ELEMENT_NODE:
-                autoconf = bool(address_tag.getAttribute("AutoConfigure")) \
+                autoconf = address_tag.getAttribute("AutoConfigure") == "True" \
                        if address_tag.hasAttribute("AutoConfigure") else None
                 address = str(address_tag.getAttribute("Address")) \
                        if address_tag.hasAttribute("Address") else None
@@ -290,20 +290,20 @@ class XmlExperimentParser(ExperimentParser):
                          other_guid, other_connector_type_name)
 
     def type_to_standard(self, value):
-        if type(value) == str:
+        if isinstance(value, str):
             return Attribute.STRING
-        if type(value) == bool:
+        if isinstance(value, bool):
             return Attribute.BOOL
-        if type(value) == int:
+        if isinstance(value, int):
             return Attribute.INTEGER
-        if type(value) == float:
+        if isinstance(value, float):
             return Attribute.DOUBLE
     
     def type_from_standard(self, type, value):
         if type == Attribute.STRING:
             return str(value)
         if type == Attribute.BOOL:
-            return bool(value)
+            return value == "True"
         if type == Attribute.INTEGER:
             return int(value)
         if type == Attribute.DOUBLE:

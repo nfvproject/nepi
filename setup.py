@@ -16,6 +16,7 @@ setup(
             "nepi.testbeds",
             "nepi.testbeds.netns",
             "nepi.core",
+            "nepi.util.parser",
             "nepi.util" ],
         package_dir = {"": "src"}
     )

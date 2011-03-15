@@ -137,7 +137,7 @@ class TestbedInstance(execute.TestbedInstance):
             self._add_trace[guid] = list()
         self._add_trace[guid].append(trace_id)
 
-    def add_adddress(self, guid, family, address, netprefix, broadcast):
+    def add_address(self, guid, family, address, netprefix, broadcast):
         if not guid in self._create:
             raise RuntimeError("Element guid %d doesn't exist" % guid)
         factory_id = self._create[guid]
