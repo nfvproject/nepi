@@ -6,23 +6,21 @@ from nepi.util.constants import AF_INET, STATUS_FINISHED
 from nepi.testbeds import netns
 import os
 import shutil
+import tempfile
 import test_util
 import time
 import unittest
-import uuid
 
 class NetnsExecuteTestCase(unittest.TestCase):
     def setUp(self):
-        self._home_dir = os.path.join(os.getenv("HOME"), ".nepi", 
-                str(uuid.uuid1()))
-        os.makedirs(self._home_dir)
+        self.root_dir = tempfile.mkdtemp()
 
     @test_util.skipUnless(os.getuid() == 0, "Test requires root privileges")
     def test_run_ping_if(self):
         user = getpass.getuser()
         testbed_version = "01"
         instance = netns.TestbedInstance(testbed_version)
-        instance.configure("homeDirectory", self._home_dir)
+        instance.configure("homeDirectory", self.root_dir)
         instance.create(2, "Node")
         instance.create(3, "Node")
         instance.create(4, "NodeInterface")
@@ -65,7 +63,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
         user = getpass.getuser()
         testbed_version = "01"
         instance = netns.TestbedInstance(testbed_version)
-        instance.configure("homeDirectory", self._home_dir)
+        instance.configure("homeDirectory", self.root_dir)
         instance.create(2, "Node")
         instance.create(3, "Node")
         instance.create(4, "P2PNodeInterface")
@@ -105,7 +103,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
         user = getpass.getuser()
         testbed_version = "01"
         instance = netns.TestbedInstance(testbed_version)
-        instance.configure("homeDirectory", self._home_dir)
+        instance.configure("homeDirectory", self.root_dir)
         instance.create(2, "Node")
         instance.create(3, "Node")
         instance.create(4, "Node")
@@ -160,7 +158,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.shutdown()
         
     def tearDown(self):
-        shutil.rmtree(self._home_dir)
+        shutil.rmtree(self.root_dir)
 
 if __name__ == '__main__':
     unittest.main()
