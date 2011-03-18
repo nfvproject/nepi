@@ -3,9 +3,19 @@
 
 class Attribute(object):
     ### Attribute types
-    STRING, BOOL, ENUM, DOUBLE, INTEGER = (
-		"STRING", "BOOL", "ENUM", "DOUBLE", "INTEGER")
-    types = [STRING, BOOL, ENUM, DOUBLE, INTEGER]
+    STRING  = "STRING"
+    BOOL    = "BOOL"
+    ENUM    = "ENUM"
+    DOUBLE  = "DOUBLE"
+    INTEGER = "INTEGER"
+
+    types = [
+        STRING, 
+        BOOL, 
+        ENUM, 
+        DOUBLE, 
+        INTEGER
+    ]
 
     ### Attribute Flags
     NoFlags     = 0x00

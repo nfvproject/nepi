@@ -20,12 +20,12 @@ FDNETDEV = "ns3::FileDescriptorNetDevice"
 
 ### Connection functions ####
 
-def connect_switch(switch, interface):
+def connect_switch(testbed_instance, switch, interface):
     switch.connect(interface)
    
 #XXX: This connection function cannot be use to transfer a file descriptor
 # to a remote tap device
-def connect_fd_local(tap, fdnd):
+def connect_fd_local(testbed_instance, tap, fdnd):
     import passfd
     import socket
     fd = tap.file_descriptor
@@ -122,7 +122,7 @@ def start_application(testbed_instance, guid, parameters, traces):
 
 ### Status functions ###
 
-def status_application(testbed_instance, guid):
+def status_application(testbed_instance, guid, parameters, traces):
     if guid not in testbed_instance.elements.keys():
         return STATUS_NOT_STARTED
     app = testbed_instance.elements[guid]

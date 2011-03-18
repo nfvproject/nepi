@@ -54,7 +54,7 @@ class TestbedInstance(execute.TestbedInstance):
 
     def create(self, guid, factory_id):
         if factory_id not in self._factories:
-            raise RuntimeError("Invalid element type %s for Netns version %s" %
+            raise RuntimeError("Invalid element type %s for testbed version %s" %
                     (factory_id, self._testbed_version))
         if guid in self._create:
             raise RuntimeError("Cannot add elements with the same guid: %d" %
@@ -184,10 +184,9 @@ class TestbedInstance(execute.TestbedInstance):
                 continue
             factory = self._factories[factory_id]
             for guid in guids[factory_id]:
-                parameters = dict() if guid not in self._create_set else \
-                        self._create_set[guid]
+                parameters = self._get_parameters(guid)
                 factory_parameters = dict() if guid not in \
-                        self._factory_set else self._create_set[guid]
+                        self._factory_set else self._factory_set[guid]
                 factory.create_function(self, guid, parameters, 
                         factory_parameters)
                 for name, value in parameters.iteritems():
@@ -210,7 +209,7 @@ class TestbedInstance(execute.TestbedInstance):
                             self._testbed_id, factory_id2, 
                             connector_type_name2)
                     if code_to_connect:
-                        code_to_connect(element1, element2)
+                        code_to_connect(self, element1, element2)
 
     def do_configure(self):
         raise NotImplementedError
@@ -256,10 +255,8 @@ class TestbedInstance(execute.TestbedInstance):
             factory = self._factories[factory_id]
             start_function = factory.start_function
             if start_function:
-                traces = [] if guid not in self._add_trace else \
-                        self._add_trace[guid]
-                parameters = dict() if guid not in self._create_set else \
-                        self._create_set[guid]
+                traces = self._traces(guid)
+                parameters = self._parameters(guid)
                 start_function(self, guid, parameters, traces)
         self._started = True
 
@@ -271,16 +268,18 @@ class TestbedInstance(execute.TestbedInstance):
             factory = self._factories[factory_id]
             stop_function = factory.stop_function
             if stop_function:
-                traces = [] if guid not in self._add_trace else \
-                        self._add_trace[guid]
-                stop_function(self, guid, traces)
+                traces = self._traces(guid)
+                parameters = self._parameters(guid)
+                stop_function(self, guid, parameters, traces)
 
     def status(self, guid):
-        for guid, factory_id in self._create.iteritems():
-            factory = self._factories[factory_id]
-            status_function = factory.status_function
-            if status_function:
-                return status_function(self, guid)
+        if not guid in self._create:
+            raise RuntimeError("Element guid %d doesn't exist" % guid)
+        factory_id = self._create[guid]
+        factory = self._factories[factory_id]
+        status_function = factory.status_function
+        if status_function:
+            return status_function(self, guid, parameters, traces)
         return STATUS_UNDETERMINED
 
     def trace(self, guid, trace_id):
@@ -316,4 +315,11 @@ class TestbedInstance(execute.TestbedInstance):
                 self._cross_connect[guid]:
             cross_count = len(self._cross_connect[guid][connection_type_name])
         return count + cross_count
+
+    def _get_traces(self, guid):
+        return [] if guid not in self._add_trace else self._add_trace[guid]
+
+    def _get_parameters(self, guid):
+        return dict() if guid not in self._create_set else \
+                self._create_set[guid]
 

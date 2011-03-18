@@ -195,7 +195,7 @@ class Forwarder(object):
 
     def write_data(self, data):
         sys.stdout.write(data)
-        # sys.stdout.write is buffered, for this we need to do a flush()
+        # sys.stdout.write is buffered, this is why we need to do a flush()
         sys.stdout.flush()
 
     def send_to_server(self, data):

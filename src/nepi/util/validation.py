@@ -10,12 +10,19 @@ def is_enum(attribute, value):
 def is_bool(attribute, value):
     return isinstance(value, bool)
 
+def is_float(attribute, value):
+    return isinstance(value, float)
+
 def is_integer(attribute, value):
     return isinstance(value, int)
 
 def is_string(attribute, value):
     return isinstance(value, str)
 
+def is_time(attribute, value):
+    return isinstance(value, str) # TODO: Missing validation!
+
+# TODO: Allow netrefs!
 def is_ip4_address(attribute, value):
     try:
         ipaddr.IPv4Address(value)
@@ -23,6 +30,7 @@ def is_ip4_address(attribute, value):
         return False
     return True
 
+# TODO: Allow netrefs!
 def is_ip6_address(attribute, value):
     try:
         ipaddr.IPv6Address(value)

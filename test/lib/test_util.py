@@ -134,6 +134,12 @@ class test_environment(object):
         if 'PYTHONPATH' in os.environ:
             environ['PYTHONPATH'] = ":".join(map(os.path.realpath, 
                 os.environ['PYTHONPATH'].split(":")))
+        if 'NEPI_NS3BINDINGS' in os.environ:
+            environ['NEPI_NS3BINDINGS'] = \
+                    os.path.realpath(os.environ['NEPI_NS3BINDINGS'])
+        if 'NEPI_NS3LIBRARY' in os.environ:
+            environ['NEPI_NS3LIBRARY'] = \
+                    os.path.realpath(os.environ['NEPI_NS3LIBRARY'])
 
         self.dir = tempfile.mkdtemp()
         self.server_keypair = gen_ssh_keypair(
