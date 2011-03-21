@@ -184,11 +184,8 @@ class TestbedInstance(execute.TestbedInstance):
                 continue
             factory = self._factories[factory_id]
             for guid in guids[factory_id]:
+                factory.create_function(self, guid)
                 parameters = self._get_parameters(guid)
-                factory_parameters = dict() if guid not in \
-                        self._factory_set else self._factory_set[guid]
-                factory.create_function(self, guid, parameters, 
-                        factory_parameters)
                 for name, value in parameters.iteritems():
                     self.set(TIME_NOW, guid, name, value)
 
@@ -255,9 +252,7 @@ class TestbedInstance(execute.TestbedInstance):
             factory = self._factories[factory_id]
             start_function = factory.start_function
             if start_function:
-                traces = self._traces(guid)
-                parameters = self._parameters(guid)
-                start_function(self, guid, parameters, traces)
+                start_function(self, guid)
         self._started = True
 
     def action(self, time, guid, action):
@@ -268,9 +263,7 @@ class TestbedInstance(execute.TestbedInstance):
             factory = self._factories[factory_id]
             stop_function = factory.stop_function
             if stop_function:
-                traces = self._traces(guid)
-                parameters = self._parameters(guid)
-                stop_function(self, guid, parameters, traces)
+                stop_function(self, guid)
 
     def status(self, guid):
         if not guid in self._create:
@@ -279,7 +272,7 @@ class TestbedInstance(execute.TestbedInstance):
         factory = self._factories[factory_id]
         status_function = factory.status_function
         if status_function:
-            return status_function(self, guid, parameters, traces)
+            return status_function(self, guid)
         return STATUS_UNDETERMINED
 
     def trace(self, guid, trace_id):
@@ -322,4 +315,8 @@ class TestbedInstance(execute.TestbedInstance):
     def _get_parameters(self, guid):
         return dict() if guid not in self._create_set else \
                 self._create_set[guid]
+
+    def _get_factory_parameters(self, guid):
+        return dict() if guid not in self._factory_set else \
+                self._factory_set[guid]
 

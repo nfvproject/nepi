@@ -4,7 +4,6 @@
 from constants import TESTBED_ID
 from nepi.core import metadata
 from nepi.core.attributes import Attribute
-from nepi.util import validation
 from nepi.util.constants import AF_INET, STATUS_NOT_STARTED, STATUS_RUNNING, \
         STATUS_FINISHED
 
@@ -75,25 +74,109 @@ def connect_node_application(testbed_instance, node, application):
 def connect_node_other(tesbed_instance, node, other):
     node.AggregateObject(other)
  
+ ### create traces functions ###
+
+def get_node_guid(testbed_instance, guid):
+    node_guid = testbed_instance.get_connected(guid, "node", "devs")[0]
+    return node_guid
+
+def get_dev_number(testbed_instance, guid):
+    dev_guids = testbed_instance.get_connected(node_guid, "devs", "node")
+    interface_number = 0
+    for guid_ in dev_guids:
+        if guid_ == guid:
+            break
+        inteface_number += 1
+    return interface_number
+
+def p2pcap_trace(testbed_instance, guid):
+    trace_id = "p2ppcap"
+    node_guid = get_node_guid(testbed_instance, guid)
+    interface_number = get_dev_number(testbed_instance, guid)
+    element = testbed_instance._elements[guid]
+    filename = "trace-p2p-node-%d-dev-%d.pcap" % (node_name, interface_number)
+    testbed_instance.follow_trace(guid, trace_id, filename)
+    filepath = testbed_instance.trace_filename(self, guid, trace_id):
+    helper = testbed_instance.ns3.PointToPointHelper()
+    helper.EnablePcap(filepath, element, explicitFilename = True)
+
+def _csmapcap_trace(testbed_instance, guid, trace_id, promisc):
+    node_guid = get_node_guid(testbed_instance, guid)
+    interface_number = get_dev_number(testbed_instance, guid)
+    element = testbed_instance._elements[guid]
+    filename = "trace-csma-node-%d-dev-%d.pcap" % (node_name, interface_number)
+    testbed_instance.follow_trace(guid, trace_id, filename)
+    filepath = testbed_instance.trace_filename(self, guid, trace_id):
+    helper = testbed_instance.ns3.CsmaHelper()
+    helper.EnablePcap(filepath, element, promiscuous = promisc, 
+            explicitFilename = True)
+
+def csmapcap_trace(testbed_instance, guid):
+    trace_id = "csmapcap"
+    promisc = False
+    _csmapcap_trace(testbed_instance, guid, trace_id, promisc)
+
+def csmapcap_promisc_trace(testbed_instance, guid):
+    trace_id = "csmapcap_promisc"
+    promisc = True
+    _csmapcap_trace(testbed_instance, guid, trace_id, promisc)
+
+def fdpcap_trace(testbed_instance, guid):
+    trace_id = "fdpcap"
+    node_guid = get_node_guid(testbed_instance, guid)
+    interface_number = get_dev_number(testbed_instance, guid)
+    element = testbed_instance._elements[guid]
+    filename = "trace-fd-node-%d-dev-%d.pcap" % (node_name, interface_number)
+    testbed_instance.follow_trace(guid, trace_id, filename)
+    filepath = testbed_instance.trace_filename(self, guid, trace_id):
+    helper = testbed_instance.ns3.FileDescriptorHelper()
+    helper.EnablePcap(filepath, element, explicitFilename = True)
+
+def yanswifipcap_trace(testbed_instance, guid):
+    trace_id = "yanswifipcap"
+    dev_guid = testbed_instance.get_connected(guid, "dev", "phy")[0]
+    node_guid = get_node_guid(testbed_instance, dev_guid)
+    interface_number = get_dev_number(testbed_instance, dev_guid)
+    element = testbed_instance._elements[dev_guid]
+    filename = "trace-yanswifi-node-%d-dev-%d.pcap" % (node_name, interface_number)
+    testbed_instance.follow_trace(guid, trace_id, filename)
+    filepath = testbed_instance.trace_filename(self, guid, trace_id):
+    helper = testbed_instance.ns3.YansWifiPhyHelper()
+    helper.EnablePcap(filepath, element, explicitFilename = True)
+
+trace_functions = dict({
+    "p2ppcap": p2ppcap_trace,
+    "csmapcap": csmapcap_trace,
+    "csmapcap_promisc": csmapcap_promisc_trace,
+    "fdpcap": fdpcap_trace,
+    "yanswifipcap": yanswifipcap_trace
+    })
+
 ### Creation functions ###
 
-def create_element(testbed_instance, guid, parameters, factory_parameters):
+def create_element(testbed_instance, guid):
     element_factory = testbed_instance.ns3.ObjectFactory()
     factory_id = testbed_instance._create[guid]
     element_factory.SetTypeId(factory_id) 
+    factory_parameters = testbed_instance._get_factory_parameters(guid)
     for name, value in factory_parameters.iteritems():
         testbed_instance._set(element_factory, factory_id, name, value)
     element = element_factory.Create()
     testbed_instance._elements[guid] = element
+    traces = testbed_instance._get_traces(guid)
+    for trace_id in traces:
+        trace_func = trace_functions[trace_id]
+        trace_func(testbed_instance, guid)
 
-def create_node(testbed_instance, guid, parameters, factory_parameters):
-    create_element(testbed_instance, guid, parameters, factory_parameters)
+def create_node(testbed_instance, guid):
+    create_element(testbed_instance, guid)
     element = testbed_instance._elements[guid]
     element.AggregateObject(testbed_instance.PacketSocketFactory())
 
-def create_dev(testbed_instance, guid, parameters, factory_parameters):
-    create_element(testbed_instance, guid, parameters, factory_parameters)
+def create_device(testbed_instance, guid):
+    create_element(testbed_instance, guid)
     element = testbed_instance._elements[guid]
+    parameters = testbed_instance._get_parameters(guid)
     if "macAddress" in parameters:
         address = parameters["macAddress"]
         macaddr = testbed_instance.ns3.Mac48Address(address)
@@ -101,17 +184,17 @@ def create_dev(testbed_instance, guid, parameters, factory_parameters):
         macaddr = testbed_instance.ns3.Mac48Address.Allocate()
     element.SetAddress(macaddr)
 
-def create_wifi_standard_model(testbed_instance, guid, parameters, 
-        factory_parameters):
-    create_element(testbed_instance, guid, parameters, factory_parameters)
+def create_wifi_standard_model(testbed_instance, guid):
+    create_element(testbed_instance, guid)
     element = testbed_instance._elements[guid]
+    parameters = testbed_instance._get_parameters(guid)
     if "standard" in parameters:
         standard = parameters["standard"]
         if standard:
             elements.ConfigureStandard(wifi_standards[standard])
 
-def create_ipv4stack(testbed_instance, guid, parameters, factory_parameters):
-    create_element(testbed_instance, guid, parameters, factory_parameters)
+def create_ipv4stack(testbed_instance, guid):
+    create_element(testbed_instance, guid)
     element = testbed_instance._elements[guid]
     list_routing = testbed_instance.ns3.Ipv4ListRouting()
     element.SetRoutingProtocol(list_routing)
@@ -120,20 +203,21 @@ def create_ipv4stack(testbed_instance, guid, parameters, factory_parameters):
 
 ### Start/Stop functions ###
 
-def start_application(testbed_instance, guid, parameters, traces):
+def start_application(testbed_instance, guid):
     element = testbed_instance.elements[guid]
     element.Start()
 
-def stop_application(testbed_instance, guid, parameters, traces):
+def stop_application(testbed_instance, guid):
     element = testbed_instance.elements[guid]
     element.Stop()
 
 ### Status functions ###
 
-def status_application(testbed_instance, guid, parameters, traces):
+def status_application(testbed_instance, guid):
     if guid not in testbed_instance.elements.keys():
         return STATUS_NOT_STARTED
     app = testbed_instance.elements[guid]
+    parameters = testbed_instance._get_parameters(guid)
     if "stopTime" in parameters:
         stop = parameters["stopTime"]
         if stop:
@@ -528,46 +612,179 @@ connections = [
     })
 ]
 
-# TODO!
-attributes = dict({
-    "forward_X11": dict({      
-                "name": "forward_X11",
-                "help": "Forward x11 from main namespace to the node",
-                "type": Attribute.BOOL, 
-                "value": False,
-                "range": None,
-                "allowed": None,
-                "flags": Attribute.DesignOnly,
-                "validation_function": validation.is_bool
-            }),
-    })
-
-# TODO!
 traces = dict({
-    "stdout": dict({
-                "name": "stdout",
-                "help": "Standard output stream"
+    "p2ppcap": dict({
+                "name": "P2PPcapTrace",
+                "help": "Trace to sniff packets from a P2P network device"
               }),
-    })
+    "csmapcap_promisc": dict({
+                "name": "CsmaPromiscPcapTrace",
+                "help": "Trace to sniff packets from a Csma network device in promiscuous mode"
+              }),
+    "csmapcap": dict({
+                "name": "CsmaPcapTrace",
+                "help": "Trace to sniff packets from a Csma network device"
+              }),
+    "fdpcap": dict({
+                "name": "FileDescriptorPcapTrace",
+                "help": "Trace to sniff packets from a FileDescriptor network device"
+              }),
+    "yanswifipcap": dict({
+                "name": "YansWifiPhyPcapTrace",
+                "help": "Trace to sniff packets from a Wifi network device"
+              }),
+})
 
-# TODO!
-factories_order = [ NODE, P2PIFACE, NODEIFACE, TAPIFACE, SWITCH,
-        APPLICATION ]
-
-# TODO!
-factories_info = dict({
-    NODE: dict({
-            "allow_routes": True,
-            "help": "Emulated Node with virtualized network stack",
-            "category": "topology",
-            "create_function": create_node,
-            "start_function": None,
-            "stop_function": None,
-            "status_function": None,
-            "box_attributes": ["forward_X11"],
-            "connector_types": ["devs", "apps"]
-       }),
- })
+factories_order = ["ns3::BasicEnergySource",
+    "ns3::WifiRadioEnergyModel",
+    "ns3::BSSchedulerRtps",
+    "ns3::BSSchedulerSimple",
+    "ns3::SubscriberStationNetDevice",
+    "ns3::BaseStationNetDevice",
+    "ns3::UdpTraceClient",
+    "ns3::UdpServer",
+    "ns3::UdpClient",
+    "ns3::FlowMonitor",
+    "ns3::Radvd",
+    "ns3::Ping6",
+    "ns3::flame::FlameProtocol",
+    "ns3::flame::FlameRtable",
+    "ns3::dot11s::AirtimeLinkMetricCalculator",
+    "ns3::dot11s::HwmpProtocol",
+    "ns3::dot11s::HwmpRtable",
+    "ns3::dot11s::PeerManagementProtocol",
+    "ns3::dot11s::PeerLink",
+    "ns3::MeshWifiInterfaceMac",
+    "ns3::MeshPointDevice",
+    "ns3::UanMacRcGw",
+    "ns3::UanMacRc",
+    "ns3::UanPhyCalcSinrDual",
+    "ns3::UanPhyPerGenDefault",
+    "ns3::UanPhyDual",
+    "ns3::UanPropModelThorp",
+    "ns3::UanMacCw",
+    "ns3::UanNoiseModelDefault",
+    "ns3::UanMacAloha",
+    "ns3::UanPropModelIdeal",
+    "ns3::UanTransducerHd",
+    "ns3::UanPhyCalcSinrDefault",
+    "ns3::UanPhyGen",
+    "ns3::UanPhyCalcSinrFhFsk",
+    "ns3::UanPhyPerUmodem",
+    "ns3::UanChannel",
+    "ns3::V4Ping",
+    "ns3::AthstatsWifiTraceSink",
+    "ns3::FlameStack",
+    "ns3::Dot11sStack",
+    "ns3::NonCommunicatingNetDevice",
+    "ns3::HalfDuplexIdealPhy",
+    "ns3::AlohaNoackNetDevice",
+    "ns3::SpectrumAnalyzer",
+    "ns3::WaveformGenerator",
+    "ns3::MultiModelSpectrumChannel",
+    "ns3::SingleModelSpectrumChannel",
+    "ns3::MsduStandardAggregator",
+    "ns3::EdcaTxopN",
+    "ns3::QstaWifiMac",
+    "ns3::QapWifiMac",
+    "ns3::QadhocWifiMac",
+    "ns3::MinstrelWifiManager",
+    "ns3::CaraWifiManager",
+    "ns3::AarfcdWifiManager",
+    "ns3::OnoeWifiManager",
+    "ns3::AmrrWifiManager",
+    "ns3::ConstantRateWifiManager",
+    "ns3::IdealWifiManager",
+    "ns3::AarfWifiManager",
+    "ns3::ArfWifiManager",
+    "ns3::WifiNetDevice",
+    "ns3::NqstaWifiMac",
+    "ns3::NqapWifiMac",
+    "ns3::AdhocWifiMac",
+    "ns3::DcaTxop",
+    "ns3::WifiMacQueue",
+    "ns3::YansWifiChannel",
+    "ns3::YansWifiPhy",
+    "ns3::NistErrorRateModel",
+    "ns3::YansErrorRateModel",
+    "ns3::WaypointMobilityModel",
+    "ns3::ConstantAccelerationMobilityModel",
+    "ns3::RandomDirection2dMobilityModel",
+    "ns3::RandomWalk2dMobilityModel",
+    "ns3::SteadyStateRandomWaypointMobilityModel",
+    "ns3::RandomWaypointMobilityModel",
+    "ns3::GaussMarkovMobilityModel",
+    "ns3::ConstantVelocityMobilityModel",
+    "ns3::ConstantPositionMobilityModel",
+    "ns3::ListPositionAllocator",
+    "ns3::GridPositionAllocator",
+    "ns3::RandomRectanglePositionAllocator",
+    "ns3::RandomBoxPositionAllocator",
+    "ns3::RandomDiscPositionAllocator",
+    "ns3::UniformDiscPositionAllocator",
+    "ns3::HierarchicalMobilityModel",
+    "ns3::aodv::RoutingProtocol",
+    "ns3::UdpEchoServer",
+    "ns3::UdpEchoClient",
+    "ns3::PacketSink",
+    "ns3::OnOffApplication",
+    "ns3::VirtualNetDevice",
+    "ns3::FileDescriptorNetDevice",
+    "ns3::TapBridge",
+    "ns3::BridgeChannel",
+    "ns3::BridgeNetDevice",
+    "ns3::EmuNetDevice",
+    "ns3::CsmaChannel",
+    "ns3::CsmaNetDevice",
+    "ns3::PointToPointRemoteChannel",
+    "ns3::PointToPointChannel",
+    "ns3::PointToPointNetDevice",
+    "ns3::NscTcpL4Protocol",
+    "ns3::Icmpv6L4Protocol",
+    "ns3::Ipv6OptionPad1",
+    "ns3::Ipv6OptionPadn",
+    "ns3::Ipv6OptionJumbogram",
+    "ns3::Ipv6OptionRouterAlert",
+    "ns3::Ipv6ExtensionHopByHop",
+    "ns3::Ipv6ExtensionDestination",
+    "ns3::Ipv6ExtensionFragment",
+    "ns3::Ipv6ExtensionRouting",
+    "ns3::Ipv6ExtensionLooseRouting",
+    "ns3::Ipv6ExtensionESP",
+    "ns3::Ipv6ExtensionAH",
+    "ns3::Ipv6L3Protocol",
+    "ns3::LoopbackNetDevice",
+    "ns3::Icmpv4L4Protocol",
+    "ns3::RttMeanDeviation",
+    "ns3::ArpL3Protocol",
+    "ns3::TcpL4Protocol",
+    "ns3::UdpL4Protocol",
+    "ns3::Ipv4L3Protocol",
+    "ns3::SimpleNetDevice",
+    "ns3::SimpleChannel",
+    "ns3::PacketSocket",
+    "ns3::DropTailQueue",
+    "ns3::Node",
+    "ns3::FriisSpectrumPropagationLossModel",
+    "ns3::Cost231PropagationLossModel",
+    "ns3::JakesPropagationLossModel",
+    "ns3::RandomPropagationLossModel",
+    "ns3::FriisPropagationLossModel",
+    "ns3::TwoRayGroundPropagationLossModel",
+    "ns3::LogDistancePropagationLossModel",
+    "ns3::ThreeLogDistancePropagationLossModel",
+    "ns3::NakagamiPropagationLossModel",
+    "ns3::FixedRssLossModel",
+    "ns3::MatrixPropagationLossModel",
+    "ns3::RangePropagationLossModel",
+    "ns3::RandomPropagationDelayModel",
+    "ns3::ConstantSpeedPropagationDelayModel",
+    "ns3::RateErrorModel",
+    "ns3::ListErrorModel",
+    "ns3::ReceiveListErrorModel",
+    "ns3::PacketBurst",
+    "ns3::EnergySourceContainer"
+ ]
 
 testbed_attributes = dict({
         "ns3_bindings": dict({
@@ -623,6 +840,7 @@ class VersionedMetadataInfo(metadata.VersionedMetadataInfo):
 
     @property
     def attributes(self):
+        from attributes_metadata_v3_9_RC3 import attributes
         return attributes
 
     @property
@@ -635,6 +853,7 @@ class VersionedMetadataInfo(metadata.VersionedMetadataInfo):
 
     @property
     def factories_info(self):
+        from factories_metadata_v3_9_RC3 import factories_info
         return factories_info
 
     @property

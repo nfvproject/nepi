@@ -65,17 +65,18 @@ class TestbedInstance(testbed_impl.TestbedInstance):
         return content
 
     def shutdown(self):
-        for trace in self._traces.values():
-            trace.close()
         for element in self._elements.values():
             element.destroy()
 
     def trace_filename(self, guid, trace_id):
         # TODO: Need to be defined inside a home!!!! with and experiment id_code
-        return os.path.join(self.home_directory, "%d_%s" % (guid, trace_id))
+        filename = self._trace_filenames[guid][trace_id]
+        return os.path.join(self.home_directory, filename)
 
-    def follow_trace(self, trace_id, trace):
-        self._traces[trace_id] = trace
+    def follow_trace(self, guid, trace_id, filename):
+        if guid not in self._traces:
+            self._traces[guid] = dict()
+        self._traces[guid][trace_id] = filename
 
     def _set(self, element, factory_id, name, value):
         TypeId = self.ns3.TypeId()
