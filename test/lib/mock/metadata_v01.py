@@ -15,15 +15,15 @@ APP = "Application"
 
 ### Creation functions ###
 
-def create_node(testbed_instance, guid, parameters, factory_parameters):
+def create_node(testbed_instance, guid):
     element = NODE 
     testbed_instance.elements[guid] = element
 
-def create_iface(testbed_instance, guid, parameters, factory_parameters):
+def create_iface(testbed_instance, guid):
      element = IFACE
      testbed_instance.elements[guid] = element
 
-def create_application(testbed_instance, guid, parameters, factory_parameters):
+def create_application(testbed_instance, guid):
      element = APP
      testbed_instance.elements[guid] = element
 
@@ -154,8 +154,8 @@ testbed_attributes = dict({
 
 class VersionedMetadataInfo(metadata.VersionedMetadataInfo):
     @property
-    def connections_types(self):
-        return connection_types
+    def connector_types(self):
+        return connector_types
 
     @property
     def connections(self):

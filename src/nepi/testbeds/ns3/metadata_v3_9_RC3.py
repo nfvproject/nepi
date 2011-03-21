@@ -4,6 +4,7 @@
 from constants import TESTBED_ID
 from nepi.core import metadata
 from nepi.core.attributes import Attribute
+from nepi.util import validation
 from nepi.util.constants import AF_INET, STATUS_NOT_STARTED, STATUS_RUNNING, \
         STATUS_FINISHED
 
@@ -73,7 +74,11 @@ def connect_node_application(testbed_instance, node, application):
 
 def connect_node_other(tesbed_instance, node, other):
     node.AggregateObject(other)
- 
+
+def connect_fd_tap(tesbed_instance, fd, tap):
+    # TODO!
+    pass
+
  ### create traces functions ###
 
 def get_node_guid(testbed_instance, guid):
@@ -89,14 +94,14 @@ def get_dev_number(testbed_instance, guid):
         inteface_number += 1
     return interface_number
 
-def p2pcap_trace(testbed_instance, guid):
+def p2ppcap_trace(testbed_instance, guid):
     trace_id = "p2ppcap"
     node_guid = get_node_guid(testbed_instance, guid)
     interface_number = get_dev_number(testbed_instance, guid)
     element = testbed_instance._elements[guid]
     filename = "trace-p2p-node-%d-dev-%d.pcap" % (node_name, interface_number)
     testbed_instance.follow_trace(guid, trace_id, filename)
-    filepath = testbed_instance.trace_filename(self, guid, trace_id):
+    filepath = testbed_instance.trace_filename(self, guid, trace_id)
     helper = testbed_instance.ns3.PointToPointHelper()
     helper.EnablePcap(filepath, element, explicitFilename = True)
 
@@ -106,7 +111,7 @@ def _csmapcap_trace(testbed_instance, guid, trace_id, promisc):
     element = testbed_instance._elements[guid]
     filename = "trace-csma-node-%d-dev-%d.pcap" % (node_name, interface_number)
     testbed_instance.follow_trace(guid, trace_id, filename)
-    filepath = testbed_instance.trace_filename(self, guid, trace_id):
+    filepath = testbed_instance.trace_filename(self, guid, trace_id)
     helper = testbed_instance.ns3.CsmaHelper()
     helper.EnablePcap(filepath, element, promiscuous = promisc, 
             explicitFilename = True)
@@ -128,7 +133,7 @@ def fdpcap_trace(testbed_instance, guid):
     element = testbed_instance._elements[guid]
     filename = "trace-fd-node-%d-dev-%d.pcap" % (node_name, interface_number)
     testbed_instance.follow_trace(guid, trace_id, filename)
-    filepath = testbed_instance.trace_filename(self, guid, trace_id):
+    filepath = testbed_instance.trace_filename(self, guid, trace_id)
     helper = testbed_instance.ns3.FileDescriptorHelper()
     helper.EnablePcap(filepath, element, explicitFilename = True)
 
@@ -140,7 +145,7 @@ def yanswifipcap_trace(testbed_instance, guid):
     element = testbed_instance._elements[dev_guid]
     filename = "trace-yanswifi-node-%d-dev-%d.pcap" % (node_name, interface_number)
     testbed_instance.follow_trace(guid, trace_id, filename)
-    filepath = testbed_instance.trace_filename(self, guid, trace_id):
+    filepath = testbed_instance.trace_filename(self, guid, trace_id)
     helper = testbed_instance.ns3.YansWifiPhyHelper()
     helper.EnablePcap(filepath, element, explicitFilename = True)
 
@@ -158,9 +163,10 @@ def create_element(testbed_instance, guid):
     element_factory = testbed_instance.ns3.ObjectFactory()
     factory_id = testbed_instance._create[guid]
     element_factory.SetTypeId(factory_id) 
-    factory_parameters = testbed_instance._get_factory_parameters(guid)
-    for name, value in factory_parameters.iteritems():
-        testbed_instance._set(element_factory, factory_id, name, value)
+    construct_parameters = testbed_instance._get_construct_parameters(guid)
+    for name, value in construct_parameters.iteritems():
+        ns3_value = testbed_instance._to_ns3_value(factory_id, name, value)
+        element_factory.Set(name, ns3_value)
     element = element_factory.Create()
     testbed_instance._elements[guid] = element
     traces = testbed_instance._get_traces(guid)
@@ -609,7 +615,13 @@ connections = [
         "to":   ( "ns3", "ns3::RandomWaypointMobilityModel", "node" ),
         "code": connect_node_other,
         "can_cross": False
-    })
+    }),
+    dict({
+        "from": ( "ns3", "ns3::FileDescriptorNetDevice", "fd" ),
+        "to":   ( "netns", "TapNodeInterface", "fd" ),
+        "code": connect_fd_tap,
+        "can_cross": False
+    }),
 ]
 
 traces = dict({
@@ -831,8 +843,8 @@ testbed_attributes = dict({
 
 class VersionedMetadataInfo(metadata.VersionedMetadataInfo):
     @property
-    def connections_types(self):
-        return connection_types
+    def connector_types(self):
+        return connector_types
 
     @property
     def connections(self):

@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import validation as ns3_validation
+from nepi.core.attributes import Attribute
 from nepi.util import validation
 
 attributes = dict({
@@ -412,7 +414,7 @@ attributes = dict({
         "flags": None,
         "allowed": None,
         "type": Attribute.INTEGER,
-        "help": "The minimum value for the "timer" threshold in the AARF algorithm."
+        "help": "The minimum value for the 'timer' threshold in the AARF algorithm."
     }),
     "TimerThreshold": dict({
         "name": "TimerThreshold",
@@ -422,7 +424,7 @@ attributes = dict({
         "flags": None,
         "allowed": None,
         "type": Attribute.INTEGER,
-        "help": "The "timer" threshold in the ARF algorithm."
+        "help": "The 'timer' threshold in the ARF algorithm."
     }),
     "poriFor36mbps": dict({
         "name": "poriFor36mbps",
@@ -809,7 +811,7 @@ attributes = dict({
     }),
     "IpAddress": dict({
         "name": "IpAddress",
-        "validation_function": validation.is_ip4address,
+        "validation_function": validation.is_ip4_address,
         "value": None,
         "range": None,
         "flags": None,
@@ -1282,7 +1284,7 @@ attributes = dict({
         "validation_function": validation.is_integer,
         "value": 0,
         "range": None,
-        "flags": None,
+        "flags": Attribute.DesignOnly,
         "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The number of waypoints remaining."
@@ -1639,7 +1641,7 @@ attributes = dict({
     }),
     "Local": dict({
         "name": "Local",
-        "validation_function": validation.is_address,
+        "validation_function": ns3_validation.is_address,
         "value": None,
         "range": None,
         "flags": None,
@@ -1719,7 +1721,7 @@ attributes = dict({
     }),
     "Gateway": dict({
         "name": "Gateway",
-        "validation_function": validation.is_ip4address,
+        "validation_function": validation.is_ip4_address,
         "value": None,
         "range": None,
         "flags": None,
@@ -1889,7 +1891,7 @@ attributes = dict({
     }),
     "Remote": dict({
         "name": "Remote",
-        "validation_function": validation.is_address,
+        "validation_function": ns3_validation.is_address,
         "value": None,
         "range": None,
         "flags": None,
@@ -2149,8 +2151,7 @@ attributes = dict({
         "flags": None,
         "allowed": None,
         "type": Attribute.INTEGER,
-        "help": "If number of packets in this queue reaches this value, block ack mechanism is used. If this value is 0,
-     block ack is never used."
+        "help": "If number of packets in this queue reaches this value, block ack mechanism is used. If this value is 0, block ack is never used."
     }),
     "TimerK": dict({
         "name": "TimerK",
@@ -2177,7 +2178,7 @@ attributes = dict({
         "validation_function": validation.is_string,
         "value": "liblinux2.6.26.so",
         "range": None,
-        "flags": None,
+        "flags": Attribute.DesignOnly,
         "allowed": None,
         "type": Attribute.STRING,
         "help": "Set the linux library to be used to create the stack"
@@ -2654,7 +2655,7 @@ attributes = dict({
     }),
     "RemoteAddress": dict({
         "name": "RemoteAddress",
-        "validation_function": validation.is_ip4address,
+        "validation_function": validation.is_ip4_address,
         "value": None,
         "range": None,
         "flags": None,
@@ -3022,5 +3023,365 @@ attributes = dict({
         "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Attempt to raise the rate if we hit that threshold"
-     })
- })
+     }),
+    "ProtocolNumber": dict({
+        "name": "ProtocolNumber",
+        "validation_function": validation.is_integer,
+        "value": 0,
+        "range": None, 
+        "flags": Attribute.ReadOnly,
+        "allowed": None,
+        "type": Attribute.INTEGER,
+        "help": "The Ipv4 protocol number."
+     }),
+    "Position": dict({
+        "name": "Position",
+        "validation_function": validation.is_string,
+        "value": "0:0:0",
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.STRING,
+        "help": "The current position of the mobility model."
+     }),
+    "Velocity": dict({
+        "name": "Velocity",
+        "validation_function": validation.is_string,
+        "value": "0:0:0", 
+        "range": None, 
+        "flags": Attribute.DesignOnly,
+        "allowed": None, 
+        "type": Attribute.STRING,
+        "help": "The current velocity of the mobility model."
+     }),
+    "StartTime": dict({
+        "name": "StartTime",
+        "validation_function": validation.is_string,
+        "value": "0ns", 
+        "range": None, 
+        "flags": Attribute.DesignOnly,
+        "allowed": None, 
+        "type": Attribute.STRING,
+        "help": "Time at which the application will start"
+     }),
+     "StopTime": dict({
+        "name": "StopTime",
+        "validation_function": validation.is_string,
+        "value": "0ns", 
+        "range": None, 
+        "flags": None,
+        "allowed": None, 
+        "type": Attribute.STRING,
+        "help": "Time at which the application will stop"
+     }),
+    "IsLowLatency": dict({
+        "name": "IsLowLatency",
+        "validation_function": validation.is_bool,
+        "value": True, 
+        "range": None, 
+        "flags": None,
+        "allowed": None, 
+        "type": Attribute.BOOL,
+        "help": "If true, we attempt to modelize a so-called low-latency device: a device where decisions about tx parameters can be made on a per-packet basis and feedback about the transmission of each packet is obtained before sending the next. Otherwise, we modelize a  high-latency device, that is a device where we cannot update our decision about tx parameters after every packet transmission."
+     }),
+     "MaxSsrc": dict({
+        "name": "MaxSsrc",
+        "validation_function": validation.is_integer,
+        "value": 7,
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.INTEGER,
+        "help": "The maximum number of retransmission attempts for an RTS. This value will not have any effect on some rate control algorithms."
+    }),
+    "MaxSlrc": dict({
+        "name": "MaxSlrc",
+        "validation_function": validation.is_integer,
+        "value": 7,
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.INTEGER,
+        "help": "The maximum number of retransmission attempts for a DATA packet. This value will not have any effect on some rate control algorithms."
+    }),
+    "NonUnicastMode": dict({
+        "name": "NonUnicastMode",
+        "validation_function": validation.is_string,
+        "value": "Invalid-WifiMode",
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.STRING,
+        "help": "Wifi mode used for non-unicast transmissions."
+    }),
+    "RtsCtsThreshold": dict({
+        "name": "RtsCtsThreshold",
+        "validation_function": validation.is_integer,
+        "value": 2346,
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.INTEGER,
+        "help": "If  the size of the data packet + LLC header + MAC header + FCS trailer is bigger than this value, we use an RTS/CTS handshake before sending the data, as per IEEE Std. 802.11-2007, Section 9.2.6. This value will not have any effect on some rate control algorithms."
+    }),
+    "FragmentationThreshold": dict({
+        "name": "FragmentationThreshold",
+        "validation_function": validation.is_integer,
+        "value": 2346,
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.INTEGER,
+        "help": "If the size of the data packet + LLC header + MAC header + FCS trailer is biggerthan this value, we fragment it such that the size of the fragments are equal or smaller than this value, as per IEEE Std. 802.11-2007, Section 9.4. This value will not have any effect on some rate control algorithms."
+    }),
+    "Ssid": dict({
+        "name": "Ssid",
+        "validation_function": validation.is_string,
+        "value": "default",
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.STRING,
+        "help": "The ssid we want to belong to."
+    }),
+    "AckTimeout": dict({
+        "name": "AckTimeout",
+        "validation_function": validation.is_time,
+        "value": "75000ns",
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.STRING,
+        "help": "When this timeout expires, the DATA/ACK handshake has failed."
+    }),
+    "Sifs": dict({
+        "name": "Sifs",
+        "validation_function": validation.is_time,
+        "value": "16000ns",
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.STRING,
+        "help": "The value of the SIFS constant."
+    }),
+    "MinCw": dict({
+        "name": "MinCw",
+        "validation_function": validation.is_integer,
+        "value": 15,
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.INTEGER,
+        "help": "The minimum value of the contention window."
+    }),
+    "IsEnabled": dict({
+        "name": "IsEnabled",
+        "validation_function": validation.is_bool,
+        "value": True, 
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.BOOL,
+        "help": "Whether this ErrorModel is enabled or not."
+    }),
+    "CompressedBlockAckTimeout": dict({
+        "name": "CompressedBlockAckTimeout",
+        "validation_function": validation.is_time,
+        "value": "99000ns",
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.STRING,
+        "help": "When this timeout expires, the COMPRESSED_BLOCK_ACK_REQ/COMPRESSED_BLOCK_ACK handshake has failed."
+    }),
+    "MaxCw": dict({
+        "name": "MaxCw",
+        "validation_function": validation.is_integer,
+        "value": 1023, 
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.INTEGER,
+        "help": "The maximum value of the contention window."
+    }),
+    "RTG": dict({
+        "name": "RTG",
+        "validation_function": validation.is_integer,
+        "value": 0, 
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.INTEGER,
+        "help": "receive/transmit transition gap."
+    }),
+    "TTG": dict({
+        "name": "TTG",
+        "validation_function": validation.is_integer,
+        "value": 0, 
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.INTEGER,
+        "help": "transmit/receive transition gap."
+    }),
+    "MinRTO": dict({
+        "name": "MinRTO",
+        "validation_function": validation.is_time,
+        "value": "200000000ns",
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.STRING,
+        "help": "Minimum retransmit timeout value"
+    }),
+    "Pifs": dict({
+        "name": "Pifs",
+        "validation_function": validation.is_time,
+        "value": "25000ns",
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.STRING,
+        "help": "The value of the PIFS constant."
+    }),
+    "InitialEstimation": dict({
+        "name": "InitialEstimation",
+        "validation_function": validation.is_time,
+        "value": "1000000000ns",
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.STRING,
+        "help": "XXX"
+    }),
+    "BasicBlockAckTimeout": dict({
+        "name": "BasicBlockAckTimeout",
+        "validation_function": validation.is_time,
+        "value": "281000ns",
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.STRING,
+        "help": "When this timeout expires, the BASIC_BLOCK_ACK_REQ/BASIC_BLOCK_ACK handshake has failed."
+    }),
+    "MaxMultiplier": dict({
+        "name": "MaxMultiplier",
+        "validation_function": validation.is_double,
+        "value": 64.0,
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.DOUBLE,
+        "help": "XXX"
+    }),
+    "Aifsn": dict({
+        "name": "Aifsn",
+        "validation_function": validation.is_integer,
+        "value": 2, 
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.INTEGER,
+        "help": "The AIFSN: the default value conforms to simple DCA."
+    }),
+    "OptionNumber": dict({
+        "name": "OptionNumber",
+        "validation_function": validation.is_integer,
+        "value": 0,
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.INTEGER,
+        "help": "The IPv6 option number."
+    }),
+    "Slot": dict({
+        "name": "Slot",
+        "validation_function": validation.is_time,
+        "value": "9000ns",
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.STRING,
+        "help": "The duration of a Slot."
+    }),
+    "IpForward": dict({
+        "name": "IpForward",
+        "validation_function": validation.is_bool,
+        "value": True, 
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.BOOL,
+        "help": "Globally enable or disable IP forwarding for all current and future Ipv4 devices."
+    }),
+    "WeakEsModel": dict({
+        "name": "WeakEsModel",
+        "validation_function": validation.is_bool,
+        "value": True, 
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.BOOL,
+        "help": "RFC1122 term for whether host accepts datagram with a dest. address on another interface"
+    }),
+    "MaxPropagationDelay": dict({
+        "name": "MaxPropagationDelay",
+        "validation_function": validation.is_time,
+        "value": "3333ns",
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.STRING,
+        "help": "The maximum propagation delay. Unused for now."
+    }),
+    "ExtensionNumber": dict({
+        "name": "ExtensionNumber",
+        "validation_function": validation.is_integer,
+        "value": 0, 
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.INTEGER,
+        "help": "The IPv6 extension number."
+    }),
+    "EifsNoDifs": dict({
+        "name": "EifsNoDifs",
+        "validation_function": validation.is_time,
+        "value": "60000ns",
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.STRING,
+        "help": "The value of EIFS-DIFS"
+    }),
+    "CtsTimeout": dict({
+        "name": "CtsTimeout",
+        "validation_function": validation.is_time,
+        "value": "75000ns",
+        "range": None,
+        "flags": None,
+        "allowed": None,
+        "type": Attribute.STRING,
+        "help": "When this timeout expires, the RTS/CTS handshake has failed."
+    }),
+    "max_addresses": dict({
+        "name": "MaxAddresses",
+        "help": "Maximum number of addresses allowed by the device",
+        "type": Attribute.INTEGER,
+        "value": None,
+        "range": None,
+        "allowed": None,
+        "flags": Attribute.Invisible,
+        "validation_function": validation.is_integer
+    }),
+    "family": dict({
+        "name": "Family",
+        "help": "IP address family",
+        "type": Attribute.INTEGER,
+        "value": AF_INET,
+        "range": None,
+        "allowed": None,
+        "flags": Attribute.Invisible,
+        "validation_function": validation.is_integer
+     }), 
+})

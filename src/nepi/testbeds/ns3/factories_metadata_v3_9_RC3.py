@@ -2,14 +2,15 @@
 # -*- coding: utf-8 -*-
 
 from metadata_v3_9_RC3 import create_device, create_element, create_ipv4stack, \
-        create_node, create_wifi_standard_model
+        create_node, create_wifi_standard_model, start_application, \
+        stop_application, status_application
 
-factories_info = dict{(
-    "ns3::Ping6": dict{(
+factories_info = dict({
+    "ns3::Ping6": dict({
         "category": "Application",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["node"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": stop_application,
@@ -24,8 +25,8 @@ factories_info = dict{(
             "StopTime"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::UdpL4Protocol": dict{(
+    }),
+     "ns3::UdpL4Protocol": dict({
         "category": "Protocol",
         "create_function": create_element,
         "help": "",
@@ -38,8 +39,8 @@ factories_info = dict{(
         "box_attributes": ["ProtocolNumber"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::RandomDiscPositionAllocator": dict{(
+    }),
+     "ns3::RandomDiscPositionAllocator": dict({
         "category": "Mobility",
         "create_function": create_element,
         "help": "",
@@ -55,8 +56,8 @@ factories_info = dict{(
             "Y"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::Node": dict{(
+    }),
+     "ns3::Node": dict({
         "category": "Topology",
         "create_function": create_node,
         "help": "",
@@ -68,8 +69,8 @@ factories_info = dict{(
         "box_attributes": [],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::GridPositionAllocator": dict{(
+    }),
+     "ns3::GridPositionAllocator": dict({
         "category": "Mobility",
         "create_function": create_element,
         "help": "",
@@ -87,12 +88,12 @@ factories_info = dict{(
             "LayoutType"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::TapBridge": dict{(
-        "category": "Device"
+    }),
+     "ns3::TapBridge": dict({
+        "category": "Device",
         "create_function": create_device,
         "help": "",
-        "connector_types": ["node"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": True,
         "stop_function": None,
@@ -108,8 +109,8 @@ factories_info = dict{(
             "Stop"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::FlowMonitor": dict{(
+    }),
+     "ns3::FlowMonitor": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -127,8 +128,8 @@ factories_info = dict{(
             "FlowInterruptionsMinTime"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::ConstantVelocityMobilityModel": dict{(
+    }),
+     "ns3::ConstantVelocityMobilityModel": dict({
         "category": "Mobility",
         "create_function": create_element,
         "help": "",
@@ -142,8 +143,8 @@ factories_info = dict{(
            "Velocity"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::V4Ping": dict{(
+    }),
+     "ns3::V4Ping": dict({
         "category": "Application",
         "create_function": create_element,
         "help": "",
@@ -161,8 +162,8 @@ factories_info = dict{(
             "StopTime"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::dot11s::PeerLink": dict{(
+    }),
+     "ns3::dot11s::PeerLink": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -180,8 +181,8 @@ factories_info = dict{(
             "MaxPacketFailure"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::PointToPointNetDevice": dict{(
+    }),
+     "ns3::PointToPointNetDevice": dict({
         "category": "Device",
         "create_function": create_device,
         "help": "",
@@ -197,8 +198,8 @@ factories_info = dict{(
             "InterframeGap"],
         "factory_attributes": [],
         "traces": ["p2ppcap"]
-    )},
-     "ns3::NakagamiPropagationLossModel": dict{(
+    }),
+     "ns3::NakagamiPropagationLossModel": dict({
         "category": "Loss",
         "create_function": create_element,
         "help": "",
@@ -215,12 +216,12 @@ factories_info = dict{(
             "m2"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::AarfWifiManager": dict{(
+    }),
+     "ns3::AarfWifiManager": dict({
         "category": "Manager",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["dev"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": None,
@@ -239,8 +240,8 @@ factories_info = dict{(
             "NonUnicastMode"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::Ipv6OptionJumbogram": dict{(
+    }),
+     "ns3::Ipv6OptionJumbogram": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -253,8 +254,8 @@ factories_info = dict{(
         "box_attributes": ["OptionNumber"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::TwoRayGroundPropagationLossModel": dict{(
+    }),
+     "ns3::TwoRayGroundPropagationLossModel": dict({
         "category": "Loss",
         "create_function": create_element,
         "help": "",
@@ -270,8 +271,8 @@ factories_info = dict{(
             "HeightAboveZ"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::OnOffApplication": dict{(
+    }),
+     "ns3::OnOffApplication": dict({
         "category": "Application",
         "create_function": create_element,
         "help": "",
@@ -292,8 +293,8 @@ factories_info = dict{(
             "StopTime"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::AdhocWifiMac": dict{(
+    }),
+     "ns3::AdhocWifiMac": dict({
         "category": "Mac",
         "create_function": create_element,
         "help": "",
@@ -315,8 +316,8 @@ factories_info = dict{(
             "Ssid"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::ConstantAccelerationMobilityModel": dict{(
+    }),
+     "ns3::ConstantAccelerationMobilityModel": dict({
         "category": "Mobility",
         "create_function": create_element,
         "help": "",
@@ -330,12 +331,12 @@ factories_info = dict{(
             "Velocity"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::GaussMarkovMobilityModel": dict{(
+    }),
+     "ns3::GaussMarkovMobilityModel": dict({
         "category": "Mobility",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["node"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": None,
@@ -354,12 +355,12 @@ factories_info = dict{(
             "Velocity"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::dot11s::HwmpProtocol": dict{(
+    }),
+     "ns3::dot11s::HwmpProtocol": dict({
         "category": "Protocol",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["node"]
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": None,
@@ -383,12 +384,12 @@ factories_info = dict{(
             "RfFlag"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::NscTcpL4Protocol": dict{(
+    }),
+     "ns3::NscTcpL4Protocol": dict({
         "category": "Protocol",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["node"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": None,
@@ -398,8 +399,8 @@ factories_info = dict{(
           "ProtocolNumber"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::dot11s::AirtimeLinkMetricCalculator": dict{(
+    }),
+     "ns3::dot11s::AirtimeLinkMetricCalculator": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -412,8 +413,8 @@ factories_info = dict{(
         "box_attributes": ["Dot11sMeshHeaderLength"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::UanMacCw": dict{(
+    }),
+     "ns3::UanMacCw": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -427,8 +428,8 @@ factories_info = dict{(
            "SlotTime"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::AthstatsWifiTraceSink": dict{(
+    }),
+     "ns3::AthstatsWifiTraceSink": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -441,8 +442,8 @@ factories_info = dict{(
         "box_attributes": ["Interval"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::FlameStack": dict{(
+    }),
+     "ns3::FlameStack": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -455,8 +456,8 @@ factories_info = dict{(
         "box_attributes": [],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::UanMacRc": dict{(
+    }),
+     "ns3::UanMacRc": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -477,12 +478,12 @@ factories_info = dict{(
             "MaxPropDelay"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::WaypointMobilityModel": dict{(
+    }),
+     "ns3::WaypointMobilityModel": dict({
         "category": "Mobility",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["node"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": None,
@@ -493,12 +494,12 @@ factories_info = dict{(
             "Velocity"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::FileDescriptorNetDevice": dict{(
+    }),
+     "ns3::FileDescriptorNetDevice": dict({
         "category": "Device",
         "create_function": create_device,
         "help": "Network interface associated to a file descriptor",
-        "connector_types": ["node", "fd", "err"],
+        "connector_types": ["node", "fd"],
         "allow_routes": False,
         "allow_addresses": True,
         "stop_function": None,
@@ -507,8 +508,8 @@ factories_info = dict{(
         "box_attributes": ["Address"],
         "factory_attributes": [],
         "traces": ["fdpcap"]
-    )},
-     "ns3::CsmaNetDevice": dict{(
+    }),
+     "ns3::CsmaNetDevice": dict({
         "category": "Device",
         "create_function": create_device,
         "help": "CSMA (carrier sense, multiple access) interface",
@@ -524,8 +525,8 @@ factories_info = dict{(
             "ReceiveEnable"],
         "factory_attributes": [],
         "traces": ["csmapcap", "csmapcap_promisc"]
-    )},
-     "ns3::UanPropModelThorp": dict{(
+    }),
+     "ns3::UanPropModelThorp": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -538,8 +539,8 @@ factories_info = dict{(
         "box_attributes": ["SpreadCoef"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::NqstaWifiMac": dict{(
+    }),
+     "ns3::NqstaWifiMac": dict({
         "category": "Mac",
         "create_function": create_element,
         "help": "",
@@ -564,12 +565,12 @@ factories_info = dict{(
             "Ssid"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::Icmpv6L4Protocol": dict{(
+    }),
+     "ns3::Icmpv6L4Protocol": dict({
         "category": "Protocol",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["node"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": None,
@@ -579,8 +580,8 @@ factories_info = dict{(
             "ProtocolNumber"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::SimpleNetDevice": dict{(
+    }),
+     "ns3::SimpleNetDevice": dict({
         "category": "Device",
         "create_function": create_device,
         "help": "",
@@ -593,8 +594,8 @@ factories_info = dict{(
         "box_attributes": [],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::FriisPropagationLossModel": dict{(
+    }),
+     "ns3::FriisPropagationLossModel": dict({
         "category": "Loss",
         "create_function": create_element,
         "help": "",
@@ -609,8 +610,8 @@ factories_info = dict{(
             "MinDistance"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::Ipv6OptionRouterAlert": dict{(
+    }),
+     "ns3::Ipv6OptionRouterAlert": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -623,8 +624,8 @@ factories_info = dict{(
         "box_attributes": ["OptionNumber"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::UniformDiscPositionAllocator": dict{(
+    }),
+     "ns3::UniformDiscPositionAllocator": dict({
         "category": "Mobility",
         "create_function": create_element,
         "help": "",
@@ -639,12 +640,12 @@ factories_info = dict{(
             "Y"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::RandomBoxPositionAllocator": dict{(
+    }),
+     "ns3::RandomBoxPositionAllocator": dict({
         "category": "Mobility",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["node"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": None,
@@ -655,8 +656,8 @@ factories_info = dict{(
             "Z"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::Ipv6ExtensionDestination": dict{(
+    }),
+     "ns3::Ipv6ExtensionDestination": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -669,12 +670,12 @@ factories_info = dict{(
         "box_attributes": ["ExtensionNumber"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::LoopbackNetDevice": dict{(
+    }),
+     "ns3::LoopbackNetDevice": dict({
         "category": "Device",
         "create_function": create_device,
         "help": "",
-        "connector_types": ["node"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": None,
@@ -683,8 +684,8 @@ factories_info = dict{(
         "box_attributes": [],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::ConstantSpeedPropagationDelayModel": dict{(
+    }),
+     "ns3::ConstantSpeedPropagationDelayModel": dict({
         "category": "Delay",
         "create_function": create_element,
         "help": "",
@@ -697,8 +698,8 @@ factories_info = dict{(
         "box_attributes": ["Speed"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::Ipv6ExtensionHopByHop": dict{(
+    }),
+     "ns3::Ipv6ExtensionHopByHop": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -711,12 +712,12 @@ factories_info = dict{(
         "box_attributes": ["ExtensionNumber"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::BridgeChannel": dict{(
+    }),
+     "ns3::BridgeChannel": dict({
         "category": "Channel",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["devs"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": None,
@@ -725,8 +726,8 @@ factories_info = dict{(
         "box_attributes": [],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::Radvd": dict{(
+    }),
+     "ns3::Radvd": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -740,8 +741,8 @@ factories_info = dict{(
             "StopTime"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::PacketSocket": dict{(
+    }),
+     "ns3::PacketSocket": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -754,12 +755,12 @@ factories_info = dict{(
         "box_attributes": ["RcvBufSize"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::flame::FlameProtocol": dict{(
+    }),
+     "ns3::flame::FlameProtocol": dict({
         "category": "Protocol",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["node"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": None,
@@ -769,8 +770,8 @@ factories_info = dict{(
             "MaxCost"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::Cost231PropagationLossModel": dict{(
+    }),
+     "ns3::Cost231PropagationLossModel": dict({
         "category": "Loss",
         "create_function": create_element,
         "help": "",
@@ -787,8 +788,8 @@ factories_info = dict{(
             "MinDistance"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::Ipv6ExtensionESP": dict{(
+    }),
+     "ns3::Ipv6ExtensionESP": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -801,12 +802,12 @@ factories_info = dict{(
         "box_attributes": ["ExtensionNumber"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::CaraWifiManager": dict{(
+    }),
+     "ns3::CaraWifiManager": dict({
         "category": "Manager",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["dev"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": None,
@@ -824,8 +825,8 @@ factories_info = dict{(
             "NonUnicastMode"],
             "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::RttMeanDeviation": dict{(
+    }),
+     "ns3::RttMeanDeviation": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -841,8 +842,8 @@ factories_info = dict{(
             "MinRTO"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::Icmpv4L4Protocol": dict{(
+    }),
+     "ns3::Icmpv4L4Protocol": dict({
         "category": "Protocol",
         "create_function": create_element,
         "help": "",
@@ -855,8 +856,8 @@ factories_info = dict{(
         "box_attributes": ["ProtocolNumber"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::WaveformGenerator": dict{(
+    }),
+     "ns3::WaveformGenerator": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -870,8 +871,8 @@ factories_info = dict{(
             "DutyCycle"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::YansWifiChannel": dict{(
+    }),
+     "ns3::YansWifiChannel": dict({
         "category": "Channel",
         "create_function": create_element,
         "help": "",
@@ -884,8 +885,8 @@ factories_info = dict{(
         "box_attributes": [],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::SimpleChannel": dict{(
+    }),
+     "ns3::SimpleChannel": dict({
         "category": "Channel",
         "create_function": create_element,
         "help": "",
@@ -898,8 +899,8 @@ factories_info = dict{(
         "box_attributes": [],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::Ipv6ExtensionFragment": dict{(
+    }),
+     "ns3::Ipv6ExtensionFragment": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -912,8 +913,8 @@ factories_info = dict{(
         "box_attributes": ["ExtensionNumber"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::Dot11sStack": dict{(
+    }),
+     "ns3::Dot11sStack": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -926,8 +927,8 @@ factories_info = dict{(
         "box_attributes": ["Root"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::FriisSpectrumPropagationLossModel": dict{(
+    }),
+     "ns3::FriisSpectrumPropagationLossModel": dict({
         "category": "Loss",
         "create_function": create_element,
         "help": "",
@@ -940,8 +941,8 @@ factories_info = dict{(
         "box_attributes": [],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::RandomRectanglePositionAllocator": dict{(
+    }),
+     "ns3::RandomRectanglePositionAllocator": dict({
         "category": "Mobility",
         "create_function": create_element,
         "help": "",
@@ -955,8 +956,8 @@ factories_info = dict{(
            "Y"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::NqapWifiMac": dict{(
+    }),
+     "ns3::NqapWifiMac": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -980,8 +981,8 @@ factories_info = dict{(
             "Ssid"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::HierarchicalMobilityModel": dict{(
+    }),
+     "ns3::HierarchicalMobilityModel": dict({
         "category": "Mobility",
         "create_function": create_element,
         "help": "",
@@ -995,12 +996,12 @@ factories_info = dict{(
             "Velocity"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::ThreeLogDistancePropagationLossModel": dict{(
+    }),
+     "ns3::ThreeLogDistancePropagationLossModel": dict({
         "category": "Loss",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["prev", "next"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": None,
@@ -1015,8 +1016,8 @@ factories_info = dict{(
             "ReferenceLoss"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::UanNoiseModelDefault": dict{(
+    }),
+     "ns3::UanNoiseModelDefault": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -1030,8 +1031,8 @@ factories_info = dict{(
             "Shipping"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::dot11s::HwmpRtable": dict{(
+    }),
+     "ns3::dot11s::HwmpRtable": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -1044,8 +1045,8 @@ factories_info = dict{(
         "box_attributes": [],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::PacketBurst": dict{(
+    }),
+     "ns3::PacketBurst": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -1058,12 +1059,12 @@ factories_info = dict{(
         "box_attributes": [],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::RandomPropagationDelayModel": dict{(
+    }),
+     "ns3::RandomPropagationDelayModel": dict({
         "category": "Delay",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["chan"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": None,
@@ -1072,8 +1073,8 @@ factories_info = dict{(
         "box_attributes": ["Variable"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::ArpL3Protocol": dict{(
+    }),
+     "ns3::ArpL3Protocol": dict({
         "category": "Protocol",
         "create_function": create_element,
         "help": "",
@@ -1086,12 +1087,12 @@ factories_info = dict{(
         "box_attributes": [],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::SteadyStateRandomWaypointMobilityModel": dict{(
+    }),
+     "ns3::SteadyStateRandomWaypointMobilityModel": dict({
         "category": "Mobility",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["node"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": None,
@@ -1109,12 +1110,12 @@ factories_info = dict{(
             "Velocity"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::BaseStationNetDevice": dict{(
+    }),
+     "ns3::BaseStationNetDevice": dict({
         "category": "Device",
         "create_function": create_device,
         "help": "",
-        "connector_types": ["node"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": True,
         "stop_function": None,
@@ -1132,12 +1133,12 @@ factories_info = dict{(
             "TTG"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::UdpServer": dict{(
+    }),
+     "ns3::UdpServer": dict({
         "category": "Application",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["node"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": stop_application,
@@ -1149,12 +1150,12 @@ factories_info = dict{(
             "StopTime"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::AarfcdWifiManager": dict{(
+    }),
+     "ns3::AarfcdWifiManager": dict({
         "category": "Manager",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["dev"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": None,
@@ -1177,8 +1178,8 @@ factories_info = dict{(
             "NonUnicastMode"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::UanTransducerHd": dict{(
+    }),
+     "ns3::UanTransducerHd": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -1191,8 +1192,8 @@ factories_info = dict{(
         "box_attributes": [],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::LogDistancePropagationLossModel": dict{(
+    }),
+     "ns3::LogDistancePropagationLossModel": dict({
         "category": "Loss",
         "create_function": create_element,
         "help": "",
@@ -1207,8 +1208,8 @@ factories_info = dict{(
             "ReferenceLoss"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::EmuNetDevice": dict{(
+    }),
+     "ns3::EmuNetDevice": dict({
         "category": "Device",
         "create_function": create_device,
         "help": "",
@@ -1226,8 +1227,8 @@ factories_info = dict{(
             "RxQueueSize"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::Ipv6ExtensionLooseRouting": dict{(
+    }),
+     "ns3::Ipv6ExtensionLooseRouting": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -1240,8 +1241,8 @@ factories_info = dict{(
         "box_attributes": ["ExtensionNumber"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::RandomWaypointMobilityModel": dict{(
+    }),
+     "ns3::RandomWaypointMobilityModel": dict({
         "category": "Mobility",
         "create_function": create_element,
         "help": "",
@@ -1257,8 +1258,8 @@ factories_info = dict{(
             "Velocity"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::RangePropagationLossModel": dict{(
+    }),
+     "ns3::RangePropagationLossModel": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -1271,12 +1272,12 @@ factories_info = dict{(
         "box_attributes": ["MaxRange"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::AlohaNoackNetDevice": dict{(
+    }),
+     "ns3::AlohaNoackNetDevice": dict({
         "category": "Device",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["node"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": True,
         "stop_function": None,
@@ -1286,8 +1287,8 @@ factories_info = dict{(
             "Mtu"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::MatrixPropagationLossModel": dict{(
+    }),
+     "ns3::MatrixPropagationLossModel": dict({
         "category": "Loss",
         "create_function": create_element,
         "help": "",
@@ -1300,8 +1301,8 @@ factories_info = dict{(
         "box_attributes": ["DefaultLoss"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::WifiNetDevice": dict{(
+    }),
+     "ns3::WifiNetDevice": dict({
         "category": "Device",
         "create_function": create_device,
         "help": "",
@@ -1314,8 +1315,8 @@ factories_info = dict{(
         "box_attributes": ["Mtu"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::CsmaChannel": dict{(
+    }),
+     "ns3::CsmaChannel": dict({
         "category": "Channel",
         "create_function": create_element,
         "help": "",
@@ -1329,8 +1330,8 @@ factories_info = dict{(
             "Delay"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::BridgeNetDevice": dict{(
+    }),
+     "ns3::BridgeNetDevice": dict({
         "category": "Device",
         "create_function": create_device,
         "help": "",
@@ -1345,8 +1346,8 @@ factories_info = dict{(
            "ExpirationTime"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::Ipv6ExtensionRouting": dict{(
+    }),
+     "ns3::Ipv6ExtensionRouting": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -1359,8 +1360,8 @@ factories_info = dict{(
         "box_attributes": ["ExtensionNumber"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::QstaWifiMac": dict{(
+    }),
+     "ns3::QstaWifiMac": dict({
         "category": "Mac",
         "create_function": create_wifi_standard_model,
         "help": "Station Wifi MAC Model",
@@ -1385,8 +1386,8 @@ factories_info = dict{(
             "Ssid"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::UdpEchoClient": dict{(
+    }),
+     "ns3::UdpEchoClient": dict({
         "category": "Application",
         "create_function": create_element,
         "help": "",
@@ -1405,12 +1406,12 @@ factories_info = dict{(
             "StopTime"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::UdpClient": dict{(
+    }),
+     "ns3::UdpClient": dict({
         "category": "Application",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["node"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": stop_application,
@@ -1425,8 +1426,8 @@ factories_info = dict{(
             "StopTime"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::PointToPointChannel": dict{(
+    }),
+     "ns3::PointToPointChannel": dict({
         "category": "Channel",
         "create_function": create_element,
         "help": "",
@@ -1439,8 +1440,8 @@ factories_info = dict{(
         "box_attributes": ["Delay"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::Ipv6StaticRouting": dict{(
+    }),
+     "ns3::Ipv6StaticRouting": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -1453,8 +1454,8 @@ factories_info = dict{(
         "box_attributes": [],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::DropTailQueue": dict{(
+    }),
+     "ns3::DropTailQueue": dict({
         "category": "Device",
         "create_function": create_element,
         "help": "",
@@ -1468,8 +1469,8 @@ factories_info = dict{(
            "MaxBytes"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::ConstantPositionMobilityModel": dict{(
+    }),
+     "ns3::ConstantPositionMobilityModel": dict({
         "category": "Mobility",
         "create_function": create_element,
         "help": "",
@@ -1483,8 +1484,8 @@ factories_info = dict{(
             "Velocity"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::FixedRssLossModel": dict{(
+    }),
+     "ns3::FixedRssLossModel": dict({
         "category": "Loss",
         "create_function": create_element,
         "help": "",
@@ -1497,8 +1498,8 @@ factories_info = dict{(
         "box_attributes": ["Rss"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::EnergySourceContainer": dict{(
+    }),
+     "ns3::EnergySourceContainer": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -1511,8 +1512,8 @@ factories_info = dict{(
         "box_attributes": [],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::RandomWalk2dMobilityModel": dict{(
+    }),
+     "ns3::RandomWalk2dMobilityModel": dict({
         "category": "Mobility",
         "create_function": create_element,
         "help": "",
@@ -1532,8 +1533,8 @@ factories_info = dict{(
             "Velocity"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::ListPositionAllocator": dict{(
+    }),
+     "ns3::ListPositionAllocator": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -1546,12 +1547,12 @@ factories_info = dict{(
         "box_attributes": [],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::dot11s::PeerManagementProtocol": dict{(
+    }),
+     "ns3::dot11s::PeerManagementProtocol": dict({
         "category": "Protocol",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["node"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": None,
@@ -1562,12 +1563,12 @@ factories_info = dict{(
             "EnableBeaconCollisionAvoidance"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::MeshPointDevice": dict{(
+    }),
+     "ns3::MeshPointDevice": dict({
         "category": "Device",
         "create_function": create_device,
         "help": "",
-        "connector_types": ["node"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": True,
         "stop_function": None,
@@ -1576,8 +1577,8 @@ factories_info = dict{(
         "box_attributes": ["Mtu"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::BasicEnergySource": dict{(
+    }),
+     "ns3::BasicEnergySource": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -1592,8 +1593,8 @@ factories_info = dict{(
             "PeriodicEnergyUpdateInterval"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::Ipv6OptionPadn": dict{(
+    }),
+     "ns3::Ipv6OptionPadn": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -1606,8 +1607,8 @@ factories_info = dict{(
         "box_attributes": ["OptionNumber"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::QapWifiMac": dict{(
+    }),
+     "ns3::QapWifiMac": dict({
         "category": "Mac",
         "create_function": create_wifi_standard_model,
         "help": "Access point Wifi MAC Model",
@@ -1631,8 +1632,8 @@ factories_info = dict{(
             "Ssid"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::YansErrorRateModel": dict{(
+    }),
+     "ns3::YansErrorRateModel": dict({
         "category": "Error",
         "create_function": create_element,
         "help": "",
@@ -1645,8 +1646,8 @@ factories_info = dict{(
         "box_attributes": [],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::WifiMacQueue": dict{(
+    }),
+     "ns3::WifiMacQueue": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -1660,12 +1661,12 @@ factories_info = dict{(
            "MaxDelay"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::NonCommunicatingNetDevice": dict{(
+    }),
+     "ns3::NonCommunicatingNetDevice": dict({
         "category": "Device",
         "create_function": create_device,
         "help": "",
-        "connector_types": ["node"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": True,
         "stop_function": None,
@@ -1674,8 +1675,8 @@ factories_info = dict{(
         "box_attributes": [],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::RateErrorModel": dict{(
+    }),
+     "ns3::RateErrorModel": dict({
         "category": "Error",
         "create_function": create_element,
         "help": "",
@@ -1691,8 +1692,8 @@ factories_info = dict{(
             "IsEnabled"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::MeshWifiInterfaceMac": dict{(
+    }),
+     "ns3::MeshWifiInterfaceMac": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -1717,8 +1718,8 @@ factories_info = dict{(
             "Ssid"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::UanPhyCalcSinrDual": dict{(
+    }),
+     "ns3::UanPhyCalcSinrDual": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -1731,8 +1732,8 @@ factories_info = dict{(
         "box_attributes": [],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::Ipv6ExtensionAH": dict{(
+    }),
+     "ns3::Ipv6ExtensionAH": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -1745,8 +1746,8 @@ factories_info = dict{(
         "box_attributes": ["ExtensionNumber"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::SingleModelSpectrumChannel": dict{(
+    }),
+     "ns3::SingleModelSpectrumChannel": dict({
         "category": "Channel",
         "create_function": create_element,
         "help": "",
@@ -1759,8 +1760,8 @@ factories_info = dict{(
         "box_attributes": [],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::YansWifiPhy": dict{(
+    }),
+     "ns3::YansWifiPhy": dict({
         "category": "Phy",
         "create_function": create_element,
         "help": "",
@@ -1782,8 +1783,8 @@ factories_info = dict{(
             "ChannelNumber"],
         "factory_attributes": [],
         "traces": ["yanswifipcap"]
-    )},
-     "ns3::WifiRadioEnergyModel": dict{(
+    }),
+     "ns3::WifiRadioEnergyModel": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -1799,8 +1800,8 @@ factories_info = dict{(
             "SleepCurrentA"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::EdcaTxopN": dict{(
+    }),
+     "ns3::EdcaTxopN": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -1816,8 +1817,8 @@ factories_info = dict{(
             "Aifsn"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::UanPhyPerGenDefault": dict{(
+    }),
+     "ns3::UanPhyPerGenDefault": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -1830,12 +1831,12 @@ factories_info = dict{(
         "box_attributes": ["Threshold"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::IdealWifiManager": dict{(
+    }),
+     "ns3::IdealWifiManager": dict({
         "category": "Manager",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["dev"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": None,
@@ -1850,8 +1851,8 @@ factories_info = dict{(
             "NonUnicastMode"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::MultiModelSpectrumChannel": dict{(
+    }),
+     "ns3::MultiModelSpectrumChannel": dict({
         "category": "Channel",
         "create_function": create_element,
         "help": "",
@@ -1864,8 +1865,8 @@ factories_info = dict{(
         "box_attributes": [],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::HalfDuplexIdealPhy": dict{(
+    }),
+     "ns3::HalfDuplexIdealPhy": dict({
         "category": "Phy",
         "create_function": create_element,
         "help": "",
@@ -1878,8 +1879,8 @@ factories_info = dict{(
         "box_attributes": ["Rate"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::UanPhyCalcSinrDefault": dict{(
+    }),
+     "ns3::UanPhyCalcSinrDefault": dict({
         "category": "Phy",
         "create_function": create_element,
         "help": "",
@@ -1892,12 +1893,12 @@ factories_info = dict{(
         "box_attributes": [],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::ReceiveListErrorModel": dict{(
+    }),
+     "ns3::ReceiveListErrorModel": dict({
         "category": "Error",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["dev"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": None,
@@ -1906,8 +1907,8 @@ factories_info = dict{(
         "box_attributes": ["IsEnabled"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::SpectrumAnalyzer": dict{(
+    }),
+     "ns3::SpectrumAnalyzer": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -1921,8 +1922,8 @@ factories_info = dict{(
         "NoisePowerSpectralDensity"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::ConstantRateWifiManager": dict{(
+    }),
+     "ns3::ConstantRateWifiManager": dict({
         "category": "Manager",
         "create_function": create_element,
         "help": "",
@@ -1942,8 +1943,8 @@ factories_info = dict{(
             "NonUnicastMode"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::Ipv6OptionPad1": dict{(
+    }),
+     "ns3::Ipv6OptionPad1": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -1956,8 +1957,8 @@ factories_info = dict{(
         "box_attributes": ["OptionNumber"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::UdpTraceClient": dict{(
+    }),
+     "ns3::UdpTraceClient": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -1974,12 +1975,12 @@ factories_info = dict{(
             "StopTime"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::RraaWifiManager": dict{(
+    }),
+     "ns3::RraaWifiManager": dict({
         "category": "Manager",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["dev"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": None,
@@ -2017,8 +2018,8 @@ factories_info = dict{(
             "NonUnicastMode"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::RandomPropagationLossModel": dict{(
+    }),
+     "ns3::RandomPropagationLossModel": dict({
         "category": "Loss",
         "create_function": create_element,
         "help": "",
@@ -2031,8 +2032,8 @@ factories_info = dict{(
         "box_attributes": ["Variable"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::UanChannel": dict{(
+    }),
+     "ns3::UanChannel": dict({
         "category": "Channel",
         "create_function": create_element,
         "help": "",
@@ -2045,12 +2046,12 @@ factories_info = dict{(
         "box_attributes": [],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::MinstrelWifiManager": dict{(
+    }),
+     "ns3::MinstrelWifiManager": dict({
         "category": "Manager",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["dev"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": None,
@@ -2070,8 +2071,8 @@ factories_info = dict{(
             "NonUnicastMode"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::UanPhyDual": dict{(
+    }),
+     "ns3::UanPhyDual": dict({
         "category": "Phy",
         "create_function": create_element,
         "help": "",
@@ -2091,8 +2092,8 @@ factories_info = dict{(
             "SupportedModesPhy2"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::ListErrorModel": dict{(
+    }),
+     "ns3::ListErrorModel": dict({
         "category": "Error",
         "create_function": create_element,
         "help": "",
@@ -2105,12 +2106,12 @@ factories_info = dict{(
         "box_attributes": ["IsEnabled"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::VirtualNetDevice": dict{(
+    }),
+     "ns3::VirtualNetDevice": dict({
         "category": "Device",
         "create_function": create_device,
         "help": "",
-        "connector_types": ["node"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": True,
         "stop_function": None,
@@ -2119,8 +2120,8 @@ factories_info = dict{(
         "box_attributes": ["Mtu"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::UanPhyGen": dict{(
+    }),
+     "ns3::UanPhyGen": dict({
         "category": "Phy",
         "create_function": create_element,
         "help": "",
@@ -2137,12 +2138,12 @@ factories_info = dict{(
             "SupportedModes"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::Ipv6L3Protocol": dict{(
+    }),
+     "ns3::Ipv6L3Protocol": dict({
         "category": "Protocol",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["node"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": None,
@@ -2152,8 +2153,8 @@ factories_info = dict{(
             "IpForward"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::PointToPointRemoteChannel": dict{(
+    }),
+     "ns3::PointToPointRemoteChannel": dict({
         "category": "Channel",
         "create_function": create_element,
         "help": "",
@@ -2166,8 +2167,8 @@ factories_info = dict{(
         "box_attributes": ["Delay"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::UanPhyPerUmodem": dict{(
+    }),
+     "ns3::UanPhyPerUmodem": dict({
         "category": "Phy",
         "create_function": create_element,
         "help": "",
@@ -2180,12 +2181,12 @@ factories_info = dict{(
         "box_attributes": [],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::OnoeWifiManager": dict{(
+    }),
+     "ns3::OnoeWifiManager": dict({
         "category": "Manager",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["dev"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": None,
@@ -2202,8 +2203,8 @@ factories_info = dict{(
             "NonUnicastMode"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::QadhocWifiMac": dict{(
+    }),
+     "ns3::QadhocWifiMac": dict({
         "category": "Mac",
         "create_function": create_element,
         "help": "",
@@ -2225,8 +2226,8 @@ factories_info = dict{(
             "Ssid"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::JakesPropagationLossModel": dict{(
+    }),
+     "ns3::JakesPropagationLossModel": dict({
         "category": "Loss",
         "create_function": create_element,
         "help": "",
@@ -2242,8 +2243,8 @@ factories_info = dict{(
             "Distribution"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::PacketSink": dict{(
+    }),
+     "ns3::PacketSink": dict({
         "category": "Application",
         "create_function": create_element,
         "help": "",
@@ -2259,8 +2260,8 @@ factories_info = dict{(
             "StopTime"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::RandomDirection2dMobilityModel": dict{(
+    }),
+     "ns3::RandomDirection2dMobilityModel": dict({
         "category": "Mobility",
         "create_function": create_element,
         "help": "",
@@ -2277,8 +2278,8 @@ factories_info = dict{(
             "Velocity"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::UanMacAloha": dict{(
+    }),
+     "ns3::UanMacAloha": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -2291,8 +2292,8 @@ factories_info = dict{(
         "box_attributes": [],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::MsduStandardAggregator": dict{(
+    }),
+     "ns3::MsduStandardAggregator": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -2305,8 +2306,8 @@ factories_info = dict{(
         "box_attributes": ["MaxAmsduSize"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::DcaTxop": dict{(
+    }),
+     "ns3::DcaTxop": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -2321,8 +2322,8 @@ factories_info = dict{(
             "Aifsn"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::UanPhyCalcSinrFhFsk": dict{(
+    }),
+     "ns3::UanPhyCalcSinrFhFsk": dict({
         "category": "Phy",
         "create_function": create_element,
         "help": "",
@@ -2335,8 +2336,8 @@ factories_info = dict{(
         "box_attributes": ["NumberOfHops"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::UanPropModelIdeal": dict{(
+    }),
+     "ns3::UanPropModelIdeal": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -2349,8 +2350,8 @@ factories_info = dict{(
         "box_attributes": [],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::UanMacRcGw": dict{(
+    }),
+     "ns3::UanMacRcGw": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -2374,8 +2375,8 @@ factories_info = dict{(
             "FrameSize"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::NistErrorRateModel": dict{(
+    }),
+     "ns3::NistErrorRateModel": dict({
         "category": "Error",
         "create_function": create_element,
         "help": "",
@@ -2388,8 +2389,8 @@ factories_info = dict{(
         "box_attributes": [],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::Ipv4L3Protocol": dict{(
+    }),
+     "ns3::Ipv4L3Protocol": dict({
         "category": "Protocol",
         "create_function": create_ipv4stack,
         "help": "",
@@ -2404,12 +2405,12 @@ factories_info = dict{(
             "WeakEsModel"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::aodv::RoutingProtocol": dict{(
+    }),
+     "ns3::aodv::RoutingProtocol": dict({
         "category": "Protocol",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["node"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": None,
@@ -2437,8 +2438,8 @@ factories_info = dict{(
             "EnableBroadcast"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::TcpL4Protocol": dict{(
+    }),
+     "ns3::TcpL4Protocol": dict({
         "category": "Protocol",
         "create_function": create_element,
         "help": "",
@@ -2452,12 +2453,12 @@ factories_info = dict{(
             "ProtocolNumber"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::olsr::RoutingProtocol": dict{(
+    }),
+     "ns3::olsr::RoutingProtocol": dict({
         "category": "Protocol",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["node"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": None,
@@ -2470,8 +2471,8 @@ factories_info = dict{(
             "Willingness"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::UdpEchoServer": dict{(
+    }),
+     "ns3::UdpEchoServer": dict({
         "category": "Application",
         "create_function": create_element,
         "help": "",
@@ -2486,12 +2487,12 @@ factories_info = dict{(
            "StopTime"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::AmrrWifiManager": dict{(
+    }),
+     "ns3::AmrrWifiManager": dict({
         "category": "Manager",
         "create_function": create_element,
         "help": "",
-        "connector_types": ["dev"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": False,
         "stop_function": None,
@@ -2510,8 +2511,8 @@ factories_info = dict{(
             "NonUnicastMode"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::ArfWifiManager": dict{(
+    }),
+     "ns3::ArfWifiManager": dict({
         "category": "Manager",
         "create_function": create_element,
         "help": "",
@@ -2531,12 +2532,12 @@ factories_info = dict{(
             "NonUnicastMode"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::SubscriberStationNetDevice": dict{(
+    }),
+     "ns3::SubscriberStationNetDevice": dict({
         "category": "Device",
         "create_function": create_device,
         "help": "",
-        "connector_types": ["node"],
+        "connector_types": [],
         "allow_routes": False,
         "allow_addresses": True,
         "stop_function": None,
@@ -2559,8 +2560,8 @@ factories_info = dict{(
             "TTG"],
         "factory_attributes": [],
         "traces": []
-    )},
-     "ns3::flame::FlameRtable": dict{(
+    }),
+     "ns3::flame::FlameRtable": dict({
         "category": "",
         "create_function": create_element,
         "help": "",
@@ -2573,5 +2574,5 @@ factories_info = dict{(
         "box_attributes": ["Lifetime"],
         "factory_attributes": [],
         "traces": []
-    )},
-)}
+    }),
+})

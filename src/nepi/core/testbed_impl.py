@@ -316,7 +316,3 @@ class TestbedInstance(execute.TestbedInstance):
         return dict() if guid not in self._create_set else \
                 self._create_set[guid]
 
-    def _get_factory_parameters(self, guid):
-        return dict() if guid not in self._factory_set else \
-                self._factory_set[guid]
-

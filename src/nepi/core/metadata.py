@@ -6,7 +6,7 @@ import sys
 
 class VersionedMetadataInfo(object):
     @property
-    def connections_types(self):
+    def connector_types(self):
         """ dictionary of dictionaries with allowed connection information.
             connector_id: dict({
                 "help": help text, 
@@ -104,7 +104,8 @@ class Metadata(object):
     def __init__(self, testbed_id, version):
         self._version = version
         self._testbed_id = testbed_id
-        self._metadata = self._load_versioned_metadata_info()
+        metadata_module = self._load_versioned_metadata_module()
+        self._metadata = metadata_module.VersionedMetadataInfo()
 
     @property
     def factories_order(self):
@@ -167,7 +168,7 @@ class Metadata(object):
             factories.append(factory)
         return factories
 
-    def _load_versioned_metadata_info(self):
+    def _load_versioned_metadata_module(self):
         mod_name = "nepi.testbeds.%s.metadata_v%s" % (self._testbed_id.lower(),
                 self._version)
         if not mod_name in sys.modules:
@@ -178,7 +179,11 @@ class Metadata(object):
             box_attributes = False):
         if attributes_key in info:
             for attribute_id in info[attributes_key]:
-                attribute_info = self._metadata.attributes[attribute_id]
+                try:
+                    attribute_info = self._metadata.attributes[attribute_id]
+                except:
+                   print "\"%s\"," % attribute_id
+                   continue
                 name = attribute_info["name"]
                 help = attribute_info["help"]
                 type = attribute_info["type"] 

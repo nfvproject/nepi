@@ -10,7 +10,7 @@ def is_enum(attribute, value):
 def is_bool(attribute, value):
     return isinstance(value, bool)
 
-def is_float(attribute, value):
+def is_double(attribute, value):
     return isinstance(value, float)
 
 def is_integer(attribute, value):

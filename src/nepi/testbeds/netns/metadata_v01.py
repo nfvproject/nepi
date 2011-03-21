@@ -466,8 +466,8 @@ testbed_attributes = dict({
 
 class VersionedMetadataInfo(metadata.VersionedMetadataInfo):
     @property
-    def connections_types(self):
-        return connection_types
+    def connector_types(self):
+        return connector_types
 
     @property
     def connections(self):
