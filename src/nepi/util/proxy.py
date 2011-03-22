@@ -71,7 +71,7 @@ testbed_messages = dict({
     CONNECT: "%d|%s" % (CONNECT, "%d|%s|%d|%s"),
     CROSS_CONNECT: "%d|%s" % (CROSS_CONNECT, "%d|%s|%d|%d|%s|%s"),
     ADD_TRACE: "%d|%s" % (ADD_TRACE, "%d|%s"),
-    ADD_ADDRESS: "%d|%s" % (ADD_ADDRESS, "%d|%d|%s|%d|%s"),
+    ADD_ADDRESS: "%d|%s" % (ADD_ADDRESS, "%d|%s|%d|%s"),
     ADD_ROUTE: "%d|%s" % (ADD_ROUTE, "%d|%s|%d|%s"),
     DO_SETUP:   "%d" % DO_SETUP,
     DO_CREATE:  "%d" % DO_CREATE,
@@ -439,11 +439,10 @@ class TestbedInstanceServer(server.Server):
 
     def add_address(self, params):
         guid = int(params[1])
-        family = int(params[2])
-        address = params[3]
-        netprefix = int(params[4])
-        broadcast = params[5]
-        self._testbed.add_address(guid, family, address, netprefix,
+        address = params[2]
+        netprefix = int(params[3])
+        broadcast = params[4]
+        self._testbed.add_address(guid, address, netprefix,
                 broadcast)
         return "%d|%s" % (OK, "")
 
@@ -731,9 +730,9 @@ class TestbedIntanceProxy(object):
         if code == ERROR:
             raise RuntimeError(text)
 
-    def add_address(self, guid, family, address, netprefix, broadcast): 
+    def add_address(self, guid, address, netprefix, broadcast): 
         msg = testbed_messages[ADD_ADDRESS]
-        msg = msg % (guid, family, address, netprefix, broadcast)
+        msg = msg % (guid, address, netprefix, broadcast)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
         result = reply.split("|")

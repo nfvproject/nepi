@@ -189,7 +189,7 @@ class TestbedInstance(object):
     def add_trace(self, guid, trace_id):
         raise NotImplementedError
 
-    def add_address(self, guid, family, address, netprefix, broadcast): 
+    def add_address(self, guid, address, netprefix, broadcast): 
         raise NotImplementedError
 
     def add_route(self, guid, destination, netprefix, nexthop):
@@ -328,12 +328,10 @@ class ExperimentController(object):
                         other_testbed_id, other_factory_id, other_connector_type_name)
             for trace_id in data.get_trace_data(guid):
                 testbed.add_trace(guid, trace_id)
-            for (autoconf, address, family, netprefix, broadcast) in \
+            for (autoconf, address, netprefix, broadcast) in \
                     data.get_address_data(guid):
                 if address != None:
-                    testbed.add_address(guid, family, address, netprefix,
-                        broadcast)
-            for (family, destination, netprefix, nexthop) in \
-                    data.get_route_data(guid):
+                    testbed.add_address(guid, address, netprefix, broadcast)
+            for (destination, netprefix, nexthop) in data.get_route_data(guid):
                 testbed.add_route(guid, destination, netprefix, nexthop)
 

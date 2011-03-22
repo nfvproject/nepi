@@ -5,7 +5,7 @@ from constants import TESTBED_ID
 from nepi.core import metadata
 from nepi.core.attributes import Attribute
 from nepi.util import validation
-from nepi.util.constants import AF_INET, STATUS_NOT_STARTED, STATUS_RUNNING, \
+from nepi.util.constants import STATUS_NOT_STARTED, STATUS_RUNNING, \
         STATUS_FINISHED
 
 NODE = "Node"
@@ -325,26 +325,6 @@ attributes = dict({
                 "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_string
             }),
-     "max_addresses": dict({
-                "name": "MaxAddresses",
-                "help": "Maximum number of addresses allowed by the device",
-                "type": Attribute.INTEGER,
-                "value": None,
-                "range": None,
-                "allowed": None,
-                "flags": Attribute.Invisible,
-                "validation_function": validation.is_integer
-            }),
-     "family": dict({
-                "name": "Family",
-                "help": "IP address family",
-                "type": Attribute.INTEGER,
-                "value": AF_INET,
-                "range": None,
-                "allowed": None,
-                "flags": Attribute.Invisible,
-                "validation_function": validation.is_integer
-            }),
     })
 
 traces = dict({
@@ -381,7 +361,7 @@ factories_info = dict({
             "start_function": None,
             "stop_function": None,
             "status_function": None,
-            "factory_attributes": ["family", "max_addresses"],
+            "factory_attributes": [],
             "box_attributes": ["lladdr", "up", "device_name", "mtu", 
                 "multicast", "broadcast", "arp"],
             "connector_types": ["node", "p2p"]
@@ -394,7 +374,7 @@ factories_info = dict({
             "start_function": None,
             "stop_function": None,
             "status_function": None,
-            "factory_attributes": ["family", "max_addresses"],
+            "factory_attributes": [],
             "box_attributes": ["lladdr", "up", "device_name", "mtu", 
                 "multicast", "broadcast", "arp"],
             "connector_types": ["node", "fd"]
@@ -407,7 +387,7 @@ factories_info = dict({
             "start_function": None,
             "stop_function": None,
             "status_function": None,
-            "factory_attributes": ["family", "max_addresses"],
+            "factory_attributes": [],
             "box_attributes": ["lladdr", "up", "device_name", "mtu", 
                 "multicast", "broadcast", "arp"],
             "connector_types": ["node", "switch"]

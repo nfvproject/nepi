@@ -137,7 +137,7 @@ class TestbedInstance(execute.TestbedInstance):
             self._add_trace[guid] = list()
         self._add_trace[guid].append(trace_id)
 
-    def add_address(self, guid, family, address, netprefix, broadcast):
+    def add_address(self, guid, address, netprefix, broadcast):
         if not guid in self._create:
             raise RuntimeError("Element guid %d doesn't exist" % guid)
         factory_id = self._create[guid]
@@ -145,15 +145,15 @@ class TestbedInstance(execute.TestbedInstance):
         if not factory.allow_addresses:
             raise RuntimeError("Element type '%s' doesn't support addresses" %
                     factory_id)
-        max_addresses = factory.get_attribute_value("MaxAddresses")
+            max_addresses = 1 # TODO: MAKE THIS PARAMETRIZABLE
         if guid in self._add_address:
             count_addresses = len(self._add_address[guid])
             if max_addresses == count_addresses:
                 raise RuntimeError("Element guid %d of type '%s' can't accept \
-                        more addresses" % (guid, family_id))
+                        more addresses" % (guid, factory_id))
         else:
             self._add_address[guid] = list()
-        self._add_address[guid].append((family, address, netprefix, broadcast))
+        self._add_address[guid].append((address, netprefix, broadcast))
 
     def add_route(self, guid, destination, netprefix, nexthop):
         if not guid in self._create:

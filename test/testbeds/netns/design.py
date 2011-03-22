@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 from nepi.core.design import ExperimentDescription, FactoriesProvider
-from nepi.core.design import AF_INET
 import os
 import shutil
 import test_util

@@ -3,7 +3,6 @@
 
 from constants import TESTBED_ID
 from nepi.core import testbed_impl
-from nepi.util.constants import AF_INET, AF_INET6
 import os
 
 class TestbedInstance(testbed_impl.TestbedInstance):
@@ -32,9 +31,9 @@ class TestbedInstance(testbed_impl.TestbedInstance):
         for guid, addresses in self._add_address.iteritems():
             element = self._elements[guid]
             for address in addresses:
-                (family, address, netprefix, broadcast) = address
-                if family == AF_INET:
-                    element.add_v4_address(address, netprefix)
+                (address, netprefix, broadcast) = address
+                # TODO: Decide if we should add a ipv4 or ipv6 address
+                element.add_v4_address(address, netprefix)
         # configure routes
         for guid, routes in self._add_route.iteritems():
             element = self._elements[guid]

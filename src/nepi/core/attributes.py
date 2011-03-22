@@ -35,7 +35,7 @@ class Attribute(object):
         allowed = None, flags = NoFlags, validation_function = None):
         if not type in Attribute.types:
             raise AttributeError("invalid type %s " % type)
-        self.name = name
+        self._name = name
         self._type = type
         self._help = help
         self._value = value
@@ -46,6 +46,10 @@ class Attribute(object):
         self._allowed = allowed
         self._validation_function = validation_function
         self._modified = False
+
+    @property
+    def name(self):
+        return self._name
 
     @property
     def type(self):

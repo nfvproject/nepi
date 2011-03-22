@@ -190,8 +190,9 @@ class Metadata(object):
                 value = attribute_info["value"]
                 range = attribute_info["range"]
                 allowed = attribute_info["allowed"]
-                flags =  attribute_info["flags"] if "flags" in attribute_info \
-                    else Attribute.NoFlags
+                flags = attribute_info["flags"] if "flags" in attribute_info \
+                        and attribute_info["flags"] != None \
+                        else Attribute.NoFlags
                 validation_function = attribute_info["validation_function"]
                 if box_attributes:
                     factory.add_box_attribute(name, help, type, value, range, 

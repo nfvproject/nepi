@@ -95,7 +95,7 @@ class XmlExperimentParser(ExperimentParser):
 
     def addresses_data_to_xml(self, doc, parent_tag, guid, data):
         addresses_tag = doc.createElement("addresses") 
-        for (autoconfigure, address, family, netprefix, broadcast) \
+        for (autoconfigure, address, netprefix, broadcast) \
                 in data.get_address_data(guid):
             address_tag = doc.createElement("address") 
             addresses_tag.appendChild(address_tag)
@@ -103,7 +103,6 @@ class XmlExperimentParser(ExperimentParser):
                 address_tag.setAttribute("AutoConfigure", str(autoconf))
             if address:
                 address_tag.setAttribute("Address", str(address))
-            address_tag.setAttribute("Family", str(family))
             address_tag.setAttribute("NetPrefix", str(netprefix))
             if broadcast:
                 address_tag.setAttribute("Broadcast", str(broadcast))
@@ -112,11 +111,10 @@ class XmlExperimentParser(ExperimentParser):
 
     def routes_data_to_xml(self, doc, parent_tag, guid, data):
         routes_tag = doc.createElement("routes") 
-        for (family, destination, netprefix, nexthop) \
+        for (destination, netprefix, nexthop) \
                 in data.get_route_data(guid):
             route_tag = doc.createElement("route") 
             routes_tag.appendChild(route_tag)
-            route_tag.setAttribute("Family", str(family))
             route_tag.setAttribute("Destination", str(destination))
             route_tag.setAttribute("NetPrefix", str(netprefix))
             route_tag.setAttribute("NextHop", str(nexthop))
@@ -248,14 +246,12 @@ class XmlExperimentParser(ExperimentParser):
                        if address_tag.hasAttribute("AutoConfigure") else None
                 address = str(address_tag.getAttribute("Address")) \
                        if address_tag.hasAttribute("Address") else None
-                family = int(address_tag.getAttribute("Family")) \
-                       if address_tag.hasAttribute("Family") else None
                 netprefix = int(address_tag.getAttribute("NetPrefix")) \
                        if address_tag.hasAttribute("NetPrefix") else None
                 broadcast = str(address_tag.getAttribute("Broadcast")) \
                        if address_tag.hasAttribute("Broadcast") else None
-                data.add_address_data(guid, autoconf, address, family, 
-                    netprefix, broadcast)
+                data.add_address_data(guid, autoconf, address, netprefix, 
+                        broadcast)
 
     def routes_data_from_xml(self, tag, guid, data):
         routes_tag_list = tag.getElementsByTagName("routes")
@@ -265,11 +261,10 @@ class XmlExperimentParser(ExperimentParser):
         route_tag_list = routes_tag_list[0].getElementsByTagName("route")
         for route_tag in route_tag_list:
             if route_tag.nodeType == tag.ELEMENT_NODE:
-                family = int(route_tag.getAttribute("Family"))
                 destination = str(route_tag.getAttribute("Destination"))
                 netprefix = int(route_tag.getAttribute("NetPrefix"))
                 nexthop = str(route_tag.getAttribute("NextHop"))
-                data.add_route_data(guid, family, destination, netprefix, 
+                data.add_route_data(guid, destination, netprefix, 
                         nexthop)
 
     def connections_data_from_xml(self, tag, guid, data):

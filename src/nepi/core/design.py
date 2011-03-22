@@ -8,7 +8,6 @@ Experiment design API
 from nepi.core.attributes import AttributesMap, Attribute
 from nepi.core.metadata import Metadata
 from nepi.util import validation
-from nepi.util.constants import AF_INET, AF_INET6
 from nepi.util.guid import GuidGenerator
 from nepi.util.graphical_info import GraphicalInfo
 from nepi.util.parser._xml import XmlExperimentParser
@@ -151,7 +150,7 @@ class Trace(AttributesMap):
         return self._help
 
 class Address(AttributesMap):
-    def __init__(self, family):
+    def __init__(self):
         super(Address, self).__init__()
         self.add_attribute(name = "AutoConfigure", 
                 help = "If set, this address will automatically be assigned", 
@@ -159,60 +158,42 @@ class Address(AttributesMap):
                 value = False,
                 flags = Attribute.DesignOnly,
                 validation_function = validation.is_bool)
-        self.add_attribute(name = "Family",
-                help = "Address family type: AF_INET, AFT_INET6", 
-                type = Attribute.INTEGER, 
-                value = family,
-                flags = Attribute.ReadOnly | Attribute.HasNoDefaultValue,
-                validation_function = validation.is_integer)
-        address_validation = validation.is_ip4_address if family == AF_INET \
-                        else validation.is_ip6_address
         self.add_attribute(name = "Address",
                 help = "Address number", 
                 type = Attribute.STRING,
                 flags = Attribute.HasNoDefaultValue,
-                validation_function = address_validation)
-        prefix_range = (0, 32) if family == AF_INET else (0, 128)
+                validation_function = validation.is_ip_address)
         self.add_attribute(name = "NetPrefix",
                 help = "Network prefix for the address", 
                 type = Attribute.INTEGER, 
-                range = prefix_range,
-                value = 24 if family == AF_INET else 64,
+                range = (0, 128),
+                value = 24,
                 flags = Attribute.HasNoDefaultValue,
                 validation_function = validation.is_integer)
-        if family == AF_INET:
-            self.add_attribute(name = "Broadcast",
-                    help = "Broadcast address", 
-                    type = Attribute.STRING,
-                    validation_function = validation.is_ip4_address)
+        self.add_attribute(name = "Broadcast",
+                help = "Broadcast address", 
+                type = Attribute.STRING,
+                validation_function = validation.is_ip4_address)
                 
 class Route(AttributesMap):
-    def __init__(self, family):
+    def __init__(self):
         super(Route, self).__init__()
-        self.add_attribute(name = "Family",
-                help = "Address family type: AF_INET, AFT_INET6", 
-                type = Attribute.INTEGER, 
-                value = family,
-                flags = Attribute.ReadOnly | Attribute.HasNoDefaultValue,
-                validation_function = validation.is_integer)
-        address_validation = validation.is_ip4_address if family == AF_INET \
-                        else validation.is_ip6_address
         self.add_attribute(name = "Destination", 
                 help = "Network destintation",
                 type = Attribute.STRING, 
-                validation_function = address_validation)
-        prefix_range = (0, 32) if family == AF_INET else (0, 128)
+                validation_function = validation.is_ip_address)
         self.add_attribute(name = "NetPrefix",
                 help = "Network destination prefix", 
                 type = Attribute.INTEGER, 
+                prefix_range = (0,128),
+                value = 24,
                 flags = Attribute.HasNoDefaultValue,
-                prefix_range = prefix_range,
                 validation_function = validation.is_integer)
         self.add_attribute(name = "NextHop",
                 help = "Address for the next hop", 
                 type = Attribute.STRING,
                 flags = Attribute.HasNoDefaultValue,
-                validation_function = address_validation)
+                validation_function = validation.is_ip_address)
 
 class Box(AttributesMap):
     def __init__(self, guid, factory, testbed_guid, container = None):
@@ -312,9 +293,7 @@ class AddressableBox(Box):
     def __init__(self, guid, factory, testbed_guid, container = None):
         super(AddressableBox, self).__init__(guid, factory, testbed_guid, 
                 container)
-        self._family = factory.get_attribute_value("Family")
-        # maximum number of addresses this box can have
-        self._max_addresses = factory.get_attribute_value("MaxAddresses")
+        self._max_addresses = 1 # TODO: How to make this configurable!
         self._addresses = list()
 
     @property
@@ -328,7 +307,7 @@ class AddressableBox(Box):
     def add_address(self):
         if len(self._addresses) == self.max_addresses:
             raise RuntimeError("Maximun number of addresses for this box reached.")
-        address = Address(family = self._family)
+        address = Address()
         self._addresses.append(address)
         return address
 
@@ -351,8 +330,8 @@ class RoutingTableBox(Box):
     def routes(self):
         return self._routes
 
-    def add_route(self, family):
-        route = Route(family = family)
+    def add_route(self):
+        route = Route()
         self._routes.append(route)
         return route
 

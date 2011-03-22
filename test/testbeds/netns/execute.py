@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import getpass
-from nepi.util.constants import AF_INET, STATUS_FINISHED
+from nepi.util.constants import STATUS_FINISHED
 from nepi.testbeds import netns
 import os
 import shutil
@@ -26,11 +26,11 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.create(4, "NodeInterface")
         instance.create_set(4, "up", True)
         instance.connect(2, "devs", 4, "node")
-        instance.add_address(4, AF_INET, "10.0.0.1", 24, None)
+        instance.add_address(4, "10.0.0.1", 24, None)
         instance.create(5, "NodeInterface")
         instance.create_set(5, "up", True)
         instance.connect(3, "devs", 5, "node")
-        instance.add_address(5, AF_INET, "10.0.0.2", 24, None)
+        instance.add_address(5, "10.0.0.2", 24, None)
         instance.create(6, "Switch")
         instance.create_set(6, "up", True)
         instance.connect(4, "switch", 6, "devs")
@@ -69,11 +69,11 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.create(4, "P2PNodeInterface")
         instance.create_set(4, "up", True)
         instance.connect(2, "devs", 4, "node")
-        instance.add_address(4, AF_INET, "10.0.0.1", 24, None)
+        instance.add_address(4, "10.0.0.1", 24, None)
         instance.create(5, "P2PNodeInterface")
         instance.create_set(5, "up", True)
         instance.connect(3, "devs", 5, "node")
-        instance.add_address(5, AF_INET, "10.0.0.2", 24, None)
+        instance.add_address(5, "10.0.0.2", 24, None)
         instance.connect(4, "p2p", 5, "p2p")
         instance.create(6, "Application")
         instance.create_set(6, "command", "ping -qc1 10.0.0.2")
@@ -110,19 +110,19 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.create(5, "NodeInterface")
         instance.create_set(5, "up", True)
         instance.connect(2, "devs", 5, "node")
-        instance.add_address(5, AF_INET, "10.0.0.1", 24, None)
+        instance.add_address(5, "10.0.0.1", 24, None)
         instance.create(6, "NodeInterface")
         instance.create_set(6, "up", True)
         instance.connect(3, "devs", 6, "node")
-        instance.add_address(6, AF_INET, "10.0.0.2", 24, None)
+        instance.add_address(6, "10.0.0.2", 24, None)
         instance.create(7, "NodeInterface")
         instance.create_set(7, "up", True)
         instance.connect(3, "devs", 7, "node")
-        instance.add_address(7, AF_INET, "10.0.1.1", 24, None)
+        instance.add_address(7, "10.0.1.1", 24, None)
         instance.create(8, "NodeInterface")
         instance.create_set(8, "up", True)
         instance.connect(4, "devs", 8, "node")
-        instance.add_address(8, AF_INET, "10.0.1.2", 24, None)
+        instance.add_address(8, "10.0.1.2", 24, None)
         instance.create(9, "Switch")
         instance.create_set(9, "up", True)
         instance.connect(5, "switch", 9, "devs")

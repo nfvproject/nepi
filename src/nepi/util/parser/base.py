@@ -66,7 +66,7 @@ class ExperimentData(object):
         connection_data = connections_data[connector_type_name]
         connection_data[other_guid] = other_connector_type_name
 
-    def add_address_data(self, guid, autoconf, address, family, netprefix, 
+    def add_address_data(self, guid, autoconf, address, netprefix, 
             broadcast):
         data = self.data[guid]
         if not "addresses" in data:
@@ -77,19 +77,17 @@ class ExperimentData(object):
             address_data["AutoConfigure"] = autoconf
         if address:
             address_data["Address"] = address
-        address_data["Family"] = family
         address_data["NetPrefix"] = netprefix
         if broadcast:
             address_data["Broadcast"] = broadcast
         addresses_data.append(address_data)
 
-    def add_route_data(self, guid, family, destination, netprefix, nexthop): 
+    def add_route_data(self, guid, destination, netprefix, nexthop): 
         data = self.data[guid]
         if not "routes" in data:
             data["routes"] = list()
         routes_data = data["routes"]
         route_data = dict({
-            "Family": family, 
             "Destination": destination,
             "NetPrefix": netprefix, 
             "NextHop": nexthop 
@@ -158,7 +156,6 @@ class ExperimentData(object):
         addresses_data = data["addresses"]
         return [(data["AutoConfigure"] if "AutoConfigure" in data else None,
                  data["Address"] if "Address" in data else None,
-                 data["Family"] if "Family" in data else None,
                  data["NetPrefix"] if "NetPrefix" in data else None,
                  data["Broadcast"] if "Broadcast" in data else None) \
                  for data in addresses_data]
@@ -168,8 +165,7 @@ class ExperimentData(object):
         if not "routes" in data:
             return []
         routes_data = data["routes"]
-        return [(data["Family"],
-                 data["Destination"],
+        return [(data["Destination"],
                  data["NetPrefix"],
                  data["NextHop"]) \
                          for data in routes_data]
@@ -229,20 +225,18 @@ class ExperimentParser(object):
              autoconf = addr.get_attribute_value("AutoConfigure")
              address = addr.get_attribute_value("Address")
              netprefix = addr.get_attribute_value("NetPrefix")
-             family = addr.get_attribute_value("Family")
              broadcast = addr.get_attribute_value("Broadcast") \
                     if addr.has_attribute("Broadcast") and \
                     addr.is_attribute_modified("Broadcast") else None
-             data.add_address_data(guid, autoconf, address, family, netprefix, 
+             data.add_address_data(guid, autoconf, address, netprefix, 
                     broadcast)
 
     def routes_to_data(self, data, guid, routes):
         for route in routes:
-             family = route.get_attribute_value("Family")
              destination = route.get_attribute_value("Destination")
              netprefix = route.get_attribute_value("NetPrefix")
              nexthop = route.get_attribute_value("NextHop")
-             data.add_route_data(guid, family, destination, netprefix, nexthop)
+             data.add_route_data(guid, destination, netprefix, nexthop)
 
     def from_data(self, experiment_description, data):
         box_guids = list()
@@ -299,24 +293,22 @@ class ExperimentParser(object):
             box.enable_trace(name)
 
     def addresses_from_data(self, box, data):
-        for (autoconf, address, family, netprefix, broadcast) \
+        for (autoconf, address, netprefix, broadcast) \
                 in data.get_address_data(box.guid):
             addr = box.add_address()
             if autoconf:
                 addr.set_attribute_value("AutoConfigure", autoconf)
             if address:
                 addr.set_attribute_value("Address", address)
-            if family != None:
-                addr.set_attribute_value("Family", family)
             if netprefix != None:
                 addr.set_attribute_value("NetPrefix", netprefix)
             if broadcast:
                 addr.set_attribute_value("Broadcast", broadcast)
 
     def routes_from_data(self, box, data):
-         for (family, destination, netprefix, nexthop) \
+         for (destination, netprefix, nexthop) \
                  in data.get_route_data(box.guid):
-            addr = box.add_route(family)
+            addr = box.add_route()
             addr.set_attribute_value("Destination", destination)
             addr.set_attribute_value("NetPrefix", netprefix)
             addr.set_attribute_value("NextHop", nexthop)

@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 from nepi.core.design import ExperimentDescription, FactoriesProvider
-from nepi.core.design import AF_INET
 import os
 import shutil
 import test_util
@@ -48,7 +47,7 @@ class Ns3DesignTestCase(unittest.TestCase):
         node2.connector("devs").connect(iface2.connector("node"))
         iface2.connector("queue").connect(queue2.connector("dev"))
         trace2 = iface2.enable_trace("P2PPcapTrace")
-        ip2 = iface1.add_address()
+        ip2 = iface2.add_address()
         ip2.set_attribute_value("Address", "10.0.0.2")
 
         chan = tstbd_desc.create("ns3::PointToPointChannel")

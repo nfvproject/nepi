@@ -22,7 +22,6 @@ def is_string(attribute, value):
 def is_time(attribute, value):
     return isinstance(value, str) # TODO: Missing validation!
 
-# TODO: Allow netrefs!
 def is_ip4_address(attribute, value):
     try:
         ipaddr.IPv4Address(value)
@@ -30,11 +29,17 @@ def is_ip4_address(attribute, value):
         return False
     return True
 
-# TODO: Allow netrefs!
 def is_ip6_address(attribute, value):
     try:
         ipaddr.IPv6Address(value)
     except ipaddr.AddressValueError:
+        return False
+    return True
+
+# TODO: Allow netrefs!
+def is_ip_address(attribute, value):
+    if not is_ip4_address(attribute, value) and \
+            not is_ip6_address(attribute, value):
         return False
     return True
 

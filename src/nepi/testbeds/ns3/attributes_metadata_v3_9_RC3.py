@@ -3364,24 +3364,4 @@ attributes = dict({
         "type": Attribute.STRING,
         "help": "When this timeout expires, the RTS/CTS handshake has failed."
     }),
-    "max_addresses": dict({
-        "name": "MaxAddresses",
-        "help": "Maximum number of addresses allowed by the device",
-        "type": Attribute.INTEGER,
-        "value": None,
-        "range": None,
-        "allowed": None,
-        "flags": Attribute.Invisible,
-        "validation_function": validation.is_integer
-    }),
-    "family": dict({
-        "name": "Family",
-        "help": "IP address family",
-        "type": Attribute.INTEGER,
-        "value": AF_INET,
-        "range": None,
-        "allowed": None,
-        "flags": Attribute.Invisible,
-        "validation_function": validation.is_integer
-     }), 
 })
