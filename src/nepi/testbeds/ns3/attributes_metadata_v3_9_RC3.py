@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
 import validation as ns3_validation
 from nepi.core.attributes import Attribute
 from nepi.util import validation
@@ -10,9 +9,6 @@ attributes = dict({
         "name": "SleepCurrentA",
         "validation_function": validation.is_double,
         "value": 2.0000000000000002e-05,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The default radio Sleep current in Ampere."
     }),
@@ -20,9 +16,6 @@ attributes = dict({
         "name": "Protocol",
         "validation_function": validation.is_string,
         "value": "ns3::UdpSocketFactory",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The type of protocol to use."
     }),
@@ -30,9 +23,6 @@ attributes = dict({
         "name": "TxCurrentA",
         "validation_function": validation.is_double,
         "value": 0.017399999999999999,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The radio Tx current in Ampere."
     }),
@@ -40,9 +30,6 @@ attributes = dict({
         "name": "BasicEnergySourceInitialEnergyJ",
         "validation_function": validation.is_double,
         "value": 10.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Initial energy stored in basic energy source."
     }),
@@ -50,9 +37,6 @@ attributes = dict({
         "name": "FrameSize",
         "validation_function": validation.is_integer,
         "value": 1000,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Size of data frames in bytes"
     }),
@@ -60,9 +44,6 @@ attributes = dict({
         "name": "RateStep",
         "validation_function": validation.is_integer,
         "value": 4,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Increments available for rate assignment in bps"
     }),
@@ -70,9 +51,6 @@ attributes = dict({
         "name": "Stop",
         "validation_function": validation.is_time,
         "value": "0ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The simulation time at which to tear down the device thread."
     }),
@@ -80,9 +58,6 @@ attributes = dict({
         "name": "ChannelSwitchDelay",
         "validation_function": validation.is_time,
         "value": "250000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Delay between two short frames transmitted on different frequencies. NOTE: Unused now."
     }),
@@ -90,9 +65,6 @@ attributes = dict({
         "name": "Time",
         "validation_function": validation.is_time,
         "value": "1000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Change current direction and speed after moving for this delay."
     }),
@@ -100,9 +72,6 @@ attributes = dict({
         "name": "ewndFor12mbps",
         "validation_function": validation.is_integer,
         "value": 20,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "ewnd parameter for 12 Mbs data mode"
     }),
@@ -110,9 +79,6 @@ attributes = dict({
         "name": "BerThreshold",
         "validation_function": validation.is_double,
         "value": 1.0000000000000001e-05,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The maximum Bit Error Rate acceptable at any transmission mode"
     }),
@@ -120,9 +86,6 @@ attributes = dict({
         "name": "Dot11MeshHWMPactivePathTimeout",
         "validation_function": validation.is_time,
         "value": "5120000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Lifetime of reactive routing information"
     }),
@@ -130,9 +93,6 @@ attributes = dict({
         "name": "pmtlFor48mbps",
         "validation_function": validation.is_double,
         "value": 0.23000000000000001,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Pmtl parameter for 48 Mbs data mode"
     }),
@@ -140,9 +100,6 @@ attributes = dict({
         "name": "SystemLoss",
         "validation_function": validation.is_double,
         "value": 1.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The system loss"
     }),
@@ -150,9 +107,6 @@ attributes = dict({
         "name": "ReferenceLoss",
         "validation_function": validation.is_double,
         "value": 46.677700000000002,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The reference loss at distance d0 (dB). (Default is Friis at 1m with 5.15 GHz)"
     }),
@@ -160,9 +114,6 @@ attributes = dict({
         "name": "MaxQueueTime",
         "validation_function": validation.is_time,
         "value": "30000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Maximum time packets can be queued (in seconds)"
     }),
@@ -170,9 +121,6 @@ attributes = dict({
         "name": "Dot11MeshHWMPactiveRootTimeout",
         "validation_function": validation.is_time,
         "value": "5120000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Lifetime of poractive routing information"
     }),
@@ -180,9 +128,6 @@ attributes = dict({
         "name": "DutyCycle",
         "validation_function": validation.is_double,
         "value": 0.5,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "the duty cycle of the generator, i.e., the fraction of the period that is occupied by a signal"
     }),
@@ -190,9 +135,6 @@ attributes = dict({
         "name": "DeviceName",
         "validation_function": validation.is_string,
         "value": "eth1",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The name of the underlying real device (e.g. eth1)."
     }),
@@ -200,9 +142,6 @@ attributes = dict({
         "name": "Direction",
         "validation_function": validation.is_string,
         "value": "Uniform:0:6.28318",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "A random variable used to pick the direction (gradients)."
     }),
@@ -210,9 +149,6 @@ attributes = dict({
         "name": "OffTime",
         "validation_function": validation.is_string,
         "value": "Constant:1",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "A RandomVariable used to pick the duration of the 'Off' state."
     }),
@@ -220,9 +156,6 @@ attributes = dict({
         "name": "UpdatePeriod",
         "validation_function": validation.is_time,
         "value": "1000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The interval between decisions about rate control changes"
     }),
@@ -230,9 +163,6 @@ attributes = dict({
         "name": "DelayBinWidth",
         "validation_function": validation.is_double,
         "value": 0.001,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The width used in the delay histogram."
     }),
@@ -240,9 +170,6 @@ attributes = dict({
         "name": "EnergyDetectionThreshold",
         "validation_function": validation.is_double,
         "value": -96.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The energy of a received signal should be higher than this threshold (dbm) to allow the PHY layer to detect the signal."
     }),
@@ -250,9 +177,6 @@ attributes = dict({
         "name": "PacketSizeBinWidth",
         "validation_function": validation.is_double,
         "value": 20.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The width used in the packetSize histogram."
     }),
@@ -260,9 +184,6 @@ attributes = dict({
         "name": "Resolution",
         "validation_function": validation.is_time,
         "value": "1000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "the lengh of the time interval over which the power spectral density of incoming signals is averaged"
     }),
@@ -270,9 +191,6 @@ attributes = dict({
         "name": "MaxX",
         "validation_function": validation.is_double,
         "value": 1.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Maximum X value of traveling region, [m]"
     }),
@@ -280,9 +198,6 @@ attributes = dict({
         "name": "IdleCurrentA",
         "validation_function": validation.is_double,
         "value": 0.000426,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The default radio Idle current in Ampere."
     }),
@@ -290,9 +205,6 @@ attributes = dict({
         "name": "Netmask",
         "validation_function": validation.is_string,
         "value": "255.255.255.255",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The network mask to assign to the tap device, when in ConfigureLocal mode. This address will override the discovered MAC address of the simulated device."
     }),
@@ -300,9 +212,6 @@ attributes = dict({
         "name": "PathDiscoveryTime",
         "validation_function": validation.is_time,
         "value": "5599999999ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Estimate of maximum time needed to find route in network = 2 * NetTraversalTime"
     }),
@@ -310,9 +219,6 @@ attributes = dict({
         "name": "poriFor24mbps",
         "validation_function": validation.is_double,
         "value": 0.1681,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Pori parameter for 24 Mbs data mode"
     }),
@@ -320,9 +226,6 @@ attributes = dict({
         "name": "Exponent0",
         "validation_function": validation.is_double,
         "value": 1.8999999999999999,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The exponent for the first field."
     }),
@@ -330,9 +233,6 @@ attributes = dict({
         "name": "TimeStep",
         "validation_function": validation.is_time,
         "value": "1000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Change current direction and speed after moving for this time."
     }),
@@ -340,9 +240,6 @@ attributes = dict({
         "name": "MaxMissedBeacons",
         "validation_function": validation.is_integer,
         "value": 10,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Number of beacons which much be consecutively missed before we attempt to restart association."
     }),
@@ -350,9 +247,6 @@ attributes = dict({
         "name": "RxGain",
         "validation_function": validation.is_double,
         "value": 1.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Reception gain (dB)."
     }),
@@ -360,9 +254,6 @@ attributes = dict({
         "name": "MaxRetries",
         "validation_function": validation.is_integer,
         "value": 4,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Maximum number of retries"
     }),
@@ -370,9 +261,6 @@ attributes = dict({
         "name": "pmtlFor24mbps",
         "validation_function": validation.is_double,
         "value": 0.26500000000000001,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Pmtl parameter for 24 Mbs data mode"
     }),
@@ -380,9 +268,6 @@ attributes = dict({
         "name": "TurnOnRtsAfterRateIncrease",
         "validation_function": validation.is_bool,
         "value": True,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.BOOL,
         "help": "If true the RTS mechanism will be turned on when the rate will be increased"
     }),
@@ -390,9 +275,6 @@ attributes = dict({
         "name": "Gain",
         "validation_function": validation.is_double,
         "value": 0.10000000000000001,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "XXX"
     }),
@@ -400,9 +282,6 @@ attributes = dict({
         "name": "SuccessK",
         "validation_function": validation.is_double,
         "value": 2.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Multiplication factor for the success threshold in the AARF algorithm."
     }),
@@ -410,9 +289,6 @@ attributes = dict({
         "name": "MinTimerThreshold",
         "validation_function": validation.is_integer,
         "value": 15,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The minimum value for the 'timer' threshold in the AARF algorithm."
     }),
@@ -420,9 +296,6 @@ attributes = dict({
         "name": "TimerThreshold",
         "validation_function": validation.is_integer,
         "value": 15,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The 'timer' threshold in the ARF algorithm."
     }),
@@ -430,9 +303,6 @@ attributes = dict({
         "name": "poriFor36mbps",
         "validation_function": validation.is_double,
         "value": 0.115,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Pori parameter for 36 Mbs data mode"
     }),
@@ -440,9 +310,6 @@ attributes = dict({
         "name": "SlotTime",
         "validation_function": validation.is_time,
         "value": "20000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Time slot duration for MAC backoff"
     }),
@@ -450,9 +317,6 @@ attributes = dict({
         "name": "DeltaX",
         "validation_function": validation.is_double,
         "value": 1.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The x space between objects."
     }),
@@ -460,9 +324,6 @@ attributes = dict({
         "name": "DeltaY",
         "validation_function": validation.is_double,
         "value": 1.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The y space between objects."
     }),
@@ -470,9 +331,6 @@ attributes = dict({
         "name": "Shipping",
         "validation_function": validation.is_double,
         "value": 0.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Shipping contribution to noise between 0 and 1"
     }),
@@ -480,9 +338,6 @@ attributes = dict({
         "name": "HardLimit",
         "validation_function": validation.is_time,
         "value": "100000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Maximum acceptable real-time jitter (used in conjunction with SynchronizationMode=HardLimit)"
     }),
@@ -490,9 +345,6 @@ attributes = dict({
         "name": "SupportedModesPhy2",
         "validation_function": validation.is_string,
         "value": "2|0|1|",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "List of modes supported by Phy2"
     }),
@@ -500,9 +352,6 @@ attributes = dict({
         "name": "SupportedModesPhy1",
         "validation_function": validation.is_string,
         "value": "2|0|1|",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "List of modes supported by Phy1"
     }),
@@ -510,9 +359,6 @@ attributes = dict({
         "name": "TxGain",
         "validation_function": validation.is_double,
         "value": 1.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Transmission gain (dB)."
     }),
@@ -520,9 +366,6 @@ attributes = dict({
         "name": "MaxPropDelay",
         "validation_function": validation.is_time,
         "value": "2000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Maximum possible propagation delay to gateway"
     }),
@@ -530,9 +373,6 @@ attributes = dict({
         "name": "Alpha",
         "validation_function": validation.is_double,
         "value": 1.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "A constant representing the tunable parameter in the Gauss-Markov model."
     }),
@@ -540,9 +380,6 @@ attributes = dict({
         "name": "X",
         "validation_function": validation.is_double,
         "value": 0.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The x coordinate of the center of the  disc."
     }),
@@ -550,9 +387,6 @@ attributes = dict({
         "name": "ExpirationTime",
         "validation_function": validation.is_time,
         "value": "30000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Time it takes for learned MAC state entry to expire."
     }),
@@ -560,9 +394,6 @@ attributes = dict({
         "name": "GratuitousReply",
         "validation_function": validation.is_bool,
         "value": True,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.BOOL,
         "help": "Indicates whether a gratuitous RREP should be unicast to the node originated route discovery."
     }),
@@ -570,9 +401,6 @@ attributes = dict({
         "name": "CcaThreshold",
         "validation_function": validation.is_double,
         "value": 10.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Aggregate energy of incoming signals to move to CCA Busy state dB"
     }),
@@ -580,9 +408,6 @@ attributes = dict({
         "name": "AllowedHelloLoss",
         "validation_function": validation.is_integer,
         "value": 2,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Number of hello messages which may be loss for valid link."
     }),
@@ -590,9 +415,6 @@ attributes = dict({
         "name": "Wind",
         "validation_function": validation.is_double,
         "value": 1.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Wind speed in m/s"
     }),
@@ -600,9 +422,6 @@ attributes = dict({
         "name": "Exponent1",
         "validation_function": validation.is_double,
         "value": 3.7999999999999998,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The exponent for the second field."
     }),
@@ -610,9 +429,6 @@ attributes = dict({
         "name": "DefaultTtl",
         "validation_function": validation.is_integer,
         "value": 64,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The TTL value set by default on all outgoing packets generated on this node."
     }),
@@ -620,9 +436,6 @@ attributes = dict({
         "name": "TxPowerEnd",
         "validation_function": validation.is_double,
         "value": 16.020600000000002,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Maximum available transmission level (dbm)."
     }),
@@ -630,9 +443,6 @@ attributes = dict({
         "name": "DataRate",
         "validation_function": validation.is_string,
         "value": "32768bps",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The default data rate for point to point links"
     }),
@@ -640,9 +450,6 @@ attributes = dict({
         "name": "MaxSuccessThreshold",
         "validation_function": validation.is_integer,
         "value": 60,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Maximum value of the success threshold in the AARF algorithm."
     }),
@@ -650,9 +457,6 @@ attributes = dict({
         "name": "MaxRangCorrectionRetries",
         "validation_function": validation.is_integer,
         "value": 16,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Number of retries on contention Ranging Requests"
     }),
@@ -660,9 +464,6 @@ attributes = dict({
         "name": "Dot11MeshHWMPpreqMinInterval",
         "validation_function": validation.is_time,
         "value": "102400000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Minimal interval between to successive PREQs"
     }),
@@ -670,9 +471,6 @@ attributes = dict({
         "name": "BlackListTimeout",
         "validation_function": validation.is_time,
         "value": "5599999999ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Time for which the node is put into the blacklist = RreqRetries * NetTraversalTime"
     }),
@@ -680,9 +478,6 @@ attributes = dict({
         "name": "MaxBytes",
         "validation_function": validation.is_integer,
         "value": 6553500,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The maximum number of bytes accepted by this DropTailQueue."
     }),
@@ -690,9 +485,6 @@ attributes = dict({
         "name": "MaxAmsduSize",
         "validation_function": validation.is_integer,
         "value": 7935,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Max length in byte of an A-MSDU"
     }),
@@ -700,9 +492,6 @@ attributes = dict({
         "name": "Distance2",
         "validation_function": validation.is_double,
         "value": 200.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Beginning of the third distance field. Default is 200m."
     }),
@@ -710,9 +499,6 @@ attributes = dict({
         "name": "MaxFrames",
         "validation_function": validation.is_integer,
         "value": 1,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Maximum number of frames to include in a single RTS"
     }),
@@ -720,9 +506,6 @@ attributes = dict({
         "name": "RxGainPhy2",
         "validation_function": validation.is_double,
         "value": 0.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Gain added to incoming signal at receiver of Phy2"
     }),
@@ -730,8 +513,6 @@ attributes = dict({
         "name": "LayoutType",
         "validation_function": validation.is_enum,
         "value": "RowFirst",
-        "range": None,
-        "flags": None,
         "allowed": ["RowFirst",
      "ColumnFirst"],
         "type": Attribute.ENUM,
@@ -741,9 +522,6 @@ attributes = dict({
         "name": "ewndFor54mbps",
         "validation_function": validation.is_integer,
         "value": 40,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "ewnd parameter for 54 Mbs data mode"
     }),
@@ -751,9 +529,6 @@ attributes = dict({
         "name": "FailureThreshold",
         "validation_function": validation.is_integer,
         "value": 2,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The number of consecutive transmissions failure to decrease the rate."
     }),
@@ -761,9 +536,6 @@ attributes = dict({
         "name": "ewndFor24mbps",
         "validation_function": validation.is_integer,
         "value": 40,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "ewnd parameter for 24 Mbs data mode"
     }),
@@ -771,9 +543,6 @@ attributes = dict({
         "name": "ewndFor48mbps",
         "validation_function": validation.is_integer,
         "value": 40,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "ewnd parameter for 48 Mbs data mode"
     }),
@@ -781,9 +550,6 @@ attributes = dict({
         "name": "SendEnable",
         "validation_function": validation.is_bool,
         "value": True,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.BOOL,
         "help": "Enable or disable the transmitter section of the device."
     }),
@@ -791,9 +557,6 @@ attributes = dict({
         "name": "DataMode",
         "validation_function": validation.is_string,
         "value": "OfdmRate6Mbps",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The transmission mode to use for every data packet transmission"
     }),
@@ -801,8 +564,6 @@ attributes = dict({
         "name": "ErrorUnit",
         "validation_function": validation.is_enum,
         "value": "EU_BYTE",
-        "range": None,
-        "flags": None,
         "allowed": ["EU_BYTE",
      "EU_PKT",
      "EU_BIT"],
@@ -813,9 +574,6 @@ attributes = dict({
         "name": "IpAddress",
         "validation_function": validation.is_ip4_address,
         "value": None,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The IP address to assign to the tap device,  when in ConfigureLocal mode. This address will override the discovered IP address of the simulated device."
     }),
@@ -823,9 +581,6 @@ attributes = dict({
         "name": "MinSuccessThreshold",
         "validation_function": validation.is_integer,
         "value": 10,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The minimum value for the success threshold in the AARF algorithm."
     }),
@@ -833,9 +588,6 @@ attributes = dict({
         "name": "NodeTraversalTime",
         "validation_function": validation.is_time,
         "value": "40000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Conservative estimate of the average one hop traversal time for packets and should include queuing delays, interrupt processing times and transfer times."
     }),
@@ -843,9 +595,6 @@ attributes = dict({
         "name": "TxPowerPhy2",
         "validation_function": validation.is_double,
         "value": 190.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Transmission output power in dB of Phy2"
     }),
@@ -853,9 +602,6 @@ attributes = dict({
         "name": "TxPowerPhy1",
         "validation_function": validation.is_double,
         "value": 190.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Transmission output power in dB of Phy1"
     }),
@@ -863,9 +609,6 @@ attributes = dict({
         "name": "ReceiveEnable",
         "validation_function": validation.is_bool,
         "value": True,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.BOOL,
         "help": "Enable or disable the receiver section of the device."
     }),
@@ -873,9 +616,6 @@ attributes = dict({
         "name": "Lambda",
         "validation_function": validation.is_double,
         "value": 0.058252400000000003,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The wavelength  (default is 5.15 GHz at 300 000 km/s)."
     }),
@@ -883,9 +623,6 @@ attributes = dict({
         "name": "ewndFor6mbps",
         "validation_function": validation.is_integer,
         "value": 6,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "ewnd parameter for 6 Mbs data mode"
     }),
@@ -893,9 +630,6 @@ attributes = dict({
         "name": "NumberOfRaysPerPath",
         "validation_function": validation.is_integer,
         "value": 1,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The number of rays to use by default for compute the fading coeficent for a given path (default is 1)"
     }),
@@ -903,9 +637,6 @@ attributes = dict({
         "name": "HnaInterval",
         "validation_function": validation.is_time,
         "value": "5000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "HNA messages emission interval.  Normally it is equal to TcInterval."
     }),
@@ -913,9 +644,6 @@ attributes = dict({
         "name": "RanVar",
         "validation_function": validation.is_string,
         "value": "Uniform:0:1",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The decision variable attached to this error model."
     }),
@@ -923,9 +651,6 @@ attributes = dict({
         "name": "Theta",
         "validation_function": validation.is_string,
         "value": "Uniform:0:6.283",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "A random variable which represents the angle (gradients) of a position in a random disc."
     }),
@@ -933,9 +658,6 @@ attributes = dict({
         "name": "UpdateStatistics",
         "validation_function": validation.is_time,
         "value": "100000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The interval between updating statistics table "
     }),
@@ -943,9 +665,6 @@ attributes = dict({
         "name": "Distance1",
         "validation_function": validation.is_double,
         "value": 80.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Beginning of the second distance field. Default is 80m."
     }),
@@ -953,9 +672,6 @@ attributes = dict({
         "name": "MyRouteTimeout",
         "validation_function": validation.is_time,
         "value": "11199999999ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Value of lifetime field in RREP generating by this node = 2 * max(ActiveRouteTimeout, PathDiscoveryTime)"
     }),
@@ -963,9 +679,6 @@ attributes = dict({
         "name": "RcvBufSize",
         "validation_function": validation.is_integer,
         "value": 131072,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "PacketSocket maximum receive buffer size (bytes)"
     }),
@@ -973,9 +686,6 @@ attributes = dict({
         "name": "RreqRetries",
         "validation_function": validation.is_integer,
         "value": 2,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Maximum number of retransmissions of RREQ to discover a route"
     }),
@@ -983,9 +693,6 @@ attributes = dict({
         "name": "MaxNumberOfPeerLinks",
         "validation_function": validation.is_integer,
         "value": 32,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Maximum number of peer links"
     }),
@@ -993,9 +700,6 @@ attributes = dict({
         "name": "QueueLimit",
         "validation_function": validation.is_integer,
         "value": 10,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Maximum packets to queue at MAC"
     }),
@@ -1003,9 +707,6 @@ attributes = dict({
         "name": "MinSpeed",
         "validation_function": validation.is_double,
         "value": 0.29999999999999999,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Minimum speed value, [m/s]"
     }),
@@ -1013,9 +714,6 @@ attributes = dict({
         "name": "MaxSpeed",
         "validation_function": validation.is_double,
         "value": 0.69999999999999996,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Maximum speed value, [m/s]"
     }),
@@ -1023,9 +721,6 @@ attributes = dict({
         "name": "NumberOfRetryRates",
         "validation_function": validation.is_integer,
         "value": 100,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Number of retry rates"
     }),
@@ -1033,9 +728,6 @@ attributes = dict({
         "name": "MaxPacketSize",
         "validation_function": validation.is_integer,
         "value": 1024,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The maximum size of a packet."
     }),
@@ -1043,9 +735,6 @@ attributes = dict({
         "name": "TxPowerLevels",
         "validation_function": validation.is_integer,
         "value": 1,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Number of transmission power levels available between TxPowerBase and TxPowerEnd included."
     }),
@@ -1053,9 +742,6 @@ attributes = dict({
         "name": "RandomStart",
         "validation_function": validation.is_time,
         "value": "500000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Window when beacon generating starts (uniform random) in seconds"
     }),
@@ -1063,9 +749,6 @@ attributes = dict({
         "name": "SampleColumn",
         "validation_function": validation.is_double,
         "value": 10.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The number of columns used for sampling"
     }),
@@ -1073,9 +756,6 @@ attributes = dict({
         "name": "NormalDirection",
         "validation_function": validation.is_string,
         "value": "Normal:0:1:10",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "A gaussian random variable used to calculate the next direction value."
     }),
@@ -1083,9 +763,6 @@ attributes = dict({
         "name": "MinPause",
         "validation_function": validation.is_double,
         "value": 0.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Minimum pause value, [s]"
     }),
@@ -1093,9 +770,6 @@ attributes = dict({
         "name": "TcInterval",
         "validation_function": validation.is_time,
         "value": "5000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "TC messages emission interval."
     }),
@@ -1103,9 +777,6 @@ attributes = dict({
         "name": "RfFlag",
         "validation_function": validation.is_bool,
         "value": True,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.BOOL,
         "help": "Reply and forward flag"
     }),
@@ -1113,9 +784,6 @@ attributes = dict({
         "name": "CcaThresholdPhy2",
         "validation_function": validation.is_double,
         "value": 10.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Aggregate energy of incoming signals to move to CCA Busy state dB of Phy2"
     }),
@@ -1123,9 +791,6 @@ attributes = dict({
         "name": "CcaThresholdPhy1",
         "validation_function": validation.is_double,
         "value": 10.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Aggregate energy of incoming signals to move to CCA Busy state dB of Phy1"
     }),
@@ -1133,9 +798,6 @@ attributes = dict({
         "name": "MaxQueueLen",
         "validation_function": validation.is_integer,
         "value": 64,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Maximum number of packets that we allow a routing protocol to buffer."
     }),
@@ -1143,9 +805,6 @@ attributes = dict({
         "name": "HeightAboveZ",
         "validation_function": validation.is_double,
         "value": 0.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The height of the antenna (m) above the node's Z coordinate"
     }),
@@ -1153,9 +812,6 @@ attributes = dict({
         "name": "poriFor9mbps",
         "validation_function": validation.is_double,
         "value": 0.1434,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Pori parameter for 9 Mbs data mode"
     }),
@@ -1163,9 +819,6 @@ attributes = dict({
         "name": "BasicEnergySupplyVoltageV",
         "validation_function": validation.is_double,
         "value": 3.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Initial supply voltage for basic energy source."
     }),
@@ -1173,9 +826,6 @@ attributes = dict({
         "name": "LostUlMapInterval",
         "validation_function": validation.is_time,
         "value": "500000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Time since last received UL-MAP before uplink synchronization is considered lost, maximum is 600."
     }),
@@ -1183,9 +833,6 @@ attributes = dict({
         "name": "UnicastPreqThreshold",
         "validation_function": validation.is_integer,
         "value": 1,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Maximum number of PREQ receivers, when we send a PREQ as a chain of unicasts"
     }),
@@ -1193,9 +840,6 @@ attributes = dict({
         "name": "poriFor48mbps",
         "validation_function": validation.is_double,
         "value": 0.047,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Pori parameter for 48 Mbs data mode"
     }),
@@ -1203,9 +847,6 @@ attributes = dict({
         "name": "pmtlFor54mbps",
         "validation_function": validation.is_double,
         "value": 0.094,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Pmtl parameter for 54 Mbs data mode"
     }),
@@ -1213,9 +854,6 @@ attributes = dict({
         "name": "BeaconInterval",
         "validation_function": validation.is_time,
         "value": "102400000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Delay between two beacons"
     }),
@@ -1223,9 +861,6 @@ attributes = dict({
         "name": "IntervalT20",
         "validation_function": validation.is_time,
         "value": "500000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Time the SS searches for preambles on a given channel. Minimum is 2 MAC frames"
     }),
@@ -1233,9 +868,6 @@ attributes = dict({
         "name": "IntervalT21",
         "validation_function": validation.is_time,
         "value": "10000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "time the SS searches for (decodable) DL-MAP on a given channel"
     }),
@@ -1243,9 +875,6 @@ attributes = dict({
         "name": "MeanPitch",
         "validation_function": validation.is_string,
         "value": "Constant:0",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "A random variable used to assign the average pitch."
     }),
@@ -1253,9 +882,6 @@ attributes = dict({
         "name": "Dot11MeshHWMPrannInterval",
         "validation_function": validation.is_time,
         "value": "5120000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Lifetime of poractive routing information"
     }),
@@ -1263,9 +889,6 @@ attributes = dict({
         "name": "Distribution",
         "validation_function": validation.is_string,
         "value": "Constant:1",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The distribution to choose the initial phases."
     }),
@@ -1273,9 +896,6 @@ attributes = dict({
         "name": "RxThreshold",
         "validation_function": validation.is_double,
         "value": 10.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Required SNR for signal acquisition in dB"
     }),
@@ -1283,9 +903,7 @@ attributes = dict({
         "name": "WaypointsLeft",
         "validation_function": validation.is_integer,
         "value": 0,
-        "range": None,
         "flags": Attribute.DesignOnly,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The number of waypoints remaining."
     }),
@@ -1293,9 +911,6 @@ attributes = dict({
         "name": "ConfirmTimeout",
         "validation_function": validation.is_time,
         "value": "40960000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Confirm timeout"
     }),
@@ -1303,9 +918,6 @@ attributes = dict({
         "name": "ActiveRouteTimeout",
         "validation_function": validation.is_time,
         "value": "3000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Period of time during which the route is considered to be valid"
     }),
@@ -1313,9 +925,6 @@ attributes = dict({
         "name": "InitialRangInterval",
         "validation_function": validation.is_time,
         "value": "50000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Time between Initial Ranging regions assigned by the BS. Maximum is 2s"
     }),
@@ -1323,9 +932,6 @@ attributes = dict({
         "name": "ewndFor18mbps",
         "validation_function": validation.is_integer,
         "value": 20,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "ewnd parameter for 18 Mbs data mode"
     }),
@@ -1333,9 +939,6 @@ attributes = dict({
         "name": "FlowInterruptionsBinWidth",
         "validation_function": validation.is_double,
         "value": 0.25,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The width used in the flowInterruptions histogram."
     }),
@@ -1343,9 +946,6 @@ attributes = dict({
         "name": "MinY",
         "validation_function": validation.is_double,
         "value": 0.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The y coordinate where the grid starts."
     }),
@@ -1353,9 +953,6 @@ attributes = dict({
         "name": "poriFor12mbps",
         "validation_function": validation.is_double,
         "value": 0.18609999999999999,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Pori parameter for 12 Mbs data mode"
     }),
@@ -1363,9 +960,6 @@ attributes = dict({
         "name": "UnicastDataThreshold",
         "validation_function": validation.is_integer,
         "value": 1,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Maximum number ofbroadcast receivers, when we send a broadcast as a chain of unicasts"
     }),
@@ -1373,9 +967,6 @@ attributes = dict({
         "name": "SuccessRatio",
         "validation_function": validation.is_double,
         "value": 0.10000000000000001,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Ratio of maximum erroneous transmissions needed to switch to a higher rate"
     }),
@@ -1383,9 +974,6 @@ attributes = dict({
         "name": "SupportedModes",
         "validation_function": validation.is_string,
         "value": "2|0|1|",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "List of modes supported by this PHY"
     }),
@@ -1393,9 +981,6 @@ attributes = dict({
         "name": "CaptureSize",
         "validation_function": validation.is_integer,
         "value": 65535,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Maximum length of captured packets (cf. pcap snaplen)"
     }),
@@ -1403,9 +988,6 @@ attributes = dict({
         "name": "NetTraversalTime",
         "validation_function": validation.is_time,
         "value": "2799999999ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Estimate of the average net traversal time = 2 * NodeTraversalTime * NetDiameter"
     }),
@@ -1413,9 +995,6 @@ attributes = dict({
         "name": "Lifetime",
         "validation_function": validation.is_time,
         "value": "120000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The lifetime of the routing enrty"
     }),
@@ -1423,9 +1002,6 @@ attributes = dict({
         "name": "DeletePeriod",
         "validation_function": validation.is_time,
         "value": "15000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "DeletePeriod is intended to provide an upper bound on the time for which an upstream node A can have a neighbor B as an active next hop for destination D, while B has invalidated the route to D. = 5 * max (HelloInterval, ActiveRouteTimeout)"
     }),
@@ -1433,9 +1009,6 @@ attributes = dict({
         "name": "MaxPerHopDelay",
         "validation_function": validation.is_time,
         "value": "10000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The maximum per-hop delay that should be considered.  Packets still not received after this delay are to be considered lost."
     }),
@@ -1443,9 +1016,6 @@ attributes = dict({
         "name": "NumberOfOscillatorsPerRay",
         "validation_function": validation.is_integer,
         "value": 4,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The number of oscillators to use by default for compute the coeficent for a given ray of a given path (default is 4)"
     }),
@@ -1453,9 +1023,6 @@ attributes = dict({
         "name": "MinRetryRate",
         "validation_function": validation.is_double,
         "value": 0.01,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Smallest allowed RTS retry rate"
     }),
@@ -1463,9 +1030,6 @@ attributes = dict({
         "name": "Pause",
         "validation_function": validation.is_string,
         "value": "Constant:2",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "A random variable used to pick the pause of a random waypoint model."
     }),
@@ -1473,9 +1037,6 @@ attributes = dict({
         "name": "Exponent",
         "validation_function": validation.is_double,
         "value": 3.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The exponent of the Path Loss propagation model"
     }),
@@ -1483,9 +1044,6 @@ attributes = dict({
         "name": "MidInterval",
         "validation_function": validation.is_time,
         "value": "5000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "MID messages emission interval.  Normally it is equal to TcInterval."
     }),
@@ -1493,9 +1051,6 @@ attributes = dict({
         "name": "pmtlFor9mbps",
         "validation_function": validation.is_double,
         "value": 0.39319999999999999,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Pmtl parameter for 9 Mbs data mode"
     }),
@@ -1503,9 +1058,6 @@ attributes = dict({
         "name": "Dot11MeshHWMPnetDiameterTraversalTime",
         "validation_function": validation.is_time,
         "value": "102400000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Time we suppose the packet to go from one edge of the network to another"
     }),
@@ -1513,9 +1065,6 @@ attributes = dict({
         "name": "TxPowerStart",
         "validation_function": validation.is_double,
         "value": 16.020600000000002,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Minimum available transmission level (dbm)."
     }),
@@ -1523,9 +1072,6 @@ attributes = dict({
         "name": "ewndFor9mbps",
         "validation_function": validation.is_integer,
         "value": 10,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "ewnd parameter for 9 Mbs data mode"
     }),
@@ -1533,9 +1079,6 @@ attributes = dict({
         "name": "IntervalT12",
         "validation_function": validation.is_time,
         "value": "10000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Wait for UCD descriptor.Maximum is 5*MaxUcdInterval"
     }),
@@ -1543,9 +1086,6 @@ attributes = dict({
         "name": "NormalPitch",
         "validation_function": validation.is_string,
         "value": "Normal:0:1:10",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "A gaussian random variable used to calculate the next pitch value."
     }),
@@ -1553,9 +1093,6 @@ attributes = dict({
         "name": "PacketWindowSize",
         "validation_function": validation.is_integer,
         "value": 32,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The size of the window used to compute the packet loss. This value should be a multiple of 8."
     }),
@@ -1563,9 +1100,6 @@ attributes = dict({
         "name": "Start",
         "validation_function": validation.is_time,
         "value": "0ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The simulation time at which to spin up the device thread."
     }),
@@ -1573,9 +1107,6 @@ attributes = dict({
         "name": "MaxDcdInterval",
         "validation_function": validation.is_time,
         "value": "10000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Maximum time between transmission of DCD messages. Maximum is 10s"
     }),
@@ -1583,9 +1114,6 @@ attributes = dict({
         "name": "ChannelNumber",
         "validation_function": validation.is_integer,
         "value": 1,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Channel center frequency = Channel starting frequency + 5 MHz * (nch - 1)"
     }),
@@ -1593,9 +1121,6 @@ attributes = dict({
         "name": "MaxPacketFailure",
         "validation_function": validation.is_integer,
         "value": 2,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Maximum number of failed packets before link will be closed"
     }),
@@ -1603,9 +1128,6 @@ attributes = dict({
         "name": "AddCreditThreshold",
         "validation_function": validation.is_integer,
         "value": 10,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Add credit threshold"
     }),
@@ -1613,9 +1135,6 @@ attributes = dict({
         "name": "Basic",
         "validation_function": validation.is_bool,
         "value": False,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.BOOL,
         "help": "If true the RRAA-BASIC algorithm will be used, otherwise the RRAA wil be used"
     }),
@@ -1623,9 +1142,6 @@ attributes = dict({
         "name": "UcdInterval",
         "validation_function": validation.is_time,
         "value": "3000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Time between transmission of UCD messages. Maximum value is 10s."
     }),
@@ -1633,9 +1149,6 @@ attributes = dict({
         "name": "DestinationOnly",
         "validation_function": validation.is_bool,
         "value": False,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.BOOL,
         "help": "Indicates only the destination may respond to this RREQ."
     }),
@@ -1643,9 +1156,6 @@ attributes = dict({
         "name": "Local",
         "validation_function": ns3_validation.is_address,
         "value": None,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The Address on which to Bind the rx socket."
     }),
@@ -1653,9 +1163,6 @@ attributes = dict({
         "name": "NumberOfNodes",
         "validation_function": validation.is_integer,
         "value": 10,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Number of non-gateway nodes in this gateway's neighborhood"
     }),
@@ -1663,9 +1170,6 @@ attributes = dict({
         "name": "MaxPause",
         "validation_function": validation.is_double,
         "value": 0.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Maximum pause value, [s]"
     }),
@@ -1673,9 +1177,6 @@ attributes = dict({
         "name": "MaxBeaconLoss",
         "validation_function": validation.is_integer,
         "value": 2,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Maximum number of lost beacons before link will be closed"
     }),
@@ -1683,9 +1184,6 @@ attributes = dict({
         "name": "MaxY",
         "validation_function": validation.is_double,
         "value": 1.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Maximum Y value of traveling region, [m]"
     }),
@@ -1693,9 +1191,6 @@ attributes = dict({
         "name": "MaxReservations",
         "validation_function": validation.is_integer,
         "value": 10,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Maximum number of reservations to accept per cycle"
     }),
@@ -1703,9 +1198,6 @@ attributes = dict({
         "name": "OnTime",
         "validation_function": validation.is_string,
         "value": "Constant:1",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "A RandomVariable used to pick the duration of the 'On' state."
     }),
@@ -1713,9 +1205,6 @@ attributes = dict({
         "name": "RxGainPhy1",
         "validation_function": validation.is_double,
         "value": 0.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Gain added to incoming signal at receiver of Phy1"
     }),
@@ -1723,9 +1212,6 @@ attributes = dict({
         "name": "Gateway",
         "validation_function": validation.is_ip4_address,
         "value": None,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The IP address of the default gateway to assign to the host machine, when in ConfigureLocal mode."
     }),
@@ -1733,9 +1219,6 @@ attributes = dict({
         "name": "GridWidth",
         "validation_function": validation.is_integer,
         "value": 10,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The number of objects layed out on a line."
     }),
@@ -1743,9 +1226,6 @@ attributes = dict({
         "name": "NormalVelocity",
         "validation_function": validation.is_string,
         "value": "Normal:0:1:10",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "A gaussian random variable used to calculate the next velocity value."
     }),
@@ -1753,9 +1233,6 @@ attributes = dict({
         "name": "ReferenceDistance",
         "validation_function": validation.is_double,
         "value": 1.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The distance at which the reference loss is calculated (m)"
     }),
@@ -1763,9 +1240,6 @@ attributes = dict({
         "name": "m1",
         "validation_function": validation.is_double,
         "value": 0.75,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "m1 for distances smaller than Distance2. Default is 0.75."
     }),
@@ -1773,9 +1247,6 @@ attributes = dict({
         "name": "m0",
         "validation_function": validation.is_double,
         "value": 1.5,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "m0 for distances smaller than Distance1. Default is 1.5."
     }),
@@ -1783,9 +1254,6 @@ attributes = dict({
         "name": "BroadcastInterval",
         "validation_function": validation.is_time,
         "value": "5000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "How often we must send broadcast packets"
     }),
@@ -1793,9 +1261,6 @@ attributes = dict({
         "name": "Variable",
         "validation_function": validation.is_string,
         "value": "Uniform:0:1",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The random variable which generates random delays (s)."
     }),
@@ -1803,9 +1268,6 @@ attributes = dict({
         "name": "MacAddress",
         "validation_function": validation.is_string,
         "value": "ff:ff:ff:ff:ff:ff",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The MAC address to assign to the tap device, when in ConfigureLocal mode. This address will override the discovered MAC address of the simulated device."
     }),
@@ -1813,9 +1275,6 @@ attributes = dict({
         "name": "MaxBeaconShiftValue",
         "validation_function": validation.is_integer,
         "value": 15,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Maximum number of TUs for beacon shifting"
     }),
@@ -1823,9 +1282,6 @@ attributes = dict({
         "name": "MeanDirection",
         "validation_function": validation.is_string,
         "value": "Uniform:0:6.28319",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "A random variable used to assign the average direction."
     }),
@@ -1833,9 +1289,6 @@ attributes = dict({
         "name": "NextHopWait",
         "validation_function": validation.is_time,
         "value": "50000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Period of our waiting for the neighbour's RREP_ACK = 10 ms + NodeTraversalTime"
     }),
@@ -1843,9 +1296,6 @@ attributes = dict({
         "name": "EnableBeaconCollisionAvoidance",
         "validation_function": validation.is_bool,
         "value": True,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.BOOL,
         "help": "Enable/Disable Beacon collision avoidance."
     }),
@@ -1853,9 +1303,6 @@ attributes = dict({
         "name": "TimeoutBuffer",
         "validation_function": validation.is_integer,
         "value": 2,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Its purpose is to provide a buffer for the timeout so that if the RREP is delayed due to congestion, a timeout is less likely to occur while the RREP is still en route back to the source."
     }),
@@ -1863,9 +1310,6 @@ attributes = dict({
         "name": "PeriodicEnergyUpdateInterval",
         "validation_function": validation.is_time,
         "value": "1000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Time between two consecutive periodic energy updates."
     }),
@@ -1873,9 +1317,6 @@ attributes = dict({
         "name": "RxCurrentA",
         "validation_function": validation.is_double,
         "value": 0.019699999999999999,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The radio Rx current in Ampere."
     }),
@@ -1883,9 +1324,6 @@ attributes = dict({
         "name": "LocalIpv6",
         "validation_function": validation.is_string,
         "value": "0000:0000:0000:0000:0000:0000:0000:0000",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Local Ipv6Address of the sender"
     }),
@@ -1893,9 +1331,6 @@ attributes = dict({
         "name": "Remote",
         "validation_function": ns3_validation.is_address,
         "value": None,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The address of the destination"
     }),
@@ -1903,9 +1338,6 @@ attributes = dict({
         "name": "SSAntennaHeight",
         "validation_function": validation.is_double,
         "value": 3.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": " SS Antenna Height (default is 3m)."
     }),
@@ -1913,9 +1345,6 @@ attributes = dict({
         "name": "MeanVelocity",
         "validation_function": validation.is_string,
         "value": "Uniform:0:1",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "A random variable used to assign the average velocity."
     }),
@@ -1923,9 +1352,6 @@ attributes = dict({
         "name": "NumberOfRates",
         "validation_function": validation.is_integer,
         "value": 0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Number of rate divisions supported by each PHY"
     }),
@@ -1933,9 +1359,6 @@ attributes = dict({
         "name": "BSAntennaHeight",
         "validation_function": validation.is_double,
         "value": 50.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": " BS Antenna Height (default is 50m)."
     }),
@@ -1943,9 +1366,6 @@ attributes = dict({
         "name": "Interval",
         "validation_function": validation.is_time,
         "value": "1000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The time to wait between packets"
     }),
@@ -1953,9 +1373,6 @@ attributes = dict({
         "name": "CcaMode1Threshold",
         "validation_function": validation.is_double,
         "value": -99.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The energy of a received signal should be higher than this threshold (dbm) to allow the PHY layer to declare CCA BUSY state"
     }),
@@ -1963,9 +1380,6 @@ attributes = dict({
         "name": "Mtu",
         "validation_function": validation.is_integer,
         "value": 1500,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The MAC-level Maximum Transmission Unit"
     }),
@@ -1973,9 +1387,6 @@ attributes = dict({
         "name": "pmtlFor12mbps",
         "validation_function": validation.is_double,
         "value": 0.2868,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Pmtl parameter for 12 Mbs data mode"
     }),
@@ -1983,9 +1394,6 @@ attributes = dict({
         "name": "MaxRtsWnd",
         "validation_function": validation.is_integer,
         "value": 40,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Maximum value for Rts window of Aarf-CD"
     }),
@@ -1993,9 +1401,6 @@ attributes = dict({
         "name": "HoldingTimeout",
         "validation_function": validation.is_time,
         "value": "40960000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Holding timeout"
     }),
@@ -2003,9 +1408,6 @@ attributes = dict({
         "name": "AssocRequestTimeout",
         "validation_function": validation.is_time,
         "value": "500000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The interval between two consecutive assoc request attempts."
     }),
@@ -2013,9 +1415,6 @@ attributes = dict({
         "name": "Timeout",
         "validation_function": validation.is_time,
         "value": "50000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Timeout for the RRAA BASIC loss estimaton block (s)"
     }),
@@ -2023,9 +1422,6 @@ attributes = dict({
         "name": "Dot11MeshHWMPmaxPREQretries",
         "validation_function": validation.is_integer,
         "value": 3,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Maximum number of retries before we suppose the destination to be unreachable"
     }),
@@ -2033,9 +1429,6 @@ attributes = dict({
         "name": "Z",
         "validation_function": validation.is_string,
         "value": "Uniform:0:1",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "A random variable which represents the z coordinate of a position in a random box."
     }),
@@ -2043,9 +1436,6 @@ attributes = dict({
         "name": "CW",
         "validation_function": validation.is_integer,
         "value": 10,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The MAC parameter CW"
     }),
@@ -2053,9 +1443,6 @@ attributes = dict({
         "name": "MaxPacketNumber",
         "validation_function": validation.is_integer,
         "value": 400,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "If a packet arrives when there are already this number of packets, it is dropped."
     }),
@@ -2063,9 +1450,6 @@ attributes = dict({
         "name": "RemoteIpv6",
         "validation_function": validation.is_string,
         "value": "0000:0000:0000:0000:0000:0000:0000:0000",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The Ipv6Address of the outbound packets"
     }),
@@ -2073,9 +1457,6 @@ attributes = dict({
         "name": "RttEstimatorFactory",
         "validation_function": validation.is_string,
         "value": "ns3::RttMeanDeviation[]",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "How RttEstimator objects are created."
     }),
@@ -2083,9 +1464,6 @@ attributes = dict({
         "name": "TxPower",
         "validation_function": validation.is_double,
         "value": 190.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Transmission output power in dB"
     }),
@@ -2093,9 +1471,6 @@ attributes = dict({
         "name": "pmtlFor36mbps",
         "validation_function": validation.is_double,
         "value": 0.33629999999999999,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Pmtl parameter for 36 Mbs data mode"
     }),
@@ -2103,9 +1478,6 @@ attributes = dict({
         "name": "MinRtsWnd",
         "validation_function": validation.is_integer,
         "value": 1,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Minimum value for Rts window of Aarf-CD"
     }),
@@ -2113,9 +1485,6 @@ attributes = dict({
         "name": "Frequency",
         "validation_function": validation.is_double,
         "value": 2300000000.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The Frequency  (default is 2.3 GHz)."
     }),
@@ -2123,8 +1492,6 @@ attributes = dict({
         "name": "Willingness",
         "validation_function": validation.is_enum,
         "value": "default",
-        "range": None,
-        "flags": None,
         "allowed": ["never",
      "low",
      "default",
@@ -2137,9 +1504,6 @@ attributes = dict({
         "name": "DoFlag",
         "validation_function": validation.is_bool,
         "value": False,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.BOOL,
         "help": "Destination only HWMP flag"
     }),
@@ -2147,9 +1511,6 @@ attributes = dict({
         "name": "BlockAckThreshold",
         "validation_function": validation.is_integer,
         "value": 0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "If number of packets in this queue reaches this value, block ack mechanism is used. If this value is 0, block ack is never used."
     }),
@@ -2157,9 +1518,6 @@ attributes = dict({
         "name": "TimerK",
         "validation_function": validation.is_double,
         "value": 2.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Multiplication factor for the timer threshold in the AARF algorithm."
     }),
@@ -2167,9 +1525,6 @@ attributes = dict({
         "name": "Period",
         "validation_function": validation.is_time,
         "value": "1000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "the period (=1/frequency)"
     }),
@@ -2177,9 +1532,7 @@ attributes = dict({
         "name": "Library",
         "validation_function": validation.is_string,
         "value": "liblinux2.6.26.so",
-        "range": None,
         "flags": Attribute.DesignOnly,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Set the linux library to be used to create the stack"
     }),
@@ -2187,9 +1540,6 @@ attributes = dict({
         "name": "DcdInterval",
         "validation_function": validation.is_time,
         "value": "3000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Time between transmission of DCD messages. Maximum value is 10s."
     }),
@@ -2197,9 +1547,6 @@ attributes = dict({
         "name": "SpreadCoef",
         "validation_function": validation.is_double,
         "value": 1.5,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Spreading coefficient used in calculation of Thorp's approximation"
     }),
@@ -2207,9 +1554,6 @@ attributes = dict({
         "name": "ewndFor36mbps",
         "validation_function": validation.is_integer,
         "value": 40,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "ewnd parameter for 36 Mbs data mode"
     }),
@@ -2217,9 +1561,6 @@ attributes = dict({
         "name": "MaxTtl",
         "validation_function": validation.is_integer,
         "value": 32,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Initial value of Time To Live field"
     }),
@@ -2227,9 +1568,6 @@ attributes = dict({
         "name": "MinDistance",
         "validation_function": validation.is_double,
         "value": 0.5,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The distance under which the propagation model refuses to give results (m)"
     }),
@@ -2237,9 +1575,6 @@ attributes = dict({
         "name": "RxNoiseFigure",
         "validation_function": validation.is_double,
         "value": 7.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Loss (dB) in the Signal-to-Noise-Ratio due to non-idealities in the receiver. According to Wikipedia (http://en.wikipedia.org/wiki/Noise_figure), this is 'the difference in decibels (dB) between the noise output of the actual receiver to the noise output of an  ideal receiver with the same overall gain and bandwidth when the receivers  are connected to sources at the standard noise temperature T0 (usually 290 K)'."
     }),
@@ -2247,9 +1582,6 @@ attributes = dict({
         "name": "DopplerFreq",
         "validation_function": validation.is_double,
         "value": 0.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The doppler frequency in Hz (f_d = v / lambda = v * f / c), the default is 0)"
     }),
@@ -2257,9 +1589,6 @@ attributes = dict({
         "name": "RetryTimeout",
         "validation_function": validation.is_time,
         "value": "40960000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Retry timeout"
     }),
@@ -2267,9 +1596,6 @@ attributes = dict({
         "name": "ControlMode",
         "validation_function": validation.is_string,
         "value": "OfdmRate6Mbps",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The transmission mode to use for every control packet transmission."
     }),
@@ -2277,9 +1603,6 @@ attributes = dict({
         "name": "Size",
         "validation_function": validation.is_integer,
         "value": 56,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The number of data bytes to be sent, real packet will be 8 (ICMP) + 20 (IP) bytes longer."
     }),
@@ -2287,9 +1610,6 @@ attributes = dict({
         "name": "ErrorRate",
         "validation_function": validation.is_double,
         "value": 0.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The error rate."
     }),
@@ -2297,9 +1617,6 @@ attributes = dict({
         "name": "PacketLength",
         "validation_function": validation.is_double,
         "value": 1200.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The packet length used for calculating mode TxTime"
     }),
@@ -2307,9 +1624,6 @@ attributes = dict({
         "name": "MaxCost",
         "validation_function": validation.is_integer,
         "value": 32,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Cost threshold after which packet will be dropped"
     }),
@@ -2317,9 +1631,6 @@ attributes = dict({
         "name": "SegmentSize",
         "validation_function": validation.is_double,
         "value": 6000.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The largest allowable segment size packet"
     }),
@@ -2327,9 +1638,6 @@ attributes = dict({
         "name": "poriFor18mbps",
         "validation_function": validation.is_double,
         "value": 0.13250000000000001,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Pori parameter for 18 Mbs data mode"
     }),
@@ -2337,9 +1645,6 @@ attributes = dict({
         "name": "UnicastPerrThreshold",
         "validation_function": validation.is_integer,
         "value": 32,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Maximum number of PERR receivers, when we send a PERR as a chain of unicasts"
     }),
@@ -2347,9 +1652,6 @@ attributes = dict({
         "name": "EnableHello",
         "validation_function": validation.is_bool,
         "value": True,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.BOOL,
         "help": "Indicates whether a hello messages enable."
     }),
@@ -2357,9 +1659,6 @@ attributes = dict({
         "name": "BeaconGeneration",
         "validation_function": validation.is_bool,
         "value": True,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.BOOL,
         "help": "Whether or not beacons are generated."
     }),
@@ -2367,9 +1666,6 @@ attributes = dict({
         "name": "MaxUcdInterval",
         "validation_function": validation.is_time,
         "value": "10000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Maximum time between transmission of UCD messages. Maximum is 10s"
     }),
@@ -2377,9 +1673,6 @@ attributes = dict({
         "name": "Dot11MeshHWMPperrMinInterval",
         "validation_function": validation.is_time,
         "value": "102400000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Minimal interval between to successive PREQs"
     }),
@@ -2387,9 +1680,6 @@ attributes = dict({
         "name": "Delay",
         "validation_function": validation.is_time,
         "value": "0ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Transmission delay through the channel"
     }),
@@ -2397,9 +1687,6 @@ attributes = dict({
         "name": "SIFS",
         "validation_function": validation.is_time,
         "value": "200000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Spacing to give between frames (this should match gateway)"
     }),
@@ -2407,9 +1694,6 @@ attributes = dict({
         "name": "MaxRange",
         "validation_function": validation.is_double,
         "value": 250.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Maximum Transmission Range (meters)"
     }),
@@ -2417,9 +1701,6 @@ attributes = dict({
         "name": "LostDlMapInterval",
         "validation_function": validation.is_time,
         "value": "500000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Time since last received DL-MAP message before downlink synchronization is considered lost. Maximum is 600ms"
     }),
@@ -2427,9 +1708,6 @@ attributes = dict({
         "name": "IntervalT2",
         "validation_function": validation.is_time,
         "value": "10000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Wait for broadcast ranging timeout, i.e., wait for initial ranging opportunity. Maximum is 5*Ranging interval"
     }),
@@ -2437,9 +1715,6 @@ attributes = dict({
         "name": "TurnOffRtsAfterRateDecrease",
         "validation_function": validation.is_bool,
         "value": True,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.BOOL,
         "help": "If true the RTS mechanism will be turned off when the rate will be decreased"
     }),
@@ -2447,9 +1722,6 @@ attributes = dict({
         "name": "MaxContentionRangingRetries",
         "validation_function": validation.is_integer,
         "value": 16,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Number of retries on contention Ranging Requests"
     }),
@@ -2457,9 +1729,6 @@ attributes = dict({
         "name": "DAD",
         "validation_function": validation.is_bool,
         "value": True,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.BOOL,
         "help": "Always do DAD check."
     }),
@@ -2467,9 +1736,6 @@ attributes = dict({
         "name": "RemotePort",
         "validation_function": validation.is_integer,
         "value": 0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The destination port of the outbound packets"
     }),
@@ -2477,9 +1743,6 @@ attributes = dict({
         "name": "Distance0",
         "validation_function": validation.is_double,
         "value": 1.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Beginning of the first (near) distance field"
     }),
@@ -2487,9 +1750,6 @@ attributes = dict({
         "name": "FlowInterruptionsMinTime",
         "validation_function": validation.is_time,
         "value": "500000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The minimum inter-arrival time that is considered a flow interruption."
     }),
@@ -2497,9 +1757,6 @@ attributes = dict({
         "name": "PacketSize",
         "validation_function": validation.is_integer,
         "value": 512,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The size of packets sent in on state"
     }),
@@ -2507,9 +1764,6 @@ attributes = dict({
         "name": "LookAroundRate",
         "validation_function": validation.is_double,
         "value": 10.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "the percentage to try other rates"
     }),
@@ -2517,9 +1771,6 @@ attributes = dict({
         "name": "NumberOfHops",
         "validation_function": validation.is_integer,
         "value": 13,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Number of frequencies in hopping pattern"
     }),
@@ -2527,9 +1778,6 @@ attributes = dict({
         "name": "Dot11MeshHWMPpathToRootInterval",
         "validation_function": validation.is_time,
         "value": "2048000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Interval between two successive proactive PREQs"
     }),
@@ -2537,9 +1785,6 @@ attributes = dict({
         "name": "ProbeRequestTimeout",
         "validation_function": validation.is_time,
         "value": "50000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The interval between two consecutive probe request attempts."
     }),
@@ -2547,9 +1792,6 @@ attributes = dict({
         "name": "RreqRateLimit",
         "validation_function": validation.is_integer,
         "value": 10,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Maximum number of RREQ per second."
     }),
@@ -2557,9 +1799,6 @@ attributes = dict({
         "name": "RangReqOppSize",
         "validation_function": validation.is_integer,
         "value": 8,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The ranging opportunity size in symbols"
     }),
@@ -2567,9 +1806,6 @@ attributes = dict({
         "name": "BwReqOppSize",
         "validation_function": validation.is_integer,
         "value": 2,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The bandwidth request opportunity size in symbols"
     }),
@@ -2577,9 +1813,6 @@ attributes = dict({
         "name": "Rho",
         "validation_function": validation.is_string,
         "value": "Uniform:0:200",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "A random variable which represents the radius of a position in a random disc."
     }),
@@ -2587,9 +1820,6 @@ attributes = dict({
         "name": "Address",
         "validation_function": validation.is_string,
         "value": "ff:ff:ff:ff:ff:ff",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The MAC address of this device."
     }),
@@ -2597,9 +1827,6 @@ attributes = dict({
         "name": "RetryStep",
         "validation_function": validation.is_double,
         "value": 0.01,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Retry rate increment"
     }),
@@ -2607,9 +1834,6 @@ attributes = dict({
         "name": "m2",
         "validation_function": validation.is_double,
         "value": 0.75,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "m2 for distances greater than Distance2. Default is 0.75."
     }),
@@ -2617,9 +1841,6 @@ attributes = dict({
         "name": "Distance",
         "validation_function": validation.is_double,
         "value": 1.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Change current direction and speed after moving for this distance."
     }),
@@ -2627,9 +1848,6 @@ attributes = dict({
         "name": "InterframeGap",
         "validation_function": validation.is_time,
         "value": "0ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The time to wait between packet (frame) transmissions"
     }),
@@ -2637,9 +1855,6 @@ attributes = dict({
         "name": "EnableBroadcast",
         "validation_function": validation.is_bool,
         "value": True,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.BOOL,
         "help": "Indicates whether a broadcast data packets forwarding enable."
     }),
@@ -2647,9 +1862,6 @@ attributes = dict({
         "name": "HelloInterval",
         "validation_function": validation.is_time,
         "value": "2000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "HELLO messages emission interval."
     }),
@@ -2657,9 +1869,6 @@ attributes = dict({
         "name": "RemoteAddress",
         "validation_function": validation.is_ip4_address,
         "value": None,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The destination Ipv4Address of the outbound packets"
     }),
@@ -2667,9 +1876,6 @@ attributes = dict({
         "name": "Rss",
         "validation_function": validation.is_double,
         "value": -150.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The fixed receiver Rss."
     }),
@@ -2677,9 +1883,6 @@ attributes = dict({
         "name": "EWMA",
         "validation_function": validation.is_double,
         "value": 75.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "EWMA level"
     }),
@@ -2687,9 +1890,6 @@ attributes = dict({
         "name": "FailureRatio",
         "validation_function": validation.is_double,
         "value": 0.33333299999999999,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Ratio of minimum erroneous transmissions needed to switch to a lower rate"
     }),
@@ -2697,9 +1897,6 @@ attributes = dict({
         "name": "Bounds",
         "validation_function": validation.is_string,
         "value": "-100|100|-100|100|0|100",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Bounds of the area to cruise."
     }),
@@ -2707,9 +1904,6 @@ attributes = dict({
         "name": "pmtlFor18mbps",
         "validation_function": validation.is_double,
         "value": 0.37219999999999998,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Pmtl parameter for 18 Mbs data mode"
     }),
@@ -2717,9 +1911,6 @@ attributes = dict({
         "name": "MinX",
         "validation_function": validation.is_double,
         "value": 1.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The x coordinate where the grid starts."
     }),
@@ -2727,9 +1918,6 @@ attributes = dict({
         "name": "TotalRate",
         "validation_function": validation.is_integer,
         "value": 4096,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Total available channel rate in bps (for a single channel, without splitting reservation channel)"
     }),
@@ -2737,9 +1925,6 @@ attributes = dict({
         "name": "Exponent2",
         "validation_function": validation.is_double,
         "value": 3.7999999999999998,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The exponent for the third field."
     }),
@@ -2747,9 +1932,6 @@ attributes = dict({
         "name": "MaxDelay",
         "validation_function": validation.is_time,
         "value": "10000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "If a packet stays longer than this delay in the queue, it is dropped."
     }),
@@ -2757,9 +1939,6 @@ attributes = dict({
         "name": "MaxQueueSize",
         "validation_function": validation.is_integer,
         "value": 255,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Maximum number of packets we can store when resolving route"
     }),
@@ -2767,8 +1946,6 @@ attributes = dict({
         "name": "Mode",
         "validation_function": validation.is_enum,
         "value": "Distance",
-        "range": None,
-        "flags": None,
         "allowed": ["Distance",
      "Time"],
         "type": Attribute.ENUM,
@@ -2778,9 +1955,6 @@ attributes = dict({
         "name": "rho",
         "validation_function": validation.is_double,
         "value": 0.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The radius of the disc"
     }),
@@ -2788,9 +1962,6 @@ attributes = dict({
         "name": "ProbeThreshold",
         "validation_function": validation.is_integer,
         "value": 1,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The number of consecutive transmissions failure to activate the RTS probe."
     }),
@@ -2798,9 +1969,6 @@ attributes = dict({
         "name": "Y",
         "validation_function": validation.is_double,
         "value": 0.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The y coordinate of the center of the  disc."
     }),
@@ -2808,9 +1976,6 @@ attributes = dict({
         "name": "poriFor6mbps",
         "validation_function": validation.is_double,
         "value": 0.5,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Pori parameter for 6 Mbs data mode"
     }),
@@ -2818,9 +1983,6 @@ attributes = dict({
         "name": "Root",
         "validation_function": validation.is_string,
         "value": "ff:ff:ff:ff:ff:ff",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The MAC address of root mesh point."
     }),
@@ -2828,9 +1990,6 @@ attributes = dict({
         "name": "RxQueueSize",
         "validation_function": validation.is_integer,
         "value": 1000,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Maximum size of the read queue.  This value limits number of packets that have been read from the network into a memory buffer but have not yet been processed by the simulator."
     }),
@@ -2838,9 +1997,6 @@ attributes = dict({
         "name": "IntervalT8",
         "validation_function": validation.is_time,
         "value": "50000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Wait for DSA/DSC Acknowledge timeout. Maximum 300ms."
     }),
@@ -2848,9 +2004,6 @@ attributes = dict({
         "name": "NetDiameter",
         "validation_function": validation.is_integer,
         "value": 35,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Net diameter measures the maximum possible number of hops between two nodes in the network"
     }),
@@ -2858,9 +2011,6 @@ attributes = dict({
         "name": "Dot11sMeshHeaderLength",
         "validation_function": validation.is_integer,
         "value": 6,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Length of the mesh header"
     }),
@@ -2868,9 +2018,6 @@ attributes = dict({
         "name": "JitterBinWidth",
         "validation_function": validation.is_double,
         "value": 0.001,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The width used in the jitter histogram."
     }),
@@ -2878,9 +2025,6 @@ attributes = dict({
         "name": "IntervalT7",
         "validation_function": validation.is_time,
         "value": "100000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "wait for DSA/DSC/DSD Response timeout. Maximum is 1s"
     }),
@@ -2888,9 +2032,6 @@ attributes = dict({
         "name": "Verbose",
         "validation_function": validation.is_bool,
         "value": False,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.BOOL,
         "help": "Produce usual output."
     }),
@@ -2898,9 +2039,6 @@ attributes = dict({
         "name": "IntervalT1",
         "validation_function": validation.is_time,
         "value": "50000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Wait for DCD timeout. Maximum is 5*maxDcdInterval"
     }),
@@ -2908,9 +2046,6 @@ attributes = dict({
         "name": "DefaultLoss",
         "validation_function": validation.is_double,
         "value": 1.7976900000000001e+308,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The default value for propagation loss, dB."
     }),
@@ -2918,9 +2053,6 @@ attributes = dict({
         "name": "IntervalT3",
         "validation_function": validation.is_time,
         "value": "200000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "ranging Response reception timeout following the transmission of a ranging request. Maximum is 200ms"
     }),
@@ -2928,9 +2060,6 @@ attributes = dict({
         "name": "MaxPackets",
         "validation_function": validation.is_integer,
         "value": 100,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The maximum number of packets accepted by this DropTailQueue."
     }),
@@ -2938,9 +2067,6 @@ attributes = dict({
         "name": "EnableLearning",
         "validation_function": validation.is_bool,
         "value": True,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.BOOL,
         "help": "Enable the learning mode of the Learning Bridge"
     }),
@@ -2948,9 +2074,6 @@ attributes = dict({
         "name": "Rate",
         "validation_function": validation.is_string,
         "value": "1000000bps",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The PHY rate used by this device"
     }),
@@ -2958,9 +2081,6 @@ attributes = dict({
         "name": "RetryRate",
         "validation_function": validation.is_double,
         "value": 0.20000000000000001,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "Number of retry attempts per second (of RTS/GWPING)"
     }),
@@ -2968,9 +2088,6 @@ attributes = dict({
         "name": "Threshold",
         "validation_function": validation.is_double,
         "value": 8.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "SINR cutoff for good packet reception"
     }),
@@ -2978,9 +2095,6 @@ attributes = dict({
         "name": "SuccessThreshold",
         "validation_function": validation.is_integer,
         "value": 10,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The minimum number of sucessfull transmissions to try a new rate."
     }),
@@ -2988,9 +2102,6 @@ attributes = dict({
         "name": "Speed",
         "validation_function": validation.is_double,
         "value": 300000000.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "The speed (m/s)"
     }),
@@ -2998,9 +2109,6 @@ attributes = dict({
         "name": "Port",
         "validation_function": validation.is_integer,
         "value": 9,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Port on which we listen for incoming packets."
     }),
@@ -3008,9 +2116,6 @@ attributes = dict({
         "name": "NoisePowerSpectralDensity",
         "validation_function": validation.is_double,
         "value": 4.1400000000000002e-21,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "the power spectral density of the measuring instrument noise, in Watt/Hz. Mostly useful to make spectrograms look more similar to those obtained by real devices. Defaults to the value for thermal noise at 300K."
     }),
@@ -3018,9 +2123,6 @@ attributes = dict({
         "name": "RaiseThreshold",
         "validation_function": validation.is_integer,
         "value": 10,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "Attempt to raise the rate if we hit that threshold"
      }),
@@ -3028,9 +2130,8 @@ attributes = dict({
         "name": "ProtocolNumber",
         "validation_function": validation.is_integer,
         "value": 0,
-        "range": None, 
+ 
         "flags": Attribute.ReadOnly,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The Ipv4 protocol number."
      }),
@@ -3038,9 +2139,6 @@ attributes = dict({
         "name": "Position",
         "validation_function": validation.is_string,
         "value": "0:0:0",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The current position of the mobility model."
      }),
@@ -3048,9 +2146,9 @@ attributes = dict({
         "name": "Velocity",
         "validation_function": validation.is_string,
         "value": "0:0:0", 
-        "range": None, 
+ 
         "flags": Attribute.DesignOnly,
-        "allowed": None, 
+ 
         "type": Attribute.STRING,
         "help": "The current velocity of the mobility model."
      }),
@@ -3058,9 +2156,9 @@ attributes = dict({
         "name": "StartTime",
         "validation_function": validation.is_string,
         "value": "0ns", 
-        "range": None, 
+ 
         "flags": Attribute.DesignOnly,
-        "allowed": None, 
+ 
         "type": Attribute.STRING,
         "help": "Time at which the application will start"
      }),
@@ -3068,9 +2166,8 @@ attributes = dict({
         "name": "StopTime",
         "validation_function": validation.is_string,
         "value": "0ns", 
-        "range": None, 
-        "flags": None,
-        "allowed": None, 
+ 
+ 
         "type": Attribute.STRING,
         "help": "Time at which the application will stop"
      }),
@@ -3078,9 +2175,8 @@ attributes = dict({
         "name": "IsLowLatency",
         "validation_function": validation.is_bool,
         "value": True, 
-        "range": None, 
-        "flags": None,
-        "allowed": None, 
+ 
+ 
         "type": Attribute.BOOL,
         "help": "If true, we attempt to modelize a so-called low-latency device: a device where decisions about tx parameters can be made on a per-packet basis and feedback about the transmission of each packet is obtained before sending the next. Otherwise, we modelize a  high-latency device, that is a device where we cannot update our decision about tx parameters after every packet transmission."
      }),
@@ -3088,9 +2184,6 @@ attributes = dict({
         "name": "MaxSsrc",
         "validation_function": validation.is_integer,
         "value": 7,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The maximum number of retransmission attempts for an RTS. This value will not have any effect on some rate control algorithms."
     }),
@@ -3098,9 +2191,6 @@ attributes = dict({
         "name": "MaxSlrc",
         "validation_function": validation.is_integer,
         "value": 7,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The maximum number of retransmission attempts for a DATA packet. This value will not have any effect on some rate control algorithms."
     }),
@@ -3108,9 +2198,6 @@ attributes = dict({
         "name": "NonUnicastMode",
         "validation_function": validation.is_string,
         "value": "Invalid-WifiMode",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Wifi mode used for non-unicast transmissions."
     }),
@@ -3118,9 +2205,6 @@ attributes = dict({
         "name": "RtsCtsThreshold",
         "validation_function": validation.is_integer,
         "value": 2346,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "If  the size of the data packet + LLC header + MAC header + FCS trailer is bigger than this value, we use an RTS/CTS handshake before sending the data, as per IEEE Std. 802.11-2007, Section 9.2.6. This value will not have any effect on some rate control algorithms."
     }),
@@ -3128,9 +2212,6 @@ attributes = dict({
         "name": "FragmentationThreshold",
         "validation_function": validation.is_integer,
         "value": 2346,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "If the size of the data packet + LLC header + MAC header + FCS trailer is biggerthan this value, we fragment it such that the size of the fragments are equal or smaller than this value, as per IEEE Std. 802.11-2007, Section 9.4. This value will not have any effect on some rate control algorithms."
     }),
@@ -3138,9 +2219,6 @@ attributes = dict({
         "name": "Ssid",
         "validation_function": validation.is_string,
         "value": "default",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The ssid we want to belong to."
     }),
@@ -3148,9 +2226,6 @@ attributes = dict({
         "name": "AckTimeout",
         "validation_function": validation.is_time,
         "value": "75000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "When this timeout expires, the DATA/ACK handshake has failed."
     }),
@@ -3158,9 +2233,6 @@ attributes = dict({
         "name": "Sifs",
         "validation_function": validation.is_time,
         "value": "16000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The value of the SIFS constant."
     }),
@@ -3168,9 +2240,6 @@ attributes = dict({
         "name": "MinCw",
         "validation_function": validation.is_integer,
         "value": 15,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The minimum value of the contention window."
     }),
@@ -3178,9 +2247,6 @@ attributes = dict({
         "name": "IsEnabled",
         "validation_function": validation.is_bool,
         "value": True, 
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.BOOL,
         "help": "Whether this ErrorModel is enabled or not."
     }),
@@ -3188,9 +2254,6 @@ attributes = dict({
         "name": "CompressedBlockAckTimeout",
         "validation_function": validation.is_time,
         "value": "99000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "When this timeout expires, the COMPRESSED_BLOCK_ACK_REQ/COMPRESSED_BLOCK_ACK handshake has failed."
     }),
@@ -3198,9 +2261,6 @@ attributes = dict({
         "name": "MaxCw",
         "validation_function": validation.is_integer,
         "value": 1023, 
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The maximum value of the contention window."
     }),
@@ -3208,9 +2268,6 @@ attributes = dict({
         "name": "RTG",
         "validation_function": validation.is_integer,
         "value": 0, 
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "receive/transmit transition gap."
     }),
@@ -3218,9 +2275,6 @@ attributes = dict({
         "name": "TTG",
         "validation_function": validation.is_integer,
         "value": 0, 
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "transmit/receive transition gap."
     }),
@@ -3228,9 +2282,6 @@ attributes = dict({
         "name": "MinRTO",
         "validation_function": validation.is_time,
         "value": "200000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "Minimum retransmit timeout value"
     }),
@@ -3238,9 +2289,6 @@ attributes = dict({
         "name": "Pifs",
         "validation_function": validation.is_time,
         "value": "25000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The value of the PIFS constant."
     }),
@@ -3248,9 +2296,6 @@ attributes = dict({
         "name": "InitialEstimation",
         "validation_function": validation.is_time,
         "value": "1000000000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "XXX"
     }),
@@ -3258,9 +2303,6 @@ attributes = dict({
         "name": "BasicBlockAckTimeout",
         "validation_function": validation.is_time,
         "value": "281000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "When this timeout expires, the BASIC_BLOCK_ACK_REQ/BASIC_BLOCK_ACK handshake has failed."
     }),
@@ -3268,9 +2310,6 @@ attributes = dict({
         "name": "MaxMultiplier",
         "validation_function": validation.is_double,
         "value": 64.0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.DOUBLE,
         "help": "XXX"
     }),
@@ -3278,9 +2317,6 @@ attributes = dict({
         "name": "Aifsn",
         "validation_function": validation.is_integer,
         "value": 2, 
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The AIFSN: the default value conforms to simple DCA."
     }),
@@ -3288,9 +2324,6 @@ attributes = dict({
         "name": "OptionNumber",
         "validation_function": validation.is_integer,
         "value": 0,
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The IPv6 option number."
     }),
@@ -3298,9 +2331,6 @@ attributes = dict({
         "name": "Slot",
         "validation_function": validation.is_time,
         "value": "9000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The duration of a Slot."
     }),
@@ -3308,9 +2338,6 @@ attributes = dict({
         "name": "IpForward",
         "validation_function": validation.is_bool,
         "value": True, 
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.BOOL,
         "help": "Globally enable or disable IP forwarding for all current and future Ipv4 devices."
     }),
@@ -3318,9 +2345,6 @@ attributes = dict({
         "name": "WeakEsModel",
         "validation_function": validation.is_bool,
         "value": True, 
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.BOOL,
         "help": "RFC1122 term for whether host accepts datagram with a dest. address on another interface"
     }),
@@ -3328,9 +2352,6 @@ attributes = dict({
         "name": "MaxPropagationDelay",
         "validation_function": validation.is_time,
         "value": "3333ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The maximum propagation delay. Unused for now."
     }),
@@ -3338,9 +2359,6 @@ attributes = dict({
         "name": "ExtensionNumber",
         "validation_function": validation.is_integer,
         "value": 0, 
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.INTEGER,
         "help": "The IPv6 extension number."
     }),
@@ -3348,9 +2366,6 @@ attributes = dict({
         "name": "EifsNoDifs",
         "validation_function": validation.is_time,
         "value": "60000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "The value of EIFS-DIFS"
     }),
@@ -3358,9 +2373,6 @@ attributes = dict({
         "name": "CtsTimeout",
         "validation_function": validation.is_time,
         "value": "75000ns",
-        "range": None,
-        "flags": None,
-        "allowed": None,
         "type": Attribute.STRING,
         "help": "When this timeout expires, the RTS/CTS handshake has failed."
     }),

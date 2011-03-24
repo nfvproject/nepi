@@ -113,16 +113,16 @@ class Metadata(object):
 
     def testbed_attributes(self):
         attributes = AttributesMap()
-        for attribute_info in self._metadata.testbed_attributes.values():
-            name = attribute_info["name"]
-            help = attribute_info["help"]
-            type = attribute_info["type"] 
-            value = attribute_info["value"]
-            range = attribute_info["range"]
-            allowed = attribute_info["allowed"]
-            flags =  attribute_info["flags"] if "flags" in attribute_info \
+        for attr_info in self._metadata.testbed_attributes.values():
+            name = attr_info["name"]
+            help = attr_info["help"]
+            type = attr_info["type"] 
+            value = attr_info["value"] if "value" in attr_info else None
+            range = attr_info["range"] if "range" in attr_info else None
+            allowed = attr_info["allowed"] if "allowed" in attr_info else None
+            flags =  attr_info["flags"] if "flags" in attr_info \
                     else Attribute.NoFlags
-            validation_function = attribute_info["validation_function"]
+            validation_function = attr_info["validation_function"]
             attributes.add_attribute(name, help, type, value, 
                     range, allowed, flags, validation_function)
         return attributes            
@@ -150,10 +150,14 @@ class Metadata(object):
         from nepi.core.execute import Factory
         factories = list()
         for factory_id, info in self._metadata.factories_info.iteritems():
-            create_function = info["create_function"]
-            start_function = info["start_function"]
-            stop_function = info["stop_function"]
-            status_function = info["status_function"]
+            create_function = info["create_function"] \
+                    if "create_function" in info else None
+            start_function = info["start_function"] \
+                    if "start_function" in info else None
+            stop_function = info["stop_function"] \
+                    if "stop_function" in info else None
+            status_function = info["status_function"] \
+                    if "status_function" in info else None
             allow_addresses = info["allow_addresses"] \
                     if "allow_addresses" in info else False
             allow_routes = info["allow_routes"] \
@@ -175,25 +179,21 @@ class Metadata(object):
             __import__(mod_name)
         return sys.modules[mod_name]
 
-    def _add_attributes(self, factory, info, attributes_key, 
-            box_attributes = False):
-        if attributes_key in info:
-            for attribute_id in info[attributes_key]:
-                try:
-                    attribute_info = self._metadata.attributes[attribute_id]
-                except:
-                   print "\"%s\"," % attribute_id
-                   continue
-                name = attribute_info["name"]
-                help = attribute_info["help"]
-                type = attribute_info["type"] 
-                value = attribute_info["value"]
-                range = attribute_info["range"]
-                allowed = attribute_info["allowed"]
-                flags = attribute_info["flags"] if "flags" in attribute_info \
-                        and attribute_info["flags"] != None \
+    def _add_attributes(self, factory, info, attr_key, box_attributes = False):
+        if attr_key in info:
+            for attr_id in info[attr_key]:
+                attr_info = self._metadata.attributes[attr_id]
+                name = attr_info["name"]
+                help = attr_info["help"]
+                type = attr_info["type"] 
+                value = attr_info["value"] if "value" in attr_info else None
+                range = attr_info["range"] if "range" in attr_info else None
+                allowed = attr_info["allowed"] if "allowed" in attr_info \
+                        else None
+                flags = attr_info["flags"] if "flags" in attr_info \
+                        and attr_info["flags"] != None \
                         else Attribute.NoFlags
-                validation_function = attribute_info["validation_function"]
+                validation_function = attr_info["validation_function"]
                 if box_attributes:
                     factory.add_box_attribute(name, help, type, value, range, 
                             allowed, flags, validation_function)

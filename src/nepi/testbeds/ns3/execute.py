@@ -129,10 +129,6 @@ class TestbedInstance(testbed_impl.TestbedInstance):
         fd.close()
         return content
 
-    def shutdown(self):
-        for element in self._elements.values():
-            element.destroy()
-
     def trace_filename(self, guid, trace_id):
         # TODO: Need to be defined inside a home!!!! with and experiment id_code
         filename = self._trace_filenames[guid][trace_id]
@@ -142,6 +138,10 @@ class TestbedInstance(testbed_impl.TestbedInstance):
         if guid not in self._traces:
             self._traces[guid] = dict()
         self._traces[guid][trace_id] = filename
+
+    def shutdown(self):
+        for element in self._elements.values():
+            element = None
 
     def _load_ns3_module(self):
         import ctypes

@@ -225,8 +225,6 @@ attributes = dict({
                 "help": "Forward x11 from main namespace to the node",
                 "type": Attribute.BOOL, 
                 "value": False,
-                "range": None,
-                "allowed": None,
                 "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_bool
             }),
@@ -234,9 +232,6 @@ attributes = dict({
                 "name": "lladdr", 
                 "help": "Mac address", 
                 "type": Attribute.STRING,
-                "value": None,
-                "range": None,
-                "allowed": None,
                 "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_mac_address
             }),
@@ -245,17 +240,12 @@ attributes = dict({
                 "help": "Link up",
                 "type": Attribute.BOOL,
                 "value": False,
-                "range": None,
-                "allowed": None,
                 "validation_function": validation.is_bool
             }),
     "device_name": dict({
                 "name": "name",
                 "help": "Device name",
                 "type": Attribute.STRING,
-                "value": None,
-                "range": None,
-                "allowed": None,
                 "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_string
             }),
@@ -263,18 +253,12 @@ attributes = dict({
                 "name": "mtu", 
                 "help": "Maximum transmition unit for device",
                 "type": Attribute.INTEGER,
-                "value": None, 
-                "range": None, 
-                "allowed": None, 
                 "validation_function": validation.is_integer
             }),
     "broadcast": dict({ 
                 "name": "broadcast",
                 "help": "Broadcast address",
                 "type": Attribute.STRING,
-                "value": None,
-                "range": None,
-                "allowed": None,
                 "validation_function": validation.is_string # TODO: should be is address!
             }),
     "multicast": dict({      
@@ -282,8 +266,6 @@ attributes = dict({
                 "help": "Multicast enabled",
                 "type": Attribute.BOOL,
                 "value": False,
-                "range": None,
-                "allowed": None,
                 "validation_function": validation.is_bool
             }),
     "arp": dict({
@@ -291,17 +273,12 @@ attributes = dict({
                 "help": "ARP enabled",
                 "type": Attribute.BOOL,
                 "value": False,
-                "range": None,
-                "allowed": None,
                 "validation_function": validation.is_bool
             }),
     "command": dict({
                 "name": "command",
                 "help": "Command line string",
                 "type": Attribute.STRING,
-                "value": None,
-                "range": None,
-                "allowed": None,
                 "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_string
             }),
@@ -309,9 +286,6 @@ attributes = dict({
                 "name": "user",
                 "help": "System user",
                 "type": Attribute.STRING,
-                "value": None,
-                "range": None,
-                "allowed": None,
                 "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_string
             }),
@@ -319,9 +293,6 @@ attributes = dict({
                 "name": "stdin",
                 "help": "Standard input",
                 "type": Attribute.STRING,
-                "value": None,
-                "range": None,
-                "allowed": None,
                 "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_string
             }),
@@ -347,9 +318,6 @@ factories_info = dict({
             "help": "Emulated Node with virtualized network stack",
             "category": "topology",
             "create_function": create_node,
-            "start_function": None,
-            "stop_function": None,
-            "status_function": None,
             "box_attributes": ["forward_X11"],
             "connector_types": ["devs", "apps"]
        }),
@@ -358,10 +326,6 @@ factories_info = dict({
             "help": "Point to point network interface",
             "category": "devices",
             "create_function": create_p2piface,
-            "start_function": None,
-            "stop_function": None,
-            "status_function": None,
-            "factory_attributes": [],
             "box_attributes": ["lladdr", "up", "device_name", "mtu", 
                 "multicast", "broadcast", "arp"],
             "connector_types": ["node", "p2p"]
@@ -371,10 +335,6 @@ factories_info = dict({
             "help": "Tap device network interface",
             "category": "devices",
             "create_function": create_tapiface,
-            "start_function": None,
-            "stop_function": None,
-            "status_function": None,
-            "factory_attributes": [],
             "box_attributes": ["lladdr", "up", "device_name", "mtu", 
                 "multicast", "broadcast", "arp"],
             "connector_types": ["node", "fd"]
@@ -384,10 +344,6 @@ factories_info = dict({
             "help": "Node network interface",
             "category": "devices",
             "create_function": create_nodeiface,
-            "start_function": None,
-            "stop_function": None,
-            "status_function": None,
-            "factory_attributes": [],
             "box_attributes": ["lladdr", "up", "device_name", "mtu", 
                 "multicast", "broadcast", "arp"],
             "connector_types": ["node", "switch"]
@@ -397,9 +353,6 @@ factories_info = dict({
             "help": "Switch interface",
             "category": "devices",
             "create_function": create_switch,
-            "start_function": None,
-            "stop_function": None,
-            "status_function": None,
             "box_attributes": ["up", "device_name", "mtu", "multicast"],
              #TODO: Add attribute ("Stp", help, type, value, range, allowed, readonly, validation_function),
              #TODO: Add attribute ("ForwarddDelay", help, type, value, range, allowed, readonly, validation_function),
@@ -413,7 +366,6 @@ factories_info = dict({
             "category": "applications",
             "create_function": create_application,
             "start_function": start_application,
-            "stop_function": None,
             "status_function": status_application,
             "box_attributes": ["command", "user"],
             "connector_types": ["node"],
@@ -427,8 +379,6 @@ testbed_attributes = dict({
                 "help": "Enable netns debug output",
                 "type": Attribute.BOOL,
                 "value": False,
-                "range": None,
-                "allowed": None,
                 "validation_function": validation.is_bool
             }),
          "home_directory": dict({
@@ -437,8 +387,6 @@ testbed_attributes = dict({
                         will be stored",
                 "type": Attribute.STRING,
                 "value": False,
-                "range": None,
-                "allowed": None,
                 "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_string
             })

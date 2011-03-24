@@ -199,7 +199,7 @@ def create_wifi_standard_model(testbed_instance, guid):
         if standard:
             elements.ConfigureStandard(wifi_standards[standard])
 
-def create_ipv4stack(testbed_instance, guid):
+def create_ipv4protocol(testbed_instance, guid):
     create_element(testbed_instance, guid)
     element = testbed_instance._elements[guid]
     list_routing = testbed_instance.ns3.Ipv4ListRouting()
@@ -803,9 +803,6 @@ testbed_attributes = dict({
                 "name": "ns3Bindings",
                 "help": "Location of the ns-3 python binding",
                 "type": Attribute.STRING,
-                "value": None,
-                "range": None,
-                "allowed": None,
                 "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_string # TODO: validation.is_path
             }),
@@ -813,9 +810,6 @@ testbed_attributes = dict({
                 "name": "ns3Library",
                 "help": "Location of the ns-3 library .so file",
                 "type": Attribute.STRING,
-                "value": None,
-                "range": None,
-                "allowed": None,
                 "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_string # TODO: validation.is_path
             }),
@@ -823,9 +817,6 @@ testbed_attributes = dict({
                 "name": "SimulatorImplementationType",
                 "help": "The object class to use as the simulator implementation",
                 "type": Attribute.STRING,
-                "value": None,
-                "range": None,
-                "allowed": None,
                 "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_string
             }),
@@ -834,8 +825,6 @@ testbed_attributes = dict({
                 "help": "A global switch to enable all checksums for all protocols",
                 "type": Attribute.BOOL,
                 "value": False,
-                "range": None,
-                "allowed": None,
                 "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_bool
             })
