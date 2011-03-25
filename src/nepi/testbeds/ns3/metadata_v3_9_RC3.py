@@ -5,20 +5,6 @@ from constants import TESTBED_ID
 from nepi.core import metadata
 from nepi.core.attributes import Attribute
 from nepi.util import validation
-from nepi.util.constants import AF_INET, STATUS_NOT_STARTED, STATUS_RUNNING, \
-        STATUS_FINISHED
-
-wifi_standards = dict({
-    "WIFI_PHY_STANDARD_holland": 5,
-    "WIFI_PHY_STANDARD_80211p_SCH": 7,
-    "WIFI_PHY_STANDARD_80211_5Mhz": 4,
-    "WIFI_PHY_UNKNOWN": 8,
-    "WIFI_PHY_STANDARD_80211_10Mhz": 3,
-    "WIFI_PHY_STANDARD_80211g": 2,
-    "WIFI_PHY_STANDARD_80211p_CCH": 6,
-    "WIFI_PHY_STANDARD_80211a": 0,
-    "WIFI_PHY_STANDARD_80211b": 1
-})
 
 ### Connection functions ####
 
@@ -79,160 +65,7 @@ def connect_fd_tap(tesbed_instance, fd, tap):
     # TODO!
     pass
 
- ### create traces functions ###
-
-def get_node_guid(testbed_instance, guid):
-    node_guid = testbed_instance.get_connected(guid, "node", "devs")[0]
-    return node_guid
-
-def get_dev_number(testbed_instance, guid):
-    dev_guids = testbed_instance.get_connected(node_guid, "devs", "node")
-    interface_number = 0
-    for guid_ in dev_guids:
-        if guid_ == guid:
-            break
-        inteface_number += 1
-    return interface_number
-
-def p2ppcap_trace(testbed_instance, guid):
-    trace_id = "p2ppcap"
-    node_guid = get_node_guid(testbed_instance, guid)
-    interface_number = get_dev_number(testbed_instance, guid)
-    element = testbed_instance._elements[guid]
-    filename = "trace-p2p-node-%d-dev-%d.pcap" % (node_name, interface_number)
-    testbed_instance.follow_trace(guid, trace_id, filename)
-    filepath = testbed_instance.trace_filename(self, guid, trace_id)
-    helper = testbed_instance.ns3.PointToPointHelper()
-    helper.EnablePcap(filepath, element, explicitFilename = True)
-
-def _csmapcap_trace(testbed_instance, guid, trace_id, promisc):
-    node_guid = get_node_guid(testbed_instance, guid)
-    interface_number = get_dev_number(testbed_instance, guid)
-    element = testbed_instance._elements[guid]
-    filename = "trace-csma-node-%d-dev-%d.pcap" % (node_name, interface_number)
-    testbed_instance.follow_trace(guid, trace_id, filename)
-    filepath = testbed_instance.trace_filename(self, guid, trace_id)
-    helper = testbed_instance.ns3.CsmaHelper()
-    helper.EnablePcap(filepath, element, promiscuous = promisc, 
-            explicitFilename = True)
-
-def csmapcap_trace(testbed_instance, guid):
-    trace_id = "csmapcap"
-    promisc = False
-    _csmapcap_trace(testbed_instance, guid, trace_id, promisc)
-
-def csmapcap_promisc_trace(testbed_instance, guid):
-    trace_id = "csmapcap_promisc"
-    promisc = True
-    _csmapcap_trace(testbed_instance, guid, trace_id, promisc)
-
-def fdpcap_trace(testbed_instance, guid):
-    trace_id = "fdpcap"
-    node_guid = get_node_guid(testbed_instance, guid)
-    interface_number = get_dev_number(testbed_instance, guid)
-    element = testbed_instance._elements[guid]
-    filename = "trace-fd-node-%d-dev-%d.pcap" % (node_name, interface_number)
-    testbed_instance.follow_trace(guid, trace_id, filename)
-    filepath = testbed_instance.trace_filename(self, guid, trace_id)
-    helper = testbed_instance.ns3.FileDescriptorHelper()
-    helper.EnablePcap(filepath, element, explicitFilename = True)
-
-def yanswifipcap_trace(testbed_instance, guid):
-    trace_id = "yanswifipcap"
-    dev_guid = testbed_instance.get_connected(guid, "dev", "phy")[0]
-    node_guid = get_node_guid(testbed_instance, dev_guid)
-    interface_number = get_dev_number(testbed_instance, dev_guid)
-    element = testbed_instance._elements[dev_guid]
-    filename = "trace-yanswifi-node-%d-dev-%d.pcap" % (node_name, interface_number)
-    testbed_instance.follow_trace(guid, trace_id, filename)
-    filepath = testbed_instance.trace_filename(self, guid, trace_id)
-    helper = testbed_instance.ns3.YansWifiPhyHelper()
-    helper.EnablePcap(filepath, element, explicitFilename = True)
-
-trace_functions = dict({
-    "p2ppcap": p2ppcap_trace,
-    "csmapcap": csmapcap_trace,
-    "csmapcap_promisc": csmapcap_promisc_trace,
-    "fdpcap": fdpcap_trace,
-    "yanswifipcap": yanswifipcap_trace
-    })
-
-### Creation functions ###
-
-def create_element(testbed_instance, guid):
-    element_factory = testbed_instance.ns3.ObjectFactory()
-    factory_id = testbed_instance._create[guid]
-    element_factory.SetTypeId(factory_id) 
-    construct_parameters = testbed_instance._get_construct_parameters(guid)
-    for name, value in construct_parameters.iteritems():
-        ns3_value = testbed_instance._to_ns3_value(factory_id, name, value)
-        element_factory.Set(name, ns3_value)
-    element = element_factory.Create()
-    testbed_instance._elements[guid] = element
-    traces = testbed_instance._get_traces(guid)
-    for trace_id in traces:
-        trace_func = trace_functions[trace_id]
-        trace_func(testbed_instance, guid)
-
-def create_node(testbed_instance, guid):
-    create_element(testbed_instance, guid)
-    element = testbed_instance._elements[guid]
-    element.AggregateObject(testbed_instance.PacketSocketFactory())
-
-def create_device(testbed_instance, guid):
-    create_element(testbed_instance, guid)
-    element = testbed_instance._elements[guid]
-    parameters = testbed_instance._get_parameters(guid)
-    if "macAddress" in parameters:
-        address = parameters["macAddress"]
-        macaddr = testbed_instance.ns3.Mac48Address(address)
-    else:
-        macaddr = testbed_instance.ns3.Mac48Address.Allocate()
-    element.SetAddress(macaddr)
-
-def create_wifi_standard_model(testbed_instance, guid):
-    create_element(testbed_instance, guid)
-    element = testbed_instance._elements[guid]
-    parameters = testbed_instance._get_parameters(guid)
-    if "standard" in parameters:
-        standard = parameters["standard"]
-        if standard:
-            elements.ConfigureStandard(wifi_standards[standard])
-
-def create_ipv4protocol(testbed_instance, guid):
-    create_element(testbed_instance, guid)
-    element = testbed_instance._elements[guid]
-    list_routing = testbed_instance.ns3.Ipv4ListRouting()
-    element.SetRoutingProtocol(list_routing)
-    static_routing = testbed_instance.ns3.Ipv4StaticRouting()
-    list_routing.AddRoutingProtocol(static_routing, 1)
-
-### Start/Stop functions ###
-
-def start_application(testbed_instance, guid):
-    element = testbed_instance.elements[guid]
-    element.Start()
-
-def stop_application(testbed_instance, guid):
-    element = testbed_instance.elements[guid]
-    element.Stop()
-
-### Status functions ###
-
-def status_application(testbed_instance, guid):
-    if guid not in testbed_instance.elements.keys():
-        return STATUS_NOT_STARTED
-    app = testbed_instance.elements[guid]
-    parameters = testbed_instance._get_parameters(guid)
-    if "stopTime" in parameters:
-        stop = parameters["stopTime"]
-        if stop:
-            simTime = testbed_instance.ns3.Simulator.Now()
-            if simTime.Compare(stopTime) > 0:
-                return STATUS_RUNNING
-    return STATUS_FINISHED
-
-### Factory information ###
+### Connector information ###
 
 connector_types = dict({
     "node": dict({
@@ -827,8 +660,17 @@ testbed_attributes = dict({
                 "value": False,
                 "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_bool
+            }),
+          "home_directory": dict({
+                "name": "homeDirectory",
+                "help": "Path to the directory where traces and other files \
+                        will be stored",
+                "type": Attribute.STRING,
+                "value": "",
+                "flags": Attribute.DesignOnly,
+                "validation_function": validation.is_string
             })
- })
+})
 
 class VersionedMetadataInfo(metadata.VersionedMetadataInfo):
     @property
@@ -849,7 +691,11 @@ class VersionedMetadataInfo(metadata.VersionedMetadataInfo):
         return traces
 
     @property
-    def factories_order(self):
+    def create_order(self):
+        return factories_order
+
+    @property
+    def configure_order(self):
         return factories_order
 
     @property

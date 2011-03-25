@@ -89,8 +89,8 @@ class ConnectorType(object):
 # need a definition!
 class Factory(AttributesMap):
     def __init__(self, factory_id, create_function, start_function, 
-            stop_function, status_function, allow_addresses = False, 
-            allow_routes = False):
+            stop_function, status_function, configure_function,
+            allow_addresses = False, allow_routes = False):
         super(Factory, self).__init__()
         self._factory_id = factory_id
         self._allow_addresses = (allow_addresses == True)
@@ -99,6 +99,7 @@ class Factory(AttributesMap):
         self._start_function = start_function
         self._stop_function = stop_function
         self._status_function = status_function
+        self._configure_function = configure_function
         self._connector_types = dict()
         self._traces = list()
         self._box_attributes = AttributesMap()
@@ -134,6 +135,10 @@ class Factory(AttributesMap):
     @property
     def status_function(self):
         return self._status_function
+
+    @property
+    def configure_function(self):
+        return self._configure_function
 
     @property
     def traces(self):

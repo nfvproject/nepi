@@ -25,23 +25,6 @@ class TestbedInstance(testbed_impl.TestbedInstance):
             get_attribute_value("homeDirectory")
         self._netns = self._load_netns_module()
 
-    def do_configure(self):
-        # TODO: add traces!
-        # configure addressess
-        for guid, addresses in self._add_address.iteritems():
-            element = self._elements[guid]
-            for address in addresses:
-                (address, netprefix, broadcast) = address
-                # TODO: Decide if we should add a ipv4 or ipv6 address
-                element.add_v4_address(address, netprefix)
-        # configure routes
-        for guid, routes in self._add_route.iteritems():
-            element = self._elements[guid]
-            for route in routes:
-                (destination, netprefix, nexthop) = route
-                element.add_route(prefix = destination, prefix_len = netprefix,
-                        nexthop = nexthop)
-
     def set(self, time, guid, name, value):
         super(TestbedInstance, self).set(time, guid, name, value)
         # TODO: take on account schedule time for the task 

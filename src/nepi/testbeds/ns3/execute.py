@@ -5,6 +5,8 @@ from constants import TESTBED_ID
 from nepi.core import testbed_impl
 from nepi.core.attributes import Attribute
 import os
+import sys
+import threading
 
 class TestbedInstance(testbed_impl.TestbedInstance):
     def __init__(self, testbed_version):
@@ -12,6 +14,8 @@ class TestbedInstance(testbed_impl.TestbedInstance):
         self._ns3 = None
         self._home_directory = None
         self._traces = dict()
+        self._simulator_thread = None
+        self._condition = None
 
     @property
     def home_directory(self):
@@ -26,74 +30,18 @@ class TestbedInstance(testbed_impl.TestbedInstance):
             get_attribute_value("homeDirectory")
         self._ns3 = self._load_ns3_module()
 
-    def do_configure(self):
-        # configure addressess
-        for guid, addresses in self._add_address.iteritems():
-            element = self._elements[guid]
-            for address in addresses:
-                (address, netprefix, broadcast) = address
-                # TODO!!!
-        # configure routes
-        for guid, routes in self._add_route.iteritems():
-            element = self._elements[guid]
-            for route in routes:
-                (destination, netprefix, nexthop) = route
-                # TODO!!
-        """
-        context = self.server.modules.ns3
-        ipv4 = self._object
-        for interface in self._interface2addr:
-            ifindex = ipv4.AddInterface(interface._object)
-            for addr in self._interface2addr[interface]:
-                inaddr = context.Ipv4InterfaceAddress(
-                        context.Ipv4Address(
-                            addr.get_attribute("Address").value),
-                        context.Ipv4Mask(
-                            addr.get_attribute("NetPrefix").value))
-                ipv4.AddAddress(ifindex, inaddr)
-                ipv4.SetMetric(ifindex, 1)
-                ipv4.SetUp(ifindex)
-                self._interface_addrs[addr] = inaddr
-                self._interfaces[interface] = ifindex
-        for entry in self.get_node().routing_table.get_entries(self._af):
-            self._rt_add(entry)
-
-        def _rt_add(self, entry):
-        # Called both at install-time (by NS3Ipv4Stack.post_install) and at
-        # run-time (by RoutingTable.add_entry).
-        context = self.server.modules.ns3
-        ifindex = self._interfaces[entry.interface]
-        prefixlen = entry.prefixlen
-        # print "rt_add %s %s %s %d"% (prefix, prefixlen, entry.nexthop, ifindex)        
-        if entry.nexthop:
-            self._static_routing.AddNetworkRouteTo(
-                    context.Ipv4Address(entry.prefix.address),
-                    context.Ipv4Mask(entry.mask.address),
-                    context.Ipv4Address(entry.nexthop.address),
-                    ifindex)
-        else:
-            self._static_routing.AddNetworkRouteTo(
-                    context.Ipv4Address(entry.prefix.address),
-                    context.Ipv4Mask(entry.mask.address),
-                    ifindex)
-        """
+    def start(self):
+        super(TestbedInstance, self).start()
+        self._condition = threading.Condition()
+        self._simulator_thread = threading.Thread(target = self._simulator_run,
+                args = [self._condition])
+        self._simulator_thread.start()
 
     def set(self, time, guid, name, value):
         super(TestbedInstance, self).set(time, guid, name, value)
         # TODO: take on account schedule time for the task
-        factory_id = self._crerate[guid]
         element = self._elements[guid]
-        TypeId = self.ns3.TypeId()
-        typeid = TypeId.LookupByName(factory_id)
-        info = TypeId.AttributeInfo()
-        if not typeid.LookupAttributeByName(name, info):
-            raise RuntimeError("Attribute %s doesn't belong to element %s" \
-                   % (name, factory_id))
-        value = str(value)
-        if isinstance(value, bool):
-            value = value.lower()
-        ns3_value = info.checker.Create()
-        ns3_value.DeserializeFromString(value, checker)
+        ns3_value = self._to_ns3_value(guid, name, value) 
         element.SetAttribute(name, ns3_value)
 
     def get(self, time, guid, name):
@@ -131,7 +79,7 @@ class TestbedInstance(testbed_impl.TestbedInstance):
 
     def trace_filename(self, guid, trace_id):
         # TODO: Need to be defined inside a home!!!! with and experiment id_code
-        filename = self._trace_filenames[guid][trace_id]
+        filename = self._traces[guid][trace_id]
         return os.path.join(self.home_directory, filename)
 
     def follow_trace(self, guid, trace_id, filename):
@@ -142,6 +90,61 @@ class TestbedInstance(testbed_impl.TestbedInstance):
     def shutdown(self):
         for element in self._elements.values():
             element = None
+
+    def _simulator_run(self, condition):
+        # Run simulation
+        self.ns3.Simulator.Run()
+        # Signal condition on simulation end to notify waiting threads
+        condition.acquire()
+        condition.notifyAll()
+        condition.release()
+
+    def _schedule_event(self, condition, func, *args):
+        """Schedules event on running experiment"""
+        def execute_event(condition, has_event_occurred, func, *args):
+            # exec func
+            func(*args)
+            # flag event occured
+            has_event_occurred[0] = True
+            # notify condition indicating attribute was set
+            condition.acquire()
+            condition.notifyAll()
+            condition.release()
+
+        # contextId is defined as general context
+        contextId = long(0xffffffff)
+        # delay 0 means that the event is expected to execute inmediately
+        delay = self.ns3.Seconds(0)
+        # flag to indicate that the event occured
+        # because bool is an inmutable object in python, in order to create a
+        # bool flag, a list is used as wrapper
+        has_event_occurred = [False]
+        condition.acquire()
+        if not self.ns3.Simulator.IsFinished():
+            self.ns3.Simulator.ScheduleWithContext(contextId, delay, execute_event,
+                 condition, has_event_occurred, func, *args)
+            while not has_event_occurred[0] and not self.ns3.Simulator.IsFinished():
+                condition.wait()
+                condition.release()
+                if not has_event_occurred[0]:
+                    raise RuntimeError('Event could not be scheduled : %s %s ' \
+                    % (repr(func), repr(args)))
+
+    def _to_ns3_value(self, guid, name, value):
+        factory_id = self._create[guid]
+        TypeId = self.ns3.TypeId()
+        typeid = TypeId.LookupByName(factory_id)
+        info = TypeId.AttributeInfo()
+        if not typeid.LookupAttributeByName(name, info):
+            raise RuntimeError("Attribute %s doesn't belong to element %s" \
+                   % (name, factory_id))
+        str_value = str(value)
+        if isinstance(value, bool):
+            str_value = str_value.lower()
+        checker = info.checker
+        ns3_value = checker.Create()
+        ns3_value.DeserializeFromString(str_value, checker)
+        return ns3_value
 
     def _load_ns3_module(self):
         import ctypes
@@ -177,7 +180,7 @@ class TestbedInstance(testbed_impl.TestbedInstance):
         factory_id = self._create[guid]
         TypeId = self.ns3.TypeId()
         typeid = TypeId.LookupByName(factory_id)
-        for name, value in params:
+        for name, value in params.iteritems():
             info = self.ns3.TypeId.AttributeInfo()
             typeid.LookupAttributeByName(name, info)
             if info.flags & TypeId.ATTR_CONSTRUCT == TypeId.ATTR_CONSTRUCT:

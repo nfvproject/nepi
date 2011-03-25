@@ -57,9 +57,16 @@ class VersionedMetadataInfo(object):
         raise NotImplementedError
 
     @property
-    def factories_order(self):
+    def create_order(self):
         """ list of factory ids that indicates the order in which the elements
         should be instantiated.
+        """
+        raise NotImplementedError
+
+    @property
+    def configure_order(self):
+        """ list of factory ids that indicates the order in which the elements
+        should be configured.
         """
         raise NotImplementedError
 
@@ -75,6 +82,7 @@ class VersionedMetadataInfo(object):
                 "start_function": function for element starting,
                 "stop_function": function for element stoping,
                 "status_function": function for retrieving element status,
+                "configure_function": function for element configuration,
                 "factory_attributes": list of references to attribute_ids,
                 "box_attributes": list of regerences to attribute_ids,
                 "traces": list of references to trace_id
@@ -108,8 +116,12 @@ class Metadata(object):
         self._metadata = metadata_module.VersionedMetadataInfo()
 
     @property
-    def factories_order(self):
-        return self._metadata.factories_order
+    def create_order(self):
+        return self._metadata.create_order
+
+    @property
+    def configure_order(self):
+        return self._metadata.configure_order
 
     def testbed_attributes(self):
         attributes = AttributesMap()
@@ -158,13 +170,15 @@ class Metadata(object):
                     if "stop_function" in info else None
             status_function = info["status_function"] \
                     if "status_function" in info else None
+            configure_function = info["configure_function"] \
+                    if "configure_function" in info else None
             allow_addresses = info["allow_addresses"] \
                     if "allow_addresses" in info else False
             allow_routes = info["allow_routes"] \
                     if "allow_routes" in info else False
             factory = Factory(factory_id, create_function, start_function,
-                    stop_function, status_function, allow_addresses, 
-                    allow_routes)
+                    stop_function, status_function, configure_function,
+                    allow_addresses, allow_routes)
             self._add_attributes(factory, info, "factory_attributes")
             self._add_attributes(factory, info, "box_attributes", True)
             self._add_execute_traces(factory, info)

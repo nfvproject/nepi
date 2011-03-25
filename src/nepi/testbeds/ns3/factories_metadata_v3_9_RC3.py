@@ -1,8 +1,261 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from metadata_v3_9_RC3 import create_device, create_element, create_ipv4protocol, \
-        create_node, create_wifi_standard_model, start_application, \
-        stop_application, status_application
+
+from nepi.util.constants import AF_INET, STATUS_NOT_STARTED, STATUS_RUNNING, \
+        STATUS_FINISHED, STATUS_UNDETERMINED
+
+def _get_ipv4_protocol_guid(testbed_instance, node_guid):
+    # search for the Ipv4L3Protocol asociated with the device
+    protos_guids = testbed_instance.get_connected(node_guid, "protos", "node")
+    if len(protos_guids) == 0:
+        raise RuntimeError("No protocols where found for the node %d" % node_guid)
+    ipv4_guid = None
+    for proto_guid in protos_guids:
+        proto_factory_id = testbed_instance._create[proto_guid]
+        if proto_factory_id == "ns3::Ipv4L3Protocol":
+            ipv4_guid = proto_guid
+            break
+    if not ipv4_guid:
+        raise RuntimeError("No Ipv4L3Protocol associated to node %d. \
+                can't add Ipv4 addresses" % node_guid)
+    return ipv4_guid
+
+def _get_node_guid(testbed_instance, guid):
+    # search for the node asociated with the device
+    node_guids = testbed_instance.get_connected(guid, "node", "devs")
+    if len(node_guids) == 0:
+        raise RuntimeError("Can't instantiate interface %d outside netns \
+                node" % guid)
+    node_guid = node_guids[0]
+    return node_guid
+
+def _get_dev_number(testbed_instance, guid):
+    dev_guids = testbed_instance.get_connected(guid, "devs", "node")
+    interface_number = 0
+    for guid_ in dev_guids:
+        if guid_ == guid:
+            break
+        inteface_number += 1
+    return interface_number
+
+### create traces functions ###
+
+def p2ppcap_trace(testbed_instance, guid, trace_id):
+    node_guid = _get_node_guid(testbed_instance, guid)
+    interface_number = _get_dev_number(testbed_instance, guid)
+    element = testbed_instance._elements[guid]
+    filename = "trace-p2p-node-%d-dev-%d.pcap" % (node_guid, interface_number)
+    testbed_instance.follow_trace(guid, trace_id, filename)
+    filepath = testbed_instance.trace_filename(guid, trace_id)
+    helper = testbed_instance.ns3.PointToPointHelper()
+    helper.EnablePcap(filepath, element, explicitFilename = True)
+
+def _csmapcap_trace(testbed_instance, guid, trace_id, promisc):
+    node_guid = _get_node_guid(testbed_instance, guid)
+    interface_number = _get_dev_number(testbed_instance, guid)
+    element = testbed_instance._elements[guid]
+    filename = "trace-csma-node-%d-dev-%d.pcap" % (node_name, interface_number)
+    testbed_instance.follow_trace(guid, trace_id, filename)
+    filepath = testbed_instance.trace_filename(guid, trace_id)
+    helper = testbed_instance.ns3.CsmaHelper()
+    helper.EnablePcap(filepath, element, promiscuous = promisc, 
+            explicitFilename = True)
+
+def csmapcap_trace(testbed_instance, guid, trace_id):
+    promisc = False
+    _csmapcap_trace(testbed_instance, guid, trace_id, promisc)
+
+def csmapcap_promisc_trace(testbed_instance, guid, trace_id):
+    promisc = True
+    _csmapcap_trace(testbed_instance, guid, trace_id, promisc)
+
+def fdpcap_trace(testbed_instance, guid, trace_id):
+    node_guid = _get_node_guid(testbed_instance, guid)
+    interface_number = _get_dev_number(testbed_instance, guid)
+    element = testbed_instance._elements[guid]
+    filename = "trace-fd-node-%d-dev-%d.pcap" % (node_name, interface_number)
+    testbed_instance.follow_trace(guid, trace_id, filename)
+    filepath = testbed_instance.trace_filename(guid, trace_id)
+    helper = testbed_instance.ns3.FileDescriptorHelper()
+    helper.EnablePcap(filepath, element, explicitFilename = True)
+
+def yanswifipcap_trace(testbed_instance, guid, trace_id):
+    dev_guid = testbed_instance.get_connected(guid, "dev", "phy")[0]
+    node_guid = _get_node_guid(testbed_instance, dev_guid)
+    interface_number = _get_dev_number(testbed_instance, dev_guid)
+    element = testbed_instance._elements[dev_guid]
+    filename = "trace-yanswifi-node-%d-dev-%d.pcap" % (node_name, interface_number)
+    testbed_instance.follow_trace(guid, trace_id, filename)
+    filepath = testbed_instance.trace_filename(guid, trace_id)
+    helper = testbed_instance.ns3.YansWifiPhyHelper()
+    helper.EnablePcap(filepath, element, explicitFilename = True)
+
+trace_functions = dict({
+    "P2PPcapTrace": p2ppcap_trace,
+    "CsmaPcapTrace": csmapcap_trace,
+    "CsmaPcapPromiscTrace": csmapcap_promisc_trace,
+    "FileDescriptorPcapTrace": fdpcap_trace,
+    "YansWifiPhyPcapTrace": yanswifipcap_trace
+    })
+
+### Creation functions ###
+
+wifi_standards = dict({
+    "WIFI_PHY_STANDARD_holland": 5,
+    "WIFI_PHY_STANDARD_80211p_SCH": 7,
+    "WIFI_PHY_STANDARD_80211_5Mhz": 4,
+    "WIFI_PHY_UNKNOWN": 8,
+    "WIFI_PHY_STANDARD_80211_10Mhz": 3,
+    "WIFI_PHY_STANDARD_80211g": 2,
+    "WIFI_PHY_STANDARD_80211p_CCH": 6,
+    "WIFI_PHY_STANDARD_80211a": 0,
+    "WIFI_PHY_STANDARD_80211b": 1
+})
+
+def create_element(testbed_instance, guid):
+    element_factory = testbed_instance.ns3.ObjectFactory()
+    factory_id = testbed_instance._create[guid]
+    element_factory.SetTypeId(factory_id) 
+    construct_parameters = testbed_instance._get_construct_parameters(guid)
+    for name, value in construct_parameters.iteritems():
+        ns3_value = testbed_instance._to_ns3_value(guid, name, value)
+        element_factory.Set(name, ns3_value)
+    element = element_factory.Create()
+    testbed_instance._elements[guid] = element
+    traces = testbed_instance._get_traces(guid)
+    for trace_id in traces:
+        trace_func = trace_functions[trace_id]
+        trace_func(testbed_instance, guid, trace_id)
+
+def create_node(testbed_instance, guid):
+    create_element(testbed_instance, guid)
+    element = testbed_instance._elements[guid]
+    element.AggregateObject(testbed_instance.ns3.PacketSocketFactory())
+
+def create_device(testbed_instance, guid):
+    create_element(testbed_instance, guid)
+    element = testbed_instance._elements[guid]
+    parameters = testbed_instance._get_parameters(guid)
+    if "macAddress" in parameters:
+        address = parameters["macAddress"]
+        macaddr = testbed_instance.ns3.Mac48Address(address)
+    else:
+        macaddr = testbed_instance.ns3.Mac48Address.Allocate()
+    element.SetAddress(macaddr)
+
+def create_wifi_standard_model(testbed_instance, guid):
+    create_element(testbed_instance, guid)
+    element = testbed_instance._elements[guid]
+    parameters = testbed_instance._get_parameters(guid)
+    if "standard" in parameters:
+        standard = parameters["standard"]
+        if standard:
+            elements.ConfigureStandard(wifi_standards[standard])
+
+def create_ipv4protocol(testbed_instance, guid):
+    create_element(testbed_instance, guid)
+    element = testbed_instance._elements[guid]
+    list_routing = testbed_instance.ns3.Ipv4ListRouting()
+    element.SetRoutingProtocol(list_routing)
+    static_routing = testbed_instance.ns3.Ipv4StaticRouting()
+    list_routing.AddRoutingProtocol(static_routing, 1)
+
+### Start/Stop functions ###
+
+def start_application(testbed_instance, guid):
+    element = testbed_instance.elements[guid]
+    # BUG: without doing this explicit call it doesn't start!!!
+    # Shouldn't be enough to set the StartTime?
+    element.Start()
+
+def stop_application(testbed_instance, guid):
+    element = testbed_instance.elements[guid]
+    now = testbed_instance.ns3.Simulator.Now()
+    element.SetStopTime(now)
+
+### Status functions ###
+
+def status_application(testbed_instance, guid):
+    if guid not in testbed_instance.elements.keys():
+        raise RuntimeError("Can't get status on guid %d" % guid )
+    now = testbed_instance.ns3.Simulator.Now()
+    if now.IsZero():
+        return STATUS_NOT_STARTED
+    app = testbed_instance.elements[guid]
+    parameters = testbed_instance._get_parameters(guid)
+    if "StartTime" in parameters and parameters["StartTime"]:
+        start_value = parameters["StartTime"]
+        start_time = testbed_instance.ns3.Time(start_value)
+        if now.Compare(start_time) < 0:
+            return STATUS_NOT_RUNNING
+    if "StopTime" in parameters and parameters["StopTime"]:
+        stop_value = parameters["StopTime"]
+        stop_time = testbed_instance.ns3.Time(stop_value)
+        if now.Compare(stop_time) < 0:
+            return STATUS_RUNNING
+        else:
+            return STATUS_FINISHED
+    return STATUS_UNDETERMINED
+
+### Configure functions ###
+
+def configure_device(testbed_instance, guid):
+    element = testbed_instance._elements[guid]
+    if not guid in testbed_instance._add_address:
+        return
+    # search for the node asociated with the device
+    node_guid = _get_node_guid(testbed_instance, guid)
+    node = testbed_instance.elements[node_guid]
+    # search for the Ipv4L3Protocol asociated with the device
+    ipv4_guid = _get_ipv4_protocol_guid(testbed_instance, node_guid)
+    ipv4 = testbed_instance._elements[ipv4_guid]
+    ns3 = testbed_instance.ns3
+    # add addresses 
+    addresses = testbed_instance._add_address[guid]
+    for address in addresses:
+        (address, netprefix, broadcast) = address
+        # TODO: missing IPV6 addresses!!
+        ifindex = ipv4.AddInterface(element)
+        inaddr = ns3.Ipv4InterfaceAddress(ns3.Ipv4Address(address),
+                ns3.Ipv4Mask("/%d" % netprefix))
+        ipv4.AddAddress(ifindex, inaddr)
+        ipv4.SetMetric(ifindex, 1)
+        ipv4.SetUp(ifindex)
+
+def configure_node(testbed_instance, guid):
+    element = testbed_instance._elements[guid]
+    if not guid in testbed_instance._add_route:
+        return
+    # search for the Ipv4L3Protocol asociated with the device
+    ipv4_guid = _get_ipv4_protocol_guid(testbed_instance, guid)
+    ipv4 = testbed_instance._elements[ipv4_guid]
+    list_routing = ipv4.GetRoutingProtocol()
+    (static_routing, priority) = list_routing.GetRoutingProtocol(0)
+    ns3 = testbed_instance.ns3
+    routes = testbed_instance._add_route[guid]
+    for route in routes:
+        (destination, netprefix, nexthop) = route
+        address = ns3.Ipv4Address(destination)
+        mask = ns3.Ipv4Mask("/%d" % netprefix) 
+        if nexthop:
+            nexthop_address = ns3.Ipv4Address(nexthop)
+            ifindex = -1
+            # TODO: HACKISH way of getting the ifindex... improve this
+            nifaces = ipv4.GetNInterfaces()
+            for ifidx in range(nifaces):
+                iface = ipv4.GetInterface(ifidx)
+                naddress = iface.GetNAddresses()
+                for addridx in range(naddress):
+                    ifaddr = iface.GetAddress(addridx)
+                    ifmask = ifaddr.GetMask()
+                    ifindex = ipv4.GetInterfaceForPrefix(nexthop_address, ifmask)
+                    if ifindex == ifidx:
+                        break
+            static_routing.AddNetworkRouteTo(address, mask, nexthop_address, 
+                    ifindex) 
+        else:
+            ifindex = ipv4.GetInterfaceForPrefix(address, mask)
+            static_routing.AddNetworkRouteTo(address, mask, ifindex) 
 
 factories_info = dict({
     "ns3::Ping6": dict({
@@ -41,6 +294,7 @@ factories_info = dict({
      "ns3::Node": dict({
         "category": "Topology",
         "create_function": create_node,
+        "configure_function": configure_node,
         "help": "",
         "connector_types": ["devs", "apps", "protos", "mobility"],
         "allow_routes": True,
@@ -123,6 +377,7 @@ factories_info = dict({
      "ns3::PointToPointNetDevice": dict({
         "category": "Device",
         "create_function": create_device,
+        "configure_function": configure_device,
         "help": "",
         "connector_types": ["node", "err", "queue", "chan"],
         "allow_addresses": True,
@@ -322,6 +577,7 @@ factories_info = dict({
      "ns3::FileDescriptorNetDevice": dict({
         "category": "Device",
         "create_function": create_device,
+        "configure_function": configure_device,
         "help": "Network interface associated to a file descriptor",
         "connector_types": ["node", "fd"],
         "allow_addresses": True,
@@ -331,6 +587,7 @@ factories_info = dict({
      "ns3::CsmaNetDevice": dict({
         "category": "Device",
         "create_function": create_device,
+        "configure_function": configure_device,
         "help": "CSMA (carrier sense, multiple access) interface",
         "connector_types": ["node", "chan", "err", "queue"],
         "allow_addresses": True,
@@ -671,6 +928,7 @@ factories_info = dict({
      "ns3::BaseStationNetDevice": dict({
         "category": "Device",
         "create_function": create_device,
+        "configure_function": configure_device,
         "help": "",
         "connector_types": [],
         "allow_addresses": True,
@@ -776,7 +1034,6 @@ factories_info = dict({
         "create_function": create_element,
         "help": "",
         "connector_types": [],
-        "allow_addresses": True,
         "box_attributes": ["Address",
             "Mtu"],
     }),
@@ -790,6 +1047,7 @@ factories_info = dict({
      "ns3::WifiNetDevice": dict({
         "category": "Device",
         "create_function": create_device,
+        "configure_function": configure_device,
         "help": "",
         "connector_types": ["node", "mac", "phy", "manager"],
         "allow_addresses": True,

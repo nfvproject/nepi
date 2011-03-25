@@ -178,7 +178,7 @@ class TestbedInstance(execute.TestbedInstance):
                guids[factory_id] = list()
             guids[factory_id].append(guid)
         # create elements following the factory_id order
-        for factory_id in self._metadata.factories_order:
+        for factory_id in self._metadata.create_order:
             # omit the factories that have no element to create
             if factory_id not in guids:
                 continue
@@ -209,7 +209,22 @@ class TestbedInstance(execute.TestbedInstance):
                         code_to_connect(self, element1, element2)
 
     def do_configure(self):
-        raise NotImplementedError
+        guids = dict()
+        # order guids (elements) according to factory_id
+        for guid, factory_id in self._create.iteritems():
+            if not factory_id in guids:
+               guids[factory_id] = list()
+            guids[factory_id].append(guid)
+        # configure elements following the factory_id order
+        for factory_id in self._metadata.configure_order:
+            # omit the factories that have no element to create
+            if factory_id not in guids:
+                continue
+            factory = self._factories[factory_id]
+            if not factory.configure_function:
+                continue
+            for guid in guids[factory_id]:
+                factory.configure_function(self, guid)
 
     def do_cross_connect(self):
         for guid, cross_connections in self._cross_connect.iteritems():

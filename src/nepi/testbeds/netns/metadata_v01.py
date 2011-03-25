@@ -133,6 +133,28 @@ def status_application(testbed_instance, guid):
         return STATUS_RUNNING
     return STATUS_FINISHED
 
+### Configure functions ###
+
+def configure_device(testbed_instance, guid):
+    element = testbed_instance._elements[guid]
+    if not guid in testbed_instance._add_address:
+        return
+    addresses = testbed_instance._add_address[guid]
+    for address in addresses:
+        (address, netprefix, broadcast) = address
+        # TODO: Decide if we should add a ipv4 or ipv6 address
+        element.add_v4_address(address, netprefix)
+
+def configure_node(testbed_instance, guid):
+    element = testbed_instance._elements[guid]
+    if not guid in testbed_instance._add_route:
+        return
+    routes = testbed_instance._add_route[guid]
+    for route in routes:
+        (destination, netprefix, nexthop) = route
+        element.add_route(prefix = destination, prefix_len = netprefix,
+            nexthop = nexthop)
+
 ### Factory information ###
 
 connector_types = dict({
@@ -309,7 +331,10 @@ traces = dict({
         }) 
     })
 
-factories_order = [ NODE, P2PIFACE, NODEIFACE, TAPIFACE, SWITCH,
+create_order = [ NODE, P2PIFACE, NODEIFACE, TAPIFACE, SWITCH,
+        APPLICATION ]
+
+configure_order = [ P2PIFACE, NODEIFACE, TAPIFACE, SWITCH, NODE,
         APPLICATION ]
 
 factories_info = dict({
@@ -318,6 +343,7 @@ factories_info = dict({
             "help": "Emulated Node with virtualized network stack",
             "category": "topology",
             "create_function": create_node,
+            "configure_function": configure_node,
             "box_attributes": ["forward_X11"],
             "connector_types": ["devs", "apps"]
        }),
@@ -326,6 +352,7 @@ factories_info = dict({
             "help": "Point to point network interface",
             "category": "devices",
             "create_function": create_p2piface,
+            "configure_function": configure_device,
             "box_attributes": ["lladdr", "up", "device_name", "mtu", 
                 "multicast", "broadcast", "arp"],
             "connector_types": ["node", "p2p"]
@@ -335,6 +362,7 @@ factories_info = dict({
             "help": "Tap device network interface",
             "category": "devices",
             "create_function": create_tapiface,
+            "configure_function": configure_device,
             "box_attributes": ["lladdr", "up", "device_name", "mtu", 
                 "multicast", "broadcast", "arp"],
             "connector_types": ["node", "fd"]
@@ -344,6 +372,7 @@ factories_info = dict({
             "help": "Node network interface",
             "category": "devices",
             "create_function": create_nodeiface,
+            "configure_function": configure_device,
             "box_attributes": ["lladdr", "up", "device_name", "mtu", 
                 "multicast", "broadcast", "arp"],
             "connector_types": ["node", "switch"]
@@ -386,7 +415,7 @@ testbed_attributes = dict({
                 "help": "Path to the directory where traces and other files \
                         will be stored",
                 "type": Attribute.STRING,
-                "value": False,
+                "value": "",
                 "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_string
             })
@@ -410,8 +439,12 @@ class VersionedMetadataInfo(metadata.VersionedMetadataInfo):
         return traces
 
     @property
-    def factories_order(self):
-        return factories_order
+    def create_order(self):
+        return create_order
+
+    @property
+    def configure_order(self):
+        return configure_order
 
     @property
     def factories_info(self):

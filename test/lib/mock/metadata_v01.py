@@ -170,7 +170,11 @@ class VersionedMetadataInfo(metadata.VersionedMetadataInfo):
         return traces
 
     @property
-    def factories_order(self):
+    def create_order(self):
+        return factories_order
+
+    @property
+    def configure_order(self):
         return factories_order
 
     @property
