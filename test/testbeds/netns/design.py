@@ -9,7 +9,6 @@ import unittest
 import uuid
 
 class NetnsDesignTestCase(unittest.TestCase):
-    @test_util.skipUnless(os.getuid() == 0, "Test requires root privileges")
     def test_design_if(self):
         exp_desc = ExperimentDescription()
         testbed_version = "01"

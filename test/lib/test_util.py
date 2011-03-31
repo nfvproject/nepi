@@ -29,18 +29,13 @@ def ns3_library_path():
         return os.environ["NEPI_NS3LIBRARY"]
     return None
 
-def autoconfig_ns3_backend(conf):
-    if ns3_bindings_path():
-        conf.set_attribute_value("Ns3Bindings", ns3_bindings_path())
-    if ns3_library_path():
-        conf.set_attribute_value("Ns3Library", ns3_library_path())
-
 def ns3_usable():
     if ns3_library_path():
         try:
             ctypes.CDLL(ns3_library_path(), ctypes.RTLD_GLOBAL)
         except:
             return False
+
     if ns3_bindings_path():
         sys.path.insert(0, ns3_bindings_path())
 
