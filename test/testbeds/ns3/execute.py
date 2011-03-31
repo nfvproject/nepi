@@ -14,6 +14,8 @@ class Ns3ExecuteTestCase(unittest.TestCase):
     def setUp(self):
         self.root_dir = tempfile.mkdtemp()
 
+    @test_util.skipUnless(test_util.ns3_usable(), 
+           "Test requires working ns-3 bindings")
     def test_run_ping_if(self):
         testbed_version = "3_9_RC3"
         instance = ns3.TestbedInstance(testbed_version)
@@ -77,6 +79,8 @@ class Ns3ExecuteTestCase(unittest.TestCase):
         instance.stop()
         instance.shutdown()
 
+    @test_util.skipUnless(test_util.ns3_usable(),
+            "Test requires working ns-3 bindings")
     def test_run_ping_routing(self):
         testbed_version = "3_9_RC3"
         instance = ns3.TestbedInstance(testbed_version)

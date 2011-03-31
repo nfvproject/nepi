@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-# vim:ts=4:sw=4:et:ai:sts=4
 
-import sys
 import nepi.util.environ
+import imp
+import sys
 
 # Unittest from Python 2.6 doesn't have these decorators
 def _bannerwrap(f, text):
@@ -18,6 +18,43 @@ def skipUnless(cond, text):
     return (lambda f: _bannerwrap(f, text)) if not cond else lambda f: f
 def skipIf(cond, text):
     return (lambda f: _bannerwrap(f, text)) if cond else lambda f: f
+
+def ns3_bindings_path():
+    if "NEPI_NS3BINDINGS" in os.environ:
+        return os.environ["NEPI_NS3BINDINGS"]
+    return None
+
+def ns3_library_path():
+    if "NEPI_NS3LIBRARY" in os.environ:
+        return os.environ["NEPI_NS3LIBRARY"]
+    return None
+
+def autoconfig_ns3_backend(conf):
+    if ns3_bindings_path():
+        conf.set_attribute_value("Ns3Bindings", ns3_bindings_path())
+    if ns3_library_path():
+        conf.set_attribute_value("Ns3Library", ns3_library_path())
+
+def ns3_usable():
+    if ns3_library_path():
+        try:
+            ctypes.CDLL(ns3_library_path(), ctypes.RTLD_GLOBAL)
+        except:
+            return False
+    if ns3_bindings_path():
+        sys.path.insert(0, ns3_bindings_path())
+
+    try:
+        found = imp.find_module('ns3')
+        module = imp.load_module('ns3', *found)
+    except ImportError:
+        return False
+    finally:
+        if ns3_bindings_path():
+            del sys.path[0]
+
+    return True
+
 
 def find_bin(name, extra_path = None):
     search = []
