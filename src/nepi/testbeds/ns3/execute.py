@@ -150,11 +150,14 @@ class TestbedInstance(testbed_impl.TestbedInstance):
         import ctypes
         import imp
 
-        bindings = self._attributes.get_attribute_value("ns3Bindings")
-        libfile = self._attributes.get_attribute_value("ns3Library")
         simu_impl_type = self._attributes.get_attribute_value(
                 "SimulatorImplementationType")
         checksum = self._attributes.get_attribute_value("ChecksumEnabled")
+
+        bindings = os.environ["NEPI_NS3BINDINGS"] \
+                if "NEPI_NS3BINDINGS" in os.environ else None
+        libfile = os.environ["NEPI_NS3LIBRARY"] \
+                if "NEPI_NS3LIBRARY" in os.environ else None
 
         if libfile:
             ctypes.CDLL(libfile, ctypes.RTLD_GLOBAL)

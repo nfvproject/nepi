@@ -632,44 +632,30 @@ factories_order = ["ns3::BasicEnergySource",
  ]
 
 testbed_attributes = dict({
-        "ns3_bindings": dict({
-                "name": "ns3Bindings",
-                "help": "Location of the ns-3 python binding",
-                "type": Attribute.STRING,
-                "flags": Attribute.DesignOnly,
-                "validation_function": validation.is_string # TODO: validation.is_path
-            }),
-         "ns3_library": dict({
-                "name": "ns3Library",
-                "help": "Location of the ns-3 library .so file",
-                "type": Attribute.STRING,
-                "flags": Attribute.DesignOnly,
-                "validation_function": validation.is_string # TODO: validation.is_path
-            }),
-         "simu_impl_type": dict({
-                "name": "SimulatorImplementationType",
-                "help": "The object class to use as the simulator implementation",
-                "type": Attribute.STRING,
-                "flags": Attribute.DesignOnly,
-                "validation_function": validation.is_string
-            }),
-          "checksum": dict({
-                "name": "ChecksumEnabled",
-                "help": "A global switch to enable all checksums for all protocols",
-                "type": Attribute.BOOL,
-                "value": False,
-                "flags": Attribute.DesignOnly,
-                "validation_function": validation.is_bool
-            }),
-          "home_directory": dict({
-                "name": "homeDirectory",
-                "help": "Path to the directory where traces and other files \
-                        will be stored",
-                "type": Attribute.STRING,
-                "value": "",
-                "flags": Attribute.DesignOnly,
-                "validation_function": validation.is_string
-            })
+     "simu_impl_type": dict({
+            "name": "SimulatorImplementationType",
+            "help": "The object class to use as the simulator implementation",
+            "type": Attribute.STRING,
+            "flags": Attribute.DesignOnly,
+            "validation_function": validation.is_string
+        }),
+      "checksum": dict({
+            "name": "ChecksumEnabled",
+            "help": "A global switch to enable all checksums for all protocols",
+            "type": Attribute.BOOL,
+            "value": False,
+            "flags": Attribute.DesignOnly,
+            "validation_function": validation.is_bool
+        }),
+      "home_directory": dict({
+            "name": "homeDirectory",
+            "help": "Path to the directory where traces and other files \
+                    will be stored",
+            "type": Attribute.STRING,
+            "value": "",
+            "flags": Attribute.DesignOnly,
+            "validation_function": validation.is_string
+        })
 })
 
 class VersionedMetadataInfo(metadata.VersionedMetadataInfo):
