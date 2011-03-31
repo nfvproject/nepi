@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import nepi.util.environ
+import ctypes
 import imp
 import sys
 
