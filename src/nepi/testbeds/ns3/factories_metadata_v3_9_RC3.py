@@ -40,6 +40,18 @@ def _get_dev_number(testbed_instance, guid):
 
 ### create traces functions ###
 
+def p2pascii_trace(testbed_instance, guid, trace_id):
+    node_guid = _get_node_guid(testbed_instance, guid)
+    interface_number = _get_dev_number(testbed_instance, guid)
+    element = testbed_instance._elements[guid]
+    filename = "trace-p2p-node-%d-dev-%d.tr" % (node_guid, interface_number)
+    testbed_instance.follow_trace(guid, trace_id, filename)
+    filepath = testbed_instance.trace_filename(guid, trace_id)
+    helper = testbed_instance.ns3.PointToPointHelper()
+    asciiHelper = testbed_instance.ns3.AsciiTraceHelper()
+    stream = asciiHelper.CreateFileStream (filepath)
+    helper.EnableAscii(stream, element)
+
 def p2ppcap_trace(testbed_instance, guid, trace_id):
     node_guid = _get_node_guid(testbed_instance, guid)
     interface_number = _get_dev_number(testbed_instance, guid)
@@ -92,6 +104,7 @@ def yanswifipcap_trace(testbed_instance, guid, trace_id):
 
 trace_functions = dict({
     "P2PPcapTrace": p2ppcap_trace,
+    "P2PAsciiTrace": p2pascii_trace,
     "CsmaPcapTrace": csmapcap_trace,
     "CsmaPcapPromiscTrace": csmapcap_promisc_trace,
     "FileDescriptorPcapTrace": fdpcap_trace,
@@ -122,10 +135,6 @@ def create_element(testbed_instance, guid):
         element_factory.Set(name, ns3_value)
     element = element_factory.Create()
     testbed_instance._elements[guid] = element
-    traces = testbed_instance._get_traces(guid)
-    for trace_id in traces:
-        trace_func = trace_functions[trace_id]
-        trace_func(testbed_instance, guid, trace_id)
 
 def create_node(testbed_instance, guid):
     create_element(testbed_instance, guid)
@@ -199,7 +208,18 @@ def status_application(testbed_instance, guid):
 
 ### Configure functions ###
 
+def configure_traces(testbed_instance, guid):
+    traces = testbed_instance._get_traces(guid)
+    for trace_id in traces:
+        trace_func = trace_functions[trace_id]
+        trace_func(testbed_instance, guid, trace_id)
+
+def configure_element(testbed_instance, guid):
+    configure_traces(testbed_instance, guid)
+
 def configure_device(testbed_instance, guid):
+    configure_traces(testbed_instance, guid)
+
     element = testbed_instance._elements[guid]
     if not guid in testbed_instance._add_address:
         return
@@ -223,6 +243,8 @@ def configure_device(testbed_instance, guid):
         ipv4.SetUp(ifindex)
 
 def configure_node(testbed_instance, guid):
+    configure_traces(testbed_instance, guid)
+
     element = testbed_instance._elements[guid]
     if not guid in testbed_instance._add_route:
         return
@@ -261,6 +283,7 @@ factories_info = dict({
     "ns3::Ping6": dict({
         "category": "Application",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "stop_function": stop_application,
@@ -277,6 +300,7 @@ factories_info = dict({
      "ns3::UdpL4Protocol": dict({
         "category": "Protocol",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["node"],
         "box_attributes": ["ProtocolNumber"],
@@ -284,6 +308,7 @@ factories_info = dict({
      "ns3::RandomDiscPositionAllocator": dict({
         "category": "Mobility",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["Theta",
@@ -303,6 +328,7 @@ factories_info = dict({
      "ns3::GridPositionAllocator": dict({
         "category": "Mobility",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["GridWidth",
@@ -315,6 +341,7 @@ factories_info = dict({
      "ns3::TapBridge": dict({
         "category": "Device",
         "create_function": create_device,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "allow_addresses": True,
@@ -330,6 +357,7 @@ factories_info = dict({
      "ns3::FlowMonitor": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["MaxPerHopDelay",
@@ -342,6 +370,7 @@ factories_info = dict({
      "ns3::ConstantVelocityMobilityModel": dict({
         "category": "Mobility",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["node"],
         "box_attributes": ["Position",
@@ -350,6 +379,7 @@ factories_info = dict({
      "ns3::V4Ping": dict({
         "category": "Application",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["node"],
         "stop_function": stop_application,
@@ -365,6 +395,7 @@ factories_info = dict({
      "ns3::dot11s::PeerLink": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["RetryTimeout",
@@ -385,11 +416,12 @@ factories_info = dict({
             "Address",
             "DataRate",
             "InterframeGap"],
-        "traces": ["p2ppcap"]
+        "traces": ["p2ppcap", "p2pascii"]
     }),
      "ns3::NakagamiPropagationLossModel": dict({
         "category": "Loss",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["Distance1",
@@ -401,6 +433,7 @@ factories_info = dict({
      "ns3::AarfWifiManager": dict({
         "category": "Manager",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["SuccessK",
@@ -418,6 +451,7 @@ factories_info = dict({
      "ns3::Ipv6OptionJumbogram": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["OptionNumber"],
@@ -425,6 +459,7 @@ factories_info = dict({
      "ns3::TwoRayGroundPropagationLossModel": dict({
         "category": "Loss",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["Lambda",
@@ -435,6 +470,7 @@ factories_info = dict({
      "ns3::OnOffApplication": dict({
         "category": "Application",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["node"],
         "stop_function": stop_application,
@@ -453,6 +489,7 @@ factories_info = dict({
      "ns3::AdhocWifiMac": dict({
         "category": "Mac",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["CtsTimeout",
@@ -469,6 +506,7 @@ factories_info = dict({
      "ns3::ConstantAccelerationMobilityModel": dict({
         "category": "Mobility",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["node"],
         "box_attributes": ["Position",
@@ -477,6 +515,7 @@ factories_info = dict({
      "ns3::GaussMarkovMobilityModel": dict({
         "category": "Mobility",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["Bounds",
@@ -494,6 +533,7 @@ factories_info = dict({
      "ns3::dot11s::HwmpProtocol": dict({
         "category": "Protocol",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["RandomStart",
@@ -516,6 +556,7 @@ factories_info = dict({
      "ns3::NscTcpL4Protocol": dict({
         "category": "Protocol",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["Library",
@@ -524,6 +565,7 @@ factories_info = dict({
      "ns3::dot11s::AirtimeLinkMetricCalculator": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["Dot11sMeshHeaderLength"],
@@ -531,6 +573,7 @@ factories_info = dict({
      "ns3::UanMacCw": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["CW",
@@ -539,6 +582,7 @@ factories_info = dict({
      "ns3::AthstatsWifiTraceSink": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["Interval"],
@@ -546,6 +590,7 @@ factories_info = dict({
      "ns3::FlameStack": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": [],
@@ -553,6 +598,7 @@ factories_info = dict({
      "ns3::UanMacRc": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["RetryRate",
@@ -568,6 +614,7 @@ factories_info = dict({
      "ns3::WaypointMobilityModel": dict({
         "category": "Mobility",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["WaypointsLeft",
@@ -600,6 +647,7 @@ factories_info = dict({
      "ns3::UanPropModelThorp": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["SpreadCoef"],
@@ -607,6 +655,7 @@ factories_info = dict({
      "ns3::NqstaWifiMac": dict({
         "category": "Mac",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["ProbeRequestTimeout",
@@ -626,6 +675,7 @@ factories_info = dict({
      "ns3::Icmpv6L4Protocol": dict({
         "category": "Protocol",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["DAD",
@@ -634,6 +684,7 @@ factories_info = dict({
      "ns3::SimpleNetDevice": dict({
         "category": "Device",
         "create_function": create_device,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["node", "chan"],
         "allow_addresses": True,
@@ -642,6 +693,7 @@ factories_info = dict({
      "ns3::FriisPropagationLossModel": dict({
         "category": "Loss",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["Lambda",
@@ -651,6 +703,7 @@ factories_info = dict({
      "ns3::Ipv6OptionRouterAlert": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["OptionNumber"],
@@ -658,6 +711,7 @@ factories_info = dict({
      "ns3::UniformDiscPositionAllocator": dict({
         "category": "Mobility",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["rho",
@@ -667,6 +721,7 @@ factories_info = dict({
      "ns3::RandomBoxPositionAllocator": dict({
         "category": "Mobility",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["X",
@@ -676,6 +731,7 @@ factories_info = dict({
      "ns3::Ipv6ExtensionDestination": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["ExtensionNumber"],
@@ -683,6 +739,7 @@ factories_info = dict({
      "ns3::LoopbackNetDevice": dict({
         "category": "Device",
         "create_function": create_device,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": [],
@@ -690,6 +747,7 @@ factories_info = dict({
      "ns3::ConstantSpeedPropagationDelayModel": dict({
         "category": "Delay",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["chan"],
         "box_attributes": ["Speed"],
@@ -697,6 +755,7 @@ factories_info = dict({
      "ns3::Ipv6ExtensionHopByHop": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["ExtensionNumber"],
@@ -704,6 +763,7 @@ factories_info = dict({
      "ns3::BridgeChannel": dict({
         "category": "Channel",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": [],
@@ -711,6 +771,7 @@ factories_info = dict({
      "ns3::Radvd": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["StartTime",
@@ -719,6 +780,7 @@ factories_info = dict({
      "ns3::PacketSocket": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["RcvBufSize"],
@@ -726,6 +788,7 @@ factories_info = dict({
      "ns3::flame::FlameProtocol": dict({
         "category": "Protocol",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["BroadcastInterval",
@@ -734,6 +797,7 @@ factories_info = dict({
      "ns3::Cost231PropagationLossModel": dict({
         "category": "Loss",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["Lambda",
@@ -745,6 +809,7 @@ factories_info = dict({
      "ns3::Ipv6ExtensionESP": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["ExtensionNumber"],
@@ -752,6 +817,7 @@ factories_info = dict({
      "ns3::CaraWifiManager": dict({
         "category": "Manager",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["ProbeThreshold",
@@ -769,6 +835,7 @@ factories_info = dict({
      "ns3::RttMeanDeviation": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["Gain",
@@ -779,6 +846,7 @@ factories_info = dict({
      "ns3::Icmpv4L4Protocol": dict({
         "category": "Protocol",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["node"],
         "box_attributes": ["ProtocolNumber"],
@@ -786,6 +854,7 @@ factories_info = dict({
      "ns3::WaveformGenerator": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["Period",
@@ -794,6 +863,7 @@ factories_info = dict({
      "ns3::YansWifiChannel": dict({
         "category": "Channel",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["phys", "delay", "loss"],
         "box_attributes": [],
@@ -801,6 +871,7 @@ factories_info = dict({
      "ns3::SimpleChannel": dict({
         "category": "Channel",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["devs"],
         "box_attributes": [],
@@ -808,6 +879,7 @@ factories_info = dict({
      "ns3::Ipv6ExtensionFragment": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["ExtensionNumber"],
@@ -815,6 +887,7 @@ factories_info = dict({
      "ns3::Dot11sStack": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["Root"],
@@ -822,6 +895,7 @@ factories_info = dict({
      "ns3::FriisSpectrumPropagationLossModel": dict({
         "category": "Loss",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": [],
@@ -829,6 +903,7 @@ factories_info = dict({
      "ns3::RandomRectanglePositionAllocator": dict({
         "category": "Mobility",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["X",
@@ -837,6 +912,7 @@ factories_info = dict({
      "ns3::NqapWifiMac": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["BeaconInterval",
@@ -855,6 +931,7 @@ factories_info = dict({
      "ns3::HierarchicalMobilityModel": dict({
         "category": "Mobility",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["node"],
         "box_attributes": ["Position",
@@ -863,6 +940,7 @@ factories_info = dict({
      "ns3::ThreeLogDistancePropagationLossModel": dict({
         "category": "Loss",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["Distance0",
@@ -876,6 +954,7 @@ factories_info = dict({
      "ns3::UanNoiseModelDefault": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["Wind",
@@ -884,6 +963,7 @@ factories_info = dict({
      "ns3::dot11s::HwmpRtable": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": [],
@@ -891,6 +971,7 @@ factories_info = dict({
      "ns3::PacketBurst": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": [],
@@ -898,6 +979,7 @@ factories_info = dict({
      "ns3::RandomPropagationDelayModel": dict({
         "category": "Delay",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["Variable"],
@@ -905,6 +987,7 @@ factories_info = dict({
      "ns3::ArpL3Protocol": dict({
         "category": "Protocol",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["node"],
         "box_attributes": [],
@@ -912,6 +995,7 @@ factories_info = dict({
      "ns3::SteadyStateRandomWaypointMobilityModel": dict({
         "category": "Mobility",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["MinSpeed",
@@ -946,6 +1030,7 @@ factories_info = dict({
      "ns3::UdpServer": dict({
         "category": "Application",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "stop_function": stop_application,
@@ -959,6 +1044,7 @@ factories_info = dict({
      "ns3::AarfcdWifiManager": dict({
         "category": "Manager",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["SuccessK",
@@ -980,6 +1066,7 @@ factories_info = dict({
      "ns3::UanTransducerHd": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": [],
@@ -987,6 +1074,7 @@ factories_info = dict({
      "ns3::LogDistancePropagationLossModel": dict({
         "category": "Loss",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["prev", "next"],
         "box_attributes": ["Exponent",
@@ -996,6 +1084,7 @@ factories_info = dict({
      "ns3::EmuNetDevice": dict({
         "category": "Device",
         "create_function": create_device,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["node", "queue"],
         "box_attributes": ["Mtu",
@@ -1008,6 +1097,7 @@ factories_info = dict({
      "ns3::Ipv6ExtensionLooseRouting": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["ExtensionNumber"],
@@ -1015,6 +1105,7 @@ factories_info = dict({
      "ns3::RandomWaypointMobilityModel": dict({
         "category": "Mobility",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["node"],
         "box_attributes": ["Speed",
@@ -1025,6 +1116,7 @@ factories_info = dict({
      "ns3::RangePropagationLossModel": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["MaxRange"],
@@ -1032,6 +1124,7 @@ factories_info = dict({
      "ns3::AlohaNoackNetDevice": dict({
         "category": "Device",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["Address",
@@ -1040,6 +1133,7 @@ factories_info = dict({
      "ns3::MatrixPropagationLossModel": dict({
         "category": "Loss",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["DefaultLoss"],
@@ -1056,6 +1150,7 @@ factories_info = dict({
      "ns3::CsmaChannel": dict({
         "category": "Channel",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["devs"],
         "box_attributes": ["DataRate",
@@ -1064,6 +1159,7 @@ factories_info = dict({
      "ns3::BridgeNetDevice": dict({
         "category": "Device",
         "create_function": create_device,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["node"],
         "allow_addresses": True,
@@ -1074,6 +1170,7 @@ factories_info = dict({
      "ns3::Ipv6ExtensionRouting": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["ExtensionNumber"],
@@ -1081,6 +1178,7 @@ factories_info = dict({
      "ns3::QstaWifiMac": dict({
         "category": "Mac",
         "create_function": create_wifi_standard_model,
+        "configure_function": configure_element,
         "help": "Station Wifi MAC Model",
         "connector_types": ["dev"],
         "box_attributes": ["ProbeRequestTimeout",
@@ -1100,6 +1198,7 @@ factories_info = dict({
      "ns3::UdpEchoClient": dict({
         "category": "Application",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["node"],
         "stop_function": stop_application,
@@ -1116,6 +1215,7 @@ factories_info = dict({
      "ns3::UdpClient": dict({
         "category": "Application",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "stop_function": stop_application,
@@ -1132,6 +1232,7 @@ factories_info = dict({
      "ns3::PointToPointChannel": dict({
         "category": "Channel",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["dev2"],
         "box_attributes": ["Delay"],
@@ -1139,6 +1240,7 @@ factories_info = dict({
      "ns3::Ipv6StaticRouting": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": [],
@@ -1146,6 +1248,7 @@ factories_info = dict({
      "ns3::DropTailQueue": dict({
         "category": "Device",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["dev"],
         "box_attributes": ["MaxPackets",
@@ -1154,6 +1257,7 @@ factories_info = dict({
      "ns3::ConstantPositionMobilityModel": dict({
         "category": "Mobility",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["node"],
         "box_attributes": ["Position",
@@ -1162,6 +1266,7 @@ factories_info = dict({
      "ns3::FixedRssLossModel": dict({
         "category": "Loss",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["Rss"],
@@ -1169,6 +1274,7 @@ factories_info = dict({
      "ns3::EnergySourceContainer": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": [],
@@ -1176,6 +1282,7 @@ factories_info = dict({
      "ns3::RandomWalk2dMobilityModel": dict({
         "category": "Mobility",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["node"],
         "box_attributes": ["Bounds",
@@ -1190,6 +1297,7 @@ factories_info = dict({
      "ns3::ListPositionAllocator": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": [],
@@ -1197,6 +1305,7 @@ factories_info = dict({
      "ns3::dot11s::PeerManagementProtocol": dict({
         "category": "Protocol",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["MaxNumberOfPeerLinks",
@@ -1206,6 +1315,7 @@ factories_info = dict({
      "ns3::MeshPointDevice": dict({
         "category": "Device",
         "create_function": create_device,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "allow_addresses": True,
@@ -1214,6 +1324,7 @@ factories_info = dict({
      "ns3::BasicEnergySource": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["BasicEnergySourceInitialEnergyJ",
@@ -1223,6 +1334,7 @@ factories_info = dict({
      "ns3::Ipv6OptionPadn": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["OptionNumber"],
@@ -1230,6 +1342,7 @@ factories_info = dict({
      "ns3::QapWifiMac": dict({
         "category": "Mac",
         "create_function": create_wifi_standard_model,
+        "configure_function": configure_element,
         "help": "Access point Wifi MAC Model",
         "connector_types": ["dev"],
         "box_attributes": ["BeaconInterval",
@@ -1248,6 +1361,7 @@ factories_info = dict({
      "ns3::YansErrorRateModel": dict({
         "category": "Error",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": [],
@@ -1255,6 +1369,7 @@ factories_info = dict({
      "ns3::WifiMacQueue": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["MaxPacketNumber",
@@ -1263,6 +1378,7 @@ factories_info = dict({
      "ns3::NonCommunicatingNetDevice": dict({
         "category": "Device",
         "create_function": create_device,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "allow_addresses": True,
@@ -1271,6 +1387,7 @@ factories_info = dict({
      "ns3::RateErrorModel": dict({
         "category": "Error",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["ErrorUnit",
@@ -1281,6 +1398,7 @@ factories_info = dict({
      "ns3::MeshWifiInterfaceMac": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["BeaconInterval",
@@ -1300,6 +1418,7 @@ factories_info = dict({
      "ns3::UanPhyCalcSinrDual": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": [],
@@ -1307,6 +1426,7 @@ factories_info = dict({
      "ns3::Ipv6ExtensionAH": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["ExtensionNumber"],
@@ -1314,6 +1434,7 @@ factories_info = dict({
      "ns3::SingleModelSpectrumChannel": dict({
         "category": "Channel",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": [],
@@ -1321,6 +1442,7 @@ factories_info = dict({
      "ns3::YansWifiPhy": dict({
         "category": "Phy",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["dev", "err", "chan"],
         "box_attributes": ["EnergyDetectionThreshold",
@@ -1338,6 +1460,7 @@ factories_info = dict({
      "ns3::WifiRadioEnergyModel": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["TxCurrentA",
@@ -1348,6 +1471,7 @@ factories_info = dict({
      "ns3::EdcaTxopN": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["BlockAckThreshold",
@@ -1358,6 +1482,7 @@ factories_info = dict({
      "ns3::UanPhyPerGenDefault": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["Threshold"],
@@ -1365,6 +1490,7 @@ factories_info = dict({
      "ns3::IdealWifiManager": dict({
         "category": "Manager",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["BerThreshold",
@@ -1378,6 +1504,7 @@ factories_info = dict({
      "ns3::MultiModelSpectrumChannel": dict({
         "category": "Channel",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": [],
@@ -1385,6 +1512,7 @@ factories_info = dict({
      "ns3::HalfDuplexIdealPhy": dict({
         "category": "Phy",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["Rate"],
@@ -1392,6 +1520,7 @@ factories_info = dict({
      "ns3::UanPhyCalcSinrDefault": dict({
         "category": "Phy",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": [],
@@ -1399,6 +1528,7 @@ factories_info = dict({
      "ns3::ReceiveListErrorModel": dict({
         "category": "Error",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["IsEnabled"],
@@ -1406,6 +1536,7 @@ factories_info = dict({
      "ns3::SpectrumAnalyzer": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["Resolution",
@@ -1414,6 +1545,7 @@ factories_info = dict({
      "ns3::ConstantRateWifiManager": dict({
         "category": "Manager",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["dev"],
         "box_attributes": ["DataMode",
@@ -1428,6 +1560,7 @@ factories_info = dict({
      "ns3::Ipv6OptionPad1": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["OptionNumber"],
@@ -1435,6 +1568,7 @@ factories_info = dict({
      "ns3::UdpTraceClient": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["RemoteAddress",
@@ -1446,6 +1580,7 @@ factories_info = dict({
      "ns3::RraaWifiManager": dict({
         "category": "Manager",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["Basic",
@@ -1482,6 +1617,7 @@ factories_info = dict({
      "ns3::RandomPropagationLossModel": dict({
         "category": "Loss",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["Variable"],
@@ -1489,6 +1625,7 @@ factories_info = dict({
      "ns3::UanChannel": dict({
         "category": "Channel",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": [],
@@ -1496,6 +1633,7 @@ factories_info = dict({
      "ns3::MinstrelWifiManager": dict({
         "category": "Manager",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["UpdateStatistics",
@@ -1514,6 +1652,7 @@ factories_info = dict({
      "ns3::UanPhyDual": dict({
         "category": "Phy",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["CcaThresholdPhy1",
@@ -1528,6 +1667,7 @@ factories_info = dict({
      "ns3::ListErrorModel": dict({
         "category": "Error",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["dev"],
         "box_attributes": ["IsEnabled"],
@@ -1535,6 +1675,7 @@ factories_info = dict({
      "ns3::VirtualNetDevice": dict({
         "category": "Device",
         "create_function": create_device,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "allow_addresses": True,
@@ -1543,6 +1684,7 @@ factories_info = dict({
      "ns3::UanPhyGen": dict({
         "category": "Phy",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["CcaThreshold",
@@ -1554,6 +1696,7 @@ factories_info = dict({
      "ns3::Ipv6L3Protocol": dict({
         "category": "Protocol",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["DefaultTtl",
@@ -1562,6 +1705,7 @@ factories_info = dict({
      "ns3::PointToPointRemoteChannel": dict({
         "category": "Channel",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["Delay"],
@@ -1569,6 +1713,7 @@ factories_info = dict({
      "ns3::UanPhyPerUmodem": dict({
         "category": "Phy",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": [],
@@ -1576,6 +1721,7 @@ factories_info = dict({
      "ns3::OnoeWifiManager": dict({
         "category": "Manager",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["UpdatePeriod",
@@ -1591,6 +1737,7 @@ factories_info = dict({
      "ns3::QadhocWifiMac": dict({
         "category": "Mac",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["CtsTimeout",
@@ -1607,6 +1754,7 @@ factories_info = dict({
      "ns3::JakesPropagationLossModel": dict({
         "category": "Loss",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["NumberOfRaysPerPath",
@@ -1617,6 +1765,7 @@ factories_info = dict({
      "ns3::PacketSink": dict({
         "category": "Application",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["node"],
         "stop_function": stop_application,
@@ -1630,6 +1779,7 @@ factories_info = dict({
      "ns3::RandomDirection2dMobilityModel": dict({
         "category": "Mobility",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["node"],
         "box_attributes": ["Bounds",
@@ -1641,6 +1791,7 @@ factories_info = dict({
      "ns3::UanMacAloha": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": [],
@@ -1648,6 +1799,7 @@ factories_info = dict({
      "ns3::MsduStandardAggregator": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["MaxAmsduSize"],
@@ -1655,6 +1807,7 @@ factories_info = dict({
      "ns3::DcaTxop": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["MinCw",
@@ -1664,6 +1817,7 @@ factories_info = dict({
      "ns3::UanPhyCalcSinrFhFsk": dict({
         "category": "Phy",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["NumberOfHops"],
@@ -1671,6 +1825,7 @@ factories_info = dict({
      "ns3::UanPropModelIdeal": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": [],
@@ -1678,6 +1833,7 @@ factories_info = dict({
      "ns3::UanMacRcGw": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["MaxReservations",
@@ -1696,6 +1852,7 @@ factories_info = dict({
      "ns3::NistErrorRateModel": dict({
         "category": "Error",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["phy"],
         "box_attributes": [],
@@ -1703,6 +1860,7 @@ factories_info = dict({
      "ns3::Ipv4L3Protocol": dict({
         "category": "Protocol",
         "create_function": create_ipv4protocol,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["node"],
         "box_attributes": ["DefaultTtl",
@@ -1712,6 +1870,7 @@ factories_info = dict({
      "ns3::aodv::RoutingProtocol": dict({
         "category": "Protocol",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["HelloInterval",
@@ -1738,6 +1897,7 @@ factories_info = dict({
      "ns3::TcpL4Protocol": dict({
         "category": "Protocol",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["node"],
         "box_attributes": ["RttEstimatorFactory",
@@ -1746,6 +1906,7 @@ factories_info = dict({
      "ns3::olsr::RoutingProtocol": dict({
         "category": "Protocol",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["HelloInterval",
@@ -1757,6 +1918,7 @@ factories_info = dict({
      "ns3::UdpEchoServer": dict({
         "category": "Application",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["node"],
         "stop_function": stop_application,
@@ -1769,6 +1931,7 @@ factories_info = dict({
      "ns3::AmrrWifiManager": dict({
         "category": "Manager",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["UpdatePeriod",
@@ -1786,6 +1949,7 @@ factories_info = dict({
      "ns3::ArfWifiManager": dict({
         "category": "Manager",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["dev"],
         "box_attributes": ["TimerThreshold",
@@ -1800,6 +1964,7 @@ factories_info = dict({
      "ns3::SubscriberStationNetDevice": dict({
         "category": "Device",
         "create_function": create_device,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "allow_addresses": True,
@@ -1822,6 +1987,7 @@ factories_info = dict({
      "ns3::flame::FlameRtable": dict({
         "category": "",
         "create_function": create_element,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": [],
         "box_attributes": ["Lifetime"],

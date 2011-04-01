@@ -462,6 +462,10 @@ traces = dict({
                 "name": "P2PPcapTrace",
                 "help": "Trace to sniff packets from a P2P network device"
               }),
+    "p2pascii": dict({
+                "name": "P2PAsciiTrace",
+                "help": "Ascii trace from a P2P network device"
+              }),
     "csmapcap_promisc": dict({
                 "name": "CsmaPromiscPcapTrace",
                 "help": "Trace to sniff packets from a Csma network device in promiscuous mode"
