@@ -223,10 +223,10 @@ class TestbedInstance(object):
         elements are done"""
         raise NotImplementedError
 
-    def start(self, time):
+    def start(self):
         raise NotImplementedError
 
-    def stop(self, time):
+    def stop(self):
         raise NotImplementedError
 
     def set(self, time, guid, name, value):

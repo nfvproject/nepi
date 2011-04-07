@@ -30,12 +30,13 @@ def _get_node_guid(testbed_instance, guid):
     return node_guid
 
 def _get_dev_number(testbed_instance, guid):
-    dev_guids = testbed_instance.get_connected(guid, "devs", "node")
+    node_guid = _get_node_guid(testbed_instance, guid)
+    dev_guids = testbed_instance.get_connected(node_guid, "devs", "node")
     interface_number = 0
     for guid_ in dev_guids:
         if guid_ == guid:
             break
-        inteface_number += 1
+        interface_number += 1
     return interface_number
 
 ### create traces functions ###

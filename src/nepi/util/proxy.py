@@ -61,8 +61,8 @@ controller_messages = dict({
 # TESTBED INSTANCE PROTOCOL MESSAGES
 testbed_messages = dict({
     TRACE:  "%d|%s" % (TRACE, "%d|%s"),
-    START:  "%d|%s" % (START, "%s"),
-    STOP:    "%d|%s" % (STOP, "%s"),
+    START:  "%d" % START,
+    STOP:   "%d" % STOP,
     SHUTDOWN:   "%d" % SHUTDOWN,
     CONFIGURE: "%d|%s" % (CONFIGURE, "%s|%s|%d"),
     CREATE: "%d|%s" % (CREATE, "%d|%s"),
@@ -159,8 +159,6 @@ def launch_ssh_daemon_client(root_dir, python_code, host, port, user, agent):
     # launch daemon
     proc = server.popen_ssh_subprocess(python_code, host = host,
         port = port, user = user, agent = agent)
-    #while not proc.poll():
-    #    time.sleep(0.5)
     if proc.poll():
         err = proc.stderr.read()
         raise RuntimeError("Client could not be executed: %s" % \
@@ -265,7 +263,7 @@ def create_testbed_instance(testbed_id, testbed_version, access_config):
     elif mode == AccessConfiguration.MODE_DAEMON:
         (root_dir, log_level, user, host, port, agent) = \
                 get_access_config_params(access_config)
-        return TestbedIntanceProxy(root_dir, log_level, testbed_id = testbed_id, 
+        return TestbedInstanceProxy(root_dir, log_level, testbed_id = testbed_id, 
                 testbed_version = testbed_version, host = host, port = port,
                 user = user, agent = agent)
     raise RuntimeError("Unsupported access configuration 'mode'" % mode)
@@ -371,13 +369,11 @@ class TestbedInstanceServer(server.Server):
         return "%d|%s" % (OK, result)
 
     def start(self, params):
-        time = params[1]
-        self._testbed.start(time)
+        self._testbed.start()
         return "%d|%s" % (OK, "")
 
     def stop(self, params):
-        time = params[1]
-        self._testbed.stop(time)
+        self._testbed.stop()
         return "%d|%s" % (OK, "")
 
     def shutdown(self, params):
@@ -600,7 +596,7 @@ class ExperimentControllerServer(server.Server):
         self._controller.shutdown()
         return "%d|%s" % (OK, "")
 
-class TestbedIntanceProxy(object):
+class TestbedInstanceProxy(object):
     def __init__(self, root_dir, log_level, testbed_id = None, 
             testbed_version = None, launch = True, host = None, 
             port = None, user = None, agent = None):
@@ -804,7 +800,6 @@ class TestbedIntanceProxy(object):
 
     def start(self, time = TIME_NOW):
         msg = testbed_messages[START]
-        msg = msg % (time)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
         result = reply.split("|")
@@ -815,7 +810,6 @@ class TestbedIntanceProxy(object):
 
     def stop(self, time = TIME_NOW):
         msg = testbed_messages[STOP]
-        msg = msg % (time)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
         result = reply.split("|")
