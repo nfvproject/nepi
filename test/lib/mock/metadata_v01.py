@@ -94,6 +94,12 @@ attributes = dict({
                 "allowed": None,
                 "validation_function": validation.is_bool
             }),
+    "test": dict({
+                "name": "test",
+                "help": "test attribute",
+                "type": Attribute.STRING,
+                "validation_function": validation.is_string
+            }),
     })
 
 traces = dict({
@@ -113,7 +119,7 @@ factories_info = dict({
             "start_function": None,
             "stop_function": None,
             "status_function": None,
-            "box_attributes": ["fake"],
+            "box_attributes": ["fake","test"],
             "connector_types": ["devs", "apps"]
        }),
     IFACE: dict({
@@ -123,8 +129,9 @@ factories_info = dict({
             "start_function": None,
             "stop_function": None,
             "status_function": None,
+            "allow_addresses": True,
             "factory_attributes": ["fake"],
-            "box_attributes": ["fake"],
+            "box_attributes": ["fake","test"],
             "connector_types": ["node", "iface"]
        }),
     APP: dict({
@@ -134,7 +141,7 @@ factories_info = dict({
             "start_function": None,
             "stop_function": None,
             "status_function": status_application,
-            "box_attributes": ["fake"],
+            "box_attributes": ["fake","test"],
             "connector_types": ["node"],
             "traces": ["fake"]
         }),

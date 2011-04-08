@@ -124,13 +124,26 @@ class ExperimentData(object):
         return [(name, value) for name, value \
                 in factory_attributes_data.iteritems()]
 
-    def get_attribute_data(self, guid):
+    def get_attribute_data(self, guid, attribute=None, default=None):
         data = self.data[guid]
         if not "attributes" in data:
-            return []
+            if attribute is None:
+                return []
+            else:
+                return None
         attributes_data = data["attributes"]
-        return [(name, value) for name, value \
-                in attributes_data.iteritems()]
+        if attribute is None:
+            return [(name, value) for name, value \
+                    in attributes_data.iteritems()]
+        else:
+            return attributes_data.get(attribute, default)
+
+    def set_attribute_data(self, guid, attribute, value):
+        data = self.data[guid]
+        if not "attributes" in data:
+            raise KeyError, "No attributes in reference OBJECT %r" % (guid,)
+        attributes_data = data["attributes"]
+        attributes_data[attribute] = value
 
     def get_trace_data(self, guid):
         data = self.data[guid]

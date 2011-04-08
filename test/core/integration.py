@@ -19,8 +19,8 @@ class ExecuteTestCase(unittest.TestCase):
         sys.modules["nepi.testbeds.mock.metadata_v01"] = mock.metadata_v01
         sys.modules["nepi.testbeds.mock"] = mock
         self.root_dir = tempfile.mkdtemp()
-
-    def test_single_process_integration(self):
+    
+    def make_test_experiment(self):
         exp_desc = ExperimentDescription()
         testbed_version = "01"
         testbed_id = "mock"
@@ -39,7 +39,11 @@ class ExecuteTestCase(unittest.TestCase):
         app = desc.create("Application")
         app.connector("node").connect(node1.connector("apps"))
         app.enable_trace("fake")
+        
+        return exp_desc, desc, app, node1, node2, iface1, iface2
 
+    def test_single_process_integration(self):
+        exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()
         xml = exp_desc.to_xml()
         access_config = None
         controller = proxy.create_controller(xml, access_config)
@@ -57,25 +61,7 @@ class ExecuteTestCase(unittest.TestCase):
         controller.shutdown()
 
     def test_daemonized_controller_integration(self):
-        exp_desc = ExperimentDescription()
-        testbed_version = "01"
-        testbed_id = "mock"
-        provider = FactoriesProvider(testbed_id, testbed_version)
-        desc = exp_desc.add_testbed_description(provider)
-        desc.set_attribute_value("fake", True)
-        node1 = desc.create("Node")
-        node2 = desc.create("Node")
-        iface1 = desc.create("Interface")
-        iface1.set_attribute_value("fake", True)
-        node1.connector("devs").connect(iface1.connector("node"))
-        iface2 = desc.create("Interface")
-        iface2.set_attribute_value("fake", True)
-        node2.connector("devs").connect(iface2.connector("node"))
-        iface1.connector("iface").connect(iface2.connector("iface"))
-        app = desc.create("Application")
-        app.connector("node").connect(node1.connector("apps"))
-        app.enable_trace("fake")
-
+        exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()
         xml = exp_desc.to_xml()
         access_config = proxy.AccessConfiguration()
         access_config.set_attribute_value("mode", 
@@ -97,25 +83,7 @@ class ExecuteTestCase(unittest.TestCase):
         controller.shutdown()
 
     def test_daemonized_testbed_integration(self):
-        exp_desc = ExperimentDescription()
-        testbed_version = "01"
-        testbed_id = "mock"
-        provider = FactoriesProvider(testbed_id, testbed_version)
-        desc = exp_desc.add_testbed_description(provider)
-        desc.set_attribute_value("fake", True)
-        node1 = desc.create("Node")
-        node2 = desc.create("Node")
-        iface1 = desc.create("Interface")
-        iface1.set_attribute_value("fake", True)
-        node1.connector("devs").connect(iface1.connector("node"))
-        iface2 = desc.create("Interface")
-        iface2.set_attribute_value("fake", True)
-        node2.connector("devs").connect(iface2.connector("node"))
-        iface1.connector("iface").connect(iface2.connector("iface"))
-        app = desc.create("Application")
-        app.connector("node").connect(node1.connector("apps"))
-        app.enable_trace("fake")
-
+        exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()
         xml = exp_desc.to_xml()
         controller = proxy.create_controller(xml, access_config = None)
         access_config = proxy.AccessConfiguration()
@@ -138,25 +106,7 @@ class ExecuteTestCase(unittest.TestCase):
         controller.shutdown()
 
     def test_daemonized_all_integration(self):
-        exp_desc = ExperimentDescription()
-        testbed_version = "01"
-        testbed_id = "mock"
-        provider = FactoriesProvider(testbed_id, testbed_version)
-        desc = exp_desc.add_testbed_description(provider)
-        desc.set_attribute_value("fake", True)
-        node1 = desc.create("Node")
-        node2 = desc.create("Node")
-        iface1 = desc.create("Interface")
-        iface1.set_attribute_value("fake", True)
-        node1.connector("devs").connect(iface1.connector("node"))
-        iface2 = desc.create("Interface")
-        iface2.set_attribute_value("fake", True)
-        node2.connector("devs").connect(iface2.connector("node"))
-        iface1.connector("iface").connect(iface2.connector("iface"))
-        app = desc.create("Application")
-        app.connector("node").connect(node1.connector("apps"))
-        app.enable_trace("fake")
-
+        exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()
         xml = exp_desc.to_xml()
         access_config = proxy.AccessConfiguration()
         access_config.set_attribute_value("mode", 
@@ -185,30 +135,37 @@ class ExecuteTestCase(unittest.TestCase):
         controller.stop()
         controller.shutdown()
 
+    def test_reference_expressions(self):
+        exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()
+        
+        iface1.set_attribute_value("label", "some")
+        addr = iface1.add_address()
+        addr.set_attribute_value("Address", "10.0.0.2")
+        iface2.set_attribute_value("test", "{#[some].addr[0].[Address]#}")
+        
+        # TODO: Test actual substitution
+        
+        xml = exp_desc.to_xml()
+        access_config = None
+        controller = proxy.create_controller(xml, access_config)
+        controller.start()
+        while not controller.is_finished(app.guid):
+            time.sleep(0.5)
+        fake_result = controller.trace(desc.guid, app.guid, "fake")
+        comp_result = """PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
+
+--- 10.0.0.2 ping statistics ---
+1 packets transmitted, 1 received, 0% packet loss, time 0ms
+"""
+        self.assertTrue(fake_result.startswith(comp_result))
+        controller.stop()
+        controller.shutdown()
+
     def TODO_test_ssh_daemonized_all_integration(self):
         # TODO: This test doesn't run because
         # sys.modules["nepi.testbeds.mock"] = mock
         # is not set in the ssh process
-        exp_desc = ExperimentDescription()
-        testbed_version = "01"
-        testbed_id = "mock"
-        env = test_util.test_environment()
-        provider = FactoriesProvider(testbed_id, testbed_version)
-        desc = exp_desc.add_testbed_description(provider)
-        desc.set_attribute_value("fake", True)
-        node1 = desc.create("Node")
-        node2 = desc.create("Node")
-        iface1 = desc.create("Interface")
-        iface1.set_attribute_value("fake", True)
-        node1.connector("devs").connect(iface1.connector("node"))
-        iface2 = desc.create("Interface")
-        iface2.set_attribute_value("fake", True)
-        node2.connector("devs").connect(iface2.connector("node"))
-        iface1.connector("iface").connect(iface2.connector("iface"))
-        app = desc.create("Application")
-        app.connector("node").connect(node1.connector("apps"))
-        app.enable_trace("fake")
-
+        exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()
         xml = exp_desc.to_xml()
         access_config = proxy.AccessConfiguration()
         access_config.set_attribute_value("mode", 

@@ -6,6 +6,10 @@ from nepi.util import proxy, validation
 from nepi.util.constants import STATUS_FINISHED
 from nepi.util.parser._xml import XmlExperimentParser
 import sys
+import re
+
+ATTRIBUTE_PATTERN_BASE = re.compile(r"\{#\[(?P<label>[-a-zA-Z0-9._]*)\](?P<expr>(?P<component>\.addr\[[0-9]+\]|\.route\[[0-9]+\]|\.trace\[[0-9]+\]|).\[(?P<attribute>[-a-zA-Z0-9._]*)\])#}")
+ATTRIBUTE_PATTERN_GUID_SUB = r"{#[%(guid)s]%(expr)s#}"
 
 class ConnectorType(object):
     def __init__(self, testbed_id, factory_id, name, max = -1, min = 0):
@@ -266,6 +270,7 @@ class ExperimentController(object):
         self._experiment_xml = experiment_xml
         self._testbeds = dict()
         self._access_config = dict()
+        self._label_guids = dict()
 
     @property
     def experiment_xml(self):
@@ -309,7 +314,9 @@ class ExperimentController(object):
         parser = XmlExperimentParser()
         data = parser.from_xml_to_data(self._experiment_xml)
         element_guids = list()
-        for guid in data.guids:
+        label_guids = dict()
+        data_guids = data.guids
+        for guid in data_guids:
             if data.is_testbed_data(guid):
                 (testbed_id, testbed_version) = data.get_testbed_data(guid)
                 access_config = None if guid not in self._access_config else\
@@ -321,6 +328,30 @@ class ExperimentController(object):
                 self._testbeds[guid] = testbed
             else:
                 element_guids.append(guid)
+                label = data.get_attribute_data(guid, "label")
+                if label is not None:
+                    if label in label_guids:
+                        raise RuntimeError, "Label %r is not unique" % (label,)
+                    label_guids[label] = guid
+        for guid in data_guids:
+            if not data.is_testbed_data(guid):
+                for name, value in data.get_attribute_data(guid):
+                    if isinstance(value, basestring):
+                        match = ATTRIBUTE_PATTERN_BASE.search(value)
+                        if match:
+                            label = match.group("label")
+                            ref_guid = label_guids.get(label)
+                            if ref_guid is not None:
+                                print "@", guid, ",", ref_guid, "=", label, ": ", value, "->",
+                                value = ATTRIBUTE_PATTERN_BASE.sub(
+                                    ATTRIBUTE_PATTERN_GUID_SUB % dict(
+                                        guid=ref_guid,
+                                        expr=match.group("expr"),
+                                        label=label), 
+                                    value)
+                                print value
+                                data.set_attribute_data(guid, name, value)
+        self._label_guids = label_guids
         self._program_testbed_instances(element_guids, data)
 
     def _program_testbed_instances(self, element_guids, data):

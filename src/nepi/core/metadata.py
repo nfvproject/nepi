@@ -3,6 +3,7 @@
 
 from nepi.core.attributes import Attribute, AttributesMap
 import sys
+from nepi.util import validation
 
 class VersionedMetadataInfo(object):
     @property
@@ -109,6 +110,16 @@ class VersionedMetadataInfo(object):
         raise NotImplementedError
 
 class Metadata(object):
+    STANDARD_BOX_ATTRIBUTES = (
+        ("label", dict({
+            "name": "label",
+            "validation_function": validation.is_string,
+            "type": Attribute.STRING,
+            "flags": Attribute.DesignOnly,
+            "help": "A unique identifier for referring to this box"
+        })),
+    )
+
     def __init__(self, testbed_id, version):
         self._version = version
         self._testbed_id = testbed_id
@@ -153,6 +164,7 @@ class Metadata(object):
                     help, category)
             self._add_attributes(factory, info, "factory_attributes")
             self._add_attributes(factory, info, "box_attributes", True)
+            self._add_standard_attributes(factory, info, True)
             self._add_design_traces(factory, info)
             self._add_design_connector_types(factory, info)
             factories.append(factory)
@@ -181,6 +193,7 @@ class Metadata(object):
                     allow_addresses, allow_routes)
             self._add_attributes(factory, info, "factory_attributes")
             self._add_attributes(factory, info, "box_attributes", True)
+            self._add_standard_attributes(factory, info, False)
             self._add_execute_traces(factory, info)
             self._add_execute_connector_types(factory, info)
             factories.append(factory)
@@ -193,27 +206,39 @@ class Metadata(object):
             __import__(mod_name)
         return sys.modules[mod_name]
 
-    def _add_attributes(self, factory, info, attr_key, box_attributes = False):
-        if attr_key in info:
-            for attr_id in info[attr_key]:
-                attr_info = self._metadata.attributes[attr_id]
-                name = attr_info["name"]
-                help = attr_info["help"]
-                type = attr_info["type"] 
-                value = attr_info["value"] if "value" in attr_info else None
-                range = attr_info["range"] if "range" in attr_info else None
-                allowed = attr_info["allowed"] if "allowed" in attr_info \
-                        else None
-                flags = attr_info["flags"] if "flags" in attr_info \
-                        and attr_info["flags"] != None \
-                        else Attribute.NoFlags
-                validation_function = attr_info["validation_function"]
-                if box_attributes:
-                    factory.add_box_attribute(name, help, type, value, range, 
-                            allowed, flags, validation_function)
-                else:
-                    factory.add_attribute(name, help, type, value, range, 
-                            allowed, flags, validation_function)
+    def _add_standard_attributes(self, factory, info, design):
+        if design:
+            attr_bundle = self.STANDARD_BOX_ATTRIBUTES
+        else:
+            # Only add non-DesignOnly attributes
+            def nonDesign(attr_info):
+                return not (attr_info[1].get('flags',Attribute.NoFlags) & Attribute.DesignOnly)
+            attr_bundle = filter(nonDesign, self.STANDARD_BOX_ATTRIBUTES)
+        self._add_attributes(factory, info, None, True, 
+            attr_bundle = self.STANDARD_BOX_ATTRIBUTES)
+
+    def _add_attributes(self, factory, info, attr_key, box_attributes = False, attr_bundle = ()):
+        if not attr_bundle and attr_key in info:
+            attr_bundle = [ (attr_id, self._metadata.attributes[attr_id])
+                            for attr_id in info[attr_key] ]
+        for attr_id, attr_info in attr_bundle:
+            name = attr_info["name"]
+            help = attr_info["help"]
+            type = attr_info["type"] 
+            value = attr_info["value"] if "value" in attr_info else None
+            range = attr_info["range"] if "range" in attr_info else None
+            allowed = attr_info["allowed"] if "allowed" in attr_info \
+                    else None
+            flags = attr_info["flags"] if "flags" in attr_info \
+                    and attr_info["flags"] != None \
+                    else Attribute.NoFlags
+            validation_function = attr_info["validation_function"]
+            if box_attributes:
+                factory.add_box_attribute(name, help, type, value, range, 
+                        allowed, flags, validation_function)
+            else:
+                factory.add_attribute(name, help, type, value, range, 
+                        allowed, flags, validation_function)
 
     def _add_design_traces(self, factory, info):
         if "traces" in info:
