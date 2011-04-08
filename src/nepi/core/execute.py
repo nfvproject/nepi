@@ -342,14 +342,12 @@ class ExperimentController(object):
                             label = match.group("label")
                             ref_guid = label_guids.get(label)
                             if ref_guid is not None:
-                                print "@", guid, ",", ref_guid, "=", label, ": ", value, "->",
                                 value = ATTRIBUTE_PATTERN_BASE.sub(
                                     ATTRIBUTE_PATTERN_GUID_SUB % dict(
                                         guid=ref_guid,
                                         expr=match.group("expr"),
                                         label=label), 
                                     value)
-                                print value
                                 data.set_attribute_data(guid, name, value)
         self._label_guids = label_guids
         self._program_testbed_instances(element_guids, data)
