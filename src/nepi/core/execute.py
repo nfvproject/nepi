@@ -167,37 +167,45 @@ class TestbedInstance(object):
     def guids(self):
         raise NotImplementedError
 
-    def configure(self, name, value):
-        """Set a configuartion attribute for the testbed instance"""
+    def defer_configure(self, name, value):
+        """Instructs setting a configuartion attribute for the testbed instance"""
         raise NotImplementedError
 
-    def create(self, guid, factory_id):
+    def defer_create(self, guid, factory_id):
         """Instructs creation of element """
         raise NotImplementedError
 
-    def create_set(self, guid, name, value):
+    def defer_create_set(self, guid, name, value):
         """Instructs setting an initial attribute on an element"""
         raise NotImplementedError
 
-    def factory_set(self, guid, name, value):
+    def defer_factory_set(self, guid, name, value):
         """Instructs setting an attribute on a factory"""
         raise NotImplementedError
 
-    def connect(self, guid1, connector_type_name1, guid2, 
+    def defer_connect(self, guid1, connector_type_name1, guid2, 
             connector_type_name2): 
+        """Instructs creation of a connection between the given connectors"""
         raise NotImplementedError
 
-    def cross_connect(self, guid, connector_type_name, cross_guid, 
+    def defer_cross_connect(self, guid, connector_type_name, cross_guid, 
             cross_testbed_id, cross_factory_id, cross_connector_type_name):
+        """
+        Instructs creation of a connection between the given connectors 
+        of different testbed instances
+        """
         raise NotImplementedError
 
-    def add_trace(self, guid, trace_id):
+    def defer_add_trace(self, guid, trace_id):
+        """Instructs the addition of a trace"""
         raise NotImplementedError
 
-    def add_address(self, guid, address, netprefix, broadcast): 
+    def defer_add_address(self, guid, address, netprefix, broadcast): 
+        """Instructs the addition of an address"""
         raise NotImplementedError
 
-    def add_route(self, guid, destination, netprefix, nexthop):
+    def defer_add_route(self, guid, destination, netprefix, nexthop):
+        """Instructs the addition of a route"""
         raise NotImplementedError
 
     def do_setup(self):
@@ -205,13 +213,17 @@ class TestbedInstance(object):
         raise NotImplementedError
 
     def do_create(self):
-        """After do_create all instructed elements are created and 
-        attributes setted"""
+        """
+        After do_create all instructed elements are created and 
+        attributes setted
+        """
         raise NotImplementedError
 
     def do_connect(self):
-        """After do_connect all internal connections between testbed elements
-        are done"""
+        """
+        After do_connect all internal connections between testbed elements
+        are done
+        """
         raise NotImplementedError
 
     def do_configure(self):
@@ -219,8 +231,10 @@ class TestbedInstance(object):
         raise NotImplementedError
 
     def do_cross_connect(self):
-        """After do_cross_connect all external connections between different testbed 
-        elements are done"""
+        """
+        After do_cross_connect all external connections between different testbed 
+        elements are done
+        """
         raise NotImplementedError
 
     def start(self):
@@ -303,7 +317,7 @@ class ExperimentController(object):
                 testbed = proxy.create_testbed_instance(testbed_id, 
                         testbed_version, access_config)
                 for (name, value) in data.get_attribute_data(guid):
-                    testbed.configure(name, value)
+                    testbed.defer_configure(name, value)
                 self._testbeds[guid] = testbed
             else:
                 element_guids.append(guid)
@@ -313,9 +327,9 @@ class ExperimentController(object):
         for guid in element_guids:
             (testbed_guid, factory_id) = data.get_box_data(guid)
             testbed = self._testbeds[testbed_guid]
-            testbed.create(guid, factory_id)
+            testbed.defer_create(guid, factory_id)
             for (name, value) in data.get_attribute_data(guid):
-                testbed.create_set(guid, name, value)
+                testbed.defer_create_set(guid, name, value)
 
         for guid in element_guids: 
             (testbed_guid, factory_id) = data.get_box_data(guid)
@@ -326,17 +340,17 @@ class ExperimentController(object):
                 (other_testbed_guid, other_factory_id) = data.get_box_data(
                         other_guid)
                 if testbed_guid == other_testbed_guid:
-                    testbed.connect(guid, connector_type_name, other_guid, 
+                    testbed.defer_connect(guid, connector_type_name, other_guid, 
                         other_connector_type_name)
                 else:
-                    testbed.cross_connect(guid, connector_type_name, other_guid, 
+                    testbed.defer_cross_connect(guid, connector_type_name, other_guid, 
                         other_testbed_id, other_factory_id, other_connector_type_name)
             for trace_id in data.get_trace_data(guid):
-                testbed.add_trace(guid, trace_id)
+                testbed.defer_add_trace(guid, trace_id)
             for (autoconf, address, netprefix, broadcast) in \
                     data.get_address_data(guid):
                 if address != None:
-                    testbed.add_address(guid, address, netprefix, broadcast)
+                    testbed.defer_add_address(guid, address, netprefix, broadcast)
             for (destination, netprefix, nexthop) in data.get_route_data(guid):
-                testbed.add_route(guid, destination, netprefix, nexthop)
+                testbed.defer_add_route(guid, destination, netprefix, nexthop)
 

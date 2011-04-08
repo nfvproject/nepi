@@ -187,7 +187,7 @@ class PLCAPI(object):
                     if None in peer or self._localPeerName in peer:
                         if None in peer:    
                             peer.remove(None)
-                        if self._localPeerName:
+                        if self._localPeerName in peer:
                             peer.remove(self._localPeerName)
                         return (
                             self.GetNodes(nodeIdOrName, fields, filters=filters, peer=peer, **kw)

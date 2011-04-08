@@ -45,14 +45,14 @@ class TestbedInstance(execute.TestbedInstance):
     def elements(self):
         return self._elements
 
-    def configure(self, name, value):
+    def defer_configure(self, name, value):
         if not self._attributes.has_attribute(name):
             raise RuntimeError("Invalid attribute %s for testbed" % name)
         # Validation
         self._attributes.set_attribute_value(name, value)
         self._configure[name] = value
 
-    def create(self, guid, factory_id):
+    def defer_create(self, guid, factory_id):
         if factory_id not in self._factories:
             raise RuntimeError("Invalid element type %s for testbed version %s" %
                     (factory_id, self._testbed_version))
@@ -61,7 +61,7 @@ class TestbedInstance(execute.TestbedInstance):
                     guid)
         self._create[guid] = factory_id
 
-    def create_set(self, guid, name, value):
+    def defer_create_set(self, guid, name, value):
         if not guid in self._create:
             raise RuntimeError("Element guid %d doesn't exist" % guid)
         factory_id = self._create[guid]
@@ -74,7 +74,7 @@ class TestbedInstance(execute.TestbedInstance):
             self._create_set[guid] = dict()
         self._create_set[guid][name] = value
 
-    def factory_set(self, guid, name, value):
+    def defer_factory_set(self, guid, name, value):
         if not guid in self._create:
             raise RuntimeError("Element guid %d doesn't exist" % guid)
         factory_id = self._create[guid]
@@ -87,7 +87,7 @@ class TestbedInstance(execute.TestbedInstance):
             self._factory_set[guid] = dict()
         self._factory_set[guid][name] = value
 
-    def connect(self, guid1, connector_type_name1, guid2, 
+    def defer_connect(self, guid1, connector_type_name1, guid2, 
             connector_type_name2):
         factory_id1 = self._create[guid1]
         factory_id2 = self._create[guid2]
@@ -109,7 +109,7 @@ class TestbedInstance(execute.TestbedInstance):
         self._connect[guid2][connector_type_name2][guid1] = \
                 connector_type_name1
 
-    def cross_connect(self, guid, connector_type_name, cross_guid, 
+    def defer_cross_connect(self, guid, connector_type_name, cross_guid, 
             cross_testbed_id, cross_factory_id, cross_connector_type_name):
         factory_id = self._create[guid]
         count = self._get_connection_count(guid, connector_type_name)
@@ -125,7 +125,7 @@ class TestbedInstance(execute.TestbedInstance):
                 (cross_guid, cross_testbed_id, cross_factory_id, 
                         cross_connector_type_name)
 
-    def add_trace(self, guid, trace_id):
+    def defer_add_trace(self, guid, trace_id):
         if not guid in self._create:
             raise RuntimeError("Element guid %d doesn't exist" % guid)
         factory_id = self._create[guid]
@@ -137,7 +137,7 @@ class TestbedInstance(execute.TestbedInstance):
             self._add_trace[guid] = list()
         self._add_trace[guid].append(trace_id)
 
-    def add_address(self, guid, address, netprefix, broadcast):
+    def defer_add_address(self, guid, address, netprefix, broadcast):
         if not guid in self._create:
             raise RuntimeError("Element guid %d doesn't exist" % guid)
         factory_id = self._create[guid]
@@ -155,7 +155,7 @@ class TestbedInstance(execute.TestbedInstance):
             self._add_address[guid] = list()
         self._add_address[guid].append((address, netprefix, broadcast))
 
-    def add_route(self, guid, destination, netprefix, nexthop):
+    def defer_add_route(self, guid, destination, netprefix, nexthop):
         if not guid in self._create:
             raise RuntimeError("Element guid %d doesn't exist" % guid)
         factory_id = self._create[guid]

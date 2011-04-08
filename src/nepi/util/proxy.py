@@ -300,23 +300,23 @@ class TestbedInstanceServer(server.Server):
             elif instruction == SHUTDOWN:
                 reply = self.shutdown(params)
             elif instruction == CONFIGURE:
-                reply = self.configure(params)
+                reply = self.defer_configure(params)
             elif instruction == CREATE:
-                reply = self.create(params)
+                reply = self.defer_create(params)
             elif instruction == CREATE_SET:
-                reply = self.create_set(params)
+                reply = self.defer_create_set(params)
             elif instruction == FACTORY_SET:
-                reply = self.factory_set(params)
+                reply = self.defer_factory_set(params)
             elif instruction == CONNECT:
-                reply = self.connect(params)
+                reply = self.defer_connect(params)
             elif instruction == CROSS_CONNECT:
-                reply = self.cross_connect(params)
+                reply = self.defer_cross_connect(params)
             elif instruction == ADD_TRACE:
-                reply = self.add_trace(params)
+                reply = self.defer_add_trace(params)
             elif instruction == ADD_ADDRESS:
-                reply = self.add_address(params)
+                reply = self.defer_add_address(params)
             elif instruction == ADD_ROUTE:
-                reply = self.add_route(params)
+                reply = self.defer_add_route(params)
             elif instruction == DO_SETUP:
                 reply = self.do_setup(params)
             elif instruction == DO_CREATE:
@@ -355,10 +355,10 @@ class TestbedInstanceServer(server.Server):
         result = base64.b64encode(guids)
         return "%d|%s" % (OK, result)
 
-    def create(self, params):
+    def defer_create(self, params):
         guid = int(params[1])
         factory_id = params[2]
-        self._testbed.create(guid, factory_id)
+        self._testbed.defer_create(guid, factory_id)
         return "%d|%s" % (OK, "")
 
     def trace(self, params):
@@ -380,41 +380,41 @@ class TestbedInstanceServer(server.Server):
         self._testbed.shutdown()
         return "%d|%s" % (OK, "")
 
-    def configure(self, params):
+    def defer_configure(self, params):
         name = base64.b64decode(params[1])
         value = base64.b64decode(params[2])
         type = int(params[3])
         value = set_type(type, value)
-        self._testbed.configure(name, value)
+        self._testbed.defer_configure(name, value)
         return "%d|%s" % (OK, "")
 
-    def create_set(self, params):
+    def defer_create_set(self, params):
         guid = int(params[1])
         name = base64.b64decode(params[2])
         value = base64.b64decode(params[3])
         type = int(params[4])
         value = set_type(type, value)
-        self._testbed.create_set(guid, name, value)
+        self._testbed.defer_create_set(guid, name, value)
         return "%d|%s" % (OK, "")
 
-    def factory_set(self, params):
+    def defer_factory_set(self, params):
         name = base64.b64decode(params[1])
         value = base64.b64decode(params[2])
         type = int(params[3])
         value = set_type(type, value)
-        self._testbed.factory_set(name, value)
+        self._testbed.defer_factory_set(name, value)
         return "%d|%s" % (OK, "")
 
-    def connect(self, params):
+    def defer_connect(self, params):
         guid1 = int(params[1])
         connector_type_name1 = params[2]
         guid2 = int(params[3])
         connector_type_name2 = params[4]
-        self._testbed.connect(guid1, connector_type_name1, guid2, 
+        self._testbed.defer_connect(guid1, connector_type_name1, guid2, 
             connector_type_name2)
         return "%d|%s" % (OK, "")
 
-    def cross_connect(self, params):
+    def defer_cross_connect(self, params):
         guid = int(params[1])
         connector_type_name = params[2]
         cross_guid = int(params[3])
@@ -423,31 +423,31 @@ class TestbedInstanceServer(server.Server):
         cross_testbed_id = params[6]
         cross_factory_id = params[7]
         cross_connector_type_name = params[8]
-        self._testbed.cross_connect(guid, connector_type_name, cross_guid, 
+        self._testbed.defer_cross_connect(guid, connector_type_name, cross_guid, 
             cross_testbed_id, cross_factory_id, cross_connector_type_name)
         return "%d|%s" % (OK, "")
 
-    def add_trace(self, params):
+    def defer_add_trace(self, params):
         guid = int(params[1])
         trace_id = params[2]
-        self._testbed.add_trace(guid, trace_id)
+        self._testbed.defer_add_trace(guid, trace_id)
         return "%d|%s" % (OK, "")
 
-    def add_address(self, params):
+    def defer_add_address(self, params):
         guid = int(params[1])
         address = params[2]
         netprefix = int(params[3])
         broadcast = params[4]
-        self._testbed.add_address(guid, address, netprefix,
+        self._testbed.defer_add_address(guid, address, netprefix,
                 broadcast)
         return "%d|%s" % (OK, "")
 
-    def add_route(self, params):
+    def defer_add_route(self, params):
         guid = int(params[1])
         destination = params[2]
         netprefix = int(params[3])
         nexthop = params[4]
-        self._testbed.add_route(guid, destination, netprefix, nexthop)
+        self._testbed.defer_add_route(guid, destination, netprefix, nexthop)
         return "%d|%s" % (OK, "")
 
     def do_setup(self, params):
@@ -633,7 +633,7 @@ class TestbedInstanceProxy(object):
             raise RuntimeError(text)
         return map(int, text.split(","))
 
-    def configure(self, name, value):
+    def defer_configure(self, name, value):
         msg = testbed_messages[CONFIGURE]
         type = get_type(value)
         # avoid having "|" in this parameters
@@ -648,7 +648,7 @@ class TestbedInstanceProxy(object):
         if code == ERROR:
             raise RuntimeError(text)
 
-    def create(self, guid, factory_id):
+    def defer_create(self, guid, factory_id):
         msg = testbed_messages[CREATE]
         msg = msg % (guid, factory_id)
         self._client.send_msg(msg)
@@ -659,7 +659,7 @@ class TestbedInstanceProxy(object):
         if code == ERROR:
             raise RuntimeError(text)
 
-    def create_set(self, guid, name, value):
+    def defer_create_set(self, guid, name, value):
         msg = testbed_messages[CREATE_SET]
         type = get_type(value)
         # avoid having "|" in this parameters
@@ -674,7 +674,7 @@ class TestbedInstanceProxy(object):
         if code == ERROR:
             raise RuntimeError(text)
 
-    def factory_set(self, guid, name, value):
+    def defer_factory_set(self, guid, name, value):
         msg = testbed_messages[FACTORY_SET]
         type = get_type(value)
         # avoid having "|" in this parameters
@@ -689,7 +689,7 @@ class TestbedInstanceProxy(object):
         if code == ERROR:
             raise RuntimeError(text)
 
-    def connect(self, guid1, connector_type_name1, guid2, 
+    def defer_connect(self, guid1, connector_type_name1, guid2, 
             connector_type_name2): 
         msg = testbed_messages[CONNECT]
         msg = msg % (guid1, connector_type_name1, guid2, 
@@ -702,7 +702,7 @@ class TestbedInstanceProxy(object):
         if code == ERROR:
             raise RuntimeError(text)
 
-    def cross_connect(self, guid, connector_type_name, cross_guid, 
+    def defer_cross_connect(self, guid, connector_type_name, cross_guid, 
             cross_testbed_id, cross_factory_id, cross_connector_type_name):
         msg = testbed_messages[CROSS_CONNECT]
         msg = msg % (guid, connector_type_name, cross_guid, 
@@ -715,7 +715,7 @@ class TestbedInstanceProxy(object):
         if code == ERROR:
             raise RuntimeError(text)
 
-    def add_trace(self, guid, trace_id):
+    def defer_add_trace(self, guid, trace_id):
         msg = testbed_messages[ADD_TRACE]
         msg = msg % (guid, trace_id)
         self._client.send_msg(msg)
@@ -726,7 +726,7 @@ class TestbedInstanceProxy(object):
         if code == ERROR:
             raise RuntimeError(text)
 
-    def add_address(self, guid, address, netprefix, broadcast): 
+    def defer_add_address(self, guid, address, netprefix, broadcast): 
         msg = testbed_messages[ADD_ADDRESS]
         msg = msg % (guid, address, netprefix, broadcast)
         self._client.send_msg(msg)
@@ -737,7 +737,7 @@ class TestbedInstanceProxy(object):
         if code == ERROR:
             raise RuntimeError(text)
 
-    def add_route(self, guid, destination, netprefix, nexthop):
+    def defer_add_route(self, guid, destination, netprefix, nexthop):
         msg = testbed_messages[ADD_ROUTE]
         msg = msg % (guid, destination, netprefix, nexthop)
         self._client.send_msg(msg)
