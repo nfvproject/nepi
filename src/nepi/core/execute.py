@@ -270,7 +270,6 @@ class ExperimentController(object):
         self._experiment_xml = experiment_xml
         self._testbeds = dict()
         self._access_config = dict()
-        self._label_guids = dict()
 
     @property
     def experiment_xml(self):
@@ -349,7 +348,6 @@ class ExperimentController(object):
                                         label=label), 
                                     value)
                                 data.set_attribute_data(guid, name, value)
-        self._label_guids = label_guids
         self._program_testbed_instances(element_guids, data)
 
     def _program_testbed_instances(self, element_guids, data):
