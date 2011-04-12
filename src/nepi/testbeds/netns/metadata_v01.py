@@ -410,15 +410,6 @@ testbed_attributes = dict({
                 "value": False,
                 "validation_function": validation.is_bool
             }),
-         "home_directory": dict({
-                "name": "homeDirectory",
-                "help": "Path to the directory where traces and other files \
-                        will be stored",
-                "type": Attribute.STRING,
-                "value": "",
-                "flags": Attribute.DesignOnly,
-                "validation_function": validation.is_string
-            })
     })
 
 class VersionedMetadataInfo(metadata.VersionedMetadataInfo):

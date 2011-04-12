@@ -116,7 +116,18 @@ class Metadata(object):
             "validation_function": validation.is_string,
             "type": Attribute.STRING,
             "flags": Attribute.DesignOnly,
-            "help": "A unique identifier for referring to this box"
+            "help": "A unique identifier for referring to this box",
+        })),
+    )
+
+    STANDARD_TESTBED_ATTRIBUTES = (
+        ("home_directory", dict({
+            "name": "homeDirectory",
+            "validation_function": validation.is_string,
+            "help": "Path to the directory where traces and other files will be stored",
+            "type": Attribute.STRING,
+            "value": "",
+            "flags": Attribute.DesignOnly,
         })),
     )
 
@@ -136,6 +147,12 @@ class Metadata(object):
 
     def testbed_attributes(self):
         attributes = AttributesMap()
+
+        # standard attributes
+        self._add_standard_attributes(attributes, None, True, False,
+            self.STANDARD_TESTBED_ATTRIBUTES)
+        
+        # custom attributes - they override standard ones
         for attr_info in self._metadata.testbed_attributes.values():
             name = attr_info["name"]
             help = attr_info["help"]
@@ -148,7 +165,8 @@ class Metadata(object):
             validation_function = attr_info["validation_function"]
             attributes.add_attribute(name, help, type, value, 
                     range, allowed, flags, validation_function)
-        return attributes            
+        
+        return attributes
 
     def build_design_factories(self):
         from nepi.core.design import Factory
@@ -162,9 +180,15 @@ class Metadata(object):
                     if "allow_routes" in info else False
             factory = Factory(factory_id, allow_addresses, allow_routes,
                     help, category)
+            
+            # standard attributes
+            self._add_standard_attributes(factory, info, True, True,
+                self.STANDARD_BOX_ATTRIBUTES)
+            
+            # custom attributes - they override standard ones
             self._add_attributes(factory, info, "factory_attributes")
             self._add_attributes(factory, info, "box_attributes", True)
-            self._add_standard_attributes(factory, info, True)
+            
             self._add_design_traces(factory, info)
             self._add_design_connector_types(factory, info)
             factories.append(factory)
@@ -191,9 +215,15 @@ class Metadata(object):
             factory = Factory(factory_id, create_function, start_function,
                     stop_function, status_function, configure_function,
                     allow_addresses, allow_routes)
+                    
+            # standard attributes
+            self._add_standard_attributes(factory, info, False, True,
+                self.STANDARD_BOX_ATTRIBUTES)
+            
+            # custom attributes - they override standard ones
             self._add_attributes(factory, info, "factory_attributes")
             self._add_attributes(factory, info, "box_attributes", True)
-            self._add_standard_attributes(factory, info, False)
+            
             self._add_execute_traces(factory, info)
             self._add_execute_connector_types(factory, info)
             factories.append(factory)
@@ -206,19 +236,19 @@ class Metadata(object):
             __import__(mod_name)
         return sys.modules[mod_name]
 
-    def _add_standard_attributes(self, factory, info, design):
+    def _add_standard_attributes(self, factory, info, design, box, STANDARD_ATTRIBUTES):
         if design:
-            attr_bundle = self.STANDARD_BOX_ATTRIBUTES
+            attr_bundle = STANDARD_ATTRIBUTES
         else:
             # Only add non-DesignOnly attributes
             def nonDesign(attr_info):
                 return not (attr_info[1].get('flags',Attribute.NoFlags) & Attribute.DesignOnly)
-            attr_bundle = filter(nonDesign, self.STANDARD_BOX_ATTRIBUTES)
-        self._add_attributes(factory, info, None, True, 
-            attr_bundle = self.STANDARD_BOX_ATTRIBUTES)
+            attr_bundle = filter(nonDesign, STANDARD_ATTRIBUTES)
+        self._add_attributes(factory, info, None, box, 
+            attr_bundle = STANDARD_ATTRIBUTES)
 
     def _add_attributes(self, factory, info, attr_key, box_attributes = False, attr_bundle = ()):
-        if not attr_bundle and attr_key in info:
+        if not attr_bundle and info and attr_key in info:
             attr_bundle = [ (attr_id, self._metadata.attributes[attr_id])
                             for attr_id in info[attr_key] ]
         for attr_id, attr_info in attr_bundle:
