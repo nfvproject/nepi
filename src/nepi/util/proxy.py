@@ -60,7 +60,7 @@ controller_messages = dict({
 
 # TESTBED INSTANCE PROTOCOL MESSAGES
 testbed_messages = dict({
-    TRACE:  "%d|%s" % (TRACE, "%d|%s"),
+    TRACE:  "%d|%s" % (TRACE, "%d|%s|%s"),
     START:  "%d" % START,
     STOP:   "%d" % STOP,
     SHUTDOWN:   "%d" % SHUTDOWN,
@@ -80,6 +80,8 @@ testbed_messages = dict({
     DO_CROSS_CONNECT:   "%d" % DO_CROSS_CONNECT,
     GET:    "%d|%s" % (GET, "%s|%d|%s"),
     SET:    "%d|%s" % (SET, "%s|%d|%s|%s|%d"),
+    GET_ROUTE: "%d|%s" % (GET, "%d|%d|%s"),
+    GET_ADDRESS: "%d|%s" % (GET, "%d|%d|%s"),
     ACTION: "%d|%s" % (ACTION, "%s|%d|%s"),
     STATUS: "%d|%s" % (STATUS, "%d"),
     GUIDS:  "%d" % GUIDS,
@@ -111,6 +113,8 @@ instruction_text = dict({
     DO_CROSS_CONNECT:   "DO_CROSS_CONNECT",
     GET:    "GET",
     SET:    "SET",
+    GET_ROUTE: "GET_ROUTE",
+    GET_ADDRESS: "GET_ADDRESS",
     ACTION: "ACTION",
     STATUS: "STATUS",
     GUIDS:  "GUIDS",
@@ -332,6 +336,10 @@ class TestbedInstanceServer(server.Server):
                 reply = self.get(params)
             elif instruction == SET:
                 reply = self.set(params)
+            elif instruction == GET_ADDRESS:
+                reply = self.get_address(params)
+            elif instruction == GET_ROUTE:
+                reply = self.get_route(params)
             elif instruction == ACTION:
                 reply = self.action(params)
             elif instruction == STATUS:
@@ -488,6 +496,22 @@ class TestbedInstanceServer(server.Server):
         value = set_type(type, value)
         self._testbed.set(time, guid, name, value)
         return "%d|%s" % (OK, "")
+
+    def get_address(self, params):
+        guid = int(param[1])
+        index = int(param[2])
+        attribute = base64.b64decode(param[3])
+        value = self._testbed.get_address(guid, index, attribute)
+        result = base64.b64encode(str(value))
+        return "%d|%s" % (OK, result)
+
+    def get_route(self, params):
+        guid = int(param[1])
+        index = int(param[2])
+        attribute = base64.b64decode(param[3])
+        value = self._testbed.get_route(guid, index, attribute)
+        result = base64.b64encode(str(value))
+        return "%d|%s" % (OK, result)
 
     def action(self, params):
         time = params[1]
@@ -846,6 +870,34 @@ class TestbedInstanceProxy(object):
         # avoid having "|" in this parameters
         name = base64.b64encode(name)
         msg = msg % (time, guid, name)
+        self._client.send_msg(msg)
+        reply = self._client.read_reply()
+        result = reply.split("|")
+        code = int(result[0])
+        text = base64.b64decode(result[1])
+        if code == ERROR:
+            raise RuntimeError(text)
+        return text
+
+    def get_address(self, guid, index, attribute):
+        msg = testbed_messages[GET_ADDRESS]
+        # avoid having "|" in this parameters
+        attribute = base64.b64encode(attribute)
+        msg = msg % (guid, index, attribute)
+        self._client.send_msg(msg)
+        reply = self._client.read_reply()
+        result = reply.split("|")
+        code = int(result[0])
+        text = base64.b64decode(result[1])
+        if code == ERROR:
+            raise RuntimeError(text)
+        return text
+
+    def get_route(self, guid, index, attribute):
+        msg = testbed_messages[GET_ROUTE]
+        # avoid having "|" in this parameters
+        attribute = base64.b64encode(attribute)
+        msg = msg % (guid, index, attribute)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
         result = reply.split("|")
