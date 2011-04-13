@@ -273,7 +273,7 @@ class Client(object):
         
         try:
             self._process.stdin.write(data)
-        except IOError:
+        except (IOError,ValueError):
             # dead process, poll it to un-zombify
             self._process.poll()
             
