@@ -242,6 +242,18 @@ class Forwarder(object):
 class Client(object):
     def __init__(self, root_dir = ".", host = None, port = None, user = None, 
             agent = None):
+        self.root_dir = root_dir
+        self.addr = (host, port)
+        self.user = user
+        self.agent = agent
+        self.connect()
+        
+    def connect(self):
+        root_dir = self.root_dir
+        (host, port) = self.addr
+        user = self.user
+        agent = self.agent
+        
         python_code = "from nepi.util import server;c=server.Forwarder(%r);\
                 c.forward()" % (root_dir,)
         if host != None:
@@ -258,7 +270,17 @@ class Client(object):
     def send_msg(self, msg):
         encoded = base64.b64encode(msg)
         data = "%s\n" % encoded
-        self._process.stdin.write(data)
+        
+        try:
+            self._process.stdin.write(data)
+        except IOError:
+            # dead process, poll it to un-zombify
+            self._process.poll()
+            
+            # try again after reconnect
+            # If it fails again, though, give up
+            self.connect()
+            self._process.stdin.write(data)
 
     def send_stop(self):
         self.send_msg(STOP_MSG)
