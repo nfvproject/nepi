@@ -47,6 +47,29 @@ class ServerTestCase(unittest.TestCase):
         reply = c.read_reply()
         self.assertTrue(reply == "Stopping server")
 
+    def test_server_auto_reconnect(self):
+        s = server.Server(self.root_dir)
+        s.run()
+        c = server.Client(self.root_dir)
+        
+        c.send_msg("Hola")
+        reply = c.read_reply()
+        self.assertTrue(reply == "Reply to: Hola")
+        
+        # purposedly break the connection
+        c._process.stdin.close()
+        c._process.stdout.close()
+        c._process.stderr.close()
+        
+        # assert that the communication works (possible with auto-reconnection)
+        c.send_msg("Hola")
+        reply = c.read_reply()
+        self.assertTrue(reply == "Reply to: Hola")
+                
+        c.send_stop()
+        reply = c.read_reply()
+        self.assertTrue(reply == "Stopping server")
+
     def test_server_long_message(self):
         s = server.Server(self.root_dir)
         s.run()
@@ -99,6 +122,36 @@ class ServerTestCase(unittest.TestCase):
         c = server.Client(self.root_dir, host = "localhost", port = env.port,
                 user = user, agent = True)
                 
+        c.send_msg("Hola")
+        reply = c.read_reply()
+        self.assertTrue(reply == "Reply to: Hola")
+        
+        c.send_stop()
+        reply = c.read_reply()
+        self.assertTrue(reply == "Stopping server")
+
+    def test_ssh_server_auto_reconnect(self):
+        env = test_util.test_environment()
+        user = getpass.getuser()
+        # launch server
+        python_code = "from nepi.util import server;s=server.Server('%s');\
+                s.run()" % self.root_dir
+        server.popen_ssh_subprocess(python_code, host = "localhost", 
+                port = env.port, user = user, agent = True)
+        
+        c = server.Client(self.root_dir, host = "localhost", port = env.port,
+                user = user, agent = True)
+                
+        c.send_msg("Hola")
+        reply = c.read_reply()
+        self.assertTrue(reply == "Reply to: Hola")
+        
+        # purposedly break the connection
+        c._process.stdin.close()
+        c._process.stdout.close()
+        c._process.stderr.close()
+        
+        # assert that the communication works (possible with auto-reconnection)
         c.send_msg("Hola")
         reply = c.read_reply()
         self.assertTrue(reply == "Reply to: Hola")
