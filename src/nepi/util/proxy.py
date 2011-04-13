@@ -40,6 +40,8 @@ SET = 24
 ACTION  = 25
 STATUS  = 26
 GUIDS  = 27
+GET_ROUTE = 28
+GET_ADDRESS = 29
 
 # PARAMETER TYPE
 STRING  =  100
@@ -51,7 +53,7 @@ FLOAT   = 103
 controller_messages = dict({
     XML:    "%d" % XML,
     ACCESS: "%d|%s" % (ACCESS, "%d|%s|%s|%s|%s|%d|%s|%r|%s"),
-    TRACE:  "%d|%s" % (TRACE, "%d|%d|%s"),
+    TRACE:  "%d|%s" % (TRACE, "%d|%d|%s|%s"),
     FINISHED:   "%d|%s" % (FINISHED, "%d"),
     START:  "%d" % START,
     STOP:   "%d" % STOP,
@@ -373,7 +375,8 @@ class TestbedInstanceServer(server.Server):
     def trace(self, params):
         guid = int(params[1])
         trace_id = params[2]
-        trace = self._testbed.trace(guid, trace_id)
+        attribute = base64.b64decode(params[3])
+        trace = self._testbed.trace(guid, trace_id, attribute)
         result = base64.b64encode(trace)
         return "%d|%s" % (OK, result)
 
@@ -599,7 +602,8 @@ class ExperimentControllerServer(server.Server):
         testbed_guid = int(params[1])
         guid = int(params[2])
         trace_id = params[3]
-        trace = self._controller.trace(testbed_guid, guid, trace_id)
+        attribute = base64.b64decode(params[4])
+        trace = self._controller.trace(testbed_guid, guid, trace_id, attribute)
         result = base64.b64encode(trace)
         return "%d|%s" % (OK, result)
 
@@ -930,9 +934,10 @@ class TestbedInstanceProxy(object):
             raise RuntimeError(text)
         return int(text)
 
-    def trace(self, guid, trace_id):
+    def trace(self, guid, trace_id, attribute='value'):
         msg = testbed_messages[TRACE]
-        msg = msg % (guid, trace_id)
+        attribute = base64.b64encode(attribute)
+        msg = msg % (guid, trace_id, attribute)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
         result = reply.split("|")
@@ -1019,9 +1024,10 @@ class ExperimentControllerProxy(object):
         if code == ERROR:
             raise RuntimeError(text)
 
-    def trace(self, testbed_guid, guid, trace_id):
+    def trace(self, testbed_guid, guid, trace_id, attribute='value'):
         msg = controller_messages[TRACE]
-        msg = msg % (testbed_guid, guid, trace_id)
+        attribute = base64.b64encode(attribute)
+        msg = msg % (testbed_guid, guid, trace_id, attribute)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
         result = reply.split("|")
