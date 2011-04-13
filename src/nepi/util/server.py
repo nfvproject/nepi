@@ -242,8 +242,8 @@ class Forwarder(object):
 class Client(object):
     def __init__(self, root_dir = ".", host = None, port = None, user = None, 
             agent = None):
-        python_code = "from nepi.util import server;c=server.Forwarder('%s');\
-                c.forward()" % root_dir
+        python_code = "from nepi.util import server;c=server.Forwarder(%r);\
+                c.forward()" % (root_dir,)
         if host != None:
             self._process = popen_ssh_subprocess(python_code, host, port, 
                     user, agent)
