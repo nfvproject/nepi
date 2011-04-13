@@ -301,8 +301,8 @@ class ExperimentController(object):
     def set_access_configuration(self, testbed_guid, access_config):
         self._access_config[testbed_guid] = access_config
 
-    def trace(self, testbed_guid, guid, trace_id):
-        return self._testbeds[testbed_guid].trace(guid, trace_id)
+    def trace(self, testbed_guid, guid, trace_id, attribute='value'):
+        return self._testbeds[testbed_guid].trace(guid, trace_id, attribute)
 
     @staticmethod
     def _parallel(callables):
