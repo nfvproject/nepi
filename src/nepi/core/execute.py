@@ -3,13 +3,14 @@
 
 from nepi.core.attributes import Attribute, AttributesMap
 from nepi.util import proxy, validation
-from nepi.util.constants import STATUS_FINISHED
+from nepi.util.constants import STATUS_FINISHED, TIME_NOW
 from nepi.util.parser._xml import XmlExperimentParser
 import sys
 import re
 
 ATTRIBUTE_PATTERN_BASE = re.compile(r"\{#\[(?P<label>[-a-zA-Z0-9._]*)\](?P<expr>(?P<component>\.addr\[[0-9]+\]|\.route\[[0-9]+\]|\.trace\[[0-9]+\]|).\[(?P<attribute>[-a-zA-Z0-9._]*)\])#}")
 ATTRIBUTE_PATTERN_GUID_SUB = r"{#[%(guid)s]%(expr)s#}"
+COMPONENT_PATTERN = re.compile(r"(?P<kind>[a-z]*)\[(?P<index>.*)\]")
 
 class ConnectorType(object):
     def __init__(self, testbed_id, factory_id, name, max = -1, min = 0):
@@ -252,6 +253,26 @@ class TestbedInstance(object):
 
     def get(self, time, guid, name):
         raise NotImplementedError
+    
+    def get_route(self, guid, index, attribute):
+        """
+        Params:
+            
+            guid: guid of box to query
+            index: number of routing entry to fetch
+            attribute: one of Destination, NextHop, NetPrefix
+        """
+        raise NotImplementedError
+
+    def get_address(self, guid, index, attribute='Address'):
+        """
+        Params:
+            
+            guid: guid of box to query
+            index: number of inteface to select
+            attribute: one of Address, NetPrefix, Broadcast
+        """
+        raise NotImplementedError
 
     def action(self, time, guid, action):
         raise NotImplementedError
@@ -259,7 +280,7 @@ class TestbedInstance(object):
     def status(self, guid):
         raise NotImplementedError
 
-    def trace(self, guid, trace_id):
+    def trace(self, guid, trace_id, attribute='value'):
         raise NotImplementedError
 
     def shutdown(self):
@@ -270,6 +291,7 @@ class ExperimentController(object):
         self._experiment_xml = experiment_xml
         self._testbeds = dict()
         self._access_config = dict()
+        self._netrefs = dict()
 
     @property
     def experiment_xml(self):
@@ -288,6 +310,8 @@ class ExperimentController(object):
         for testbed in self._testbeds.values():
             testbed.do_create()
             testbed.do_connect()
+        self.do_netrefs(fail_if_undefined=True)
+        for testbed in self._testbeds.values():
             testbed.do_configure()
         for testbed in self._testbeds.values():
             testbed.do_cross_connect()
@@ -309,12 +333,70 @@ class ExperimentController(object):
        for testbed in self._testbeds.values():
            testbed.shutdown()
 
+    @staticmethod
+    def _netref_component_split(component):
+        match = COMPONENT_PATTERN.match(component)
+        if match:
+            return match.group("kind"), match.group("index")
+        else:
+            return component, None
+
+    def do_netrefs(self, fail_if_undefined = False):
+        COMPONENT_GETTERS = {
+            'addr' :
+                lambda testbed, guid, index, name : 
+                    testbed.get_address(guid, index, name),
+            'route' :
+                lambda testbed, guid, index, name : 
+                    testbed.get_route(guid, index, name),
+            'trace' :
+                lambda testbed, guid, index, name : 
+                    testbed.trace(guid, index, name),
+            '' : 
+                lambda testbed, guid, index, name : 
+                    testbed.get(TIME_NOW, guid, name),
+        }
+        
+        for (testbed_guid, guid), attrs in self._netrefs.iteritems():
+            testbed = self._testbeds[testbed_guid]
+            for name in attrs:
+                value = testbed.get(TIME_NOW, guid, name)
+                if isinstance(value, basestring):
+                    match = ATTRIBUTE_PATTERN_BASE.search(value)
+                    if match:
+                        label = match.group("label")
+                        if label.startswith('GUID-'):
+                            ref_guid = int(label[5:])
+                            if ref_guid:
+                                expr = match.group("expr")
+                                component = match.group("component")[1:] # skip the dot
+                                attribute = match.group("attribute")
+                                
+                                # split compound components into component kind and index
+                                # eg: 'addr[0]' -> ('addr', '0')
+                                component, component_index = self._netref_component_split(component)
+                                
+                                # find object and resolve expression
+                                for ref_testbed in self._testbeds.itervalues():
+                                    if component not in COMPONENT_GETTERS:
+                                        raise ValueError, "Malformed netref: %r - unknown component" % (expr,)
+                                    else:
+                                        value = COMPONENT_GETTERS[component](
+                                            ref_testbed, ref_guid, component_index, attribute)
+                                        if value: 
+                                            break
+                                else:
+                                    # couldn't find value
+                                    if fail_if_undefined:
+                                        raise ValueError, "Unresolvable GUID: %r, in netref: %r" % (ref_guid, expr)
+
     def _create_testbed_instances(self):
         parser = XmlExperimentParser()
         data = parser.from_xml_to_data(self._experiment_xml)
         element_guids = list()
         label_guids = dict()
         data_guids = data.guids
+        netrefs = self._netrefs
         for guid in data_guids:
             if data.is_testbed_data(guid):
                 (testbed_id, testbed_version) = data.get_testbed_data(guid)
@@ -339,15 +421,23 @@ class ExperimentController(object):
                         match = ATTRIBUTE_PATTERN_BASE.search(value)
                         if match:
                             label = match.group("label")
-                            ref_guid = label_guids.get(label)
-                            if ref_guid is not None:
-                                value = ATTRIBUTE_PATTERN_BASE.sub(
-                                    ATTRIBUTE_PATTERN_GUID_SUB % dict(
-                                        guid=ref_guid,
-                                        expr=match.group("expr"),
-                                        label=label), 
-                                    value)
-                                data.set_attribute_data(guid, name, value)
+                            if not label.startswith('GUID-'):
+                                ref_guid = label_guids.get(label)
+                                if ref_guid is not None:
+                                    value = ATTRIBUTE_PATTERN_BASE.sub(
+                                        ATTRIBUTE_PATTERN_GUID_SUB % dict(
+                                            guid='GUID-%d' % (ref_guid,),
+                                            expr=match.group("expr"),
+                                            label=label), 
+                                        value)
+                                    data.set_attribute_data(guid, name, value)
+                                    
+                                    # memorize which guid-attribute pairs require
+                                    # postprocessing, to avoid excessive controller-testbed
+                                    # communication at configuration time
+                                    # (which could require high-latency network I/O)
+                                    (testbed_guid, factory_id) = data.get_box_data(guid)
+                                    netrefs.setdefault((testbed_guid,guid),set()).add(name)
         self._program_testbed_instances(element_guids, data)
 
     def _program_testbed_instances(self, element_guids, data):

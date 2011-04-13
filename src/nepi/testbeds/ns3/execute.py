@@ -49,9 +49,12 @@ class TestbedInstance(testbed_impl.TestbedInstance):
         TypeId = self.ns3.TypeId()
         typeid = TypeId.LookupByName(factory_id)
         info = TypeId.AttributeInfo()
-        if not typeid.LookupAttributeByName(name, info):
-            raise RuntimeError("Attribute %s doesn't belong to element %s" \
-                   % (name, factory_id))
+        if not typeid or not typeid.LookupAttributeByName(name, info):
+            try:
+                # Try design-time attributes
+                return self.box_get(time, guid, name)
+            except KeyError, AttributeError:
+                return None
         checker = info.checker
         ns3_value = checker.Create() 
         element = self._elements[guid]
@@ -68,14 +71,23 @@ class TestbedInstance(testbed_impl.TestbedInstance):
             return value == "true"
         return value
 
+    def get_route(self, guid, index, attribute):
+        # TODO: fetch real data from ns3
+        try:
+            return self.box_get_route(guid, int(index), attribute)
+        except KeyError, AttributeError:
+            return None
+
+    def get_address(self, guid, index, attribute='Address'):
+        # TODO: fetch real data from ns3
+        try:
+            return self.box_get_address(guid, int(index), attribute)
+        except KeyError, AttributeError:
+            return None
+
+
     def action(self, time, guid, action):
         raise NotImplementedError
-
-    def trace(self, guid, trace_id):
-        fd = open("%s" % self.trace_filename(guid, trace_id), "r")
-        content = fd.read()
-        fd.close()
-        return content
 
     def trace_filename(self, guid, trace_id):
         # TODO: Need to be defined inside a home!!!! with and experiment id_code

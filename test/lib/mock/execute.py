@@ -18,17 +18,37 @@ class TestbedInstance(testbed_impl.TestbedInstance):
         super(TestbedInstance, self).set(time, guid, name, value)
 
     def get(self, time, guid, name):
-        return True 
+        try:
+            return self.box_get(time, guid, name)
+        except KeyError, AttributeError:
+            return None
+
+    def get_route(self, guid, index, attribute):
+        try:
+            return self.box_get_route(guid, int(index), attribute)
+        except KeyError, AttributeError:
+            return None
+
+    def get_address(self, guid, index, attribute='Address'):
+        try:
+            return self.box_get_address(guid, int(index), attribute)
+        except KeyError, AttributeError:
+            return None
 
     def action(self, time, guid, action):
         raise NotImplementedError
 
-    def trace(self, guid, trace_id):
-        return """PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
+    def trace(self, guid, trace_id, attribute='value'):
+        if attribute == 'value':
+            return """PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
 
 --- 10.0.0.2 ping statistics ---
 1 packets transmitted, 1 received, 0% packet loss, time 0ms
 """
+        elif attribute == 'path':
+            return '<test>'
+        else:
+            return None
 
     def shutdown(self):
 	    pass

@@ -167,8 +167,7 @@ class TestbedInstance(execute.TestbedInstance):
             self._add_route[guid] = list()
         self._add_route[guid].append((destination, netprefix, nexthop)) 
 
-    def do_setup(self):
-        raise NotImplementedError
+    #do_setup(self): NotImplementedError
 
     def do_create(self):
         guids = dict()
@@ -259,8 +258,81 @@ class TestbedInstance(execute.TestbedInstance):
             self._set[guid][time] = dict()
         self._set[guid][time][name] = value
 
-    def get(self, time, guid, name):
-        raise NotImplementedError
+    def box_get(self, time, guid, name):
+        """
+        Helper for subclasses, gets an attribute from box definitions
+        if available. Throws KeyError if the GUID wasn't created
+        through the defer_create interface, and AttributeError if the
+        attribute isn't available (doesn't exist or is design-only)
+        """
+        if not guid in self._create:
+            raise KeyError, "Element guid %d doesn't exist" % guid
+        factory_id = self._create[guid]
+        factory = self._factories[factory_id]
+        if not factory.box_attributes.has_attribute(name):
+            raise AttributeError, "Invalid attribute %s for element type %s" % (name, factory_id)
+        if self._started and factory.is_attribute_design_only(name):
+            raise AttributeError, "Attribute %s can only be queried during experiment design" % name
+        return factory.box_attributes.get_attribute_value(name)
+
+    #get: NotImplementedError
+
+    def box_get_route(self, guid, index, attribute):
+        """
+        Helper implementation for get_route, returns information
+        given to defer_add_route.
+        
+        Raises AttributeError if an invalid attribute is requested
+            or if the indexed routing rule does not exist.
+        
+        Raises KeyError if the GUID has not been seen by
+            defer_add_route
+        """
+        ATTRIBUTES = ['Destination', 'NetPrefix', 'NextHop']
+        
+        if attribute not in ATTRIBUTES:
+            raise AttributeError, "Attribute %r invalid for addresses of %r" % (attribute, guid)
+        
+        attribute_index = ATTRIBUTES.index(attribute)
+        
+        routes = self._add_route.get(guid)
+        if not routes:
+            raise KeyError, "GUID %r not found in %s" % (guid, self._testbed_id)
+        
+        if not (0 <= index < len(addresses)):
+            raise AttributeError, "GUID %r at %s does not have a routing entry #%s" % (
+                guid, self._testbed_id, index)
+        
+        return routes[index][attribute_index]
+
+    def box_get_address(self, guid, index, attribute='Address'):
+        """
+        Helper implementation for get_address, returns information
+        given to defer_add_address
+        
+        Raises AttributeError if an invalid attribute is requested
+            or if the indexed routing rule does not exist.
+        
+        Raises KeyError if the GUID has not been seen by
+            defer_add_address
+        """
+        ATTRIBUTES = ['Address', 'NetPrefix', 'Broadcast']
+        
+        if attribute not in ATTRIBUTES:
+            raise AttributeError, "Attribute %r invalid for addresses of %r" % (attribute, guid)
+        
+        attribute_index = ATTRIBUTES.index(attribute)
+        
+        addresses = self._add_address.get(guid)
+        if not addresses:
+            raise KeyError, "GUID %r not found in %s" % (guid, self._testbed_id)
+        
+        if not (0 <= index < len(addresses)):
+            raise AttributeError, "GUID %r at %s does not have an address #%s" % (
+                guid, self._testbed_id, index)
+        
+        return addresses[index][attribute_index]
+
 
     def start(self, time = TIME_NOW):
         for guid, factory_id in self._create.iteritems():
@@ -270,8 +342,7 @@ class TestbedInstance(execute.TestbedInstance):
                 start_function(self, guid)
         self._started = True
 
-    def action(self, time, guid, action):
-        raise NotImplementedError
+    #action: NotImplementedError
 
     def stop(self, time = TIME_NOW):
         for guid, factory_id in self._create.iteritems():
@@ -290,11 +361,25 @@ class TestbedInstance(execute.TestbedInstance):
             return status_function(self, guid)
         return STATUS_UNDETERMINED
 
-    def trace(self, guid, trace_id):
+    def trace(self, guid, trace_id, attribute='value'):
+        if attribute == 'value':
+            fd = open("%s" % self.trace_filename(guid, trace_id), "r")
+            content = fd.read()
+            fd.close()
+        elif attribute == 'path':
+            content = self.trace_filename(guid, trace_id)
+        else:
+            content = None
+        return content
+
+    def trace_filename(self, guid, trace_id):
+        """
+        Return a trace's file path, for TestbedInstance's default 
+        implementation of trace()
+        """
         raise NotImplementedError
 
-    def shutdown(self):
-        raise NotImplementedError
+    #shutdown: NotImplementedError
 
     def get_connected(self, guid, connector_type_name, 
             other_connector_type_name):
