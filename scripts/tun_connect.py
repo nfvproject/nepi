@@ -29,6 +29,10 @@ parser.add_option(
     "-d", "--tun-path", dest="tun_path", metavar="PATH",
     default = "/dev/net/tun",
     help = "TUN/TAP device file path or file descriptor number")
+parser.add_option(
+    "-p", "--port", dest="port", metavar="PORT", type="int",
+    default = 15000,
+    help = "Peering TCP port to connect or listen to.")
 
 parser.add_option(
     "-m", "--mode", dest="mode", metavar="MODE",
@@ -395,13 +399,13 @@ except:
 try:
     # connect to remote endpoint
     if remaining_args and not remaining_args[0].startswith('-'):
-        print >>sys.stderr, "Connecting to: %s:%d" % (remaining_args[0],15000)
+        print >>sys.stderr, "Connecting to: %s:%d" % (remaining_args[0],options.port)
         rsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-        rsock.connect((remaining_args[0],15000))
+        rsock.connect((remaining_args[0],options.port))
     else:
-        print >>sys.stderr, "Listening at: %s:%d" % (hostaddr,15000)
+        print >>sys.stderr, "Listening at: %s:%d" % (hostaddr,options.port)
         lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-        lsock.bind((hostaddr,15000))
+        lsock.bind((hostaddr,options.port))
         lsock.listen(1)
         rsock,raddr = lsock.accept()
     remote = os.fdopen(rsock.fileno(), 'r+b', 0)
