@@ -310,7 +310,12 @@ def tun_fwd(tun, remote):
     fwbuf = ""
     bkbuf = ""
     while not abortme:
-        rdrdy, wrdy, errs = select.select((tun,remote),(tun,remote),(tun,remote),1)
+        wset = []
+        if packetReady(bkbuf):
+            wset.append(tun)
+        if packetReady(fwbuf):
+            wset.append(remote)
+        rdrdy, wrdy, errs = select.select((tun,remote),wset,(tun,remote),1)
         
         # check for errors
         if errs:
