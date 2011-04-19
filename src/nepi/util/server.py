@@ -282,13 +282,20 @@ class Client(object):
         if host != None:
             self._process = popen_ssh_subprocess(python_code, host, port, 
                     user, agent)
+            # popen_ssh_subprocess already waits for readiness
         else:
             self._process = subprocess.Popen(
-                    ["python", "-c", python_code],
+                    ["python", "-c", "import sys ; print >>sys.stderr, 'READY.' ; " + python_code],
                     stdin = subprocess.PIPE, 
                     stdout = subprocess.PIPE,
                     stderr = subprocess.PIPE
                 )
+                
+            # Wait for the forwarder to be ready, otherwise nobody
+            # will be able to connect to it
+            helo = self._process.stderr.readline()
+            assert helo == 'READY.\n'
+            
             if self._process.poll():
                 err = self._process.stderr.read()
                 raise RuntimeError("Client could not be executed: %s" % \
