@@ -38,7 +38,7 @@ coverage: all
 	rm -f .coverage
 	for i in `find "$(TESTDIR)" -perm -u+x -type f`; do \
 		set -e; \
-		TESTLIBPATH="$(TESTLIB)" PYTHONPATH="$(PYPATH)" $(COVERAGE) -x $$i; \
+		TESTLIBPATH="$(TESTLIB)" PYTHONPATH="$(PYPATH)" $(COVERAGE) -x $$i -v; \
 		done
 	$(COVERAGE) -c
 	$(COVERAGE) -r -m `find "$(BUILDDIR)" -name \\*.py -type f`

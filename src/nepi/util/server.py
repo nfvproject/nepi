@@ -298,13 +298,9 @@ class Client(object):
         # will be able to connect to it
         helo = self._process.stderr.readline()
         if helo != 'READY.\n':
-            raise AssertionError, "Expected 'Ready.', got %r" % (helo,)
+            raise AssertionError, "Expected 'Ready.', got %r: %s" % (helo,
+                    helo + self._process.stderr.read())
         
-        if self._process.poll():
-            err = self._process.stderr.read()
-            raise RuntimeError("Client could not be executed: %s" % \
-                    err)
-
     def send_msg(self, msg):
         encoded = base64.b64encode(msg)
         data = "%s\n" % encoded
