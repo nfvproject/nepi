@@ -336,69 +336,73 @@ class TestbedInstanceServer(server.Server):
                 self._testbed_version)
 
     def reply_action(self, msg):
-        params = msg.split("|")
-        instruction = int(params[0])
-        log_msg(self, params)
-        try:
-            if instruction == TRACE:
-                reply = self.trace(params)
-            elif instruction == START:
-                reply = self.start(params)
-            elif instruction == STOP:
-                reply = self.stop(params)
-            elif instruction == SHUTDOWN:
-                reply = self.shutdown(params)
-            elif instruction == CONFIGURE:
-                reply = self.defer_configure(params)
-            elif instruction == CREATE:
-                reply = self.defer_create(params)
-            elif instruction == CREATE_SET:
-                reply = self.defer_create_set(params)
-            elif instruction == FACTORY_SET:
-                reply = self.defer_factory_set(params)
-            elif instruction == CONNECT:
-                reply = self.defer_connect(params)
-            elif instruction == CROSS_CONNECT:
-                reply = self.defer_cross_connect(params)
-            elif instruction == ADD_TRACE:
-                reply = self.defer_add_trace(params)
-            elif instruction == ADD_ADDRESS:
-                reply = self.defer_add_address(params)
-            elif instruction == ADD_ROUTE:
-                reply = self.defer_add_route(params)
-            elif instruction == DO_SETUP:
-                reply = self.do_setup(params)
-            elif instruction == DO_CREATE:
-                reply = self.do_create(params)
-            elif instruction == DO_CONNECT:
-                reply = self.do_connect(params)
-            elif instruction == DO_CONFIGURE:
-                reply = self.do_configure(params)
-            elif instruction == DO_CROSS_CONNECT:
-                reply = self.do_cross_connect(params)
-            elif instruction == GET:
-                reply = self.get(params)
-            elif instruction == SET:
-                reply = self.set(params)
-            elif instruction == GET_ADDRESS:
-                reply = self.get_address(params)
-            elif instruction == GET_ROUTE:
-                reply = self.get_route(params)
-            elif instruction == ACTION:
-                reply = self.action(params)
-            elif instruction == STATUS:
-                reply = self.status(params)
-            elif instruction == GUIDS:
-                reply = self.guids(params)
-            else:
-                error = "Invalid instruction %s" % instruction
-                self.log_error(error)
+        if not msg:
+            result = base64.b64encode("Invalid command line")
+            reply = "%d|%s" % (ERROR, result)
+        else:
+            params = msg.split("|")
+            instruction = int(params[0])
+            log_msg(self, params)
+            try:
+                if instruction == TRACE:
+                    reply = self.trace(params)
+                elif instruction == START:
+                    reply = self.start(params)
+                elif instruction == STOP:
+                    reply = self.stop(params)
+                elif instruction == SHUTDOWN:
+                    reply = self.shutdown(params)
+                elif instruction == CONFIGURE:
+                    reply = self.defer_configure(params)
+                elif instruction == CREATE:
+                    reply = self.defer_create(params)
+                elif instruction == CREATE_SET:
+                    reply = self.defer_create_set(params)
+                elif instruction == FACTORY_SET:
+                    reply = self.defer_factory_set(params)
+                elif instruction == CONNECT:
+                    reply = self.defer_connect(params)
+                elif instruction == CROSS_CONNECT:
+                    reply = self.defer_cross_connect(params)
+                elif instruction == ADD_TRACE:
+                    reply = self.defer_add_trace(params)
+                elif instruction == ADD_ADDRESS:
+                    reply = self.defer_add_address(params)
+                elif instruction == ADD_ROUTE:
+                    reply = self.defer_add_route(params)
+                elif instruction == DO_SETUP:
+                    reply = self.do_setup(params)
+                elif instruction == DO_CREATE:
+                    reply = self.do_create(params)
+                elif instruction == DO_CONNECT:
+                    reply = self.do_connect(params)
+                elif instruction == DO_CONFIGURE:
+                    reply = self.do_configure(params)
+                elif instruction == DO_CROSS_CONNECT:
+                    reply = self.do_cross_connect(params)
+                elif instruction == GET:
+                    reply = self.get(params)
+                elif instruction == SET:
+                    reply = self.set(params)
+                elif instruction == GET_ADDRESS:
+                    reply = self.get_address(params)
+                elif instruction == GET_ROUTE:
+                    reply = self.get_route(params)
+                elif instruction == ACTION:
+                    reply = self.action(params)
+                elif instruction == STATUS:
+                    reply = self.status(params)
+                elif instruction == GUIDS:
+                    reply = self.guids(params)
+                else:
+                    error = "Invalid instruction %s" % instruction
+                    self.log_error(error)
+                    result = base64.b64encode(error)
+                    reply = "%d|%s" % (ERROR, result)
+            except:
+                error = self.log_error()
                 result = base64.b64encode(error)
                 reply = "%d|%s" % (ERROR, result)
-        except:
-            error = self.log_error()
-            result = base64.b64encode(error)
-            reply = "%d|%s" % (ERROR, result)
         log_reply(self, reply)
         return reply
 
