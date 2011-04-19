@@ -5,9 +5,9 @@ from constants import TESTBED_ID
 from nepi.core import testbed_impl
 import os
 
-class TestbedInstance(testbed_impl.TestbedInstance):
+class TestbedController(testbed_impl.TestbedController):
     def __init__(self, testbed_version):
-        super(TestbedInstance, self).__init__(TESTBED_ID, testbed_version)
+        super(TestbedController, self).__init__(TESTBED_ID, testbed_version)
         self._home_directory = None
         self._traces = dict()
 
@@ -20,7 +20,7 @@ class TestbedInstance(testbed_impl.TestbedInstance):
             get_attribute_value("homeDirectory")
 
     def set(self, time, guid, name, value):
-        super(TestbedInstance, self).set(time, guid, name, value)
+        super(TestbedController, self).set(time, guid, name, value)
         # TODO: take on account schedule time for the task 
         element = self._elements[guid]
         if element:

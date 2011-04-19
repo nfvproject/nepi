@@ -299,7 +299,7 @@ def create_testbed_instance(testbed_id, testbed_version, access_config):
     elif mode == AccessConfiguration.MODE_DAEMON:
         (root_dir, log_level, user, host, port, agent) = \
                 get_access_config_params(access_config)
-        return TestbedInstanceProxy(root_dir, log_level, testbed_id = testbed_id, 
+        return TestbedControllerProxy(root_dir, log_level, testbed_id = testbed_id, 
                 testbed_version = testbed_version, host = host, port = port,
                 user = user, agent = agent, launch = launch)
     raise RuntimeError("Unsupported access configuration '%s'" % mode)
@@ -309,11 +309,11 @@ def _build_testbed_instance(testbed_id, testbed_version):
     if not mod_name in sys.modules:
         __import__(mod_name)
     module = sys.modules[mod_name]
-    return module.TestbedInstance(testbed_version)
+    return module.TestbedController(testbed_version)
 
-class TestbedInstanceServer(server.Server):
+class TestbedControllerServer(server.Server):
     def __init__(self, root_dir, log_level, testbed_id, testbed_version):
-        super(TestbedInstanceServer, self).__init__(root_dir, log_level)
+        super(TestbedControllerServer, self).__init__(root_dir, log_level)
         self._testbed_id = testbed_id
         self._testbed_version = testbed_version
         self._testbed = None
@@ -669,7 +669,7 @@ class ExperimentControllerServer(server.Server):
         self._controller.shutdown()
         return "%d|%s" % (OK, "")
 
-class TestbedInstanceProxy(object):
+class TestbedControllerProxy(object):
     def __init__(self, root_dir, log_level, testbed_id = None, 
             testbed_version = None, launch = True, host = None, 
             port = None, user = None, agent = None):
@@ -681,7 +681,7 @@ class TestbedInstanceProxy(object):
             if host != None:
                 python_code = "from nepi.util.proxy import \
                         TesbedInstanceServer;\
-                        s = TestbedInstanceServer('%s', %d, '%s', '%s');\
+                        s = TestbedControllerServer('%s', %d, '%s', '%s');\
                         s.run()" % (root_dir, log_level, testbed_id, 
                                 testbed_version)
                 proc = server.popen_ssh_subprocess(python_code, host = host,
@@ -692,7 +692,7 @@ class TestbedInstanceProxy(object):
                             err)
             else:
                 # launch daemon
-                s = TestbedInstanceServer(root_dir, log_level, testbed_id, 
+                s = TestbedControllerServer(root_dir, log_level, testbed_id, 
                     testbed_version)
                 s.run()
 

@@ -24,7 +24,7 @@ class Ns3ExecuteTestCase(unittest.TestCase):
             "Test requires working ns-3 bindings")
     def test_run_ping_routing(self):
         testbed_version = "3_9_RC3"
-        instance = ns3.TestbedInstance(testbed_version)
+        instance = ns3.TestbedController(testbed_version)
         instance.defer_configure("homeDirectory", self.root_dir)
         instance.defer_create(2, "ns3::Node")
         instance.defer_create(3, "ns3::Ipv4L3Protocol")

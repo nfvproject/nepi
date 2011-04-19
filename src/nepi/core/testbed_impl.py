@@ -6,9 +6,9 @@ from nepi.core.metadata import Metadata
 from nepi.util import validation
 from nepi.util.constants import AF_INET, AF_INET6, STATUS_UNDETERMINED, TIME_NOW
 
-class TestbedInstance(execute.TestbedInstance):
+class TestbedController(execute.TestbedController):
     def __init__(self, testbed_id, testbed_version):
-        super(TestbedInstance, self).__init__(testbed_id, testbed_version)
+        super(TestbedController, self).__init__(testbed_id, testbed_version)
         self._started = False
         # testbed attributes for validation
         self._attributes = None
@@ -374,7 +374,7 @@ class TestbedInstance(execute.TestbedInstance):
 
     def trace_filename(self, guid, trace_id):
         """
-        Return a trace's file path, for TestbedInstance's default 
+        Return a trace's file path, for TestbedController's default 
         implementation of trace()
         """
         raise NotImplementedError

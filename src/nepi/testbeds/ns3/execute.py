@@ -8,9 +8,9 @@ import os
 import sys
 import threading
 
-class TestbedInstance(testbed_impl.TestbedInstance):
+class TestbedController(testbed_impl.TestbedController):
     def __init__(self, testbed_version):
-        super(TestbedInstance, self).__init__(TESTBED_ID, testbed_version)
+        super(TestbedController, self).__init__(TESTBED_ID, testbed_version)
         self._ns3 = None
         self._home_directory = None
         self._traces = dict()
@@ -31,14 +31,14 @@ class TestbedInstance(testbed_impl.TestbedInstance):
         self._ns3 = self._load_ns3_module()
 
     def start(self):
-        super(TestbedInstance, self).start()
+        super(TestbedController, self).start()
         self._condition = threading.Condition()
         self._simulator_thread = threading.Thread(target = self._simulator_run,
                 args = [self._condition])
         self._simulator_thread.start()
 
     def set(self, time, guid, name, value):
-        super(TestbedInstance, self).set(time, guid, name, value)
+        super(TestbedController, self).set(time, guid, name, value)
         # TODO: take on account schedule time for the task
         element = self._elements[guid]
         ns3_value = self._to_ns3_value(guid, name, value) 

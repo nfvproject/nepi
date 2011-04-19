@@ -2,5 +2,5 @@
 # -*- coding: utf-8 -*-
 
 from constants import TESTBED_ID
-from execute import TestbedInstance 
+from execute import TestbedController 
 

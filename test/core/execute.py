@@ -15,7 +15,7 @@ class ExecuteTestCase(unittest.TestCase):
     def test_execute(self):
         testbed_version = "01"
         testbed_id = "mock"
-        instance = mock.TestbedInstance(testbed_version)
+        instance = mock.TestbedController(testbed_version)
         instance.defer_configure("fake", True)
         instance.defer_create(2, "Node")
         instance.defer_create(3, "Node")

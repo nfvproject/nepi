@@ -19,7 +19,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
     def test_run_ping_if(self):
         user = getpass.getuser()
         testbed_version = "01"
-        instance = netns.TestbedInstance(testbed_version)
+        instance = netns.TestbedController(testbed_version)
         instance.defer_configure("homeDirectory", self.root_dir)
         instance.defer_create(2, "Node")
         instance.defer_create(3, "Node")
@@ -62,7 +62,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
     def test_run_ping_p2pif(self):
         user = getpass.getuser()
         testbed_version = "01"
-        instance = netns.TestbedInstance(testbed_version)
+        instance = netns.TestbedController(testbed_version)
         instance.defer_configure("homeDirectory", self.root_dir)
         instance.defer_create(2, "Node")
         instance.defer_create(3, "Node")
@@ -102,7 +102,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
     def test_run_ping_routing(self):
         user = getpass.getuser()
         testbed_version = "01"
-        instance = netns.TestbedInstance(testbed_version)
+        instance = netns.TestbedController(testbed_version)
         instance.defer_configure("homeDirectory", self.root_dir)
         instance.defer_create(2, "Node")
         instance.defer_create(3, "Node")

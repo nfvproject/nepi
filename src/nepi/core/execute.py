@@ -166,7 +166,7 @@ class Factory(AttributesMap):
         self._box_attributes.add_attribute(name, help, type, value, range, 
                 allowed, flags, validation_function)
 
-class TestbedInstance(object):
+class TestbedController(object):
     def __init__(self, testbed_id, testbed_version):
         self._testbed_id = testbed_id
         self._testbed_version = testbed_version
