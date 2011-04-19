@@ -49,7 +49,7 @@ class NetnsIntegrationTestCase(unittest.TestCase):
         app.enable_trace("stdout")
         xml = exp_desc.to_xml()
 
-        controller = ExperimentController(xml)
+        controller = ExperimentController(xml, self.root_dir)
         controller.start()
         while not controller.is_finished(app.guid):
             time.sleep(0.5)

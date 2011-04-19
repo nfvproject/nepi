@@ -166,19 +166,6 @@ def log_reply(server, reply):
     server.log_debug("%s - reply: %s %s" % (server.__class__.__name__, 
             code_txt, txt))
 
-def launch_ssh_daemon_client(root_dir, python_code, host, port, user, agent):
-    if python_code:
-        # launch daemon
-        proc = server.popen_ssh_subprocess(python_code, host = host,
-            port = port, user = user, agent = agent)
-        if proc.poll():
-            err = proc.stderr.read()
-            raise RuntimeError("Client could not be executed: %s" % \
-                    err)
-    # create client
-    return server.Client(root_dir, host = host, port = port, user = user, 
-            agent = agent)
-
 def to_server_log_level(log_level):
     return server.DEBUG_LEVEL \
             if log_level == AccessConfiguration.DEBUG_LEVEL \
@@ -697,22 +684,21 @@ class TestbedInstanceProxy(object):
                         s = TestbedInstanceServer('%s', %d, '%s', '%s');\
                         s.run()" % (root_dir, log_level, testbed_id, 
                                 testbed_version)
-                self._client = launch_ssh_daemon_client(root_dir, python_code,
-                        host, port, user, agent)
+                proc = server.popen_ssh_subprocess(python_code, host = host,
+                    port = port, user = user, agent = agent)
+                if proc.poll():
+                    err = proc.stderr.read()
+                    raise RuntimeError("Server could not be executed: %s" % \
+                            err)
             else:
                 # launch daemon
                 s = TestbedInstanceServer(root_dir, log_level, testbed_id, 
                     testbed_version)
                 s.run()
-                # create client
-                self._client = server.Client(root_dir)
-        else:
-            # attempt to reconnect
-            if host != None:
-                self._client = launch_ssh_daemon_client(root_dir, None,
-                        host, port, user, agent)
-            else:
-                self._client = server.Client(root_dir)
+
+        # connect client to server
+        self._client = server.Client(root_dir, host = host, port = port, 
+                user = user, agent = agent)
 
     @property
     def guids(self):
@@ -1028,27 +1014,23 @@ class ExperimentControllerProxy(object):
             # ssh
             if host != None:
                 xml = experiment_xml
-                xml = xml.replace("'", r"\'")
-                xml = xml.replace("\"", r"\'")
-                xml = xml.replace("\n", r"")
                 python_code = "from nepi.util.proxy import ExperimentControllerServer;\
                         s = ExperimentControllerServer(%r, %r, %r);\
                         s.run()" % (root_dir, log_level, xml)
-                self._client = launch_ssh_daemon_client(root_dir, python_code,
-                        host, port, user, agent)
+                proc = server.popen_ssh_subprocess(python_code, host = host,
+                    port = port, user = user, agent = agent)
+                if proc.poll():
+                    err = proc.stderr.read()
+                    raise RuntimeError("Server could not be executed: %s" % \
+                            err)
             else:
                 # launch daemon
                 s = ExperimentControllerServer(root_dir, log_level, experiment_xml)
                 s.run()
-                # create client
-                self._client = server.Client(root_dir)
-        else:
-            # attempt to reconnect
-            if host != None:
-                self._client = launch_ssh_daemon_client(root_dir, None,
-                        host, port, user, agent)
-            else:
-                self._client = server.Client(root_dir)
+
+        # connect client to server
+        self._client = server.Client(root_dir, host = host, port = port, 
+                user = user, agent = agent)
 
     @property
     def experiment_xml(self):

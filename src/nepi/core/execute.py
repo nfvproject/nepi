@@ -297,9 +297,17 @@ class ExperimentController(object):
         self._netrefs = dict()
         self._root_dir = root_dir
 
+        self.persist_experiment_xml()
+
     @property
     def experiment_xml(self):
         return self._experiment_xml
+
+    def persist_experiment_xml(self):
+        xml_path = os.path.join(self._root_dir, "experiment.xml")
+        f = open(xml_path, "w")
+        f.write(self._experiment_xml)
+        f.close()
 
     def set_access_configuration(self, testbed_guid, access_config):
         self._access_config[testbed_guid] = access_config

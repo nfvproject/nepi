@@ -289,6 +289,10 @@ class Client(object):
                     stdout = subprocess.PIPE,
                     stderr = subprocess.PIPE
                 )
+            if self._process.poll():
+                err = self._process.stderr.read()
+                raise RuntimeError("Client could not be executed: %s" % \
+                        err)
 
     def send_msg(self, msg):
         encoded = base64.b64encode(msg)
@@ -296,7 +300,7 @@ class Client(object):
         
         try:
             self._process.stdin.write(data)
-        except (IOError,ValueError):
+        except (IOError, ValueError):
             # dead process, poll it to un-zombify
             self._process.poll()
             
