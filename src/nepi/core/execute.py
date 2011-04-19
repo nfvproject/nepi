@@ -8,6 +8,8 @@ from nepi.util.parser._xml import XmlExperimentParser
 import sys
 import re
 import threading
+import ConfigParser
+import os
 
 ATTRIBUTE_PATTERN_BASE = re.compile(r"\{#\[(?P<label>[-a-zA-Z0-9._]*)\](?P<expr>(?P<component>\.addr\[[0-9]+\]|\.route\[[0-9]+\]|\.trace\[[0-9]+\]|).\[(?P<attribute>[-a-zA-Z0-9._]*)\])#}")
 ATTRIBUTE_PATTERN_GUID_SUB = r"{#[%(guid)s]%(expr)s#}"
@@ -288,11 +290,12 @@ class TestbedInstance(object):
         raise NotImplementedError
 
 class ExperimentController(object):
-    def __init__(self, experiment_xml):
+    def __init__(self, experiment_xml, root_dir):
         self._experiment_xml = experiment_xml
         self._testbeds = dict()
         self._access_config = dict()
         self._netrefs = dict()
+        self._root_dir = root_dir
 
     @property
     def experiment_xml(self):
@@ -314,6 +317,9 @@ class ExperimentController(object):
 
     def start(self):
         self._create_testbed_instances()
+        
+        # persist testbed connection data, for potential recovery
+        self._persist_testbed_proxies()
         
         # perform setup in parallel for all test beds,
         # wait for all threads to finish
@@ -342,9 +348,69 @@ class ExperimentController(object):
         self._parallel([testbed.start
                         for testbed in self._testbeds.itervalues()])
 
+    def _persist_testbed_proxies(self):
+        TRANSIENT = ('Recover',)
+        
+        # persist access configuration for all testbeds, so that
+        # recovery mode can reconnect to them if it becomes necessary
+        conf = ConfigParser.RawConfigParser()
+        for testbed_guid, testbed_config in self._access_config.iteritems():
+            testbed_guid = str(testbed_guid)
+            conf.add_section(testbed_guid)
+            for attr in testbed_config.attributes_name:
+                if attr not in TRANSIENT:
+                    conf.set(testbed_guid, attr, 
+                        testbed_config.get_attribute_value(attr))
+        
+        f = open(os.path.join(self._root_dir, 'access_config.ini'), 'w')
+        conf.write(f)
+        f.close()
+    
+    def _load_testbed_proxies(self):
+        TYPEMAP = {
+            STRING : 'get',
+            INTEGER : 'getint',
+            FLOAT : 'getfloat',
+            BOOLEAN : 'getboolean',
+        }
+        
+        conf = ConfigParser.RawConfigParser()
+        conf.read(os.path.join(self._root_dir, 'access_config.ini'))
+        for testbed_guid in conf.sections():
+            testbed_config = proxy.AccessConfiguration()
+            for attr in conf.options(testbed_guid):
+                testbed_config.set_attribute_value(attr, 
+                    conf.get(testbed_guid, attr) )
+                
+            testbed_guid = str(testbed_guid)
+            conf.add_section(testbed_guid)
+            for attr in testbed_config.attributes_name:
+                if attr not in TRANSIENT:
+                    getter = getattr(conf, TYPEMAP.get(
+                        testbed_config.get_attribute_type(attr),
+                        'get') )
+                    testbed_config.set_attribute_value(
+                        testbed_guid, attr, getter(attr))
+    
+    def _unpersist_testbed_proxies(self):
+        try:
+            os.remove(os.path.join(self._root_dir, 'access_config.ini'))
+        except:
+            # Just print exceptions, this is just cleanup
+            import traceback
+            traceback.print_exc(file=sys.stderr)
+
     def stop(self):
        for testbed in self._testbeds.values():
            testbed.stop()
+       self._unpersist_testbed_proxies()
+   
+    def recover(self):
+        # reload perviously persisted testbed access configurations
+        self._load_testbed_proxies()
+        
+        # recreate testbed proxies by reconnecting only
+        self._create_testbed_instances(recover=True)
 
     def is_finished(self, guid):
         for testbed in self._testbeds.values():
@@ -414,7 +480,7 @@ class ExperimentController(object):
                                     if fail_if_undefined:
                                         raise ValueError, "Unresolvable GUID: %r, in netref: %r" % (ref_guid, expr)
 
-    def _create_testbed_instances(self):
+    def _create_testbed_instances(self, recover = False):
         parser = XmlExperimentParser()
         data = parser.from_xml_to_data(self._experiment_xml)
         element_guids = list()
@@ -426,6 +492,14 @@ class ExperimentController(object):
                 (testbed_id, testbed_version) = data.get_testbed_data(guid)
                 access_config = None if guid not in self._access_config else\
                         self._access_config[guid]
+                
+                if recover and access_config is None:
+                    # need to create one
+                    access_config = self._access_config[guid] = proxy.AccessConfiguration()
+                if access_config is not None:
+                    # force recovery mode 
+                    access_config.set_attribute_value("recover",recover)
+                
                 testbed = proxy.create_testbed_instance(testbed_id, 
                         testbed_version, access_config)
                 for (name, value) in data.get_attribute_data(guid):
@@ -462,7 +536,8 @@ class ExperimentController(object):
                                     # (which could require high-latency network I/O)
                                     (testbed_guid, factory_id) = data.get_box_data(guid)
                                     netrefs.setdefault((testbed_guid,guid),set()).add(name)
-        self._program_testbed_instances(element_guids, data)
+        if not recover:
+            self._program_testbed_instances(element_guids, data)
 
     def _program_testbed_instances(self, element_guids, data):
         for guid in element_guids:

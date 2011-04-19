@@ -19,6 +19,9 @@ class ExecuteTestCase(unittest.TestCase):
         sys.modules["nepi.testbeds.mock.metadata_v01"] = mock.metadata_v01
         sys.modules["nepi.testbeds.mock"] = mock
         self.root_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.root_dir)
     
     def make_test_experiment(self):
         exp_desc = ExperimentDescription()
@@ -135,6 +138,49 @@ class ExecuteTestCase(unittest.TestCase):
         controller.stop()
         controller.shutdown()
 
+    def test_daemonized_all_integration_recovery(self):
+        exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()
+        xml = exp_desc.to_xml()
+        access_config = proxy.AccessConfiguration()
+        access_config.set_attribute_value("mode", 
+                proxy.AccessConfiguration.MODE_DAEMON)
+        access_config.set_attribute_value("rootDirectory", self.root_dir)
+        controller = proxy.create_controller(xml, access_config)
+
+        access_config2 = proxy.AccessConfiguration()
+        access_config2.set_attribute_value("mode", 
+                proxy.AccessConfiguration.MODE_DAEMON)
+        inst_root_dir = os.path.join(self.root_dir, "instance")
+        os.mkdir(inst_root_dir)
+        access_config2.set_attribute_value("rootDirectory", inst_root_dir)
+        controller.set_access_configuration(desc.guid, access_config2)
+
+        controller.start()
+        while not controller.is_finished(app.guid):
+            time.sleep(0.5)
+        fake_result = controller.trace(desc.guid, app.guid, "fake")
+        comp_result = """PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
+
+--- 10.0.0.2 ping statistics ---
+1 packets transmitted, 1 received, 0% packet loss, time 0ms
+"""
+        self.assertTrue(fake_result.startswith(comp_result))
+        
+        # controller dies
+        del controller
+        
+        # recover
+        access_config.set_attribute_value("recover",True)
+        controller = proxy.create_controller(xml, access_config)
+        
+        # test recovery
+        self.assertTrue(controller.is_finished(app.guid))
+        fake_result = controller.trace(desc.guid, app.guid, "fake")
+        self.assertTrue(fake_result.startswith(comp_result))
+        
+        controller.stop()
+        controller.shutdown()
+
     def test_reference_expressions(self):
         exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()
         
@@ -202,9 +248,6 @@ class ExecuteTestCase(unittest.TestCase):
         controller.stop()
         controller.shutdown()
  
-    def tearDown(self):
-        shutil.rmtree(self.root_dir)
-
 if __name__ == '__main__':
     unittest.main()
 

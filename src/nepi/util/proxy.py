@@ -8,6 +8,8 @@ from nepi.util.constants import TIME_NOW
 import getpass
 import sys
 import time
+import tempfile
+import shutil
 
 # PROTOCOL REPLIES
 OK = 0
@@ -42,6 +44,7 @@ STATUS  = 26
 GUIDS  = 27
 GET_ROUTE = 28
 GET_ADDRESS = 29
+RECOVER = 30
 
 # PARAMETER TYPE
 STRING  =  100
@@ -57,6 +60,7 @@ controller_messages = dict({
     FINISHED:   "%d|%s" % (FINISHED, "%d"),
     START:  "%d" % START,
     STOP:   "%d" % STOP,
+    RECOVER : "%d" % RECOVER,
     SHUTDOWN:   "%d" % SHUTDOWN,
     })
 
@@ -98,6 +102,7 @@ instruction_text = dict({
     FINISHED:   "FINISHED",
     START:  "START",
     STOP:   "STOP",
+    RECOVER: "RECOVER",
     SHUTDOWN:   "SHUTDOWN",
     CONFIGURE:  "CONFIGURE",
     CREATE: "CREATE",
@@ -248,32 +253,69 @@ class AccessConfiguration(AttributesMap):
                 allowed = [AccessConfiguration.ERROR_LEVEL,
                     AccessConfiguration.DEBUG_LEVEL],
                 validation_function = validation.is_enum)
+        self.add_attribute(name = "recover",
+                help = "Do not intantiate testbeds, rather, reconnect to already-running instances. Used to recover from a dead controller.", 
+                type = Attribute.BOOL,
+                value = False,
+                validation_function = validation.is_bool)
+
+class TempDir(object):
+    def __init__(self):
+        self.path = tempfile.mkdtemp()
+    
+    def __del__(self):
+        shutil.rmtree(self.path)
+
+class PermDir(object):
+    def __init__(self, path):
+        self.path = path
 
 def create_controller(xml, access_config = None):
-    mode = None if not access_config else \
-            access_config.get_attribute_value("mode")
+    mode = None if not access_config \
+            else access_config.get_attribute_value("mode")
+    launch = True if not access_config \
+            else not access_config.get_attribute_value("recover")
     if not mode or mode == AccessConfiguration.MODE_SINGLE_PROCESS:
+        if not launch:
+            raise ValueError, "Unsupported instantiation mode: %s with lanch=False" % (mode,)
+        
         from nepi.core.execute import ExperimentController
-        return ExperimentController(xml)
+        
+        if not access_config or not access_config.has_attribute("rootDirectory"):
+            root_dir = TempDir()
+        else:
+            root_dir = PermDir(access_config.get_attribute_value("rootDirectory"))
+        controller = ExperimentController(xml, root_dir.path)
+        
+        # inject reference to temporary dir, so that it gets cleaned
+        # up at destruction time.
+        controller._tempdir = root_dir
+        
+        return controller
     elif mode == AccessConfiguration.MODE_DAEMON:
         (root_dir, log_level, user, host, port, agent) = \
                 get_access_config_params(access_config)
         return ExperimentControllerProxy(root_dir, log_level,
                 experiment_xml = xml, host = host, port = port, user = user, 
-                agent = agent)
-    raise RuntimeError("Unsupported access configuration 'mode'" % mode)
+                agent = agent, launch = launch)
+    raise RuntimeError("Unsupported access configuration '%s'" % mode)
 
 def create_testbed_instance(testbed_id, testbed_version, access_config):
-    mode = None if not access_config else access_config.get_attribute_value("mode")
+    mode = None if not access_config \
+            else access_config.get_attribute_value("mode")
+    launch = True if not access_config \
+            else not access_config.get_attribute_value("recover")
     if not mode or mode == AccessConfiguration.MODE_SINGLE_PROCESS:
+        if not launch:
+            raise ValueError, "Unsupported instantiation mode: %s with lanch=False" % (mode,)
         return  _build_testbed_instance(testbed_id, testbed_version)
     elif mode == AccessConfiguration.MODE_DAEMON:
         (root_dir, log_level, user, host, port, agent) = \
                 get_access_config_params(access_config)
         return TestbedInstanceProxy(root_dir, log_level, testbed_id = testbed_id, 
                 testbed_version = testbed_version, host = host, port = port,
-                user = user, agent = agent)
-    raise RuntimeError("Unsupported access configuration 'mode'" % mode)
+                user = user, agent = agent, launch = launch)
+    raise RuntimeError("Unsupported access configuration '%s'" % mode)
 
 def _build_testbed_instance(testbed_id, testbed_version):
     mod_name = "nepi.testbeds.%s" % (testbed_id.lower())
@@ -537,36 +579,43 @@ class ExperimentControllerServer(server.Server):
 
     def post_daemonize(self):
         from nepi.core.execute import ExperimentController
-        self._controller = ExperimentController(self._experiment_xml)
+        self._controller = ExperimentController(self._experiment_xml, 
+            root_dir = self._root_dir)
 
     def reply_action(self, msg):
-        params = msg.split("|")
-        instruction = int(params[0])
-        log_msg(self, params)
-        try:
-            if instruction == XML:
-                reply = self.experiment_xml(params)
-            elif instruction == ACCESS:
-                reply = self.set_access_configuration(params)
-            elif instruction == TRACE:
-                reply = self.trace(params)
-            elif instruction == FINISHED:
-                reply = self.is_finished(params)
-            elif instruction == START:
-                reply = self.start(params)
-            elif instruction == STOP:
-                reply = self.stop(params)
-            elif instruction == SHUTDOWN:
-                reply = self.shutdown(params)
-            else:
-                error = "Invalid instruction %s" % instruction
-                self.log_error(error)
+        if not msg:
+            result = base64.b64encode("Invalid command line")
+            reply = "%d|%s" % (ERROR, result)
+        else:
+            params = msg.split("|")
+            instruction = int(params[0])
+            log_msg(self, params)
+            try:
+                if instruction == XML:
+                    reply = self.experiment_xml(params)
+                elif instruction == ACCESS:
+                    reply = self.set_access_configuration(params)
+                elif instruction == TRACE:
+                    reply = self.trace(params)
+                elif instruction == FINISHED:
+                    reply = self.is_finished(params)
+                elif instruction == START:
+                    reply = self.start(params)
+                elif instruction == STOP:
+                    reply = self.stop(params)
+                elif instruction == RECOVER:
+                    reply = self.recover(params)
+                elif instruction == SHUTDOWN:
+                    reply = self.shutdown(params)
+                else:
+                    error = "Invalid instruction %s" % instruction
+                    self.log_error(error)
+                    result = base64.b64encode(error)
+                    reply = "%d|%s" % (ERROR, result)
+            except:
+                error = self.log_error()
                 result = base64.b64encode(error)
                 reply = "%d|%s" % (ERROR, result)
-        except:
-            error = self.log_error()
-            result = base64.b64encode(error)
-            reply = "%d|%s" % (ERROR, result)
         log_reply(self, reply)
         return reply
 
@@ -619,6 +668,10 @@ class ExperimentControllerServer(server.Server):
 
     def stop(self, params):
         self._controller.stop()
+        return "%d|%s" % (OK, "")
+
+    def recover(self, params):
+        self._controller.recover()
         return "%d|%s" % (OK, "")
 
     def shutdown(self, params):
@@ -957,6 +1010,7 @@ class TestbedInstanceProxy(object):
         if code == ERROR:
             raise RuntimeError(text)
         self._client.send_stop()
+        self._client.read_reply() # wait for it
 
 class ExperimentControllerProxy(object):
     def __init__(self, root_dir, log_level, experiment_xml = None, 
@@ -1057,6 +1111,16 @@ class ExperimentControllerProxy(object):
         if code == ERROR:
             raise RuntimeError(text)
 
+    def recover(self):
+        msg = controller_messages[RECOVER]
+        self._client.send_msg(msg)
+        reply = self._client.read_reply()
+        result = reply.split("|")
+        code = int(result[0])
+        text =  base64.b64decode(result[1])
+        if code == ERROR:
+            raise RuntimeError(text)
+
     def is_finished(self, guid):
         msg = controller_messages[FINISHED]
         msg = msg % guid
@@ -1079,4 +1143,5 @@ class ExperimentControllerProxy(object):
         if code == ERROR:
             raise RuntimeError(text)
         self._client.send_stop()
+        self._client.read_reply() # wait for it
 

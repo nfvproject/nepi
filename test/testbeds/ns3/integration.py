@@ -67,7 +67,7 @@ class Ns3IntegrationTestCase(unittest.TestCase):
         app.connector("node").connect(node1.connector("apps"))
 
         xml = exp_desc.to_xml()
-        controller = ExperimentController(xml)
+        controller = ExperimentController(xml, self.root_dir)
         controller.start()
         while not controller.is_finished(app.guid):
             time.sleep(0.5)
