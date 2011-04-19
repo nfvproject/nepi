@@ -200,6 +200,7 @@ class Forwarder(object):
 
     def forward(self):
         self.connect()
+        print >>sys.stderr, "READY."
         while not self._stop:
             data = self.read_data()
             self.send_to_server(data)
@@ -285,21 +286,21 @@ class Client(object):
             # popen_ssh_subprocess already waits for readiness
         else:
             self._process = subprocess.Popen(
-                    ["python", "-c", "import sys ; print >>sys.stderr, 'READY.' ; " + python_code],
+                    ["python", "-c", python_code],
                     stdin = subprocess.PIPE, 
                     stdout = subprocess.PIPE,
                     stderr = subprocess.PIPE
                 )
                 
-            # Wait for the forwarder to be ready, otherwise nobody
-            # will be able to connect to it
-            helo = self._process.stderr.readline()
-            assert helo == 'READY.\n'
-            
-            if self._process.poll():
-                err = self._process.stderr.read()
-                raise RuntimeError("Client could not be executed: %s" % \
-                        err)
+        # Wait for the forwarder to be ready, otherwise nobody
+        # will be able to connect to it
+        helo = self._process.stderr.readline()
+        assert helo == 'READY.\n'
+        
+        if self._process.poll():
+            err = self._process.stderr.read()
+            raise RuntimeError("Client could not be executed: %s" % \
+                    err)
 
     def send_msg(self, msg):
         encoded = base64.b64encode(msg)
