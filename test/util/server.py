@@ -20,10 +20,10 @@ class ServerTestCase(unittest.TestCase):
         c = server.Client(self.root_dir)
         c.send_msg("Hola")
         reply = c.read_reply()
-        self.assertTrue(reply == "Reply to: Hola")
+        self.assertEqual(reply, "Reply to: Hola")
         c.send_stop()
         reply = c.read_reply()
-        self.assertTrue(reply == "Stopping server")
+        self.assertEqual(reply, "Stopping server")
 
     def test_server_reconnect(self):
         s = server.Server(self.root_dir)
@@ -32,7 +32,7 @@ class ServerTestCase(unittest.TestCase):
         
         c.send_msg("Hola")
         reply = c.read_reply()
-        self.assertTrue(reply == "Reply to: Hola")
+        self.assertEqual(reply, "Reply to: Hola")
         
         # disconnect
         del c
@@ -41,11 +41,11 @@ class ServerTestCase(unittest.TestCase):
         c = server.Client(self.root_dir)
         c.send_msg("Hola")
         reply = c.read_reply()
-        self.assertTrue(reply == "Reply to: Hola")
+        self.assertEqual(reply, "Reply to: Hola")
                 
         c.send_stop()
         reply = c.read_reply()
-        self.assertTrue(reply == "Stopping server")
+        self.assertEqual(reply, "Stopping server")
 
     def test_server_auto_reconnect(self):
         s = server.Server(self.root_dir)
@@ -54,7 +54,7 @@ class ServerTestCase(unittest.TestCase):
         
         c.send_msg("Hola")
         reply = c.read_reply()
-        self.assertTrue(reply == "Reply to: Hola")
+        self.assertEqual(reply, "Reply to: Hola")
         
         # purposedly break the connection
         c._process.stdin.close()
@@ -64,11 +64,11 @@ class ServerTestCase(unittest.TestCase):
         # assert that the communication works (possible with auto-reconnection)
         c.send_msg("Hola")
         reply = c.read_reply()
-        self.assertTrue(reply == "Reply to: Hola")
+        self.assertEqual(reply, "Reply to: Hola")
                 
         c.send_stop()
         reply = c.read_reply()
-        self.assertTrue(reply == "Stopping server")
+        self.assertEqual(reply, "Stopping server")
 
     def test_server_long_message(self):
         s = server.Server(self.root_dir)
@@ -77,10 +77,10 @@ class ServerTestCase(unittest.TestCase):
         msg = "1"*1145
         c.send_msg(msg)
         reply = c.read_reply()
-        self.assertTrue(reply == ("Reply to: "+msg))
+        self.assertEqual(reply, ("Reply to: "+msg))
         c.send_stop()
         reply = c.read_reply()
-        self.assertTrue(reply == "Stopping server")
+        self.assertEqual(reply, "Stopping server")
 
     def test_ssh_server(self):
         env = test_util.test_environment()
@@ -94,10 +94,10 @@ class ServerTestCase(unittest.TestCase):
                 user = user, agent = True)
         c.send_msg("Hola")
         reply = c.read_reply()
-        self.assertTrue(reply == "Reply to: Hola")
+        self.assertEqual(reply, "Reply to: Hola")
         c.send_stop()
         reply = c.read_reply()
-        self.assertTrue(reply == "Stopping server")
+        self.assertEqual(reply, "Stopping server")
 
     def test_ssh_server_reconnect(self):
         env = test_util.test_environment()
@@ -113,7 +113,7 @@ class ServerTestCase(unittest.TestCase):
                 
         c.send_msg("Hola")
         reply = c.read_reply()
-        self.assertTrue(reply == "Reply to: Hola")
+        self.assertEqual(reply, "Reply to: Hola")
         
         # disconnect
         del c
@@ -124,11 +124,11 @@ class ServerTestCase(unittest.TestCase):
                 
         c.send_msg("Hola")
         reply = c.read_reply()
-        self.assertTrue(reply == "Reply to: Hola")
+        self.assertEqual(reply, "Reply to: Hola")
         
         c.send_stop()
         reply = c.read_reply()
-        self.assertTrue(reply == "Stopping server")
+        self.assertEqual(reply, "Stopping server")
 
     def test_ssh_server_auto_reconnect(self):
         env = test_util.test_environment()
@@ -144,7 +144,7 @@ class ServerTestCase(unittest.TestCase):
                 
         c.send_msg("Hola")
         reply = c.read_reply()
-        self.assertTrue(reply == "Reply to: Hola")
+        self.assertEqual(reply, "Reply to: Hola")
         
         # purposedly break the connection
         c._process.stdin.close()
@@ -154,11 +154,11 @@ class ServerTestCase(unittest.TestCase):
         # assert that the communication works (possible with auto-reconnection)
         c.send_msg("Hola")
         reply = c.read_reply()
-        self.assertTrue(reply == "Reply to: Hola")
+        self.assertEqual(reply, "Reply to: Hola")
         
         c.send_stop()
         reply = c.read_reply()
-        self.assertTrue(reply == "Stopping server")
+        self.assertEqual(reply, "Stopping server")
 
     def tearDown(self):
         shutil.rmtree(self.root_dir)
