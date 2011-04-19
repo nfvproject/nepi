@@ -102,6 +102,11 @@ class Server(object):
         os.dup2(stdout.fileno(), sys.stdout.fileno())
         os.dup2(stderr.fileno(), sys.stderr.fileno())
 
+        # create control socket
+        self._ctrl_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self._ctrl_sock.bind(CTRL_SOCK)
+        self._ctrl_sock.listen(0)
+
         # let the parent process know that the daemonization is finished
         os.write(w, "\n")
         os.close(w)
@@ -111,9 +116,6 @@ class Server(object):
         pass
 
     def loop(self):
-        self._ctrl_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self._ctrl_sock.bind(CTRL_SOCK)
-        self._ctrl_sock.listen(0)
         while not self._stop:
             conn, addr = self._ctrl_sock.accept()
             conn.settimeout(5)
@@ -133,7 +135,7 @@ class Server(object):
                     self.send_reply(conn, reply)
                 except socket.error:
                     self.log_error()
-                    print >>sys.stderr, "NOTICE: Awaiting for reconnection"
+                    self.log_error("NOTICE: Awaiting for reconnection")
                     break
             try:
                 conn.close()
@@ -295,7 +297,8 @@ class Client(object):
         # Wait for the forwarder to be ready, otherwise nobody
         # will be able to connect to it
         helo = self._process.stderr.readline()
-        assert helo == 'READY.\n'
+        if helo != 'READY.\n':
+            raise AssertionError, "Expected 'Ready.', got %r" % (helo,)
         
         if self._process.poll():
             err = self._process.stderr.read()
