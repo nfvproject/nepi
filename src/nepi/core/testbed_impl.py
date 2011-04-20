@@ -44,6 +44,10 @@ class TestbedController(execute.TestbedController):
     @property
     def elements(self):
         return self._elements
+    
+    def _get_factory_id(self, guid):
+        """ Returns the factory ID of the (perhaps not yet) created object """
+        return self._create.get(guid, None)
 
     def defer_configure(self, name, value):
         if not self._attributes.has_attribute(name):

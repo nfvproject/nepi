@@ -9,7 +9,12 @@ class TestbedController(testbed_impl.TestbedController):
     def __init__(self, testbed_version):
         super(TestbedController, self).__init__(TESTBED_ID, testbed_version)
         self._home_directory = None
+        self.slicename = None
         self._traces = dict()
+        
+        import node, interfaces
+        self._node = node
+        self._interfaces = interfaces
 
     @property
     def home_directory(self):
@@ -18,6 +23,22 @@ class TestbedController(testbed_impl.TestbedController):
     def do_setup(self):
         self._home_directory = self._attributes.\
             get_attribute_value("homeDirectory")
+        self.slicename = self._attributes.\
+            get_attribute_value("slice")
+
+    def do_create(self):
+        # Create node elements per XML data
+        super(TestbedController, self).do_create()
+        
+        # Perform resource discovery if we don't have
+        # specific resources assigned yet
+        self.do_resource_discovery()
+        
+        # Create PlanetLab slivers
+        self.do_provisioning()
+        
+        # Wait for all nodes to be ready
+        self.wait_nodes()
 
     def set(self, time, guid, name, value):
         super(TestbedController, self).set(time, guid, name, value)
@@ -71,4 +92,36 @@ class TestbedController(testbed_impl.TestbedController):
     def follow_trace(self, trace_id, trace):
         self._traces[trace_id] = trace
 
-
+    def _make_node(self, parameters):
+        node = self._node.Node()
+        
+        # Note: there is 1-to-1 correspondence between attribute names
+        #   If that changes, this has to change as well
+        for attr in parameters.get_attribute_names():
+            setattr(node, attr, parameters.get_attribute_value(attr))
+        
+        return node
+    
+    def _make_node_iface(self, parameters):
+        iface = self._interfaces.NodeIface()
+        
+        # Note: there is 1-to-1 correspondence between attribute names
+        #   If that changes, this has to change as well
+        for attr in parameters.get_attribute_names():
+            setattr(iface, attr, parameters.get_attribute_value(attr))
+        
+        return iface
+    
+    def _make_tun_iface(self, parameters):
+        iface = self._interfaces.TunIface()
+        
+        # Note: there is 1-to-1 correspondence between attribute names
+        #   If that changes, this has to change as well
+        for attr in parameters.get_attribute_names():
+            setattr(iface, attr, parameters.get_attribute_value(attr))
+        
+        return iface
+    
+    def _make_internet(self, parameters):
+        return self._node.Internet()
+        

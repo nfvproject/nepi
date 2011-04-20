@@ -10,26 +10,60 @@ from nepi.util.constants import STATUS_NOT_STARTED, STATUS_RUNNING, \
 
 NODE = "Node"
 NODEIFACE = "NodeInterface"
+TUNIFACE = "TunInterface"
 APPLICATION = "Application"
+INTERNET = "Internet"
 
 PL_TESTBED_ID = "planetlab"
 
 ### Connection functions ####
 
+def connect_node_iface_node(testbed_instance, node, iface):
+    iface.node = node
+
+def connect_node_iface_inet(testbed_instance, node, internet):
+    iface.has_internet = True
+
+def connect_tun_iface_node(testbed_instance, node, iface):
+    iface.node = node
+
 ### Creation functions ###
 
 def create_node(testbed_instance, guid):
     parameters = testbed_instance._get_parameters(guid)
-    element = testbed_instance.pl.Node()
+    
+    # create element with basic attributes
+    element = testbed_instance._make_node(parameters)
+    
+    # add constraint on number of (real) interfaces
+    # by counting connected devices
+    dev_guids = testbed_instance.get_connected(guid, "node", "devs")
+    num_open_ifaces = sum( # count True values
+        TUNEIFACE == testbed_instance._get_factory_id(guid)
+        for guid in dev_guids )
+    element.min_num_external_ifaces = num_open_ifaces
+    
     testbed_instance.elements[guid] = element
 
 def create_nodeiface(testbed_instance, guid):
     parameters = testbed_instance._get_parameters(guid)
-    element = testbed_instance.pl.Iface()
+    element = testbed_instance.create_node_iface(parameters)
+    testbed_instance.elements[guid] = element
+
+def create_tuniface(testbed_instance, guid):
+    parameters = testbed_instance._get_parameters(guid)
+    element = testbed_instance._make_tun_iface(parameters)
     testbed_instance.elements[guid] = element
 
 def create_application(testbed_instance, guid):
-    testbed_instance.elements[guid] = None # Delayed construction 
+    parameters = testbed_instance._get_parameters(guid)
+    element = testbed_instance._make_internet(parameters)
+    testbed_instance.elements[guid] = element
+
+def create_internet(testbed_instance, guid):
+    parameters = testbed_instance._get_parameters(guid)
+    element = None #TODO
+    testbed_instance.elements[guid] = element
 
 ### Start/Stop functions ###
 
@@ -40,22 +74,19 @@ def start_application(testbed_instance, guid):
     command = parameters["command"]
     stdout = stderr = None
     if "stdout" in traces:
-        filename = testbed_instance.trace_filename(guid, "stdout")
-        stdout = open(filename, "wb")
-        testbed_instance.follow_trace("stdout", stdout)
+        # TODO
+        pass
     if "stderr" in traces:
-        filename = testbed_instance.trace_filename(guid, "stderr")
-        stderr = open(filename, "wb")
-        testbed_instance.follow_trace("stderr", stderr)
+        # TODO
+        pass
 
-    node_guid = testbed_instance.get_connected(guid, "node", "apps")
-    if len(node_guid) == 0:
-        raise RuntimeError("Can't instantiate interface %d outside netns \
-                node" % guid)
-    node = testbed_instance.elements[node_guid[0]]
-    element  = node.Popen(command, shell = True, stdout = stdout, 
-            stderr = stderr, user = user)
-    testbed_instance.elements[guid] = element
+    node_guids = testbed_instance.get_connected(guid, "node", "apps")
+    if not node_guid:
+        raise RuntimeError, "Can't instantiate interface %d outside planetlab node" % (guid,)
+    
+    node = testbed_instance.elements[node_guids[0]]
+    # TODO
+    pass
 
 ### Status functions ###
 
@@ -63,31 +94,49 @@ def status_application(testbed_instance, guid):
     if guid not in testbed_instance.elements.keys():
         return STATUS_NOT_STARTED
     app = testbed_instance.elements[guid]
-    if app.poll() == None:
-        return STATUS_RUNNING
-    return STATUS_FINISHED
+    # TODO
+    return STATUS_NOT_STARTED
 
 ### Configure functions ###
 
-def configure_device(testbed_instance, guid):
+def configure_nodeiface(testbed_instance, guid):
+    element = testbed_instance._elements[guid]
+    if not guid in testbed_instance._add_address:
+        return
+    
+    # Cannot explicitly configure addresses
+    del testbed_instance._add_address[guid]
+    
+    # Get siblings
+    node_guid = testbed_instance.get_connected(guid, "node", "devs")[0]
+    dev_guids = testbed_instance.get_connected(node_guid, "node", "devs")
+    siblings = [ self._element[dev_guid] 
+                 for dev_guid in dev_guids
+                 if dev_guid != guid ]
+    
+    # Fetch address from PLC api
+    element.pick_iface(siblings)
+    
+    # Do some validations
+    element.validate()
+
+def configure_tuniface(testbed_instance, guid):
     element = testbed_instance._elements[guid]
     if not guid in testbed_instance._add_address:
         return
     addresses = testbed_instance._add_address[guid]
     for address in addresses:
         (address, netprefix, broadcast) = address
-        # TODO: Decide if we should add a ipv4 or ipv6 address
-        element.add_v4_address(address, netprefix)
+        # TODO
+    
+    # Do some validations
+    element.validate()
 
 def configure_node(testbed_instance, guid):
     element = testbed_instance._elements[guid]
-    if not guid in testbed_instance._add_route:
-        return
-    routes = testbed_instance._add_route[guid]
-    for route in routes:
-        (destination, netprefix, nexthop) = route
-        element.add_route(prefix = destination, prefix_len = netprefix,
-            nexthop = nexthop)
+    
+    # Do some validations
+    element.validate()
 
 ### Factory information ###
 
@@ -104,67 +153,37 @@ connector_types = dict({
                 "max": -1, 
                 "min": 0
             }),
+    "inet": dict({
+                "help": "Connector from network interfaces to the internet", 
+                "name": "inet",
+                "max": 1, 
+                "min": 1
+            }),
     "node": dict({
                 "help": "Connector to a Node", 
                 "name": "node",
                 "max": 1, 
                 "min": 1
             }),
-    "p2p": dict({
-                "help": "Connector to a P2PInterface", 
-                "name": "p2p",
-                "max": 1, 
-                "min": 0
-            }),
-    "fd": dict({
-                "help": "Connector to a network interface that can receive a file descriptor", 
-                "name": "fd",
-                "max": 1, 
-                "min": 0
-            }),
-    "switch": dict({
-                "help": "Connector to a switch", 
-                "name": "switch",
-                "max": 1, 
-                "min": 0
-            })
    })
 
 connections = [
     dict({
         "from": (TESTBED_ID, NODE, "devs"),
-        "to":   (TESTBED_ID, P2PIFACE, "node"),
-        "code": None,
-        "can_cross": False
-    }),
-    dict({
-        "from": (TESTBED_ID, NODE, "devs"),
-        "to":   (TESTBED_ID, TAPIFACE, "node"),
-        "code": None,
-        "can_cross": False
-    }),
-    dict({
-        "from": (TESTBED_ID, NODE, "devs"),
         "to":   (TESTBED_ID, NODEIFACE, "node"),
-        "code": None,
+        "code": connect_node_iface_node,
         "can_cross": False
     }),
     dict({
-        "from": (TESTBED_ID, P2PIFACE, "p2p"),
-        "to":   (TESTBED_ID, P2PIFACE, "p2p"),
-        "code": None,
+        "from": (TESTBED_ID, NODE, "devs"),
+        "to":   (TESTBED_ID, TUNIFACE, "node"),
+        "code": connect_tun_iface_node,
         "can_cross": False
     }),
     dict({
-        "from": (TESTBED_ID, TAPIFACE, "fd"),
-        "to":   (NS3_TESTBED_ID, FDNETDEV, "fd"),
-        "code": connect_fd_local,
-        "can_cross": True
-    }),
-     dict({
-        "from": (TESTBED_ID, SWITCH, "devs"),
-        "to":   (TESTBED_ID, NODEIFACE, "switch"),
-        "code": connect_switch,
+        "from": (TESTBED_ID, NODEIFACE, "inet"),
+        "to":   (TESTBED_ID, INTERNET, "devs"),
+        "code": connect_node_iface_inet,
         "can_cross": False
     }),
     dict({
@@ -182,20 +201,99 @@ attributes = dict({
                 "type": Attribute.BOOL, 
                 "value": False,
                 "flags": Attribute.DesignOnly,
-                "validation_function": validation.is_bool
+                "validation_function": validation.is_bool,
             }),
-    "lladdr": dict({      
-                "name": "lladdr", 
-                "help": "Mac address", 
-                "type": Attribute.STRING,
+    "hostname": dict({      
+                "name": "hosname",
+                "help": "Constrain hostname during resource discovery. May use wildcards.",
+                "type": Attribute.STRING, 
                 "flags": Attribute.DesignOnly,
-                "validation_function": validation.is_mac_address
+                "validation_function": validation.is_string,
             }),
+    "architecture": dict({      
+                "name": "architecture",
+                "help": "Constrain architexture during resource discovery.",
+                "type": Attribute.ENUM, 
+                "flags": Attribute.DesignOnly,
+                "allowed": ["x86_64",
+                            "i386"],
+                "validation_function": validation.is_enum,
+            }),
+    "operating_system": dict({      
+                "name": "operatingSystem",
+                "help": "Constrain operating system during resource discovery.",
+                "type": Attribute.ENUM, 
+                "flags": Attribute.DesignOnly,
+                "allowed": ["f8",
+                            "f12",
+                            "f14",
+                            "centos",
+                            "other"],
+                "validation_function": validation.is_enum,
+            }),
+    "site": dict({      
+                "name": "site",
+                "help": "Constrain the PlanetLab site this node should reside on.",
+                "type": Attribute.ENUM, 
+                "flags": Attribute.DesignOnly,
+                "allowed": ["PLE",
+                            "PLC",
+                            "PLJ"],
+                "validation_function": validation.is_enum,
+            }),
+    "emulation": dict({      
+                "name": "emulation",
+                "help": "Enable emulation on this node. Enables NetfilterRoutes, bridges, and a host of other functionality.",
+                "type": Attribute.BOOL,
+                "value": False, 
+                "flags": Attribute.DesignOnly,
+                "validation_function": validation.is_bool,
+            }),
+    "min_reliability": dict({
+                "name": "minReliability",
+                "help": "Constrain reliability while picking PlanetLab nodes. Specifies a lower acceptable bound.",
+                "type": Attribute.DOUBLE,
+                "range": (0,100),
+                "flags": Attribute.DesignOnly,
+                "validation_function": validation.is_double,
+            }),
+    "max_reliability": dict({
+                "name": "maxReliability",
+                "help": "Constrain reliability while picking PlanetLab nodes. Specifies an upper acceptable bound.",
+                "type": Attribute.DOUBLE,
+                "range": (0,100),
+                "flags": Attribute.DesignOnly,
+                "validation_function": validation.is_double,
+            }),
+    "min_bandwidth": dict({
+                "name": "minBandwidth",
+                "help": "Constrain available bandwidth while picking PlanetLab nodes. Specifies a lower acceptable bound.",
+                "type": Attribute.DOUBLE,
+                "range": (0,2**31),
+                "flags": Attribute.DesignOnly,
+                "validation_function": validation.is_double,
+            }),
+    "max_bandwidth": dict({
+                "name": "maxBandwidth",
+                "help": "Constrain available bandwidth while picking PlanetLab nodes. Specifies an upper acceptable bound.",
+                "type": Attribute.DOUBLE,
+                "range": (0,2**31),
+                "flags": Attribute.DesignOnly,
+                "validation_function": validation.is_double,
+            }),
+            
     "up": dict({
                 "name": "up",
                 "help": "Link up",
                 "type": Attribute.BOOL,
                 "value": False,
+                "validation_function": validation.is_bool
+            }),
+    "primary": dict({
+                "name": "primary",
+                "help": "This is the primary interface for the attached node",
+                "type": Attribute.BOOL,
+                "value": True,
                 "validation_function": validation.is_bool
             }),
     "device_name": dict({
@@ -209,28 +307,23 @@ attributes = dict({
                 "name": "mtu", 
                 "help": "Maximum transmition unit for device",
                 "type": Attribute.INTEGER,
-                "validation_function": validation.is_integer
+                "range": (0,1500),
+                "validation_function": validation.is_integer_range(0,1500)
             }),
-    "broadcast": dict({ 
-                "name": "broadcast",
-                "help": "Broadcast address",
-                "type": Attribute.STRING,
-                "validation_function": validation.is_string # TODO: should be is address!
+    "mask":  dict({
+                "name": "mask", 
+                "help": "Network mask for the device (eg: 24 for /24 network)",
+                "type": Attribute.INTEGER,
+                "validation_function": validation.is_integer_range(8,24)
             }),
-    "multicast": dict({      
-                "name": "multicast",
-                "help": "Multicast enabled",
+    "snat":  dict({
+                "name": "snat", 
+                "help": "Enable SNAT (source NAT to the internet) no this device",
                 "type": Attribute.BOOL,
                 "value": False,
                 "validation_function": validation.is_bool
             }),
-    "arp": dict({
-                "name": "arp",
-                "help": "ARP enabled",
-                "type": Attribute.BOOL,
-                "value": False,
-                "validation_function": validation.is_bool
-            }),
+            
     "command": dict({
                 "name": "command",
                 "help": "Command line string",
@@ -265,64 +358,50 @@ traces = dict({
         }) 
     })
 
-create_order = [ NODE, P2PIFACE, NODEIFACE, TAPIFACE, SWITCH,
-        APPLICATION ]
+create_order = [ NODE, NODEIFACE, TUNIFACE, APPLICATION ]
 
-configure_order = [ P2PIFACE, NODEIFACE, TAPIFACE, SWITCH, NODE,
-        APPLICATION ]
+configure_order = [ NODE, NODEIFACE, TUNIFACE, APPLICATION ]
 
 factories_info = dict({
     NODE: dict({
-            "allow_routes": True,
-            "help": "Emulated Node with virtualized network stack",
+            "allow_routes": False,
+            "help": "Virtualized Node (V-Server style)",
             "category": "topology",
             "create_function": create_node,
             "configure_function": configure_node,
-            "box_attributes": ["forward_X11"],
+            "box_attributes": [
+                "forward_X11",
+                "hostname",
+                "architecture",
+                "operating_system",
+                "site",
+                "emulation",
+                "min_reliability",
+                "max_reliability",
+                "min_bandwidth",
+                "max_bandwidth",
+            ],
             "connector_types": ["devs", "apps"]
        }),
-    P2PIFACE: dict({
-            "allow_addresses": True,
-            "help": "Point to point network interface",
-            "category": "devices",
-            "create_function": create_p2piface,
-            "configure_function": configure_device,
-            "box_attributes": ["lladdr", "up", "device_name", "mtu", 
-                "multicast", "broadcast", "arp"],
-            "connector_types": ["node", "p2p"]
-       }),
-    TAPIFACE: dict({
-            "allow_addresses": True,
-            "help": "Tap device network interface",
-            "category": "devices",
-            "create_function": create_tapiface,
-            "configure_function": configure_device,
-            "box_attributes": ["lladdr", "up", "device_name", "mtu", 
-                "multicast", "broadcast", "arp"],
-            "connector_types": ["node", "fd"]
-        }),
     NODEIFACE: dict({
             "allow_addresses": True,
-            "help": "Node network interface",
+            "help": "External network interface - they cannot be brought up or down, and they MUST be connected to the internet.",
             "category": "devices",
             "create_function": create_nodeiface,
-            "configure_function": configure_device,
-            "box_attributes": ["lladdr", "up", "device_name", "mtu", 
-                "multicast", "broadcast", "arp"],
-            "connector_types": ["node", "switch"]
+            "configure_function": configure_nodeiface,
+            "box_attributes": [ ],
+            "connector_types": ["node", "inet"]
         }),
-    SWITCH: dict({
-            "display_name": "Switch",
-            "help": "Switch interface",
+    TUNIFACE: dict({
+            "allow_addresses": True,
+            "help": "Virtual TUN network interface",
             "category": "devices",
-            "create_function": create_switch,
-            "box_attributes": ["up", "device_name", "mtu", "multicast"],
-             #TODO: Add attribute ("Stp", help, type, value, range, allowed, readonly, validation_function),
-             #TODO: Add attribute ("ForwarddDelay", help, type, value, range, allowed, readonly, validation_function),
-             #TODO: Add attribute ("HelloTime", help, type, value, range, allowed, readonly, validation_function),
-             #TODO: Add attribute ("AgeingTime", help, type, value, range, allowed, readonly, validation_function),
-             #TODO: Add attribute ("MaxAge", help, type, value, range, allowed, readonly, validation_function)
-           "connector_types": ["devs"]
+            "create_function": create_tuniface,
+            "configure_function": configure_tuniface,
+            "box_attributes": [
+                "up", "device_name", "mtu", "snat",
+            ],
+            "connector_types": ["node"]
         }),
     APPLICATION: dict({
             "help": "Generic executable command line application",
@@ -334,16 +413,22 @@ factories_info = dict({
             "connector_types": ["node"],
             "traces": ["stdout", "stderr"]
         }),
+    INTERNET: dict({
+            "help": "Internet routing",
+            "category": "topology",
+            "create_function": create_internet,
+            "connector_types": ["devs"],
+        }),
 })
 
 testbed_attributes = dict({
-        "enable_debug": dict({
-                "name": "enableDebug",
-                "help": "Enable netns debug output",
-                "type": Attribute.BOOL,
-                "value": False,
-                "validation_function": validation.is_bool
-            }),
+        "slice": dict({
+            "name": "slice",
+            "help": "The name of the PlanetLab slice to use",
+            "type": Attribute.STRING,
+            "flags": Attribute.DesignOnly | Attribute.HasNoDefaultValue,
+            "validation_function": validation.is_string
+        }),
     })
 
 class VersionedMetadataInfo(metadata.VersionedMetadataInfo):

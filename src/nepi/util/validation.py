@@ -13,8 +13,26 @@ def is_bool(attribute, value):
 def is_double(attribute, value):
     return isinstance(value, float)
 
-def is_integer(attribute, value):
-    return isinstance(value, int)
+def is_integer(attribute, value, min=None, max=None):
+    if not isinstance(value, int):
+        return False
+    if min is not None and value < min:
+        return False
+    if max is not None and value > max:
+        return False
+    return True
+
+def is_integer_range(min=None, max=None):
+    def is_integer_range(attribute, value):
+        if not isinstance(value, int):
+            return False
+        if min is not None and value < min:
+            return False
+        if max is not None and value > max:
+            return False
+        return True
+    return is_integer_range
+
 
 def is_string(attribute, value):
     return isinstance(value, str)
