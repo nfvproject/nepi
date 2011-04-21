@@ -21,6 +21,13 @@ class Application(object):
         # Those are filled when an actual node is connected
         self.node = None
     
+    def __str__(self):
+        return "%s<command:%s%s>" % (
+            self.__class__.__name__,
+            "sudo " if self.sudo else "",
+            self.command,
+        )
+    
     def validate(self):
         pass
 

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import getpass
-from nepi.util.constants import STATUS_FINISHED
+from nepi.util.constants import STATUS_FINISHED, TIME_NOW
 from nepi.testbeds import planetlab
 import os
 import shutil
@@ -39,7 +39,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.defer_connect(4, "inet", 6, "devs")
         instance.defer_connect(5, "inet", 6, "devs")
         instance.defer_create(7, "Application")
-        instance.defer_create_set(7, "command", "ping -qc1 {#GUID-3.addr[0].[ip]#}")
+        instance.defer_create_set(7, "command", "ping -qc1 {#GUID-5.addr[0].[Address]#}")
         instance.defer_add_trace(7, "stdout")
         instance.defer_connect(7, "node", 2, "apps")
 
@@ -48,8 +48,12 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.do_connect()
         instance.do_configure()
         
-        print instance.elements[4]
-        print instance.elements[5]
+        # Manually replace netref
+        instance.set(TIME_NOW, 7, "command",
+            instance.get(TIME_NOW, 7, "command")
+                .replace("{#GUID-5.addr[0].[Address]#}", 
+                    instance.get_address(5, 0, "Address") )
+        )
         
         instance.start()
         while instance.status(7) != STATUS_FINISHED:

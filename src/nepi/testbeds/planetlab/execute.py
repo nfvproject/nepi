@@ -111,7 +111,17 @@ class TestbedController(testbed_impl.TestbedController):
             return None
 
     def get_address(self, guid, index, attribute='Address'):
-        # TODO: fetch real data from planetlab
+        # try the real stuff
+        iface = self._elements.get(guid)
+        if iface and index == 0:
+            if attribute == 'Address':
+                return iface.address
+            elif attribute == 'NetPrefix':
+                return iface.netprefix
+            elif attribute == 'Broadcast':
+                return iface.broadcast
+        
+        # if all else fails, query box
         try:
             return self.box_get_address(guid, int(index), attribute)
         except KeyError, AttributeError:
