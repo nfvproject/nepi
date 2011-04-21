@@ -18,6 +18,7 @@ class NodeIface(object):
         self.address = None
         self.lladdr = None
         self.netprefix = None
+        self.netmask = None
         self.broadcast = True
         self._interface_id = None
 
@@ -26,6 +27,13 @@ class NodeIface(object):
 
         # These get initialized when the iface is connected to the internet
         self.has_internet = False
+
+    def __str__(self):
+        return "%s<ip:%s/%s up mac:%s>" % (
+            self.__class__.__name__,
+            self.address, self.netmask,
+            self.lladdr,
+        )
 
     def add_address(self, address, netprefix, broadcast):
         raise RuntimeError, "Cannot add explicit addresses to public interface"
@@ -40,13 +48,13 @@ class NodeIface(object):
             siblings: other NodeIface elements attached to the same node
         """
         
-        if (self.node or self.node._node_id) is None:
+        if self.node is None or self.node._node_id is None:
             raise RuntimeError, "Cannot pick interface without an assigned node"
         
         avail = self._api.GetInterfaces(
             node_id=self.node._node_id, 
             is_primary=self.primary,
-            fields=('interface_id','mac','netmask','ip') ))
+            fields=('interface_id','mac','netmask','ip') )
         
         used = set([sibling._interface_id for sibling in siblings
                     if sibling._interface_id is not None])
@@ -59,12 +67,13 @@ class NodeIface(object):
                 self.address = candidate['ip']
                 self.lladdr = candidate['mac']
                 self.netprefix = candidate['netmask']
+                self.netmask = ipaddr2.ipv4_dot2mask(self.netprefix) if self.netprefix else None
                 return
         else:
             raise RuntimeError, "Cannot configure interface: cannot find suitable interface in PlanetLab node"
 
     def validate(self):
-        if not element.has_internet:
+        if not self.has_internet:
             raise RuntimeError, "All external interface devices must be connected to the Internet"
     
 
@@ -86,6 +95,14 @@ class TunIface(object):
 
         # These get initialized when the iface is connected to its node
         self.node = None
+
+    def __str__(self):
+        return "%s<ip:%s/%s %s%s>" % (
+            self.__class__.__name__,
+            self.address, self.netmask,
+            " up" if self.up else " down",
+            " snat" if self.snat else "",
+        )
 
     def add_address(self, address, netprefix, broadcast):
         if (self.address or self.netprefix or self.netmask) is not None:

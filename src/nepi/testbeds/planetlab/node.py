@@ -62,12 +62,14 @@ class Node(object):
             + filter(has, self.TAGFILTERS.iterkeys())
         )
     
-    def find_candidates(self):
+    def find_candidates(self, filter_slice_id=None):
         fields = ('node_id',)
         replacements = {'timeframe':self.timeframe}
         
         # get initial candidates (no tag filters)
         basefilters = self.build_filters({}, self.BASEFILTERS)
+        if filter_slice_id:
+            basefilters['|slice_ids'] = (filter_slice_id,)
         
         # keyword-only "pseudofilters"
         extra = {}
@@ -114,6 +116,37 @@ class Node(object):
             candidates = set(filter(predicate, candidates))
             
         return candidates
+
+    def assign_node_id(self, node_id):
+        self._node_id = node_id
+        self.fetch_node_info()
+    
+    def fetch_node_info(self):
+        info = self._api.GetNodes(self._node_id)
+        tags = dict( (t['tagname'],t['value'])
+                     for t in self._api.GetNodeTags(node_id=self._node_id, fields=('tagname','value')) )
+
+        self.min_num_external_ifaces = None
+        self.max_num_external_ifaces = None
+        self.timeframe = 'm'
+        
+        replacements = {'timeframe':self.timeframe}
+        for attr, tag in self.BASEFILTERS.iteritems():
+            if tag in info:
+                value = info[tag]
+                setattr(self, attr, value)
+        for attr, (tag,_) in self.TAGFILTERS.iteritems():
+            tag = tag % replacements
+            if tag in tags:
+                value = tags[tag]
+                setattr(self, attr, value)
+        
+        if 'peer_id' in info:
+            self.site = self._api.peer_map[info['peer_id']]
+        
+        if 'interface_ids' in info:
+            self.min_num_external_ifaces = \
+            self.max_num_external_ifaces = len(info['interface_ids'])
 
     def validate(self):
         pass

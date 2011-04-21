@@ -115,6 +115,10 @@ class PLCAPI(object):
                 (peer['peername'], peer['peer_id'])
                 for peer in peers
             )
+            self._peer_map = dict(
+                (peer['peer_id'], peer['shortname'])
+                for peer in peers
+            )
             return self._peer_map
     
 
@@ -224,10 +228,22 @@ class PLCAPI(object):
         else:
             fieldstuple = ()
         if interfaceIdOrIp is not None:
-            return self.api.GetNodeTags(self.auth, interfaceIdOrIp, *fieldstuple)
+            return self.api.GetInterfaces(self.auth, interfaceIdOrIp, *fieldstuple)
         else:
             filters = kw.pop('filters',{})
             filters.update(kw)
-            return self.api.GetNodeTags(self.auth, filters, *fieldstuple)
+            return self.api.GetInterfaces(self.auth, filters, *fieldstuple)
+        
+    def GetSlices(self, sliceIdOrName=None, fields=None, **kw):
+        if fields is not None:
+            fieldstuple = (fields,)
+        else:
+            fieldstuple = ()
+        if sliceIdOrName is not None:
+            return self.api.GetSlices(self.auth, sliceIdOrName, *fieldstuple)
+        else:
+            filters = kw.pop('filters',{})
+            filters.update(kw)
+            return self.api.GetSlices(self.auth, filters, *fieldstuple)
         
 

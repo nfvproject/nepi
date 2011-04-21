@@ -50,7 +50,7 @@ def create_node(testbed_instance, guid):
 
 def create_nodeiface(testbed_instance, guid):
     parameters = testbed_instance._get_parameters(guid)
-    element = testbed_instance.create_node_iface(parameters)
+    element = testbed_instance._make_node_iface(parameters)
     testbed_instance.elements[guid] = element
 
 def create_tuniface(testbed_instance, guid):
@@ -74,8 +74,6 @@ def start_application(testbed_instance, guid):
     parameters = testbed_instance._get_parameters(guid)
     traces = testbed_instance._get_traces(guid)
     app = testbed_instance.elements[guid]
-    sudo = parameters["sudo"]
-    command = parameters["command"]
     
     app.stdout = testbed_instance.trace_filename(guid, "stdout")
     app.stderr = testbed_instance.trace_filename(guid, "stderr")
@@ -90,17 +88,16 @@ def status_application(testbed_instance, guid):
         return STATUS_NOT_STARTED
     app = testbed_instance.elements[guid]
     # TODO
-    return STATUS_NOT_STARTED
+    return STATUS_FINISHED
 
 ### Configure functions ###
 
 def configure_nodeiface(testbed_instance, guid):
     element = testbed_instance._elements[guid]
-    if not guid in testbed_instance._add_address:
-        return
     
     # Cannot explicitly configure addresses
-    del testbed_instance._add_address[guid]
+    if guid in testbed_instance._add_address:
+        del testbed_instance._add_address[guid]
     
     # Get siblings
     node_guid = testbed_instance.get_connected(guid, "node", "devs")[0]
@@ -119,6 +116,7 @@ def configure_tuniface(testbed_instance, guid):
     element = testbed_instance._elements[guid]
     if not guid in testbed_instance._add_address:
         return
+    
     addresses = testbed_instance._add_address[guid]
     for address in addresses:
         (address, netprefix, broadcast) = address
@@ -129,6 +127,12 @@ def configure_tuniface(testbed_instance, guid):
 
 def configure_node(testbed_instance, guid):
     element = testbed_instance._elements[guid]
+    
+    # If we have only one candidate, simply use it
+    candidates = element.find_candidates(
+        filter_slice_id = testbed_instance.slice_id)
+    if len(candidates) == 1:
+        element.assign_node_id(iter(candidates).next())
     
     # Do some validations
     element.validate()
@@ -354,9 +358,9 @@ traces = dict({
         }) 
     })
 
-create_order = [ NODE, NODEIFACE, TUNIFACE, APPLICATION ]
+create_order = [ INTERNET, NODE, NODEIFACE, TUNIFACE, APPLICATION ]
 
-configure_order = [ NODE, NODEIFACE, TUNIFACE, APPLICATION ]
+configure_order = [ INTERNET, NODE, NODEIFACE, TUNIFACE, APPLICATION ]
 
 factories_info = dict({
     NODE: dict({
@@ -421,6 +425,20 @@ testbed_attributes = dict({
         "slice": dict({
             "name": "slice",
             "help": "The name of the PlanetLab slice to use",
+            "type": Attribute.STRING,
+            "flags": Attribute.DesignOnly | Attribute.HasNoDefaultValue,
+            "validation_function": validation.is_string
+        }),
+        "auth_user": dict({
+            "name": "authUser",
+            "help": "The name of the PlanetLab user to use for API calls - it must have at least a User role.",
+            "type": Attribute.STRING,
+            "flags": Attribute.DesignOnly | Attribute.HasNoDefaultValue,
+            "validation_function": validation.is_string
+        }),
+        "auth_pass": dict({
+            "name": "authPass",
+            "help": "The PlanetLab user's password.",
             "type": Attribute.STRING,
             "flags": Attribute.DesignOnly | Attribute.HasNoDefaultValue,
             "validation_function": validation.is_string
