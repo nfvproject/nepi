@@ -199,7 +199,7 @@ attributes = dict({
                 "validation_function": validation.is_bool,
             }),
     "hostname": dict({      
-                "name": "hosname",
+                "name": "hostname",
                 "help": "Constrain hostname during resource discovery. May use wildcards.",
                 "type": Attribute.STRING, 
                 "flags": Attribute.DesignOnly,

@@ -5,7 +5,7 @@ from nepi.core.design import ExperimentDescription, FactoriesProvider
 import unittest
 
 class PlanetlabDesignTestCase(unittest.TestCase):
-    def test_design_if(self):
+    def make_test_design(self):
         exp_desc = ExperimentDescription()
         testbed_version = "01"
         testbed_id = "planetlab"
@@ -24,6 +24,38 @@ class PlanetlabDesignTestCase(unittest.TestCase):
         app = tstbd_desc.create("Application")
         app.set_attribute_value("command", "ping -qc10 10.0.0.2")
         app.connector("node").connect(node1.connector("apps"))
+        
+        return exp_desc, tstbd_desc, node1, node2, iface1, iface2, app
+        
+    def test_design_simple(self):
+        exp_desc, tstbd_desc, node1, node2, iface1, iface2, app = self.make_test_design()
+
+        xml = exp_desc.to_xml()
+        exp_desc2 = ExperimentDescription()
+        exp_desc2.from_xml(xml)
+        xml2 = exp_desc2.to_xml()
+        self.assertTrue(xml == xml2)
+
+    def test_design_constrained(self):
+        exp_desc, tstbd_desc, node1, node2, iface1, iface2, app = self.make_test_design()
+        
+        node1.set_attribute_value("hostname", "onelab*.inria.fr")
+        node2.set_attribute_value("hostname", "onelab*.inria.fr")
+
+        xml = exp_desc.to_xml()
+        exp_desc2 = ExperimentDescription()
+        exp_desc2.from_xml(xml)
+        xml2 = exp_desc2.to_xml()
+        self.assertTrue(xml == xml2)
+
+    def test_design_constrained2(self):
+        exp_desc, tstbd_desc, node1, node2, iface1, iface2, app = self.make_test_design()
+        
+        node1.set_attribute_value("minReliability", 90.0)
+        node1.set_attribute_value("operatingSystem", "f12")
+        node2.set_attribute_value("minReliability", 50.0)
+        node2.set_attribute_value("architecture", "x86_64")
+
         xml = exp_desc.to_xml()
         exp_desc2 = ExperimentDescription()
         exp_desc2.from_xml(xml)
