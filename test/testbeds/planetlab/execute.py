@@ -58,13 +58,14 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.start()
         while instance.status(7) != STATUS_FINISHED:
             time.sleep(0.5)
-        ping_result = instance.trace(7, "stdout")
-        comp_result = r"""PING .* \(.*) \d*\(\d*\) bytes of data.
+        ping_result = instance.trace(7, "stdout") or ""
+        comp_result = r"""PING .* \(.*\) \d*\(\d*\) bytes of data.
 
 --- .* ping statistics ---
 1 packets transmitted, 1 received, 0% packet loss, time \d*ms.*
 """
-        self.assertTrue(re.match(comp_result, ping_result, re.MULTILINE))
+        self.assertTrue(re.match(comp_result, ping_result, re.MULTILINE),
+            "Unexpected trace:\n" + ping_result)
         instance.stop()
         instance.shutdown()
         

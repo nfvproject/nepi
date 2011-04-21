@@ -75,20 +75,23 @@ def start_application(testbed_instance, guid):
     traces = testbed_instance._get_traces(guid)
     app = testbed_instance.elements[guid]
     
-    app.stdout = testbed_instance.trace_filename(guid, "stdout")
-    app.stderr = testbed_instance.trace_filename(guid, "stderr")
+    app.stdout = "stdout" in traces
+    app.stderr = "stderr" in traces
     
-    # TODO
-    pass
+    app.start()
+
+def stop_application(testbed_instance, guid):
+    app = testbed_instance.elements[guid]
+    app.stop()
 
 ### Status functions ###
 
 def status_application(testbed_instance, guid):
     if guid not in testbed_instance.elements.keys():
         return STATUS_NOT_STARTED
+    
     app = testbed_instance.elements[guid]
-    # TODO
-    return STATUS_FINISHED
+    return app.status()
 
 ### Configure functions ###
 
@@ -120,7 +123,7 @@ def configure_tuniface(testbed_instance, guid):
     addresses = testbed_instance._add_address[guid]
     for address in addresses:
         (address, netprefix, broadcast) = address
-        # TODO
+        raise NotImplementedError, "C'mon... TUNs are hard..."
     
     # Do some validations
     element.validate()
@@ -409,6 +412,7 @@ factories_info = dict({
             "create_function": create_application,
             "start_function": start_application,
             "status_function": status_application,
+            "stop_function": stop_application,
             "box_attributes": ["command", "sudo"],
             "connector_types": ["node"],
             "traces": ["stdout", "stderr"]

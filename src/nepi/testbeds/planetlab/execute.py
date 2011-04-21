@@ -137,10 +137,23 @@ class TestbedController(testbed_impl.TestbedController):
         for element in self._elements.values():
             element.destroy()
 
-    def trace_filename(self, guid, trace_id):
-        # TODO: Need to be defined inside a home!!!! with and experiment id_code
-        return os.path.join(self.home_directory, "%d_%s" % (guid, trace_id))
-
+    def trace(self, guid, trace_id, attribute='value'):
+        app = self._elements[guid]
+        
+        if attribute == 'value':
+            path = app.sync_trace(self.home_directory, trace_id)
+            if path:
+                fd = open(path, "r")
+                content = fd.read()
+                fd.close()
+            else:
+                content = None
+        elif attribute == 'path':
+            content = app.remote_trace_path(trace_id)
+        else:
+            content = None
+        return content
+        
     def follow_trace(self, trace_id, trace):
         self._traces[trace_id] = trace
 
