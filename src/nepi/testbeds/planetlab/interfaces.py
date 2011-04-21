@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from constants import TESTBED_ID
-import nepi.util.ipaddr
+import nepi.util.ipaddr2 as ipaddr2
 import plcapi
 
 class NodeIface(object):
@@ -95,7 +95,7 @@ class TunIface(object):
         
         self.address = address
         self.netprefix = netprefix
-        self.netmask = nepi.util.ipaddr.ipv4_dot2mask(netprefix)
+        self.netmask = ipaddr2.ipv4_dot2mask(netprefix)
 
     def validate(self):
         pass

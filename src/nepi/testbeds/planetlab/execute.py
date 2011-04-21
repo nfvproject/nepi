@@ -124,4 +124,16 @@ class TestbedController(testbed_impl.TestbedController):
     
     def _make_internet(self, parameters):
         return self._node.Internet()
+    
+    def _make_application(self, parameters):
+        app = self._app.Application()
         
+        # Note: there is 1-to-1 correspondence between attribute names
+        #   If that changes, this has to change as well
+        for attr in parameters.get_attribute_names():
+            setattr(app, attr, parameters.get_attribute_value(attr))
+        
+        return app
+        
+
+

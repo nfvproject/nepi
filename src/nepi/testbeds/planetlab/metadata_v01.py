@@ -21,11 +21,14 @@ PL_TESTBED_ID = "planetlab"
 def connect_node_iface_node(testbed_instance, node, iface):
     iface.node = node
 
-def connect_node_iface_inet(testbed_instance, node, internet):
+def connect_node_iface_inet(testbed_instance, iface, inet):
     iface.has_internet = True
 
 def connect_tun_iface_node(testbed_instance, node, iface):
     iface.node = node
+
+def connect_app(testbed_instance, node, app):
+    app.node = node
 
 ### Creation functions ###
 
@@ -57,12 +60,12 @@ def create_tuniface(testbed_instance, guid):
 
 def create_application(testbed_instance, guid):
     parameters = testbed_instance._get_parameters(guid)
-    element = testbed_instance._make_internet(parameters)
+    element = testbed_instance._make_application(parameters)
     testbed_instance.elements[guid] = element
 
 def create_internet(testbed_instance, guid):
     parameters = testbed_instance._get_parameters(guid)
-    element = None #TODO
+    element = testbed_instance._make_internet(parameters)
     testbed_instance.elements[guid] = element
 
 ### Start/Stop functions ###
@@ -70,21 +73,13 @@ def create_internet(testbed_instance, guid):
 def start_application(testbed_instance, guid):
     parameters = testbed_instance._get_parameters(guid)
     traces = testbed_instance._get_traces(guid)
-    user = parameters["user"]
+    app = testbed_instance.elements[guid]
+    sudo = parameters["sudo"]
     command = parameters["command"]
-    stdout = stderr = None
-    if "stdout" in traces:
-        # TODO
-        pass
-    if "stderr" in traces:
-        # TODO
-        pass
-
-    node_guids = testbed_instance.get_connected(guid, "node", "apps")
-    if not node_guid:
-        raise RuntimeError, "Can't instantiate interface %d outside planetlab node" % (guid,)
     
-    node = testbed_instance.elements[node_guids[0]]
+    app.stdout = testbed_instance.trace_filename(guid, "stdout")
+    app.stderr = testbed_instance.trace_filename(guid, "stderr")
+    
     # TODO
     pass
 
@@ -189,7 +184,7 @@ connections = [
     dict({
         "from": (TESTBED_ID, NODE, "apps"),
         "to":   (TESTBED_ID, APPLICATION, "node"),
-        "code": None,
+        "code": connect_app,
         "can_cross": False
     })
 ]
@@ -331,12 +326,13 @@ attributes = dict({
                 "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_string
             }),
-    "user": dict({
+    "sudo": dict({
                 "name": "user",
                 "help": "System user",
-                "type": Attribute.STRING,
+                "type": Attribute.BOOL,
                 "flags": Attribute.DesignOnly,
-                "validation_function": validation.is_string
+                "value": False,
+                "validation_function": validation.is_bool
             }),
     "stdin": dict({
                 "name": "stdin",
@@ -409,7 +405,7 @@ factories_info = dict({
             "create_function": create_application,
             "start_function": start_application,
             "status_function": status_application,
-            "box_attributes": ["command", "user"],
+            "box_attributes": ["command", "sudo"],
             "connector_types": ["node"],
             "traces": ["stdout", "stderr"]
         }),
