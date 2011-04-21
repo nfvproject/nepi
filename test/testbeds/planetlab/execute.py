@@ -7,7 +7,6 @@ from nepi.testbeds import planetlab
 import os
 import shutil
 import tempfile
-import test_util
 import time
 import unittest
 import re
