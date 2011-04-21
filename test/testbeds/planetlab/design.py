@@ -11,6 +11,7 @@ class PlanetlabDesignTestCase(unittest.TestCase):
         testbed_id = "planetlab"
         provider = FactoriesProvider(testbed_id, testbed_version)
         tstbd_desc = exp_desc.add_testbed_description(provider)
+        tstbd_desc.set_attribute_value("slice", "inria_nepi")
         node1 = tstbd_desc.create("Node")
         node2 = tstbd_desc.create("Node")
         iface1 = tstbd_desc.create("NodeInterface")
