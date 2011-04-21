@@ -6,6 +6,13 @@ import sys
 class ExperimentData(object):
     def __init__(self):
         self.data = dict()
+    
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__, self.data)
+    
+    def __str__(self):
+        from pprint import pformat
+        return "%s:%s" % (self.__class__, pformat(self.data))
 
     @property
     def guids(self):

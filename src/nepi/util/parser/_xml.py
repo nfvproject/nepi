@@ -5,6 +5,8 @@ from nepi.core.attributes import Attribute
 from nepi.util.parser.base import ExperimentData, ExperimentParser
 from xml.dom import minidom
 
+import sys
+
 class XmlExperimentParser(ExperimentParser):
     def to_xml(self, experiment_description):
         data = self.to_data(experiment_description)
@@ -21,7 +23,13 @@ class XmlExperimentParser(ExperimentParser):
             else:
                 self.box_data_to_xml(doc, elements_tags, guid, data)
         doc.appendChild(exp_tag)
-        xml = doc.toprettyxml(indent="    ", encoding="UTF-8")
+        
+        try:
+            xml = doc.toprettyxml(indent="    ", encoding="UTF-8")
+        except:
+            print >>sys.stderr, "Oops: generating XML from %s" % (data,)
+            raise
+        
         return xml
 
     def testbed_data_to_xml(self, doc, parent_tag, guid, data):
@@ -65,22 +73,24 @@ class XmlExperimentParser(ExperimentParser):
     def factory_attributes_data_to_xml(self, doc, parent_tag, guid, data):
         factory_attributes_tag = doc.createElement("factory_attributes")
         for (name, value) in data.get_factory_attribute_data(guid):
-            factory_attribute_tag = doc.createElement("factory_attribute") 
-            factory_attributes_tag.appendChild(factory_attribute_tag)
-            factory_attribute_tag.setAttribute("name", name)
-            factory_attribute_tag.setAttribute("value", str(value))
-            factory_attribute_tag.setAttribute("type", self.type_to_standard(value))
+            if value is not None:
+                factory_attribute_tag = doc.createElement("factory_attribute") 
+                factory_attributes_tag.appendChild(factory_attribute_tag)
+                factory_attribute_tag.setAttribute("name", name)
+                factory_attribute_tag.setAttribute("value", str(value))
+                factory_attribute_tag.setAttribute("type", self.type_to_standard(value))
         if factory_attributes_tag.hasChildNodes():
             parent_tag.appendChild(factory_attributes_tag)
 
     def attributes_data_to_xml(self, doc, parent_tag, guid, data):
         attributes_tag = doc.createElement("attributes") 
         for name, value in data.get_attribute_data(guid):
-            attribute_tag = doc.createElement("attribute") 
-            attributes_tag.appendChild(attribute_tag)
-            attribute_tag.setAttribute("name", name)
-            attribute_tag.setAttribute("value", str(value))
-            attribute_tag.setAttribute("type", self.type_to_standard(value))
+            if value is not None:
+                attribute_tag = doc.createElement("attribute") 
+                attributes_tag.appendChild(attribute_tag)
+                attribute_tag.setAttribute("name", name)
+                attribute_tag.setAttribute("value", str(value))
+                attribute_tag.setAttribute("type", self.type_to_standard(value))
         if attributes_tag.hasChildNodes():
             parent_tag.appendChild(attributes_tag)
 

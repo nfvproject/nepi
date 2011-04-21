@@ -2,13 +2,9 @@
 # -*- coding: utf-8 -*-
 
 from nepi.core.design import ExperimentDescription, FactoriesProvider
-import os
-import shutil
-import test_util
 import unittest
-import uuid
 
-class NetnsDesignTestCase(unittest.TestCase):
+class PlanetlabDesignTestCase(unittest.TestCase):
     def test_design_if(self):
         exp_desc = ExperimentDescription()
         testbed_version = "01"
