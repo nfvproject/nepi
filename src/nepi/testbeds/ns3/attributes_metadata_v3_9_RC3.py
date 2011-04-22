@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
+from factories_metadata_v3_9_RC3 import wifi_standards
 import validation as ns3_validation
 from nepi.core.attributes import Attribute
 from nepi.util import validation
@@ -514,7 +516,7 @@ attributes = dict({
         "validation_function": validation.is_enum,
         "value": "RowFirst",
         "allowed": ["RowFirst",
-     "ColumnFirst"],
+            "ColumnFirst"],
         "type": Attribute.ENUM,
         "help": "The type of layout."
     }),
@@ -2105,6 +2107,13 @@ attributes = dict({
         "type": Attribute.DOUBLE,
         "help": "The speed (m/s)"
     }),
+    "RndSpeed": dict({
+        "name": "Speed",
+        "validation_function": validation.is_string,
+        "value": "Uniform:1:2",
+        "type": Attribute.STRING,
+        "help": "Random variable to control the speed (m/s)."
+    }),
     "Port": dict({
         "name": "Port",
         "validation_function": validation.is_integer,
@@ -2375,5 +2384,13 @@ attributes = dict({
         "value": "75000ns",
         "type": Attribute.STRING,
         "help": "When this timeout expires, the RTS/CTS handshake has failed."
+    }),
+    "Standard": dict({
+        "name": "Standard",
+        "validation_function": validation.is_string,
+        "value": "WIFI_PHY_STANDARD_80211a",
+        "type": Attribute.ENUM,
+        "allowed": wifi_standards.keys(),
+        "help": "Wifi PHY standard"
     }),
 })

@@ -157,8 +157,8 @@ def create_wifi_standard_model(testbed_instance, guid):
     create_element(testbed_instance, guid)
     element = testbed_instance._elements[guid]
     parameters = testbed_instance._get_parameters(guid)
-    if "standard" in parameters:
-        standard = parameters["standard"]
+    if "Standard" in parameters:
+        standard = parameters["Standard"]
         if standard:
             elements.ConfigureStandard(wifi_standards[standard])
 
@@ -1194,7 +1194,8 @@ factories_info = dict({
             "Slot",
             "Pifs",
             "MaxPropagationDelay",
-            "Ssid"],
+            "Ssid",
+            "Standard"],
     }),
      "ns3::UdpEchoClient": dict({
         "category": "Application",
@@ -1357,7 +1358,8 @@ factories_info = dict({
             "Slot",
             "Pifs",
             "MaxPropagationDelay",
-            "Ssid"],
+            "Ssid",
+            "Standard"],
     }),
      "ns3::YansErrorRateModel": dict({
         "category": "Error",
@@ -1455,7 +1457,8 @@ factories_info = dict({
             "TxPowerStart",
             "RxNoiseFigure",
             "ChannelSwitchDelay",
-            "ChannelNumber"],
+            "ChannelNumber",
+            "Standard"],
         "traces": ["yanswifipcap"]
     }),
      "ns3::WifiRadioEnergyModel": dict({
@@ -1784,7 +1787,7 @@ factories_info = dict({
         "help": "",
         "connector_types": ["node"],
         "box_attributes": ["Bounds",
-            "Speed",
+            "RndSpeed",
             "Pause",
             "Position",
             "Velocity"],

@@ -301,6 +301,7 @@ class ExperimentController(object):
         self._testbeds = dict()
         self._access_config = dict()
         self._netrefs = dict()
+        self._crossdata = dict()
         self._root_dir = root_dir
 
         self.persist_experiment_xml()
@@ -330,7 +331,7 @@ class ExperimentController(object):
             thread.join()
 
     def start(self):
-        self._create_testbed_instances()
+        self._init_testbed_controllers()
         
         # persist testbed connection data, for potential recovery
         self._persist_testbed_proxies()
@@ -425,7 +426,7 @@ class ExperimentController(object):
         self._load_testbed_proxies()
         
         # recreate testbed proxies by reconnecting only
-        self._create_testbed_instances(recover=True)
+        self._init_testbed_controllers(recover = True)
 
     def is_finished(self, guid):
         for testbed in self._testbeds.values():
@@ -497,31 +498,18 @@ class ExperimentController(object):
                                     if fail_if_undefined:
                                         raise ValueError, "Unresolvable GUID: %r, in netref: %r" % (ref_guid, expr)
 
-    def _create_testbed_instances(self, recover = False):
+    def _init_testbed_controllers(self, recover = False):
         parser = XmlExperimentParser()
         data = parser.from_xml_to_data(self._experiment_xml)
         element_guids = list()
         label_guids = dict()
         data_guids = data.guids
-        netrefs = self._netrefs
+
+        # create testbed controllers
         for guid in data_guids:
             if data.is_testbed_data(guid):
-                (testbed_id, testbed_version) = data.get_testbed_data(guid)
-                access_config = None if guid not in self._access_config else\
-                        self._access_config[guid]
-                
-                if recover and access_config is None:
-                    # need to create one
-                    access_config = self._access_config[guid] = proxy.AccessConfiguration()
-                if access_config is not None:
-                    # force recovery mode 
-                    access_config.set_attribute_value("recover",recover)
-                
-                testbed = proxy.create_testbed_instance(testbed_id, 
-                        testbed_version, access_config)
-                for (name, value) in data.get_attribute_data(guid):
-                    testbed.defer_configure(name, value)
-                self._testbeds[guid] = testbed
+                self._create_testbed_controller(guid, data, element_guids, 
+                        recover)
             else:
                 element_guids.append(guid)
                 label = data.get_attribute_data(guid, "label")
@@ -529,6 +517,16 @@ class ExperimentController(object):
                     if label in label_guids:
                         raise RuntimeError, "Label %r is not unique" % (label,)
                     label_guids[label] = guid
+
+        # replace references to elements labels for its guid
+        self._resolve_labels(data, data_guids, label_guids)
+    
+        # program testbed controllers
+        if not recover:
+            self._program_testbed_controllers(element_guids, data)
+
+    def _resolve_labels(self, data, data_guids, label_guids):
+        netrefs = self._netrefs
         for guid in data_guids:
             if not data.is_testbed_data(guid):
                 for name, value in data.get_attribute_data(guid):
@@ -541,9 +539,9 @@ class ExperimentController(object):
                                 if ref_guid is not None:
                                     value = ATTRIBUTE_PATTERN_BASE.sub(
                                         ATTRIBUTE_PATTERN_GUID_SUB % dict(
-                                            guid='GUID-%d' % (ref_guid,),
-                                            expr=match.group("expr"),
-                                            label=label), 
+                                            guid = 'GUID-%d' % (ref_guid,),
+                                            expr = match.group("expr"),
+                                            label = label), 
                                         value)
                                     data.set_attribute_data(guid, name, value)
                                     
@@ -552,11 +550,27 @@ class ExperimentController(object):
                                     # communication at configuration time
                                     # (which could require high-latency network I/O)
                                     (testbed_guid, factory_id) = data.get_box_data(guid)
-                                    netrefs.setdefault((testbed_guid,guid),set()).add(name)
-        if not recover:
-            self._program_testbed_instances(element_guids, data)
+                                    netrefs.setdefault((testbed_guid, guid), set()).add(name)
 
-    def _program_testbed_instances(self, element_guids, data):
+    def _create_testbed_controller(self, guid, data, element_guids, recover):
+        (testbed_id, testbed_version) = data.get_testbed_data(guid)
+        access_config = None if guid not in self._access_config else\
+                self._access_config[guid]
+        
+        if recover and access_config is None:
+            # need to create one
+            access_config = self._access_config[guid] = proxy.AccessConfiguration()
+        if access_config is not None:
+            # force recovery mode 
+            access_config.set_attribute_value("recover",recover)
+        
+        testbed = proxy.create_testbed_controller(testbed_id, 
+                testbed_version, access_config)
+        for (name, value) in data.get_attribute_data(guid):
+            testbed.defer_configure(name, value)
+        self._testbeds[guid] = testbed
+
+    def _program_testbed_controllers(self, element_guids, data):
         for guid in element_guids:
             (testbed_guid, factory_id) = data.get_box_data(guid)
             testbed = self._testbeds[testbed_guid]

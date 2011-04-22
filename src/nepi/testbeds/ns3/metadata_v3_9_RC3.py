@@ -62,8 +62,8 @@ def connect_node_other(tesbed_instance, node, other):
     node.AggregateObject(other)
 
 def connect_fd_tap(tesbed_instance, fd, tap):
+    print "CONNNECT TAP!!!"
     # TODO!
-    pass
 
 ### Connector information ###
 

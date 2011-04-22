@@ -290,7 +290,7 @@ def create_controller(xml, access_config = None):
                 agent = agent, launch = launch)
     raise RuntimeError("Unsupported access configuration '%s'" % mode)
 
-def create_testbed_instance(testbed_id, testbed_version, access_config):
+def create_testbed_controller(testbed_id, testbed_version, access_config):
     mode = None if not access_config \
             else access_config.get_attribute_value("mode")
     launch = True if not access_config \
@@ -298,7 +298,7 @@ def create_testbed_instance(testbed_id, testbed_version, access_config):
     if not mode or mode == AccessConfiguration.MODE_SINGLE_PROCESS:
         if not launch:
             raise ValueError, "Unsupported instantiation mode: %s with lanch=False" % (mode,)
-        return  _build_testbed_instance(testbed_id, testbed_version)
+        return  _build_testbed_controller(testbed_id, testbed_version)
     elif mode == AccessConfiguration.MODE_DAEMON:
         (root_dir, log_level, user, host, port, agent) = \
                 get_access_config_params(access_config)
@@ -307,7 +307,7 @@ def create_testbed_instance(testbed_id, testbed_version, access_config):
                 user = user, agent = agent, launch = launch)
     raise RuntimeError("Unsupported access configuration '%s'" % mode)
 
-def _build_testbed_instance(testbed_id, testbed_version):
+def _build_testbed_controller(testbed_id, testbed_version):
     mod_name = "nepi.testbeds.%s" % (testbed_id.lower())
     if not mod_name in sys.modules:
         __import__(mod_name)
@@ -322,7 +322,7 @@ class TestbedControllerServer(server.Server):
         self._testbed = None
 
     def post_daemonize(self):
-        self._testbed = _build_testbed_instance(self._testbed_id, 
+        self._testbed = _build_testbed_controller(self._testbed_id, 
                 self._testbed_version)
 
     def reply_action(self, msg):

@@ -116,7 +116,7 @@ class Attribute(object):
                 (value >= self.range[0] and value <= self.range[1])
 
     def _is_in_allowed_values(self, value):
-        return not self.allowed or value in self._allowed
+        return not self._allowed or value in self._allowed
 
     def _is_valid(self, value):
         return not self._validation_function or \
