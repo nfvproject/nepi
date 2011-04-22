@@ -486,9 +486,11 @@ class ExperimentController(object):
                                     if component not in COMPONENT_GETTERS:
                                         raise ValueError, "Malformed netref: %r - unknown component" % (expr,)
                                     else:
-                                        value = COMPONENT_GETTERS[component](
+                                        ref_value = COMPONENT_GETTERS[component](
                                             ref_testbed, ref_guid, component_index, attribute)
-                                        if value: 
+                                        if ref_value:
+                                            testbed.set(TIME_NOW, guid, name, 
+                                                value.replace(match.group(), ref_value))
                                             break
                                 else:
                                     # couldn't find value

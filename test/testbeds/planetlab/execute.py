@@ -49,7 +49,7 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
         instance.defer_connect(4, "inet", 6, "devs")
         instance.defer_connect(5, "inet", 6, "devs")
         instance.defer_create(7, "Application")
-        instance.defer_create_set(7, "command", "ping -qc1 {#GUID-5.addr[0].[Address]#}")
+        instance.defer_create_set(7, "command", "ping -qc1 {#[GUID-5].addr[0].[Address]#}")
         instance.defer_add_trace(7, "stdout")
         instance.defer_connect(7, "node", 2, "apps")
 
@@ -61,7 +61,7 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
         # Manually replace netref
         instance.set(TIME_NOW, 7, "command",
             instance.get(TIME_NOW, 7, "command")
-                .replace("{#GUID-5.addr[0].[Address]#}", 
+                .replace("{#[GUID-5].addr[0].[Address]#}", 
                     instance.get_address(5, 0, "Address") )
         )
 

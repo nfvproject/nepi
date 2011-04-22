@@ -113,6 +113,8 @@ class TestbedController(testbed_impl.TestbedController):
             return None
 
     def get_address(self, guid, index, attribute='Address'):
+        index = int(index)
+        
         # try the real stuff
         iface = self._elements.get(guid)
         if iface and index == 0:
@@ -125,7 +127,7 @@ class TestbedController(testbed_impl.TestbedController):
         
         # if all else fails, query box
         try:
-            return self.box_get_address(guid, int(index), attribute)
+            return self.box_get_address(guid, index, attribute)
         except KeyError, AttributeError:
             return None
 
