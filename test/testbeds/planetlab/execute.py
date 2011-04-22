@@ -21,9 +21,11 @@ class NetnsExecuteTestCase(unittest.TestCase):
     def test_simple(self):
         testbed_version = "01"
         instance = planetlab.TestbedController(testbed_version)
+        slicename = "inria_nepi12"
         
         instance.defer_configure("homeDirectory", self.root_dir)
-        instance.defer_configure("slice", "inria_nepi12")
+        instance.defer_configure("slice", slicename)
+        instance.defer_configure("sliceSSHKey", "/user/%s/home/.ssh/id_rsa_planetlab" % (getpass.getuser(),))
         instance.defer_configure("authUser", "claudio-daniel.freire@inria.fr")
         instance.defer_configure("authPass", getpass.getpass())
         
@@ -46,6 +48,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.do_setup()
         instance.do_create()
         instance.do_connect()
+        instance.do_preconfigure()
         instance.do_configure()
         
         # Manually replace netref

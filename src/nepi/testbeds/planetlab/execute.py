@@ -55,6 +55,8 @@ class TestbedController(testbed_impl.TestbedController):
             get_attribute_value("authUser")
         self.authString = self._attributes.\
             get_attribute_value("authPass")
+        self.sliceSSHKey = self._attributes.\
+            get_attribute_value("sliceSSHKey")
 
     def do_create(self):
         # Create node elements per XML data
@@ -135,7 +137,8 @@ class TestbedController(testbed_impl.TestbedController):
         for trace in self._traces.values():
             trace.close()
         for element in self._elements.values():
-            element.destroy()
+            pass
+            #element.destroy()
 
     def trace(self, guid, trace_id, attribute='value'):
         app = self._elements[guid]

@@ -45,6 +45,7 @@ GUIDS  = 27
 GET_ROUTE = 28
 GET_ADDRESS = 29
 RECOVER = 30
+DO_PRECONFIGURE    = 31
 
 # PARAMETER TYPE
 STRING  =  100
@@ -83,6 +84,7 @@ testbed_messages = dict({
     DO_CREATE:  "%d" % DO_CREATE,
     DO_CONNECT: "%d" % DO_CONNECT,
     DO_CONFIGURE:   "%d" % DO_CONFIGURE,
+    DO_PRECONFIGURE:   "%d" % DO_PRECONFIGURE,
     DO_CROSS_CONNECT:   "%d" % DO_CROSS_CONNECT,
     GET:    "%d|%s" % (GET, "%s|%d|%s"),
     SET:    "%d|%s" % (SET, "%s|%d|%s|%s|%d"),
@@ -117,6 +119,7 @@ instruction_text = dict({
     DO_CREATE:  "DO_CREATE",
     DO_CONNECT: "DO_CONNECT",
     DO_CONFIGURE:   "DO_CONFIGURE",
+    DO_PRECONFIGURE:   "DO_PRECONFIGURE",
     DO_CROSS_CONNECT:   "DO_CROSS_CONNECT",
     GET:    "GET",
     SET:    "SET",
@@ -365,6 +368,8 @@ class TestbedControllerServer(server.Server):
                     reply = self.do_connect(params)
                 elif instruction == DO_CONFIGURE:
                     reply = self.do_configure(params)
+                elif instruction == DO_PRECONFIGURE:
+                    reply = self.do_preconfigure(params)
                 elif instruction == DO_CROSS_CONNECT:
                     reply = self.do_cross_connect(params)
                 elif instruction == GET:
@@ -509,6 +514,10 @@ class TestbedControllerServer(server.Server):
 
     def do_configure(self, params):
         self._testbed.do_configure()
+        return "%d|%s" % (OK, "")
+
+    def do_preconfigure(self, params):
+        self._testbed.do_preconfigure()
         return "%d|%s" % (OK, "")
 
     def do_cross_connect(self, params):
@@ -859,6 +868,16 @@ class TestbedControllerProxy(object):
 
     def do_configure(self):
         msg = testbed_messages[DO_CONFIGURE]
+        self._client.send_msg(msg)
+        reply = self._client.read_reply()
+        result = reply.split("|")
+        code = int(result[0])
+        text = base64.b64decode(result[1])
+        if code == ERROR:
+            raise RuntimeError(text)
+
+    def do_preconfigure(self):
+        msg = testbed_messages[DO_PRECONFIGURE]
         self._client.send_msg(msg)
         reply = self._client.read_reply()
         result = reply.split("|")

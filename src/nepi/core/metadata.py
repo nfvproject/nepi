@@ -72,6 +72,15 @@ class VersionedMetadataInfo(object):
         raise NotImplementedError
 
     @property
+    def preconfigure_order(self):
+        """ list of factory ids that indicates the order in which the elements
+        should be preconfigured.
+        
+        Default: same as configure_order
+        """
+        return self.configure_order
+
+    @property
     def factories_info(self):
         """ dictionary of dictionaries of factory specific information
             factory_id: dict({
@@ -83,6 +92,9 @@ class VersionedMetadataInfo(object):
                 "start_function": function for element starting,
                 "stop_function": function for element stoping,
                 "status_function": function for retrieving element status,
+                "preconfigure_function": function for element preconfiguration,
+                    (just after connections are made, 
+                    just before netrefs are resolved)
                 "configure_function": function for element configuration,
                 "factory_attributes": list of references to attribute_ids,
                 "box_attributes": list of regerences to attribute_ids,
@@ -145,6 +157,10 @@ class Metadata(object):
     def configure_order(self):
         return self._metadata.configure_order
 
+    @property
+    def preconfigure_order(self):
+        return self._metadata.preconfigure_order
+
     def testbed_attributes(self):
         attributes = AttributesMap()
 
@@ -198,22 +214,17 @@ class Metadata(object):
         from nepi.core.execute import Factory
         factories = list()
         for factory_id, info in self._metadata.factories_info.iteritems():
-            create_function = info["create_function"] \
-                    if "create_function" in info else None
-            start_function = info["start_function"] \
-                    if "start_function" in info else None
-            stop_function = info["stop_function"] \
-                    if "stop_function" in info else None
-            status_function = info["status_function"] \
-                    if "status_function" in info else None
-            configure_function = info["configure_function"] \
-                    if "configure_function" in info else None
-            allow_addresses = info["allow_addresses"] \
-                    if "allow_addresses" in info else False
-            allow_routes = info["allow_routes"] \
-                    if "allow_routes" in info else False
+            create_function = info.get("create_function")
+            start_function = info.get("start_function")
+            stop_function = info.get("stop_function")
+            status_function = info.get("status_function")
+            configure_function = info.get("configure_function")
+            preconfigure_function = info.get("preconfigure_function")
+            allow_addresses = info.get("allow_addresses", False)
+            allow_routes = info.get("allow_routes", False)
             factory = Factory(factory_id, create_function, start_function,
-                    stop_function, status_function, configure_function,
+                    stop_function, status_function, 
+                    configure_function, preconfigure_function,
                     allow_addresses, allow_routes)
                     
             # standard attributes

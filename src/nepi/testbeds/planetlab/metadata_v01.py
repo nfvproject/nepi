@@ -82,7 +82,7 @@ def start_application(testbed_instance, guid):
 
 def stop_application(testbed_instance, guid):
     app = testbed_instance.elements[guid]
-    app.stop()
+    app.kill()
 
 ### Status functions ###
 
@@ -129,16 +129,30 @@ def configure_tuniface(testbed_instance, guid):
     element.validate()
 
 def configure_node(testbed_instance, guid):
-    element = testbed_instance._elements[guid]
+    node = testbed_instance._elements[guid]
     
     # If we have only one candidate, simply use it
-    candidates = element.find_candidates(
+    candidates = node.find_candidates(
         filter_slice_id = testbed_instance.slice_id)
     if len(candidates) == 1:
-        element.assign_node_id(iter(candidates).next())
+        node.assign_node_id(iter(candidates).next())
     
     # Do some validations
-    element.validate()
+    node.validate()
+
+def configure_application(testbed_instance, guid):
+    app = testbed_instance._elements[guid]
+    
+    # Just inject configuration stuff
+    app.home_path = "nepi-app-%s" % (guid,)
+    app.ident_path = testbed_instance.sliceSSHKey
+    app.slicename = testbed_instance.slicename
+    
+    # Do some validations
+    app.validate()
+    
+    # Install stuff
+    app.setup()
 
 ### Factory information ###
 
@@ -358,7 +372,7 @@ traces = dict({
     "stderr": dict({
                 "name": "stderr",
                 "help": "Application standard error",
-        }) 
+              }) 
     })
 
 create_order = [ INTERNET, NODE, NODEIFACE, TUNIFACE, APPLICATION ]
@@ -371,7 +385,7 @@ factories_info = dict({
             "help": "Virtualized Node (V-Server style)",
             "category": "topology",
             "create_function": create_node,
-            "configure_function": configure_node,
+            "preconfigure_function": configure_node,
             "box_attributes": [
                 "forward_X11",
                 "hostname",
@@ -391,7 +405,7 @@ factories_info = dict({
             "help": "External network interface - they cannot be brought up or down, and they MUST be connected to the internet.",
             "category": "devices",
             "create_function": create_nodeiface,
-            "configure_function": configure_nodeiface,
+            "preconfigure_function": configure_nodeiface,
             "box_attributes": [ ],
             "connector_types": ["node", "inet"]
         }),
@@ -400,7 +414,7 @@ factories_info = dict({
             "help": "Virtual TUN network interface",
             "category": "devices",
             "create_function": create_tuniface,
-            "configure_function": configure_tuniface,
+            "preconfigure_function": configure_tuniface,
             "box_attributes": [
                 "up", "device_name", "mtu", "snat",
             ],
@@ -413,7 +427,8 @@ factories_info = dict({
             "start_function": start_application,
             "status_function": status_application,
             "stop_function": stop_application,
-            "box_attributes": ["command", "sudo"],
+            "configure_function": configure_application,
+            "box_attributes": ["command", "sudo", "stdin"],
             "connector_types": ["node"],
             "traces": ["stdout", "stderr"]
         }),
@@ -443,6 +458,17 @@ testbed_attributes = dict({
         "auth_pass": dict({
             "name": "authPass",
             "help": "The PlanetLab user's password.",
+            "type": Attribute.STRING,
+            "flags": Attribute.DesignOnly | Attribute.HasNoDefaultValue,
+            "validation_function": validation.is_string
+        }),
+        "slice_ssh_key": dict({
+            "name": "sliceSSHKey",
+            "help": "The controller-local path to the slice user's ssh private key. "
+                    "It is the user's responsability to deploy this file where the controller "
+                    "will run, it won't be done automatically because it's sensitive information. "
+                    "It is recommended that a NEPI-specific user be created for this purpose and "
+                    "this purpose alone.",
             "type": Attribute.STRING,
             "flags": Attribute.DesignOnly | Attribute.HasNoDefaultValue,
             "validation_function": validation.is_string

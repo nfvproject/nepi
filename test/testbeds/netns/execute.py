@@ -44,6 +44,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.do_setup()
         instance.do_create()
         instance.do_connect()
+        instance.do_preconfigure()
         instance.do_configure()
         instance.start()
         while instance.status(7) != STATUS_FINISHED:
@@ -84,6 +85,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.do_setup()
         instance.do_create()
         instance.do_connect()
+        instance.do_preconfigure()
         instance.do_configure()
         instance.start()
         while instance.status(6) != STATUS_FINISHED:
@@ -143,6 +145,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.do_setup()
         instance.do_create()
         instance.do_connect()
+        instance.do_preconfigure()
         instance.do_configure()
         instance.start()
         while instance.status(11) != STATUS_FINISHED:

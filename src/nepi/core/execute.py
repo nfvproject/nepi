@@ -97,7 +97,8 @@ class ConnectorType(object):
 # need a definition!
 class Factory(AttributesMap):
     def __init__(self, factory_id, create_function, start_function, 
-            stop_function, status_function, configure_function,
+            stop_function, status_function, 
+            configure_function, preconfigure_function,
             allow_addresses = False, allow_routes = False):
         super(Factory, self).__init__()
         self._factory_id = factory_id
@@ -108,6 +109,7 @@ class Factory(AttributesMap):
         self._stop_function = stop_function
         self._status_function = status_function
         self._configure_function = configure_function
+        self._preconfigure_function = preconfigure_function
         self._connector_types = dict()
         self._traces = list()
         self._box_attributes = AttributesMap()
@@ -147,6 +149,10 @@ class Factory(AttributesMap):
     @property
     def configure_function(self):
         return self._configure_function
+
+    @property
+    def preconfigure_function(self):
+        return self._preconfigure_function
 
     @property
     def traces(self):
@@ -337,7 +343,8 @@ class ExperimentController(object):
         # perform create-connect in parallel, wait
         # (internal connections only)
         self._parallel([lambda : (testbed.do_create(), 
-                                  testbed.do_connect())
+                                  testbed.do_connect(),
+                                  testbed.do_preconfigure())
                         for testbed in self._testbeds.itervalues()])
         
         # resolve netrefs

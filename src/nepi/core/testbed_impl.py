@@ -211,6 +211,24 @@ class TestbedController(execute.TestbedController):
                     if code_to_connect:
                         code_to_connect(self, element1, element2)
 
+    def do_preconfigure(self):
+        guids = dict()
+        # order guids (elements) according to factory_id
+        for guid, factory_id in self._create.iteritems():
+            if not factory_id in guids:
+               guids[factory_id] = list()
+            guids[factory_id].append(guid)
+        # configure elements following the factory_id order
+        for factory_id in self._metadata.preconfigure_order:
+            # omit the factories that have no element to create
+            if factory_id not in guids:
+                continue
+            factory = self._factories[factory_id]
+            if not factory.preconfigure_function:
+                continue
+            for guid in guids[factory_id]:
+                factory.preconfigure_function(self, guid)
+
     def do_configure(self):
         guids = dict()
         # order guids (elements) according to factory_id

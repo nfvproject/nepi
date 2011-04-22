@@ -65,6 +65,7 @@ class Ns3ExecuteTestCase(unittest.TestCase):
         instance.do_setup()
         instance.do_create()
         instance.do_connect()
+        instance.do_preconfigure()
         instance.do_configure()
         instance.start()
         while instance.status(17) != STATUS_FINISHED:
