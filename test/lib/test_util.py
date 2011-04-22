@@ -51,6 +51,14 @@ def ns3_usable():
 
     return True
 
+def pl_auth():
+    user = os.environ.get('PL_USER')
+    pwd = os.environ.get('PL_PASS')
+     
+    if user and pwd:
+        return (user,pwd)
+    else:
+        return None
 
 def find_bin(name, extra_path = None):
     search = []

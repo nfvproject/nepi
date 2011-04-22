@@ -10,6 +10,7 @@ import tempfile
 import time
 import unittest
 import re
+import test_util
 
 class NetnsExecuteTestCase(unittest.TestCase):
     def setUp(self):
@@ -18,16 +19,18 @@ class NetnsExecuteTestCase(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.root_dir)
 
-    def interactive_test_simple(self):
+    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    def test_simple(self):
         testbed_version = "01"
         instance = planetlab.TestbedController(testbed_version)
         slicename = "inria_nepi12"
+        pl_user, pl_pwd = test_util.pl_auth()
         
         instance.defer_configure("homeDirectory", self.root_dir)
         instance.defer_configure("slice", slicename)
         instance.defer_configure("sliceSSHKey", "/user/%s/home/.ssh/id_rsa_planetlab" % (getpass.getuser(),))
-        instance.defer_configure("authUser", "claudio-daniel.freire@inria.fr")
-        instance.defer_configure("authPass", getpass.getpass())
+        instance.defer_configure("authUser", pl_user)
+        instance.defer_configure("authPass", pl_pwd)
         
         instance.defer_create(2, "Node")
         instance.defer_create_set(2, "hostname", "onelab11.pl.sophia.inria.fr")
