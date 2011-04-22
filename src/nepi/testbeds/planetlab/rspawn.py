@@ -24,7 +24,7 @@ class NOT_STARTED:
     """
 
 def remote_spawn(command, pidfile, stdout='/dev/null', stderr=STDOUT, stdin='/dev/null', home=None, create_home=False, sudo=False,
-        host = None, port = None, user = None, agent = None, ident_key = None):
+        host = None, port = None, user = None, agent = None, ident_key = None, tty = False):
     """
     Spawn a remote command such that it will continue working asynchronously.
     
@@ -67,7 +67,7 @@ def remote_spawn(command, pidfile, stdout='/dev/null', stderr=STDOUT, stdin='/de
             'stderr' : stderr,
             'stdin' : stdin,
             
-            'sudo' : 'sudo' if sudo else '',
+            'sudo' : 'sudo -S' if sudo else '',
             
             'pidfile' : server.shell_escape(pidfile),
             'gohome' : 'cd %s ; ' % (server.shell_escape(home),) if home else '',
@@ -77,7 +77,8 @@ def remote_spawn(command, pidfile, stdout='/dev/null', stderr=STDOUT, stdin='/de
         port = port,
         user = user,
         agent = agent,
-        ident_key = ident_key
+        ident_key = ident_key,
+        tty = tty 
         )
     
     if proc.wait():
@@ -199,7 +200,7 @@ fi
 """ % {
             'ppid' : ppid,
             'pid' : pid,
-            'sudo' : 'sudo' if sudo else ''
+            'sudo' : 'sudo -S' if sudo else ''
         },
         host = host,
         port = port,

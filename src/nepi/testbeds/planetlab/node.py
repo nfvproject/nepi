@@ -27,6 +27,9 @@ class Node(object):
         'max_bandwidth' : ('bw%(timeframe)s', '[value'),
     }    
     
+    DEPENDS_PIDFILE = '/tmp/nepi-depends.pid'
+    DEPENDS_LOGFILE = '/tmp/nepi-depends.log'
+    
     def __init__(self, api=None):
         if not api:
             api = plcapi.PLCAPI()
@@ -170,8 +173,8 @@ class Node(object):
     def install_dependencies(self):
         if self.required_packages:
             # TODO: make dependant on the experiment somehow...
-            pidfile = '/tmp/nepi-depends.pid'
-            logfile = '/tmp/nepi-depends.log'
+            pidfile = self.DEPENDS_PIDFILE
+            logfile = self.DEPENDS_LOGFILE
             
             # Start process in a "daemonized" way, using nohup and heavy
             # stdin/out redirection to avoid connection issues
@@ -196,6 +199,8 @@ class Node(object):
     
     def wait_dependencies(self, pidprobe=1, probe=10, pidmax=10):
         if self.required_packages:
+            pidfile = self.DEPENDS_PIDFILE
+            
             # get PID
             pid = ppid = None
             for probenum in xrange(pidmax):

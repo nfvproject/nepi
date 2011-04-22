@@ -19,8 +19,7 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.root_dir)
 
-    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
-    def test_simple(self):
+    def make_instance(self):
         testbed_version = "01"
         instance = planetlab.TestbedController(testbed_version)
         slicename = "inria_nepi12"
@@ -31,6 +30,12 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
         instance.defer_configure("sliceSSHKey", "/user/%s/home/.ssh/id_rsa_planetlab" % (getpass.getuser(),))
         instance.defer_configure("authUser", pl_user)
         instance.defer_configure("authPass", pl_pwd)
+        
+        return instance
+
+    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    def test_simple(self):
+        instance = self.make_instance()
         
         instance.defer_create(2, "Node")
         instance.defer_create_set(2, "hostname", "onelab11.pl.sophia.inria.fr")
@@ -71,6 +76,38 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
 --- .* ping statistics ---
 1 packets transmitted, 1 received, 0% packet loss, time \d*ms.*
 """
+        self.assertTrue(re.match(comp_result, ping_result, re.MULTILINE),
+            "Unexpected trace:\n" + ping_result)
+        instance.stop()
+        instance.shutdown()
+        
+    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    def test_depends(self):
+        instance = self.make_instance()
+        
+        instance.defer_create(2, "Node")
+        instance.defer_create_set(2, "hostname", "onelab11.pl.sophia.inria.fr")
+        instance.defer_create(3, "NodeInterface")
+        instance.defer_connect(2, "devs", 3, "node")
+        instance.defer_create(4, "Internet")
+        instance.defer_connect(3, "inet", 4, "devs")
+        instance.defer_create(5, "Application")
+        instance.defer_create_set(5, "command", "gfortran --version")
+        instance.defer_create_set(5, "depends", "gcc-gfortran")
+        instance.defer_add_trace(5, "stdout")
+        instance.defer_connect(5, "node", 2, "apps")
+
+        instance.do_setup()
+        instance.do_create()
+        instance.do_connect()
+        instance.do_preconfigure()
+        instance.do_configure()
+        
+        instance.start()
+        while instance.status(5) != STATUS_FINISHED:
+            time.sleep(0.5)
+        ping_result = instance.trace(5, "stdout") or ""
+        comp_result = r".*GNU Fortran \(GCC\).*"
         self.assertTrue(re.match(comp_result, ping_result, re.MULTILINE),
             "Unexpected trace:\n" + ping_result)
         instance.stop()

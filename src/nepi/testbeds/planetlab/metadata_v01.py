@@ -481,7 +481,9 @@ factories_info = dict({
             "status_function": status_application,
             "stop_function": stop_application,
             "configure_function": configure_application,
-            "box_attributes": ["command", "sudo", "stdin"],
+            "box_attributes": ["command", "sudo", "stdin",
+                               "depends", "build-depends", "build",
+                               "sources" ],
             "connector_types": ["node"],
             "traces": ["stdout", "stderr"]
         }),

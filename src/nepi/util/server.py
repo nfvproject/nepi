@@ -342,7 +342,8 @@ class Client(object):
 
 def popen_ssh_command(command, host, port, user, agent, 
             stdin="", 
-            ident_key = None):
+            ident_key = None,
+            tty = False):
         """
         Executes a remote commands, returns ((stdout,stderr),process)
         """
@@ -356,6 +357,8 @@ def popen_ssh_command(command, host, port, user, agent,
             args.append('-p%d' % port)
         if ident_key:
             args.extend(('-i', ident_key))
+        if tty:
+            args.append('-t')
         args.append(command)
 
         # connects to the remote host and starts a remote connection
@@ -511,7 +514,8 @@ def popen_scp(source, dest, port, agent,
  
 def popen_ssh_subprocess(python_code, host, port, user, agent, 
         python_path = None,
-        ident_key = None):
+        ident_key = None,
+        tty = False):
         if python_path:
             python_path.replace("'", r"'\''")
             cmd = """PYTHONPATH="$PYTHONPATH":'%s' """ % python_path
@@ -545,6 +549,8 @@ def popen_ssh_subprocess(python_code, host, port, user, agent,
             args.append('-p%d' % port)
         if ident_key:
             args.extend(('-i', ident_key))
+        if tty:
+            args.append('-t')
         args.append(cmd)
 
         # connects to the remote host and starts a remote rpyc connection
