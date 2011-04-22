@@ -52,7 +52,6 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.do_create()
         instance.do_connect()
         instance.do_preconfigure()
-        instance.do_configure()
         
         # Manually replace netref
         instance.set(TIME_NOW, 7, "command",
@@ -60,6 +59,8 @@ class NetnsExecuteTestCase(unittest.TestCase):
                 .replace("{#GUID-5.addr[0].[Address]#}", 
                     instance.get_address(5, 0, "Address") )
         )
+
+        instance.do_configure()
         
         instance.start()
         while instance.status(7) != STATUS_FINISHED:
