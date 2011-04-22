@@ -12,7 +12,7 @@ import test_util
 import time
 import unittest
 
-class NetnsIntegrationTestCase(unittest.TestCase):
+class PlanetLabIntegrationTestCase(unittest.TestCase):
     def setUp(self):
         self.root_dir = tempfile.mkdtemp()
 

@@ -9,6 +9,7 @@ import os.path
 import nepi.util.server as server
 import cStringIO
 import subprocess
+import rspawn
 
 from nepi.util.constants import STATUS_NOT_STARTED, STATUS_RUNNING, \
         STATUS_FINISHED
@@ -23,9 +24,15 @@ class Application(object):
         self.command = None
         self.sudo = False
         
+        self.build = None
+        self.depends = None
+        self.buildDepends = None
+        self.sources = None
+        
         self.stdin = None
         self.stdout = None
         self.stderr = None
+        self.buildlog = None
         
         # Those are filled when the app is configured
         self.home_path = None
@@ -64,15 +71,16 @@ class Application(object):
     def start(self):
         # Start process in a "daemonized" way, using nohup and heavy
         # stdin/out redirection to avoid connection issues
-        (out,err),proc = server.popen_ssh_command(
-            "cd %(home)s ; rm -f ./pid ; ( echo $$ $PPID > ./pid ; %(sudo)s nohup %(command)s > %(stdout)s 2> %(stderr)s < %(stdin)s ) &" % {
-                'home' : server.shell_escape(self.home_path),
-                'command' : self.command,
-                'stdout' : 'stdout' if self.stdout else '/dev/null' ,
-                'stderr' : 'stderr' if self.stderr else '/dev/null' ,
-                'stdin' : 'stdin' if self.stdin is not None else '/dev/null' ,
-                'sudo' : 'sudo' if self.sudo else '',
-            },
+        (out,err),proc = rspawn.remote_spawn(
+            self.command,
+            
+            pidfile = './pid',
+            home = self.home_path,
+            stdin = 'stdin' if self.stdin is not None else '/dev/null',
+            stdout = 'stdout' if self.stdout else '/dev/null',
+            stderr = 'stderr' if self.stderr else '/dev/null',
+            sudo = self.sudo,
+            
             host = self.node.hostname,
             port = None,
             user = self.slicename,
@@ -89,22 +97,17 @@ class Application(object):
         # Get PID/PPID
         # NOTE: wait a bit for the pidfile to be created
         if self._started and not self._pid or not self._ppid:
-            (out,err),proc = server.popen_ssh_command(
-                "cat %(pidfile)s" % {
-                    'pidfile' : server.shell_escape(os.path.join(self.home_path,'pid')),
-                },
+            pidtuple = rspawn.remote_check_pid(
+                os.path.join(self.home_path,'pid'),
                 host = self.node.hostname,
                 port = None,
                 user = self.slicename,
                 agent = None,
                 ident_key = self.ident_path
                 )
-            if out:
-                try:
-                    self._pid, self._ppid = map(int,out.strip().split(' ',1))
-                except:
-                    # Ignore, many ways to fail that don't matter that much
-                    pass
+            
+            if pidtuple:
+                self._pid, self._ppid = pidtuple
     
     def status(self):
         self.checkpid()
@@ -113,11 +116,8 @@ class Application(object):
         elif not self._pid or not self._ppid:
             return STATUS_NOT_STARTED
         else:
-            (out,err),proc = server.popen_ssh_command(
-                "ps --ppid $(ppid)d -o pid | grep -c $(pid)d" % {
-                    'ppid' : self._ppid,
-                    'pid' : self._pid,
-                },
+            status = rspawn.remote_status(
+                self._pid, self._ppid,
                 host = self.node.hostname,
                 port = None,
                 user = self.slicename,
@@ -125,51 +125,28 @@ class Application(object):
                 ident_key = self.ident_path
                 )
             
-            status = False
-            if out:
-                try:
-                    status = bool(int(out.strip()))
-                except:
-                    # Ignore, many ways to fail that don't matter that much
-                    pass
-            return STATUS_RUNNING if status else STATUS_FINISHED
+            if status is rspawn.NOT_STARTED:
+                return STATUS_NOT_STARTED
+            elif status is rspawn.RUNNING:
+                return STATUS_RUNNING
+            elif status is rspawn.FINISHED:
+                return STATUS_FINISHED
+            else:
+                # WTF?
+                return STATUS_NOT_STARTED
     
     def kill(self):
         status = self.status()
         if status == STATUS_RUNNING:
             # kill by ppid+pid - SIGTERM first, then try SIGKILL
-            (out,err),proc = server.popen_ssh_command(
-                """
-kill $(pid)d $(ppid)d 
-for x in 1 2 3 4 5 6 7 8 9 0 ; do 
-    sleep 0.1 
-    if [ `ps --pid $(ppid)d -o pid | grep -c $(pid)d` == `0` ]; then
-        break
-    fi
-    sleep 0.9
-done
-if [ `ps --pid $(ppid)d -o pid | grep -c $(pid)d` != `0` ]; then
-    kill -9 $(pid)d $(ppid)d
-fi
-""" % {
-                    'ppid' : self._ppid,
-                    'pid' : self._pid,
-                },
+            rspawn.remote_kill(
+                self._pid, self._ppid,
                 host = self.node.hostname,
                 port = None,
                 user = self.slicename,
                 agent = None,
                 ident_key = self.ident_path
                 )
-            
-            status = False
-            if out:
-                try:
-                    status = bool(int(out.strip()))
-                except:
-                    # Ignore, many ways to fail that don't matter that much
-                    pass
-            return STATUS_RUNNING if status else STATUS_FINISHED
     
     def remote_trace_path(self, whichtrace):
         if whichtrace in ('stdout','stderr'):

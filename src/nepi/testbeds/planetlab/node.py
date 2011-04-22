@@ -4,6 +4,8 @@
 from constants import TESTBED_ID
 import plcapi
 import operator
+import rspawn
+import time
 
 class Node(object):
     BASEFILTERS = {
@@ -43,6 +45,13 @@ class Node(object):
         self.min_num_external_ifaces = None
         self.max_num_external_ifaces = None
         self.timeframe = 'm'
+        
+        # Applications add requirements to connected nodes
+        self.required_packages = set()
+        
+        # Testbed-derived attributes
+        self.slicename = None
+        self.ident_path = None
         
         # Those are filled when an actual node is allocated
         self._node_id = None
@@ -150,4 +159,65 @@ class Node(object):
 
     def validate(self):
         pass
+
+    def install_dependencies(self):
+        if self.required_packages:
+            # TODO: make dependant on the experiment somehow...
+            pidfile = '/tmp/nepi-depends.pid'
+            logfile = '/tmp/nepi-depends.log'
+            
+            # Start process in a "daemonized" way, using nohup and heavy
+            # stdin/out redirection to avoid connection issues
+            (out,err),proc = rspawn.remote_spawn(
+                "yum -y install %(packages)s" % {
+                    'packages' : ' '.join(self.required_packages),
+                },
+                pidfile = pidfile,
+                stdout = logfile,
+                stderr = rspawn.STDOUT,
+                
+                host = self.hostname,
+                port = None,
+                user = self.slicename,
+                agent = None,
+                ident_key = self.ident_path,
+                sudo = True
+                )
+            
+            if proc.wait():
+                raise RuntimeError, "Failed to set up application: %s %s" % (out,err,)
+    
+    def wait_dependencies(self, pidprobe=1, probe=10, pidmax=10):
+        if self.required_packages:
+            # get PID
+            pid = ppid = None
+            for probenum in xrange(pidmax):
+                pidtuple = rspawn.remote_check_pid(
+                    pidfile = pidfile,
+                    host = self.hostname,
+                    port = None,
+                    user = self.slicename,
+                    agent = None,
+                    ident_key = self.ident_path
+                    )
+                if pidtuple:
+                    pid, ppid = pidtuple
+                    break
+                else:
+                    time.sleep(pidprobe)
+            else:
+                raise RuntimeError, "Failed to obtain pidfile for dependency installer"
+        
+            # wait for it to finish
+            while rspawn.RUNNING is rspawn.remote_status(
+                    pid, ppid,
+                    host = self.hostname,
+                    port = None,
+                    user = self.slicename,
+                    agent = None,
+                    ident_key = self.ident_path
+                    ):
+                time.sleep(probe)
+        
+
 

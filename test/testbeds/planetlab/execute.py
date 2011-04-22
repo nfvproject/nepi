@@ -12,7 +12,7 @@ import unittest
 import re
 import test_util
 
-class NetnsExecuteTestCase(unittest.TestCase):
+class PlanetLabExecuteTestCase(unittest.TestCase):
     def setUp(self):
         self.root_dir = tempfile.mkdtemp()
         

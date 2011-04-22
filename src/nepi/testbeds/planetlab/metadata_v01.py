@@ -29,6 +29,10 @@ def connect_tun_iface_node(testbed_instance, node, iface):
 
 def connect_app(testbed_instance, node, app):
     app.node = node
+    
+    if app.depends:
+        node.required_packages.update(set(
+            app.depends.split() ))
 
 ### Creation functions ###
 
@@ -77,6 +81,7 @@ def start_application(testbed_instance, guid):
     
     app.stdout = "stdout" in traces
     app.stderr = "stderr" in traces
+    app.buildlog = "buildlog" in traces
     
     app.start()
 
@@ -139,6 +144,9 @@ def configure_node(testbed_instance, guid):
     
     # Do some validations
     node.validate()
+    
+    # TODO: this should be done in parallel in all nodes
+    node.install_dependencies()
 
 def configure_application(testbed_instance, guid):
     app = testbed_instance._elements[guid]
@@ -150,6 +158,9 @@ def configure_application(testbed_instance, guid):
     
     # Do some validations
     app.validate()
+    
+    # Wait for dependencies
+    app.node.wait_dependencies()
     
     # Install stuff
     app.setup()
@@ -362,6 +373,39 @@ attributes = dict({
                 "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_string
             }),
+            
+    "depends": dict({
+                "name": "depends",
+                "help": "Space-separated list of packages required to run the application",
+                "type": Attribute.STRING,
+                "flags": Attribute.DesignOnly,
+                "validation_function": validation.is_string
+            }),
+    "build-depends": dict({
+                "name": "buildDepends",
+                "help": "Space-separated list of packages required to build the application",
+                "type": Attribute.STRING,
+                "flags": Attribute.DesignOnly,
+                "validation_function": validation.is_string
+            }),
+    "sources": dict({
+                "name": "sources",
+                "help": "Space-separated list of regular files to be deployed in the working path prior to building. "
+                        "Archives won't be expanded automatically.",
+                "type": Attribute.STRING,
+                "flags": Attribute.DesignOnly,
+                "validation_function": validation.is_string
+            }),
+    "build": dict({
+                "name": "build",
+                "help": "Build commands to execute after deploying the sources. "
+                        "Sources will be in the initial working folder. "
+                        "Example: cd my-app && ./configure && make && make install.\n"
+                        "Try to make the commands return with a nonzero exit code on error.",
+                "type": Attribute.STRING,
+                "flags": Attribute.DesignOnly,
+                "validation_function": validation.is_string
+            }),
     })
 
 traces = dict({
@@ -372,7 +416,11 @@ traces = dict({
     "stderr": dict({
                 "name": "stderr",
                 "help": "Application standard error",
-              }) 
+              }),
+    "buildlog": dict({
+                "name": "buildlog",
+                "help": "Output of the build process",
+              }), 
     })
 
 create_order = [ INTERNET, NODE, NODEIFACE, TUNIFACE, APPLICATION ]
