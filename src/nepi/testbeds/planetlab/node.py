@@ -6,6 +6,7 @@ import plcapi
 import operator
 import rspawn
 import time
+import os
 
 class Node(object):
     BASEFILTERS = {
@@ -52,6 +53,7 @@ class Node(object):
         # Testbed-derived attributes
         self.slicename = None
         self.ident_path = None
+        self.home_path = None
         
         # Those are filled when an actual node is allocated
         self._node_id = None
@@ -158,7 +160,12 @@ class Node(object):
             self.max_num_external_ifaces = len(info['interface_ids'])
 
     def validate(self):
-        pass
+        if self.home_path is None:
+            raise AssertionError, "Misconfigured node: missing home path"
+        if self.ident_path is None or not os.access(self.ident_path, os.R_OK):
+            raise AssertionError, "Misconfigured node: missing slice SSH key"
+        if self.slicename is None:
+            raise AssertionError, "Misconfigured node: unspecified slice"
 
     def install_dependencies(self):
         if self.required_packages:

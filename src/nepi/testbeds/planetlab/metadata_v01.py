@@ -136,6 +136,11 @@ def configure_tuniface(testbed_instance, guid):
 def configure_node(testbed_instance, guid):
     node = testbed_instance._elements[guid]
     
+    # Just inject configuration stuff
+    node.home_path = "nepi-node-%s" % (guid,)
+    node.ident_path = testbed_instance.sliceSSHKey
+    node.slicename = testbed_instance.slicename
+    
     # If we have only one candidate, simply use it
     candidates = node.find_candidates(
         filter_slice_id = testbed_instance.slice_id)
