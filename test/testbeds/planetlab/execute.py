@@ -18,7 +18,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.root_dir)
 
-    def test_simple(self):
+    def interactive_test_simple(self):
         testbed_version = "01"
         instance = planetlab.TestbedController(testbed_version)
         slicename = "inria_nepi12"
