@@ -33,6 +33,7 @@ def connect_app(testbed_instance, node, app):
     if app.depends:
         node.required_packages.update(set(
             app.depends.split() ))
+    
 
 ### Creation functions ###
 

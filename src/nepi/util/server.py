@@ -368,7 +368,9 @@ def popen_ssh_command(command, host, port, user, agent,
                 stderr = subprocess.PIPE)
         return (proc.communicate(stdin), proc)
  
-def popen_scp(source, dest, port, agent, 
+def popen_scp(source, dest, 
+            port = None, 
+            agent = None, 
             recursive = False,
             ident_key = None):
         """

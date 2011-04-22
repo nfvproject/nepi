@@ -113,6 +113,53 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
         instance.stop()
         instance.shutdown()
         
+    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    def test_build(self):
+        instance = self.make_instance()
+        
+        instance.defer_create(2, "Node")
+        instance.defer_create_set(2, "hostname", "onelab11.pl.sophia.inria.fr")
+        instance.defer_create(3, "NodeInterface")
+        instance.defer_connect(2, "devs", 3, "node")
+        instance.defer_create(4, "Internet")
+        instance.defer_connect(3, "inet", 4, "devs")
+        instance.defer_create(10, "Application")
+        instance.defer_create_set(10, "command", "./consts")
+        instance.defer_create_set(10, "buildDepends", "gcc")
+        instance.defer_create_set(10, "build", "gcc consts.c -o consts")
+        instance.defer_create_set(10, "sources", os.path.join(os.path.dirname(planetlab.__file__),'scripts','consts.c'))
+        instance.defer_add_trace(10, "stdout")
+        instance.defer_connect(10, "node", 2, "apps")
+
+        instance.do_setup()
+        instance.do_create()
+        instance.do_connect()
+        instance.do_preconfigure()
+        instance.do_configure()
+        
+        instance.start()
+        while instance.status(10) != STATUS_FINISHED:
+            time.sleep(0.5)
+        ping_result = instance.trace(10, "stdout") or ""
+        comp_result = \
+r""".*ETH_P_ALL = 0x[0-9a-fA-F]{8}
+ETH_P_IP = 0x[0-9a-fA-F]{8}
+TUNSETIFF = 0x[0-9a-fA-F]{8}
+IFF_NO_PI = 0x[0-9a-fA-F]{8}
+IFF_TAP = 0x[0-9a-fA-F]{8}
+IFF_TUN = 0x[0-9a-fA-F]{8}
+IFF_VNET_HDR = 0x[0-9a-fA-F]{8}
+TUN_PKT_STRIP = 0x[0-9a-fA-F]{8}
+IFHWADDRLEN = 0x[0-9a-fA-F]{8}
+IFNAMSIZ = 0x[0-9a-fA-F]{8}
+IFREQ_SZ = 0x[0-9a-fA-F]{8}
+FIONREAD = 0x[0-9a-fA-F]{8}.*
+"""
+        self.assertTrue(re.match(comp_result, ping_result, re.MULTILINE),
+            "Unexpected trace:\n" + ping_result)
+        instance.stop()
+        instance.shutdown()
+        
 
 if __name__ == '__main__':
     unittest.main()

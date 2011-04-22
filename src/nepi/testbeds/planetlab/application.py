@@ -189,6 +189,10 @@ class Application(object):
     
 
     def setup(self):
+        self._make_home()
+        self._build()
+        
+    def _make_home(self):
         # Make sure all the paths are created where 
         # they have to be created for deployment
         (out,err),proc = server.popen_ssh_command(
@@ -218,4 +222,54 @@ class Application(object):
             if proc.wait():
                 raise RuntimeError, "Failed to set up application: %s %s" % (out,err,)
 
+    def _build(self):
+        if self.sources:
+            sources = self.sources.split(' ')
+            
+            # Copy all sources
+            for source in sources:
+                (out,err),proc = server.popen_scp(
+                    source,
+                    "%s@%s:%s" % (self.slicename, self.node.hostname, 
+                        os.path.join(self.home_path,'.'),),
+                    ident_key = self.ident_path
+                    )
+            
+                if proc.wait():
+                    raise RuntimeError, "Failed upload source file %r: %s %s" % (source, out,err,)
+            
+        if self.buildDepends:
+            # Install build dependencies
+            (out,err),proc = server.popen_ssh_command(
+                "sudo -S yum -y install %(packages)s" % {
+                    'packages' : self.buildDepends
+                },
+                host = self.node.hostname,
+                port = None,
+                user = self.slicename,
+                agent = None,
+                ident_key = self.ident_path
+                )
         
+            if proc.wait():
+                raise RuntimeError, "Failed instal build dependencies: %s %s" % (out,err,)
+        
+            
+        if self.build:
+            # Install build dependencies
+            (out,err),proc = server.popen_ssh_command(
+                "cd %(home)s ; %(command)s" % {
+                    'command' : self.build,
+                    'home' : server.shell_escape(self.home_path),
+                },
+                host = self.node.hostname,
+                port = None,
+                user = self.slicename,
+                agent = None,
+                ident_key = self.ident_path
+                )
+        
+            if proc.wait():
+                raise RuntimeError, "Failed instal build sources: %s %s" % (out,err,)
+
+
