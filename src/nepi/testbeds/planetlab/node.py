@@ -7,6 +7,7 @@ import operator
 import rspawn
 import time
 import os
+import collections
 
 from nepi.util import server
 
@@ -52,8 +53,9 @@ class Node(object):
         self.max_num_external_ifaces = None
         self.timeframe = 'm'
         
-        # Applications add requirements to connected nodes
+        # Applications and routes add requirements to connected nodes
         self.required_packages = set()
+        self.required_vsys = set()
         
         # Testbed-derived attributes
         self.slicename = None
@@ -110,6 +112,31 @@ class Node(object):
                 
                 candidates &= set(map(operator.itemgetter('node_id'),
                     self._api.GetNodeTags(filters=tagfilter, fields=fields)))
+        
+        # filter by vsys tags - special case since it doesn't follow
+        # the usual semantics
+        if self.required_vsys:
+            newcandidates = collections.defaultdict(set)
+            
+            vsys_tags = self._api.GetNodeTags(
+                tagname='vsys', 
+                node_id = list(candidates), 
+                fields = ['node_id','value'])
+            
+            vsys_tags = map(
+                operator.itemgetter(['node_id','value']),
+                vsys_tags)
+            
+            required_vsys = self.required_vsys
+            for node_id, value in vsys_tags:
+                if value in required_vsys:
+                    newcandidates[value].add(node_id)
+            
+            # take only those that have all the required vsys tags
+            newcandidates = reduce(
+                lambda accum, new : accum & new,
+                newcandidates.itervalues(),
+                candidates)
         
         # filter by iface count
         if self.min_num_external_ifaces is not None or self.max_num_external_ifaces is not None:

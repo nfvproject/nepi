@@ -161,6 +161,45 @@ FIONREAD = 0x[0-9a-fA-F]{8}.*
         instance.stop()
         instance.shutdown()
         
+    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    def test_simple_vsys(self):
+        instance = self.make_instance()
+        
+        instance.defer_create(2, "Node")
+        instance.defer_create_set(2, "hostname", "onelab11.pl.sophia.inria.fr")
+        instance.defer_create(3, "NodeInterface")
+        instance.defer_connect(2, "devs", 3, "node")
+        instance.defer_create(4, "Internet")
+        instance.defer_connect(3, "inet", 4, "devs")
+        instance.defer_create(5, "TunInterface")
+        instance.defer_connect(2, "devs", 5, "node")
+        instance.defer_create(6, "Application")
+        instance.defer_create_set(6, "command", """
+set -e
+test -e /vsys/vif_up.in
+test -e /vsys/vif_up.out
+test -e /vsys/fd_tuntap.control
+echo 'OKIDOKI'
+""")
+        instance.defer_create_set(6, "sudo", True) # only sudo has access to /vsys
+        instance.defer_add_trace(6, "stdout")
+        instance.defer_connect(6, "node", 2, "apps")
+
+        instance.do_setup()
+        instance.do_create()
+        instance.do_connect()
+        instance.do_preconfigure()
+        instance.do_configure()
+        
+        instance.start()
+        while instance.status(6) != STATUS_FINISHED:
+            time.sleep(0.5)
+        test_result = (instance.trace(6, "stdout") or "").strip()
+        comp_result = "OKIDOKI"
+        self.assertEqual(comp_result, test_result)
+        instance.stop()
+        instance.shutdown()
+        
 
 if __name__ == '__main__':
     unittest.main()
