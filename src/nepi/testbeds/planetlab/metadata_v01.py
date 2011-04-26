@@ -28,6 +28,7 @@ def connect_node_iface_inet(testbed_instance, iface, inet):
 
 def connect_tun_iface_node(testbed_instance, node, iface):
     iface.node = node
+    node.required_vsys.update(('fd_tuntap', 'vif_up'))
 
 def connect_app(testbed_instance, node, app):
     app.node = node
@@ -368,8 +369,8 @@ attributes = dict({
                 "validation_function": validation.is_string
             }),
     "sudo": dict({
-                "name": "user",
-                "help": "System user",
+                "name": "sudo",
+                "help": "Run with root privileges",
                 "type": Attribute.BOOL,
                 "flags": Attribute.DesignOnly,
                 "value": False,
