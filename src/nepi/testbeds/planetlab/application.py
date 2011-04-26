@@ -25,6 +25,7 @@ class Application(object):
         self.sudo = False
         
         self.build = None
+        self.install = None
         self.depends = None
         self.buildDepends = None
         self.sources = None
@@ -228,6 +229,16 @@ class Application(object):
             if proc.wait():
                 raise RuntimeError, "Failed to set up application: %s %s" % (out,err,)
 
+    def _replace_paths(self, command):
+        """
+        Replace all special path tags with shell-escaped actual paths.
+        """
+        # need to append ${HOME} if paths aren't absolute, to MAKE them absolute.
+        root = '' if self.home_path.startswith('/') else "${HOME}/"
+        return ( command
+            .replace("${SOURCES}", root+server.shell_escape(self.home_path))
+            .replace("${BUILD}", root+server.shell_escape(os.path.join(self.home_path,'build'))) )
+
     def _build(self):
         if self.sources:
             sources = self.sources.split(' ')
@@ -264,10 +275,10 @@ class Application(object):
         
             
         if self.build:
-            # Install build dependencies
+            # Build sources
             (out,err),proc = server.popen_ssh_command(
-                "cd %(home)s ; %(command)s" % {
-                    'command' : self.build,
+                "cd %(home)s && mkdir -p build && cd build && %(command)s" % {
+                    'command' : self._replace_paths(self.build),
                     'home' : server.shell_escape(self.home_path),
                 },
                 host = self.node.hostname,
@@ -281,4 +292,38 @@ class Application(object):
             if proc.wait():
                 raise RuntimeError, "Failed instal build sources: %s %s" % (out,err,)
 
+            # Make archive
+            (out,err),proc = server.popen_ssh_command(
+                "cd %(home)s && tar czf build.tar.gz build" % {
+                    'command' : self._replace_paths(self.build),
+                    'home' : server.shell_escape(self.home_path),
+                },
+                host = self.node.hostname,
+                port = None,
+                user = self.slicename,
+                agent = None,
+                ident_key = self.ident_path,
+                server_key = self.node.server_key
+                )
+        
+            if proc.wait():
+                raise RuntimeError, "Failed instal build sources: %s %s" % (out,err,)
+
+        if self.install:
+            # Install application
+            (out,err),proc = server.popen_ssh_command(
+                "cd %(home)s && cd build && %(command)s" % {
+                    'command' : self._replace_paths(self.install),
+                    'home' : server.shell_escape(self.home_path),
+                },
+                host = self.node.hostname,
+                port = None,
+                user = self.slicename,
+                agent = None,
+                ident_key = self.ident_path,
+                server_key = self.node.server_key
+                )
+        
+            if proc.wait():
+                raise RuntimeError, "Failed instal build sources: %s %s" % (out,err,)
 

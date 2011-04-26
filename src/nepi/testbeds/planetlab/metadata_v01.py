@@ -408,9 +408,27 @@ attributes = dict({
     "build": dict({
                 "name": "build",
                 "help": "Build commands to execute after deploying the sources. "
-                        "Sources will be in the initial working folder. "
-                        "Example: cd my-app && ./configure && make && make install.\n"
-                        "Try to make the commands return with a nonzero exit code on error.",
+                        "Sources will be in the ${SOURCES} folder. "
+                        "Example: tar xzf ${SOURCES}/my-app.tgz && cd my-app && ./configure && make && make clean.\n"
+                        "Try to make the commands return with a nonzero exit code on error.\n"
+                        "Also, do not install any programs here, use the 'install' attribute. This will "
+                        "help keep the built files constrained to the build folder (which may "
+                        "not be the home folder), and will result in faster deployment. Also, "
+                        "make sure to clean up temporary files, to reduce bandwidth usage between "
+                        "nodes when transferring built packages.",
+                "type": Attribute.STRING,
+                "flags": Attribute.DesignOnly,
+                "validation_function": validation.is_string
+            }),
+    "install": dict({
+                "name": "install",
+                "help": "Commands to transfer built files to their final destinations. "
+                        "Sources will be in the initial working folder, and a special "
+                        "tag ${SOURCES} can be used to reference the experiment's "
+                        "home folder (where the application commands will run).\n"
+                        "ALL sources and targets needed for execution must be copied there, "
+                        "if building has been enabled.\n"
+                        "That is, 'slave' nodes will not automatically get any source files.",
                 "type": Attribute.STRING,
                 "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_string
@@ -486,7 +504,7 @@ factories_info = dict({
             "stop_function": stop_application,
             "configure_function": configure_application,
             "box_attributes": ["command", "sudo", "stdin",
-                               "depends", "build-depends", "build",
+                               "depends", "build-depends", "build", "install",
                                "sources" ],
             "connector_types": ["node"],
             "traces": ["stdout", "stderr"]
