@@ -428,7 +428,10 @@ attributes = dict({
                         "home folder (where the application commands will run).\n"
                         "ALL sources and targets needed for execution must be copied there, "
                         "if building has been enabled.\n"
-                        "That is, 'slave' nodes will not automatically get any source files.",
+                        "That is, 'slave' nodes will not automatically get any source files. "
+                        "'slave' nodes don't get build dependencies either, so if you need "
+                        "make and other tools to install, be sure to provide them as "
+                        "actual dependencies instead.",
                 "type": Attribute.STRING,
                 "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_string
