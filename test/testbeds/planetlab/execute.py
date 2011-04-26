@@ -167,6 +167,7 @@ FIONREAD = 0x[0-9a-fA-F]{8}.*
         
         instance.defer_create(2, "Node")
         instance.defer_create_set(2, "hostname", "onelab11.pl.sophia.inria.fr")
+        instance.defer_create_set(2, "emulation", True) # require emulation
         instance.defer_create(3, "NodeInterface")
         instance.defer_connect(2, "devs", 3, "node")
         instance.defer_create(4, "Internet")
@@ -176,9 +177,10 @@ FIONREAD = 0x[0-9a-fA-F]{8}.*
         instance.defer_create(6, "Application")
         instance.defer_create_set(6, "command", """
 set -e
-test -e /vsys/vif_up.in
-test -e /vsys/vif_up.out
-test -e /vsys/fd_tuntap.control
+netconfig help > /dev/null
+test -e /vsys/vif_up.in > /dev/null
+test -e /vsys/vif_up.out > /dev/null
+test -e /vsys/fd_tuntap.control > /dev/null
 echo 'OKIDOKI'
 """)
         instance.defer_create_set(6, "sudo", True) # only sudo has access to /vsys
@@ -199,6 +201,33 @@ echo 'OKIDOKI'
         self.assertEqual(comp_result, test_result)
         instance.stop()
         instance.shutdown()
+
+    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    def test_tun_emulation_requirement(self):
+        instance = self.make_instance()
+        
+        instance.defer_create(2, "Node")
+        instance.defer_create_set(2, "hostname", "onelab11.pl.sophia.inria.fr")
+        instance.defer_create(3, "NodeInterface")
+        instance.defer_connect(2, "devs", 3, "node")
+        instance.defer_create(4, "Internet")
+        instance.defer_connect(3, "inet", 4, "devs")
+        instance.defer_create(5, "TunInterface")
+        instance.defer_connect(2, "devs", 5, "node")
+        instance.defer_create(6, "Application")
+        instance.defer_create_set(6, "command", "false")
+        instance.defer_add_trace(6, "stdout")
+        instance.defer_connect(6, "node", 2, "apps")
+
+        try:
+            instance.do_setup()
+            instance.do_create()
+            instance.do_connect()
+            instance.do_preconfigure()
+            instance.do_configure()
+            self.fail("Usage of TUN without emulation should fail")
+        except Exception,e:
+            pass
         
 
 if __name__ == '__main__':

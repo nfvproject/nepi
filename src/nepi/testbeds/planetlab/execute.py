@@ -194,6 +194,12 @@ class TestbedController(testbed_impl.TestbedController):
         for attr,val in parameters.iteritems():
             setattr(node, attr, val)
         
+        # If emulation is enabled, we automatically need 
+        # some vsys interfaces and packages
+        if node.emulation:
+            node.required_vsys.add('ipfw-be')
+            node.required_packages.add('ipfwslice')
+        
         return node
     
     def _make_node_iface(self, parameters):

@@ -27,6 +27,8 @@ def connect_node_iface_inet(testbed_instance, iface, inet):
     iface.has_internet = True
 
 def connect_tun_iface_node(testbed_instance, node, iface):
+    if not node.emulation:
+        raise RuntimeError, "Usage of TUN interfaces requires emulation"
     iface.node = node
     node.required_vsys.update(('fd_tuntap', 'vif_up'))
 
