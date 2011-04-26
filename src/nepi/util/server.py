@@ -419,7 +419,7 @@ def popen_scp(source, dest,
         
         if isinstance(source, file) or isinstance(dest, file) \
                 or hasattr(source, 'read')  or hasattr(dest, 'write'):
-            assert not resursive
+            assert not recursive
             
             # Parse source/destination as <user>@<server>:<path>
             if isinstance(dest, basestring) and ':' in dest:
@@ -433,7 +433,8 @@ def popen_scp(source, dest,
             
             args = ['ssh', '-l', user, '-C',
                     # Don't bother with localhost. Makes test easier
-                    '-o', 'NoHostAuthenticationForLocalhost=yes' ]
+                    '-o', 'NoHostAuthenticationForLocalhost=yes',
+                    host ]
             if port:
                 args.append('-P%d' % port)
             if ident_key:
@@ -474,15 +475,18 @@ def popen_scp(source, dest,
                 proc = subprocess.Popen(args, 
                         stdout = open('/dev/null','w'),
                         stderr = subprocess.PIPE,
-                        stdin = source)
+                        stdin = subprocess.PIPE)
                 
                 buf = None
                 err = []
                 while True:
                     if not buf:
                         buf = source.read(4096)
+                    if not buf:
+                        #EOF
+                        break
                     
-                    rdrdy, wrdy, broken = os.select(
+                    rdrdy, wrdy, broken = select.select(
                         [proc.stderr],
                         [proc.stdin],
                         [proc.stderr,proc.stdin])
@@ -497,6 +501,7 @@ def popen_scp(source, dest,
                     
                     if broken:
                         break
+                proc.stdin.close()
                 err.append(proc.stderr.read())
                     
                 proc._known_hosts = tmp_known_hosts
@@ -505,14 +510,14 @@ def popen_scp(source, dest,
             elif hasattr(dest, 'write'):
                 # file-like (but not file) dest
                 proc = subprocess.Popen(args, 
-                        stdout = open('/dev/null','w'),
+                        stdout = subprocess.PIPE,
                         stderr = subprocess.PIPE,
-                        stdin = source)
+                        stdin = open('/dev/null','w'))
                 
                 buf = None
                 err = []
                 while True:
-                    rdrdy, wrdy, broken = os.select(
+                    rdrdy, wrdy, broken = select.select(
                         [proc.stderr, proc.stdout],
                         [],
                         [proc.stderr, proc.stdout])
@@ -523,7 +528,12 @@ def popen_scp(source, dest,
                     
                     if proc.stdout in rdrdy:
                         # use os.read for fully unbuffered behavior
-                        dest.write(os.read(proc.stdout.fileno(), 4096))
+                        buf = os.read(proc.stdout.fileno(), 4096)
+                        dest.write(buf)
+                        
+                        if not buf:
+                            #EOF
+                            break
                     
                     if broken:
                         break
