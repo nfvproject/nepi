@@ -73,7 +73,7 @@ class Application(object):
         # Start process in a "daemonized" way, using nohup and heavy
         # stdin/out redirection to avoid connection issues
         (out,err),proc = rspawn.remote_spawn(
-            self.command,
+            self._replace_paths(self.command),
             
             pidfile = './pid',
             home = self.home_path,
