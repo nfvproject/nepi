@@ -604,6 +604,11 @@ traces = dict({
                 "name": "buildlog",
                 "help": "Output of the build process",
               }), 
+    
+    "netpipe_stats": dict({
+                "name": "netpipeStats",
+                "help": "Information about rule match counters, packets dropped, etc.",
+              }),
     })
 
 create_order = [ INTERNET, NODE, NODEIFACE, TUNIFACE, NETPIPE, APPLICATION ]
@@ -681,7 +686,7 @@ factories_info = dict({
                                "bw_in","plr_in","delay_in",
                                "bw_out","plr_out","delay_out"],
             "connector_types": ["node"],
-            "traces": ["stdout", "stderr"]
+            "traces": ["netpipe_stats"]
         }),
 })
 

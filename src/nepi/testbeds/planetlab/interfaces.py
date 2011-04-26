@@ -5,6 +5,9 @@ from constants import TESTBED_ID
 import nepi.util.ipaddr2 as ipaddr2
 import nepi.util.server as server
 import plcapi
+import subprocess
+import os
+import os.path
 
 class NodeIface(object):
     def __init__(self, api=None):
@@ -191,7 +194,6 @@ class NetPipe(object):
         # set up rule
         scope, options = self._get_ruledef()
         command = "sudo -S netconfig config %s %s %s" % (self.mode, scope, options)
-        print command
         
         (out,err),proc = server.popen_ssh_command(
             command,
@@ -248,4 +250,40 @@ class NetPipe(object):
                 raise RuntimeError, "Failed instal build sources: %s %s" % (out,err,)
             
             self.configured = False
+    
+    def sync_trace(self, local_dir, whichtrace):
+        if whichtrace != 'netpipeStats':
+            raise ValueError, "Unsupported trace %s" % (whichtrace,)
+        
+        local_path = os.path.join(local_dir, "netpipe_stats_%s" % (self.mode,))
+        
+        # create parent local folders
+        proc = subprocess.Popen(
+            ["mkdir", "-p", os.path.dirname(local_path)],
+            stdout = open("/dev/null","w"),
+            stdin = open("/dev/null","r"))
+
+        if proc.wait():
+            raise RuntimeError, "Failed to synchronize trace: %s %s" % (out,err,)
+        
+        (out,err),proc = server.popen_ssh_command(
+            "echo 'Rules:' ; sudo -S netconfig show rules ; echo 'Pipes:' ; sudo -S netconfig show pipes",
+            host = self.node.hostname,
+            port = None,
+            user = self.node.slicename,
+            agent = None,
+            ident_key = self.node.ident_path,
+            server_key = self.node.server_key
+            )
+        
+        if proc.wait():
+            raise RuntimeError, "Failed to synchronize trace: %s %s" % (out,err,)
+        
+        # dump results to file
+        f = open(local_path, "wb")
+        f.write(err or "")
+        f.write(out or "")
+        f.close()
+        
+        return local_path
     

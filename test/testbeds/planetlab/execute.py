@@ -222,6 +222,7 @@ echo 'OKIDOKI'
         instance.defer_create_set(7, "plrIn", 0.001) # 0.1% plr inbound - regular loss
         instance.defer_create_set(7, "delayOut", int(1500 * 8 / (12.0/1024.0) / 1000)) # tx delay at 12kbps in ms
         instance.defer_create_set(7, "delayIn", int(1500 * 8 / (64.0/1024.0) / 1000)) # rx delay at 64kbps in ms
+        instance.defer_add_trace(7, "netpipeStats")
         instance.defer_connect(2, "pipes", 7, "node")
         instance.defer_create(8, "Application")
         instance.defer_create_set(8, "command", "time wget -q -O /dev/null http://www.google.com/") # Fetch ~10kb
@@ -246,6 +247,10 @@ echo 'OKIDOKI'
         minutes = int(match.group("min"))
         seconds = float(match.group("sec"))
         self.assertTrue((minutes * 60 + seconds) > 1.0, "Emulation not effective: %s" % (test_result,))
+        
+        netpipe_stats = instance.trace(7, "netpipeStats")
+        self.assertTrue(netpipe_stats, "Unavailable netpipe stats")
+        
         instance.stop()
         instance.shutdown()
 
