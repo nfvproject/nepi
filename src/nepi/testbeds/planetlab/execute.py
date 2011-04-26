@@ -114,6 +114,10 @@ class TestbedController(testbed_impl.TestbedController):
         element = self._elements[guid]
         if element:
             setattr(element, name, value)
+            
+            if hasattr(element, 'refresh'):
+                # invoke attribute refresh hook
+                element.refresh()
 
     def get(self, time, guid, name):
         # TODO: take on account schedule time for the task
@@ -163,8 +167,9 @@ class TestbedController(testbed_impl.TestbedController):
         for trace in self._traces.values():
             trace.close()
         for element in self._elements.values():
-            pass
-            #element.destroy()
+            # invoke cleanup hooks
+            if hasattr(element, 'cleanup'):
+                element.cleanup()
 
     def trace(self, guid, trace_id, attribute='value'):
         app = self._elements[guid]
@@ -214,6 +219,16 @@ class TestbedController(testbed_impl.TestbedController):
     
     def _make_tun_iface(self, parameters):
         iface = self._interfaces.TunIface(self.plapi)
+        
+        # Note: there is 1-to-1 correspondence between attribute names
+        #   If that changes, this has to change as well
+        for attr,val in parameters.iteritems():
+            setattr(iface, attr, val)
+        
+        return iface
+    
+    def _make_netpipe(self, parameters):
+        iface = self._interfaces.NetPipe(self.plapi)
         
         # Note: there is 1-to-1 correspondence between attribute names
         #   If that changes, this has to change as well

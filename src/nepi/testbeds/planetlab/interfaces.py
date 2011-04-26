@@ -3,6 +3,7 @@
 
 from constants import TESTBED_ID
 import nepi.util.ipaddr2 as ipaddr2
+import nepi.util.server as server
 import plcapi
 
 class NodeIface(object):
@@ -125,4 +126,126 @@ class Internet(object):
             api = plcapi.PLCAPI()
         self._api = api
 
+class NetPipe(object):
+    def __init__(self, api=None):
+        if not api:
+            api = plcapi.PLCAPI()
+        self._api = api
 
+        # Attributes
+        self.mode = None
+        self.addrList = None
+        self.portList = None
+        
+        self.plrIn = None
+        self.bwIn = None
+        self.delayIn = None
+
+        self.plrOut = None
+        self.bwOut = None
+        self.delayOut = None
+        
+        # These get initialized when the pipe is connected to its node
+        self.node = None
+        self.configured = False
+    
+    def validate(self):
+        if not self.mode:
+            raise RuntimeError, "Undefined NetPipe mode"
+        if not self.portList:
+            raise RuntimeError, "Undefined NetPipe port list - must always define the scope"
+        if not (self.plrIn or self.bwIn or self.delayIn):
+            raise RuntimeError, "Undefined NetPipe inbound characteristics"
+        if not (self.plrOut or self.bwOut or self.delayOut):
+            raise RuntimeError, "Undefined NetPipe outbound characteristics"
+        if not self.node:
+            raise RuntimeError, "Unconnected NetPipe"
+    
+    def _add_pipedef(self, bw, plr, delay, options):
+        if delay:
+            options.extend(("delay","%dms" % (delay,)))
+        if bw:
+            options.extend(("bw","%.8fMbit/s" % (bw,)))
+        if plr:
+            options.extend(("plr","%.8f" % (plr,)))
+    
+    def _get_ruledef(self):
+        scope = "%s%s%s" % (
+            self.portList,
+            "@" if self.addrList else "",
+            self.addrList or "",
+        )
+        
+        options = []
+        if self.bwIn or self.plrIn or self.delayIn:
+            options.append("IN")
+            self._add_pipedef(self.bwIn, self.plrIn, self.delayIn, options)
+        if self.bwOut or self.plrOut or self.delayOut:
+            options.append("OUT")
+            self._add_pipedef(self.bwOut, self.plrOut, self.delayOut, options)
+        options = ' '.join(options)
+        
+        return (scope,options)
+
+    def configure(self):
+        # set up rule
+        scope, options = self._get_ruledef()
+        command = "sudo -S netconfig config %s %s %s" % (self.mode, scope, options)
+        print command
+        
+        (out,err),proc = server.popen_ssh_command(
+            command,
+            host = self.node.hostname,
+            port = None,
+            user = self.node.slicename,
+            agent = None,
+            ident_key = self.node.ident_path,
+            server_key = self.node.server_key
+            )
+    
+        if proc.wait():
+            raise RuntimeError, "Failed instal build sources: %s %s" % (out,err,)
+        
+        # we have to clean up afterwards
+        self.configured = True
+    
+    def refresh(self):
+        if self.configured:
+            # refresh rule
+            scope, options = self._get_ruledef()
+            command = "sudo -S netconfig refresh %s %s %s" % (self.mode, scope, options)
+            
+            (out,err),proc = server.popen_ssh_command(
+                command,
+                host = self.node.hostname,
+                port = None,
+                user = self.node.slicename,
+                agent = None,
+                ident_key = self.node.ident_path,
+                server_key = self.node.server_key
+                )
+        
+            if proc.wait():
+                raise RuntimeError, "Failed instal build sources: %s %s" % (out,err,)
+    
+    def cleanup(self):
+        if self.configured:
+            # remove rule
+            scope, options = self._get_ruledef()
+            command = "sudo -S netconfig delete %s %s" % (self.mode, scope)
+            
+            (out,err),proc = server.popen_ssh_command(
+                command,
+                host = self.node.hostname,
+                port = None,
+                user = self.node.slicename,
+                agent = None,
+                ident_key = self.node.ident_path,
+                server_key = self.node.server_key
+                )
+        
+            if proc.wait():
+                raise RuntimeError, "Failed instal build sources: %s %s" % (out,err,)
+            
+            self.configured = False
+    

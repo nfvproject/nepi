@@ -203,6 +203,53 @@ echo 'OKIDOKI'
         instance.shutdown()
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    def test_emulation(self):
+        instance = self.make_instance()
+        
+        instance.defer_create(2, "Node")
+        instance.defer_create_set(2, "hostname", "onelab11.pl.sophia.inria.fr")
+        instance.defer_create_set(2, "emulation", True) # require emulation
+        instance.defer_create(3, "NodeInterface")
+        instance.defer_connect(2, "devs", 3, "node")
+        instance.defer_create(4, "Internet")
+        instance.defer_connect(3, "inet", 4, "devs")
+        instance.defer_create(7, "NetPipe")
+        instance.defer_create_set(7, "mode", "CLIENT")
+        instance.defer_create_set(7, "portList", "80")
+        instance.defer_create_set(7, "bwOut", 12.0/1024.0) # 12kbps
+        instance.defer_create_set(7, "bwIn", 64.0/1024.0) # 64kbps
+        instance.defer_create_set(7, "plrOut", 0.01) # 1% plr outbound - high loss
+        instance.defer_create_set(7, "plrIn", 0.001) # 0.1% plr inbound - regular loss
+        instance.defer_create_set(7, "delayOut", int(1500 * 8 / (12.0/1024.0) / 1000)) # tx delay at 12kbps in ms
+        instance.defer_create_set(7, "delayIn", int(1500 * 8 / (64.0/1024.0) / 1000)) # rx delay at 64kbps in ms
+        instance.defer_connect(2, "pipes", 7, "node")
+        instance.defer_create(8, "Application")
+        instance.defer_create_set(8, "command", "time wget -q -O /dev/null http://www.google.com/") # Fetch ~10kb
+        instance.defer_add_trace(8, "stderr")
+        instance.defer_connect(8, "node", 2, "apps")
+
+        instance.do_setup()
+        instance.do_create()
+        instance.do_connect()
+        instance.do_preconfigure()
+        instance.do_configure()
+        
+        instance.start()
+        while instance.status(8) != STATUS_FINISHED:
+            time.sleep(0.5)
+        test_result = (instance.trace(8, "stderr") or "").strip()
+        comp_result = r".*real\s*(?P<min>[0-9]+)m(?P<sec>[0-9]+[.][0-9]+)s.*"
+        
+        match = re.match(comp_result, test_result, re.MULTILINE)
+        self.assertTrue(match, "Unexpected output: %s" % (test_result,))
+        
+        minutes = int(match.group("min"))
+        seconds = float(match.group("sec"))
+        self.assertTrue((minutes * 60 + seconds) > 1.0, "Emulation not effective: %s" % (test_result,))
+        instance.stop()
+        instance.shutdown()
+
+    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_tun_emulation_requirement(self):
         instance = self.make_instance()
         

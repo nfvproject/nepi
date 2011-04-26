@@ -15,8 +15,60 @@ NODEIFACE = "NodeInterface"
 TUNIFACE = "TunInterface"
 APPLICATION = "Application"
 INTERNET = "Internet"
+NETPIPE = "NetPipe"
 
 PL_TESTBED_ID = "planetlab"
+
+
+### Custom validation functions ###
+def is_addrlist(attribute, value):
+    if not validation.is_string(attribute, value):
+        return False
+    
+    if not value:
+        # No empty strings
+        return False
+    
+    components = value.split(',')
+    
+    for component in components:
+        if '/' in component:
+            addr, mask = component.split('/',1)
+        else:
+            addr, mask = component, 32
+        
+        if mask is not None and not (mask and mask.isdigit()):
+            # No empty or nonnumeric masks
+            return False
+        
+        if not validation.is_ip4_address(attribute, value):
+            # Address part must be ipv4
+            return False
+        
+    return True
+
+def is_portlist(attribute, value):
+    if not validation.is_string(attribute, value):
+        return False
+    
+    if not value:
+        # No empty strings
+        return False
+    
+    components = value.split(',')
+    
+    for component in components:
+        if '-' in component:
+            pfrom, pto = component.split('-',1)
+        else:
+            pfrom = pto = component
+        
+        if not pfrom or not pto or not pfrom.isdigit() or not pto.isdigit():
+            # No empty or nonnumeric ports
+            return False
+        
+    return True
+
 
 ### Connection functions ####
 
@@ -28,7 +80,7 @@ def connect_node_iface_inet(testbed_instance, iface, inet):
 
 def connect_tun_iface_node(testbed_instance, node, iface):
     if not node.emulation:
-        raise RuntimeError, "Usage of TUN interfaces requires emulation"
+        raise RuntimeError, "Use of TUN interfaces requires emulation"
     iface.node = node
     node.required_vsys.update(('fd_tuntap', 'vif_up'))
 
@@ -38,6 +90,11 @@ def connect_app(testbed_instance, node, app):
     if app.depends:
         node.required_packages.update(set(
             app.depends.split() ))
+
+def connect_node_netpipe(testbed_instance, node, netpipe):
+    if not node.emulation:
+        raise RuntimeError, "Use of NetPipes requires emulation"
+    netpipe.node = node
     
 
 ### Creation functions ###
@@ -76,6 +133,11 @@ def create_application(testbed_instance, guid):
 def create_internet(testbed_instance, guid):
     parameters = testbed_instance._get_parameters(guid)
     element = testbed_instance._make_internet(parameters)
+    testbed_instance.elements[guid] = element
+
+def create_netpipe(testbed_instance, guid):
+    parameters = testbed_instance._get_parameters(guid)
+    element = testbed_instance._make_netpipe(parameters)
     testbed_instance.elements[guid] = element
 
 ### Start/Stop functions ###
@@ -177,6 +239,18 @@ def configure_application(testbed_instance, guid):
     # Install stuff
     app.setup()
 
+def configure_netpipe(testbed_instance, guid):
+    netpipe = testbed_instance._elements[guid]
+    
+    # Do some validations
+    netpipe.validate()
+    
+    # Wait for dependencies
+    netpipe.node.wait_dependencies()
+    
+    # Install rules
+    netpipe.configure()
+
 ### Factory information ###
 
 connector_types = dict({
@@ -204,6 +278,12 @@ connector_types = dict({
                 "max": 1, 
                 "min": 1
             }),
+    "pipes": dict({
+                "help": "Connector to a NetPipe", 
+                "name": "pipes",
+                "max": 2, 
+                "min": 0
+            }),
    })
 
 connections = [
@@ -230,7 +310,13 @@ connections = [
         "to":   (TESTBED_ID, APPLICATION, "node"),
         "code": connect_app,
         "can_cross": False
-    })
+    }),
+    dict({
+        "from": (TESTBED_ID, NODE, "pipes"),
+        "to":   (TESTBED_ID, NETPIPE, "node"),
+        "code": connect_node_netpipe,
+        "can_cross": False
+    }),
 ]
 
 attributes = dict({
@@ -439,6 +525,70 @@ attributes = dict({
                 "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_string
             }),
+    
+    "netpipe_mode": dict({      
+                "name": "mode",
+                "help": "Link mode:\n"
+                        " * SERVER: applies to incoming connections\n"
+                        " * CLIENT: applies to outgoing connections\n"
+                        " * SERVICE: applies to both",
+                "type": Attribute.ENUM, 
+                "flags": Attribute.DesignOnly,
+                "allowed": ["SERVER",
+                            "CLIENT",
+                            "SERVICE"],
+                "validation_function": validation.is_enum,
+            }),
+    "port_list":  dict({
+                "name": "portList", 
+                "help": "Port list or range. Eg: '22', '22,23,27', '20-2000'",
+                "type": Attribute.STRING,
+                "validation_function": is_portlist,
+            }),
+    "addr_list":  dict({
+                "name": "addrList", 
+                "help": "Address list or range. Eg: '127.0.0.1', '127.0.0.1,127.0.1.1', '127.0.0.1/8'",
+                "type": Attribute.STRING,
+                "validation_function": is_addrlist,
+            }),
+    "bw_in":  dict({
+                "name": "bwIn", 
+                "help": "Inbound bandwidth limit (in Mbit/s)",
+                "type": Attribute.DOUBLE,
+                "validation_function": validation.is_double,
+            }),
+    "bw_out":  dict({
+                "name": "bwOut", 
+                "help": "Outbound bandwidth limit (in Mbit/s)",
+                "type": Attribute.DOUBLE,
+                "validation_function": validation.is_double,
+            }),
+    "plr_in":  dict({
+                "name": "plrIn", 
+                "help": "Inbound packet loss rate (0 = no loss, 1 = 100% loss)",
+                "type": Attribute.DOUBLE,
+                "validation_function": validation.is_double,
+            }),
+    "plr_out":  dict({
+                "name": "plrOut", 
+                "help": "Outbound packet loss rate (0 = no loss, 1 = 100% loss)",
+                "type": Attribute.DOUBLE,
+                "validation_function": validation.is_double,
+            }),
+    "delay_in":  dict({
+                "name": "delayIn", 
+                "help": "Inbound packet delay (in milliseconds)",
+                "type": Attribute.INTEGER,
+                "range": (0,60000),
+                "validation_function": validation.is_integer,
+            }),
+    "delay_out":  dict({
+                "name": "delayOut", 
+                "help": "Outbound packet delay (in milliseconds)",
+                "type": Attribute.INTEGER,
+                "range": (0,60000),
+                "validation_function": validation.is_integer,
+            }),
     })
 
 traces = dict({
@@ -456,9 +606,9 @@ traces = dict({
               }), 
     })
 
-create_order = [ INTERNET, NODE, NODEIFACE, TUNIFACE, APPLICATION ]
+create_order = [ INTERNET, NODE, NODEIFACE, TUNIFACE, NETPIPE, APPLICATION ]
 
-configure_order = [ INTERNET, NODE, NODEIFACE, TUNIFACE, APPLICATION ]
+configure_order = [ INTERNET, NODE, NODEIFACE, TUNIFACE, NETPIPE, APPLICATION ]
 
 factories_info = dict({
     NODE: dict({
@@ -479,7 +629,7 @@ factories_info = dict({
                 "min_bandwidth",
                 "max_bandwidth",
             ],
-            "connector_types": ["devs", "apps"]
+            "connector_types": ["devs", "apps", "pipes"]
        }),
     NODEIFACE: dict({
             "allow_addresses": True,
@@ -520,6 +670,18 @@ factories_info = dict({
             "category": "topology",
             "create_function": create_internet,
             "connector_types": ["devs"],
+        }),
+    NETPIPE: dict({
+            "help": "Link emulation",
+            "category": "topology",
+            "create_function": create_netpipe,
+            "configure_function": configure_netpipe,
+            "box_attributes": ["netpipe_mode",
+                               "addr_list", "port_list",
+                               "bw_in","plr_in","delay_in",
+                               "bw_out","plr_out","delay_out"],
+            "connector_types": ["node"],
+            "traces": ["stdout", "stderr"]
         }),
 })
 

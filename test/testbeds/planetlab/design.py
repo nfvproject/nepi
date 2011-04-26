@@ -62,5 +62,27 @@ class PlanetlabDesignTestCase(unittest.TestCase):
         xml2 = exp_desc2.to_xml()
         self.assertTrue(xml == xml2)
         
+    def test_design_emulation(self):
+        exp_desc, tstbd_desc, node1, node2, iface1, iface2, app = self.make_test_design()
+        
+        node1.set_attribute_value("emulation",True)
+        
+        netpipe1 = tstbd_desc.create("NetPipe")
+        netpipe1.set_attribute_value("mode","CLIENT")
+        netpipe1.set_attribute_value("portList","80,443")
+        netpipe1.set_attribute_value("bwIn",1.0)
+        netpipe1.set_attribute_value("bwOut",128.0/1024.0)
+        netpipe1.set_attribute_value("delayIn",12)
+        netpipe1.set_attribute_value("delayOut",92)
+        netpipe1.set_attribute_value("plrIn",0.05)
+        netpipe1.set_attribute_value("plrOut",0.15)
+        node1.connector("pipes").connect(netpipe1.connector("node"))
+
+        xml = exp_desc.to_xml()
+        exp_desc2 = ExperimentDescription()
+        exp_desc2.from_xml(xml)
+        xml2 = exp_desc2.to_xml()
+        self.assertTrue(xml == xml2)
+
 if __name__ == '__main__':
     unittest.main()
