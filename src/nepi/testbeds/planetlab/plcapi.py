@@ -115,10 +115,11 @@ class PLCAPI(object):
                 (peer['peername'], peer['peer_id'])
                 for peer in peers
             )
-            self._peer_map = dict(
+            self._peer_map.update(
                 (peer['peer_id'], peer['shortname'])
                 for peer in peers
             )
+            self._peer_map[None] = self._localPeerName
             return self._peer_map
     
 
@@ -245,5 +246,8 @@ class PLCAPI(object):
             filters = kw.pop('filters',{})
             filters.update(kw)
             return self.api.GetSlices(self.auth, filters, *fieldstuple)
+        
+    def UpdateSlice(self, sliceIdOrName, **kw):
+        return self.api.UpdateSlice(self.auth, sliceIdOrName, kw)
         
 

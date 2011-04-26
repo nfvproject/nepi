@@ -24,7 +24,9 @@ class NOT_STARTED:
     """
 
 def remote_spawn(command, pidfile, stdout='/dev/null', stderr=STDOUT, stdin='/dev/null', home=None, create_home=False, sudo=False,
-        host = None, port = None, user = None, agent = None, ident_key = None, tty = False):
+        host = None, port = None, user = None, agent = None, 
+        ident_key = None, server_key = None,
+        tty = False):
     """
     Spawn a remote command such that it will continue working asynchronously.
     
@@ -78,6 +80,7 @@ def remote_spawn(command, pidfile, stdout='/dev/null', stderr=STDOUT, stdin='/de
         user = user,
         agent = agent,
         ident_key = ident_key,
+        server_key = server_key,
         tty = tty 
         )
     
@@ -87,7 +90,8 @@ def remote_spawn(command, pidfile, stdout='/dev/null', stderr=STDOUT, stdin='/de
     return (out,err),proc
 
 def remote_check_pid(pidfile,
-        host = None, port = None, user = None, agent = None, ident_key = None):
+        host = None, port = None, user = None, agent = None, 
+        ident_key = None, server_key = None):
     """
     Check the pidfile of a process spawned with remote_spawn.
     
@@ -110,7 +114,8 @@ def remote_check_pid(pidfile,
         port = port,
         user = user,
         agent = agent,
-        ident_key = ident_key
+        ident_key = ident_key,
+        server_key = server_key
         )
         
     if proc.wait():
@@ -125,7 +130,8 @@ def remote_check_pid(pidfile,
 
 
 def remote_status(pid, ppid, 
-        host = None, port = None, user = None, agent = None, ident_key = None):
+        host = None, port = None, user = None, agent = None, 
+        ident_key = None, server_key = None):
     """
     Check the status of a process spawned with remote_spawn.
     
@@ -148,7 +154,8 @@ def remote_status(pid, ppid,
         port = port,
         user = user,
         agent = agent,
-        ident_key = ident_key
+        ident_key = ident_key,
+        server_key = server_key
         )
     
     if proc.wait():
@@ -165,7 +172,8 @@ def remote_status(pid, ppid,
     
 
 def remote_kill(pid, ppid, sudo = False,
-        host = None, port = None, user = None, agent = None, ident_key = None):
+        host = None, port = None, user = None, agent = None, 
+        ident_key = None, server_key = None):
     """
     Kill a process spawned with remote_spawn.
     
@@ -206,7 +214,8 @@ fi
         port = port,
         user = user,
         agent = agent,
-        ident_key = ident_key
+        ident_key = ident_key,
+        server_key = server_key
         )
     
     # wait, don't leave zombies around

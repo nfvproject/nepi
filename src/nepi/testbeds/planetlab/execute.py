@@ -4,6 +4,7 @@
 from constants import TESTBED_ID
 from nepi.core import testbed_impl
 import os
+import time
 
 class TestbedController(testbed_impl.TestbedController):
     def __init__(self, testbed_version):
@@ -58,10 +59,7 @@ class TestbedController(testbed_impl.TestbedController):
         self.sliceSSHKey = self._attributes.\
             get_attribute_value("sliceSSHKey")
 
-    def do_create(self):
-        # Create node elements per XML data
-        super(TestbedController, self).do_create()
-        
+    def do_preconfigure(self):
         # Perform resource discovery if we don't have
         # specific resources assigned yet
         self.do_resource_discovery()
@@ -69,20 +67,46 @@ class TestbedController(testbed_impl.TestbedController):
         # Create PlanetLab slivers
         self.do_provisioning()
         
-        # Wait for all nodes to be ready
-        self.wait_nodes()
+        # Configure elements per XML data
+        super(TestbedController, self).do_preconfigure()
     
     def do_resource_discovery(self):
         # Do what?
-        pass
+        
+        # Provisional algo:
+        #   look for perfectly defined nodes
+        #   (ie: those with only one candidate)
+        to_provision = self._to_provision = set()
+        for guid, node in self._elements.iteritems():
+            if isinstance(node, self._node.Node) and node._node_id is None:
+                # Try existing nodes first
+                # If we have only one candidate, simply use it
+                candidates = node.find_candidates(
+                    filter_slice_id = self.slice_id)
+                if len(candidates) == 1:
+                    node.assign_node_id(iter(candidates).next())
+                else:
+                    # Try again including unassigned nodes
+                    candidates = node.find_candidates()
+                    if len(candidates) > 1:
+                        raise RuntimeError, "Cannot assign resources for node %s, too many candidates" % (guid,)
+                    if len(candidates) == 1:
+                        node_id = iter(candidates).next()
+                        node.assign_node_id(node_id)
+                        to_provision.add(node_id)
+                    elif not candidates:
+                        raise RuntimeError, "Cannot assign resources for node %s, no candidates" % (guid,)
 
     def do_provisioning(self):
-        # Que te recontra?
-        pass
+        if self._to_provision:
+            # Add new nodes to the slice
+            cur_nodes = self.plapi.GetSlices(self.slicename, ['node_ids'])[0]['node_ids']
+            new_nodes = list(set(cur_nodes) | self._to_provision)
+            self.plapi.UpdateSlice(self.slicename, nodes=new_nodes)
     
-    def wait_nodes(self):
-        # Suuure...
-        pass
+        # cleanup
+        del self._to_provision
+    
 
     def set(self, time, guid, name, value):
         super(TestbedController, self).set(time, guid, name, value)

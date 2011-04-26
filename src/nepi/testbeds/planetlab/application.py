@@ -85,7 +85,8 @@ class Application(object):
             port = None,
             user = self.slicename,
             agent = None,
-            ident_key = self.ident_path
+            ident_key = self.ident_path,
+            server_key = self.node.server_key
             )
         
         if proc.wait():
@@ -103,7 +104,8 @@ class Application(object):
                 port = None,
                 user = self.slicename,
                 agent = None,
-                ident_key = self.ident_path
+                ident_key = self.ident_path,
+                server_key = self.node.server_key
                 )
             
             if pidtuple:
@@ -145,7 +147,8 @@ class Application(object):
                 port = None,
                 user = self.slicename,
                 agent = None,
-                ident_key = self.ident_path
+                ident_key = self.ident_path,
+                server_key = self.node.server_key
                 )
     
     def remote_trace_path(self, whichtrace):
@@ -179,7 +182,8 @@ class Application(object):
             local_path,
             port = None,
             agent = None,
-            ident_key = self.ident_path
+            ident_key = self.ident_path,
+            server_key = self.node.server_key
             )
         
         if proc.wait():
@@ -201,7 +205,8 @@ class Application(object):
             port = None,
             user = self.slicename,
             agent = None,
-            ident_key = self.ident_path
+            ident_key = self.ident_path,
+            server_key = self.node.server_key
             )
         
         if proc.wait():
@@ -216,7 +221,8 @@ class Application(object):
                     os.path.join(self.home_path, 'stdin') ),
                 port = None,
                 agent = None,
-                ident_key = self.ident_path
+                ident_key = self.ident_path,
+                server_key = self.node.server_key
                 )
             
             if proc.wait():
@@ -232,7 +238,8 @@ class Application(object):
                     source,
                     "%s@%s:%s" % (self.slicename, self.node.hostname, 
                         os.path.join(self.home_path,'.'),),
-                    ident_key = self.ident_path
+                    ident_key = self.ident_path,
+                    server_key = self.node.server_key
                     )
             
                 if proc.wait():
@@ -248,7 +255,8 @@ class Application(object):
                 port = None,
                 user = self.slicename,
                 agent = None,
-                ident_key = self.ident_path
+                ident_key = self.ident_path,
+                server_key = self.node.server_key
                 )
         
             if proc.wait():
@@ -266,7 +274,8 @@ class Application(object):
                 port = None,
                 user = self.slicename,
                 agent = None,
-                ident_key = self.ident_path
+                ident_key = self.ident_path,
+                server_key = self.node.server_key
                 )
         
             if proc.wait():

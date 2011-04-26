@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import time
+
 from constants import TESTBED_ID
 from nepi.core import metadata
 from nepi.core.attributes import Attribute
@@ -142,16 +144,17 @@ def configure_node(testbed_instance, guid):
     node.ident_path = testbed_instance.sliceSSHKey
     node.slicename = testbed_instance.slicename
     
-    # If we have only one candidate, simply use it
-    candidates = node.find_candidates(
-        filter_slice_id = testbed_instance.slice_id)
-    if len(candidates) == 1:
-        node.assign_node_id(iter(candidates).next())
-    
     # Do some validations
     node.validate()
     
-    # TODO: this should be done in parallel in all nodes
+    # recently provisioned nodes may not be up yet
+    sleeptime = 1.0
+    while not node.is_alive():
+        time.sleep(sleeptime)
+        sleeptime = min(30.0, sleeptime*1.5)
+    
+    # this will be done in parallel in all nodes
+    # this call only spawns the process
     node.install_dependencies()
 
 def configure_application(testbed_instance, guid):

@@ -14,6 +14,7 @@ import time
 import traceback
 import signal
 import re
+import tempfile
 
 CTRL_SOCK = "ctrl.sock"
 STD_ERR = "stderr.log"
@@ -340,13 +341,31 @@ class Client(object):
         encoded = data.rstrip() 
         return base64.b64decode(encoded)
 
+def _make_server_key_args(server_key, host, port, args):
+    """ 
+    Returns a reference to the created temporary file, and adds the
+    corresponding arguments to the given argument list.
+    
+    Make sure to hold onto it until the process is done with the file
+    """
+    if port is not None:
+        host = '%s:%s' % (host,port)
+    # Create a temporary server key file
+    tmp_known_hosts = tempfile.NamedTemporaryFile()
+    tmp_known_hosts.write('%s,%s %s\n' % (host, socket.gethostbyname(host), server_key))
+    tmp_known_hosts.flush()
+    args.extend(['-o', 'UserKnownHostsFile=%s' % (tmp_known_hosts.name,)])
+    return tmp_known_hosts
+
 def popen_ssh_command(command, host, port, user, agent, 
             stdin="", 
             ident_key = None,
+            server_key = None,
             tty = False):
         """
         Executes a remote commands, returns ((stdout,stderr),process)
         """
+        tmp_known_hosts = None
         args = ['ssh',
                 # Don't bother with localhost. Makes test easier
                 '-o', 'NoHostAuthenticationForLocalhost=yes',
@@ -359,6 +378,10 @@ def popen_ssh_command(command, host, port, user, agent,
             args.extend(('-i', ident_key))
         if tty:
             args.append('-t')
+        if server_key:
+            # Create a temporary server key file
+            tmp_known_hosts = _make_server_key_args(
+                server_key, host, port, args)
         args.append(command)
 
         # connects to the remote host and starts a remote connection
@@ -366,13 +389,19 @@ def popen_ssh_command(command, host, port, user, agent,
                 stdout = subprocess.PIPE,
                 stdin = subprocess.PIPE, 
                 stderr = subprocess.PIPE)
+        
+        # attach tempfile object to the process, to make sure the file stays
+        # alive until the process is finished with it
+        proc._known_hosts = tmp_known_hosts
+        
         return (proc.communicate(stdin), proc)
  
 def popen_scp(source, dest, 
             port = None, 
             agent = None, 
             recursive = False,
-            ident_key = None):
+            ident_key = None,
+            server_key = None):
         """
         Copies from/to remote sites.
         
@@ -392,9 +421,15 @@ def popen_scp(source, dest,
                 or hasattr(source, 'read')  or hasattr(dest, 'write'):
             assert not resursive
             
-            # Parse destination as <user>@<server>:<path>
-            tgtspec, path = dest.split(':',1)
-            user,host = tgtspec.rsplit('@',1)
+            # Parse source/destination as <user>@<server>:<path>
+            if isinstance(dest, basestring) and ':' in dest:
+                remspec, path = dest.split(':',1)
+            elif isinstance(source, basestring) and ':' in source:
+                remspec, path = source.split(':',1)
+            else:
+                raise ValueError, "Both endpoints cannot be local"
+            user,host = remspec.rsplit('@',1)
+            tmp_known_hosts = None
             
             args = ['ssh', '-l', user, '-C',
                     # Don't bother with localhost. Makes test easier
@@ -403,6 +438,10 @@ def popen_scp(source, dest,
                 args.append('-P%d' % port)
             if ident_key:
                 args.extend(('-i', ident_key))
+            if server_key:
+                # Create a temporary server key file
+                tmp_known_hosts = _make_server_key_args(
+                    server_key, host, port, args)
             
             if isinstance(source, file) or hasattr(source, 'read'):
                 args.append('cat > %s' % (shell_escape(path),))
@@ -418,6 +457,7 @@ def popen_scp(source, dest,
                         stderr = subprocess.PIPE,
                         stdin = source)
                 err = proc.stderr.read()
+                proc._known_hosts = tmp_known_hosts
                 proc.wait()
                 return ((None,err), proc)
             elif isinstance(dest, file):
@@ -426,6 +466,7 @@ def popen_scp(source, dest,
                         stderr = subprocess.PIPE,
                         stdin = source)
                 err = proc.stderr.read()
+                proc._known_hosts = tmp_known_hosts
                 proc.wait()
                 return ((None,err), proc)
             elif hasattr(source, 'read'):
@@ -458,6 +499,7 @@ def popen_scp(source, dest,
                         break
                 err.append(proc.stderr.read())
                     
+                proc._known_hosts = tmp_known_hosts
                 proc.wait()
                 return ((None,''.join(err)), proc)
             elif hasattr(dest, 'write'):
@@ -487,12 +529,23 @@ def popen_scp(source, dest,
                         break
                 err.append(proc.stderr.read())
                     
+                proc._known_hosts = tmp_known_hosts
                 proc.wait()
                 return ((None,''.join(err)), proc)
             else:
                 raise AssertionError, "Unreachable code reached! :-Q"
         else:
+            # Parse destination as <user>@<server>:<path>
+            if isinstance(dest, basestring) and ':' in dest:
+                remspec, path = dest.split(':',1)
+            elif isinstance(source, basestring) and ':' in source:
+                remspec, path = source.split(':',1)
+            else:
+                raise ValueError, "Both endpoints cannot be local"
+            user,host = remspec.rsplit('@',1)
+            
             # plain scp
+            tmp_known_hosts = None
             args = ['scp', '-q', '-p', '-C',
                     # Don't bother with localhost. Makes test easier
                     '-o', 'NoHostAuthenticationForLocalhost=yes' ]
@@ -502,6 +555,10 @@ def popen_scp(source, dest,
                 args.append('-r')
             if ident_key:
                 args.extend(('-i', ident_key))
+            if server_key:
+                # Create a temporary server key file
+                tmp_known_hosts = _make_server_key_args(
+                    server_key, host, port, args)
             args.append(source)
             args.append(dest)
 
@@ -510,6 +567,8 @@ def popen_scp(source, dest,
                     stdout = subprocess.PIPE,
                     stdin = subprocess.PIPE, 
                     stderr = subprocess.PIPE)
+            proc._known_hosts = tmp_known_hosts
+            
             comm = proc.communicate()
             proc.wait()
             return (comm, proc)
@@ -517,6 +576,7 @@ def popen_scp(source, dest,
 def popen_ssh_subprocess(python_code, host, port, user, agent, 
         python_path = None,
         ident_key = None,
+        server_key = None,
         tty = False):
         if python_path:
             python_path.replace("'", r"'\''")
@@ -541,6 +601,7 @@ def popen_ssh_subprocess(python_code, host, port, user, agent,
         cmd += "os.write(1, \"OK\\n\")\n" # send a sync message
         cmd += "exec(cmd)\n'"
 
+        tmp_known_hosts = None
         args = ['ssh',
                 # Don't bother with localhost. Makes test easier
                 '-o', 'NoHostAuthenticationForLocalhost=yes',
@@ -553,6 +614,10 @@ def popen_ssh_subprocess(python_code, host, port, user, agent,
             args.extend(('-i', ident_key))
         if tty:
             args.append('-t')
+        if server_key:
+            # Create a temporary server key file
+            tmp_known_hosts = _make_server_key_args(
+                server_key, host, port, args)
         args.append(cmd)
 
         # connects to the remote host and starts a remote rpyc connection
@@ -560,6 +625,8 @@ def popen_ssh_subprocess(python_code, host, port, user, agent,
                 stdout = subprocess.PIPE,
                 stdin = subprocess.PIPE, 
                 stderr = subprocess.PIPE)
+        proc._known_hosts = tmp_known_hosts
+        
         # send the command to execute
         os.write(proc.stdin.fileno(),
                 base64.b64encode(python_code) + "\n")

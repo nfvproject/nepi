@@ -8,6 +8,8 @@ import rspawn
 import time
 import os
 
+from nepi.util import server
+
 class Node(object):
     BASEFILTERS = {
         # Map Node attribute to plcapi filter name
@@ -56,6 +58,7 @@ class Node(object):
         # Testbed-derived attributes
         self.slicename = None
         self.ident_path = None
+        self.server_key = None
         self.home_path = None
         
         # Those are filled when an actual node is allocated
@@ -136,7 +139,7 @@ class Node(object):
         self.fetch_node_info()
     
     def fetch_node_info(self):
-        info = self._api.GetNodes(self._node_id)
+        info = self._api.GetNodes(self._node_id)[0]
         tags = dict( (t['tagname'],t['value'])
                      for t in self._api.GetNodeTags(node_id=self._node_id, fields=('tagname','value')) )
 
@@ -161,6 +164,9 @@ class Node(object):
         if 'interface_ids' in info:
             self.min_num_external_ifaces = \
             self.max_num_external_ifaces = len(info['interface_ids'])
+        
+        if 'ssh_rsa_key' in info:
+            self.server_key = info['ssh_rsa_key']
 
     def validate(self):
         if self.home_path is None:
@@ -191,6 +197,7 @@ class Node(object):
                 user = self.slicename,
                 agent = None,
                 ident_key = self.ident_path,
+                server_key = self.server_key,
                 sudo = True
                 )
             
@@ -210,7 +217,8 @@ class Node(object):
                     port = None,
                     user = self.slicename,
                     agent = None,
-                    ident_key = self.ident_path
+                    ident_key = self.ident_path,
+                    server_key = self.server_key
                     )
                 if pidtuple:
                     pid, ppid = pidtuple
@@ -227,9 +235,29 @@ class Node(object):
                     port = None,
                     user = self.slicename,
                     agent = None,
-                    ident_key = self.ident_path
+                    ident_key = self.ident_path,
+                    server_key = self.server_key
                     ):
                 time.sleep(probe)
         
-
+    def is_alive(self):
+        # Make sure all the paths are created where 
+        # they have to be created for deployment
+        (out,err),proc = server.popen_ssh_command(
+            "echo 'ALIVE'",
+            host = self.hostname,
+            port = None,
+            user = self.slicename,
+            agent = None,
+            ident_key = self.ident_path,
+            server_key = self.server_key
+            )
+        
+        if proc.wait():
+            return False
+        elif not err and out.strip() == 'ALIVE':
+            return True
+        else:
+            return False
+    
 
