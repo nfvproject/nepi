@@ -70,10 +70,26 @@ class Application(object):
             raise AssertionError, "Misconfigured application: unspecified slice"
 
     def start(self):
+        # Create shell script with the command
+        # This way, complex commands and scripts can be ran seamlessly
+        # sync files
+        (out,err),proc = server.popen_scp(
+            cStringIO.StringIO(self.command),
+            '%s@%s:%s' % (self.slicename, self.node.hostname, 
+                os.path.join(self.home_path, "app.sh")),
+            port = None,
+            agent = None,
+            ident_key = self.ident_path,
+            server_key = self.node.server_key
+            )
+        
+        if proc.wait():
+            raise RuntimeError, "Failed to set up application: %s %s" % (out,err,)
+        
         # Start process in a "daemonized" way, using nohup and heavy
         # stdin/out redirection to avoid connection issues
         (out,err),proc = rspawn.remote_spawn(
-            self._replace_paths(self.command),
+            self._replace_paths("bash ./app.sh"),
             
             pidfile = './pid',
             home = self.home_path,
