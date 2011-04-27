@@ -289,9 +289,9 @@ class Box(AttributesMap):
             t.destroy()
         self._connectors = self._traces = self._factory_attributes = None
 
-class AddressableBox(Box):
+class AddressableMixin(object):
     def __init__(self, guid, factory, testbed_guid, container = None):
-        super(AddressableBox, self).__init__(guid, factory, testbed_guid, 
+        super(AddressableMixin, self).__init__(guid, factory, testbed_guid, 
                 container)
         self._max_addresses = 1 # TODO: How to make this configurable!
         self._addresses = list()
@@ -303,6 +303,11 @@ class AddressableBox(Box):
     @property
     def max_addresses(self):
         return self._max_addresses
+
+class UserAddressableMixin(AddressableMixin):
+    def __init__(self, guid, factory, testbed_guid, container = None):
+        super(UserAddressableMixin, self).__init__(guid, factory, testbed_guid, 
+                container)
 
     def add_address(self):
         if len(self._addresses) == self.max_addresses:
@@ -316,19 +321,25 @@ class AddressableBox(Box):
         del address
 
     def destroy(self):
-        super(AddressableBox, self).destroy()
-        for address in self.addresses:
+        super(UserAddressableMixin, self).destroy()
+        for address in list(self.addresses):
             self.delete_address(address)
         self._addresses = None
 
-class RoutingTableBox(Box):
-    def __init__(self, guid, factory, container = None):
-        super(RoutingTableBox, self).__init__(guid, factory, container)
+class RoutableMixin(object):
+    def __init__(self, guid, factory, testbed_guid, container = None):
+        super(RoutableMixin, self).__init__(guid, factory, testbed_guid, 
+            container)
         self._routes = list()
 
     @property
     def routes(self):
         return self._routes
+
+class UserRoutableMixin(RoutableMixin):
+    def __init__(self, guid, factory, testbed_guid, container = None):
+        super(UserRoutableMixin, self).__init__(guid, factory, testbed_guid, 
+            container)
 
     def add_route(self):
         route = Route()
@@ -340,23 +351,80 @@ class RoutingTableBox(Box):
         del route
 
     def destroy(self):
-        super(RoutingTableBox, self).destroy()
-        for route in self.routes:
+        super(UserRoutableMixin, self).destroy()
+        for route in list(self.routes):
             self.delete_route(route)
         self._route = None
 
+def MixIn(MyClass, MixIn):
+    # Mixins are installed BEFORE "Box" because
+    # Box inherits from non-cooperative classes,
+    # so the MRO chain gets broken when it gets
+    # to Box.
+
+    # Install mixin
+    MyClass.__bases__ = (MixIn,) + MyClass.__bases__
+    
+    # Add properties
+    # Somehow it doesn't work automatically
+    for name in dir(MixIn):
+        prop = getattr(MixIn,name,None)
+        if isinstance(prop, property):
+            setattr(MyClass, name, prop)
+    
+    # Update name
+    MyClass.__name__ = MyClass.__name__.replace(
+        'Box',
+        MixIn.__name__.replace('MixIn','')+'Box',
+        1)
+
 class Factory(AttributesMap):
-    def __init__(self, factory_id, allow_addresses = False, 
-            allow_routes = False, Help = None, category = None):
+    _box_class_cache = {}
+        
+    def __init__(self, factory_id, 
+            allow_addresses = False, has_addresses = False,
+            allow_routes = False, has_routes = False,
+            Help = None, category = None):
         super(Factory, self).__init__()
         self._factory_id = factory_id
-        self._allow_addresses = (allow_addresses == True)
-        self._allow_routes = (allow_routes == True)
+        self._allow_addresses = bool(allow_addresses)
+        self._allow_routes = bool(allow_routes)
+        self._has_addresses = bool(allow_addresses) or self._allow_addresses
+        self._has_routes = bool(allow_routes) or self._allow_routes
         self._help = help
         self._category = category
         self._connector_types = list()
         self._traces = list()
         self._box_attributes = AttributesMap()
+        
+        if not self._has_addresses and not self._has_routes:
+            self._factory = Box
+        else:
+            addresses = 'w' if self._allow_addresses else ('r' if self._has_addresses else '-')
+            routes    = 'w' if self._allow_routes else ('r' if self._has_routes else '-')
+            key = addresses+routes
+            
+            if key in self._box_class_cache:
+                self._factory = self._box_class_cache[key]
+            else:
+                # Create base class
+                class _factory(Box):
+                    def __init__(self, guid, factory, testbed_guid, container = None):
+                        super(_factory, self).__init__(guid, factory, testbed_guid, container)
+                
+                # Add mixins, one by one
+                if allow_addresses:
+                    MixIn(_factory, UserAddressableMixin)
+                elif has_addresses:
+                    MixIn(_factory, AddressableMixin)
+                    
+                if allow_routes:
+                    MixIn(_factory, UserRoutableMixin)
+                elif has_routes:
+                    MixIn(_factory, RoutableMixin)
+                
+                # Put into cache
+                self._box_class_cache[key] = self._factory = _factory
 
     @property
     def factory_id(self):
@@ -369,6 +437,14 @@ class Factory(AttributesMap):
     @property
     def allow_routes(self):
         return self._allow_routes
+
+    @property
+    def has_addresses(self):
+        return self._has_addresses
+
+    @property
+    def has_routes(self):
+        return self._has_routes
 
     @property
     def help(self):
@@ -403,12 +479,7 @@ class Factory(AttributesMap):
                 allowed, flags, validation_function)
 
     def create(self, guid, testbed_description):
-        if self._allow_addresses:
-            return AddressableBox(guid, self, testbed_description.guid)
-        elif self._allow_routes:
-            return RoutingTableBox(guid, self, testbed_description.guid)
-        else:
-            return Box(guid, self, testbed_description.guid)
+        return self._factory(guid, self, testbed_description.guid)
 
     def destroy(self):
         super(Factory, self).destroy()

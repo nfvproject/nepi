@@ -99,11 +99,14 @@ class Factory(AttributesMap):
     def __init__(self, factory_id, create_function, start_function, 
             stop_function, status_function, 
             configure_function, preconfigure_function,
-            allow_addresses = False, allow_routes = False):
+            allow_addresses = False, has_addresses = False,
+            allow_routes = False, has_routes = False):
         super(Factory, self).__init__()
         self._factory_id = factory_id
-        self._allow_addresses = (allow_addresses == True)
-        self._allow_routes = (allow_routes == True)
+        self._allow_addresses = bool(allow_addresses)
+        self._allow_routes = bool(allow_routes)
+        self._has_addresses = bool(has_addresses) or self._allow_addresses
+        self._has_routes = bool(has_routes) or self._allow_routes
         self._create_function = create_function
         self._start_function = start_function
         self._stop_function = stop_function
@@ -125,6 +128,14 @@ class Factory(AttributesMap):
     @property
     def allow_routes(self):
         return self._allow_routes
+
+    @property
+    def has_addresses(self):
+        return self._has_addresses
+
+    @property
+    def has_routes(self):
+        return self._has_routes
 
     @property
     def box_attributes(self):

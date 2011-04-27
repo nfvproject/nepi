@@ -173,7 +173,7 @@ def configure_nodeiface(testbed_instance, guid):
     
     # Cannot explicitly configure addresses
     if guid in testbed_instance._add_address:
-        del testbed_instance._add_address[guid]
+        raise ValueError, "Cannot explicitly set address of public PlanetLab interface"
     
     # Get siblings
     node_guid = testbed_instance.get_connected(guid, "node", "devs")[0]
@@ -196,7 +196,7 @@ def configure_tuniface(testbed_instance, guid):
     addresses = testbed_instance._add_address[guid]
     for address in addresses:
         (address, netprefix, broadcast) = address
-        raise NotImplementedError, "C'mon... TUNs are hard..."
+        element.add_address(address, netprefix, broadcast)
     
     # Do some validations
     element.validate()
@@ -637,7 +637,7 @@ factories_info = dict({
             "connector_types": ["devs", "apps", "pipes"]
        }),
     NODEIFACE: dict({
-            "allow_addresses": True,
+            "has_addresses": True,
             "help": "External network interface - they cannot be brought up or down, and they MUST be connected to the internet.",
             "category": "devices",
             "create_function": create_nodeiface,

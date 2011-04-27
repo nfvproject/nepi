@@ -86,6 +86,8 @@ class VersionedMetadataInfo(object):
             factory_id: dict({
                 "allow_addresses": whether the box allows adding IP addresses,
                 "allow_routes": wether the box allows adding routes,
+                "has_addresses": whether the box allows obtaining IP addresses,
+                "has_routes": wether the box allows obtaining routes,
                 "help": help text,
                 "category": category the element belongs to,
                 "create_function": function for element instantiation,
@@ -190,11 +192,13 @@ class Metadata(object):
         for factory_id, info in self._metadata.factories_info.iteritems():
             help = info["help"]
             category = info["category"]
-            allow_addresses = info["allow_addresses"] \
-                    if "allow_addresses" in info else False
-            allow_routes = info["allow_routes"] \
-                    if "allow_routes" in info else False
-            factory = Factory(factory_id, allow_addresses, allow_routes,
+            allow_addresses = info.get("allow_addresses", False)
+            allow_routes = info.get("allow_routes", False)
+            has_addresses = info.get("has_addresses", False)
+            has_routes = info.get("has_routes", False)
+            factory = Factory(factory_id, 
+                    allow_addresses, has_addresses,
+                    allow_routes, has_routes,
                     help, category)
             
             # standard attributes
@@ -222,10 +226,13 @@ class Metadata(object):
             preconfigure_function = info.get("preconfigure_function")
             allow_addresses = info.get("allow_addresses", False)
             allow_routes = info.get("allow_routes", False)
+            has_addresses = info.get("has_addresses", False)
+            has_routes = info.get("has_routes", False)
             factory = Factory(factory_id, create_function, start_function,
                     stop_function, status_function, 
                     configure_function, preconfigure_function,
-                    allow_addresses, allow_routes)
+                    allow_addresses, has_addresses,
+                    allow_routes, has_routes)
                     
             # standard attributes
             self._add_standard_attributes(factory, info, False, True,
