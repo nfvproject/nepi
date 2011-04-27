@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from nepi.core.attributes import Attribute, AttributesMap
+from nepi.core.connector import ConnectorTypeBase
 from nepi.util import proxy, validation
 from nepi.util.constants import STATUS_FINISHED, TIME_NOW
 from nepi.util.parser._xml import XmlExperimentParser
@@ -15,28 +16,9 @@ ATTRIBUTE_PATTERN_BASE = re.compile(r"\{#\[(?P<label>[-a-zA-Z0-9._]*)\](?P<expr>
 ATTRIBUTE_PATTERN_GUID_SUB = r"{#[%(guid)s]%(expr)s#}"
 COMPONENT_PATTERN = re.compile(r"(?P<kind>[a-z]*)\[(?P<index>.*)\]")
 
-class ConnectorType(object):
+class ConnectorType(ConnectorTypeBase):
     def __init__(self, testbed_id, factory_id, name, max = -1, min = 0):
-        super(ConnectorType, self).__init__()
-        if max == -1:
-            max = sys.maxint
-        elif max <= 0:
-                raise RuntimeError(
-             "The maximum number of connections allowed need to be more than 0")
-        if min < 0:
-            raise RuntimeError(
-             "The minimum number of connections allowed needs to be at least 0")
-        # connector_type_id -- univoquely identifies a connector type 
-        # across testbeds
-        self._connector_type_id = (testbed_id.lower(), factory_id.lower(), 
-                name.lower())
-        # name -- display name for the connector type
-        self._name = name
-        # max -- maximum amount of connections that this type support, 
-        # -1 for no limit
-        self._max = max
-        # min -- minimum amount of connections required by this type of connector
-        self._min = min
+        super(ConnectorType, self).__init__(testbed_id, factory_id, name, max, min)
         # from_connections -- connections where the other connector is the "From"
         # to_connections -- connections where the other connector is the "To"
         # keys in the dictionary correspond to the 
@@ -49,49 +31,37 @@ class ConnectorType(object):
         self._from_connections = dict()
         self._to_connections = dict()
 
-    @property
-    def connector_type_id(self):
-        return self._connector_type_id
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def max(self):
-        return self._max
-
-    @property
-    def min(self):
-        return self._min
-
     def add_from_connection(self, testbed_id, factory_id, name, can_cross, code):
-        self._from_connections[(testbed_id.lower(), factory_id.lower(),
-            name.lower())] = (can_cross, code)
+        type_id = self.make_connector_type_id(testbed_id, factory_id, name)
+        self._from_connections[type_id] = (can_cross, code)
 
     def add_to_connection(self, testbed_id, factory_id, name, can_cross, code):
-        self._to_connections[(testbed_id.lower(), factory_id.lower(), 
-            name.lower())] = (can_cross, code)
+        type_id = self.make_connector_type_id(testbed_id, factory_id, name)
+        self._to_connections[type_id] = (can_cross, code)
 
     def can_connect(self, testbed_id, factory_id, name, count, 
             must_cross = False):
-        connector_type_id = (testbed_id.lower(), factory_id.lower(),
-            name.lower())
-        if connector_type_id in self._from_connections:
-            (can_cross, code) = self._from_connections[connector_type_id]
-        elif connector_type_id in self._to_connections:
-            (can_cross, code) = self._to_connections[connector_type_id]
+        connector_type_id = self.make_connector_type_id(testbed_id, factory_id, name)
+        for lookup_type_id in self._type_resolution_order(connector_type_id):
+            if lookup_type_id in self._from_connections:
+                (can_cross, code) = self._from_connections[lookup_type_id]
+            elif lookup_type_id in self._to_connections:
+                (can_cross, code) = self._to_connections[lookup_type_id]
+            else:
+                # keey trying
+                continue
+            return not must_cross or can_cross
         else:
             return False
-        return not must_cross or can_cross
 
     def code_to_connect(self, testbed_id, factory_id, name):
-        connector_type_id = (testbed_id.lower(), factory_id.lower(), 
-            name.lower())        
-        if not connector_type_id in self._to_connections.keys():
+        connector_type_id = self.make_connector_type_id(testbed_id, factory_id, name)
+        for lookup_type_id in self._type_resolution_order(connector_type_id):
+            if lookup_type_id in self._to_connections:
+                (can_cross, code) = self._to_connections[lookup_type_id]
+                return code
+        else:
             return False
-        (can_cross, code) = self._to_connections[connector_type_id]
-        return code
 
 # TODO: create_function, start_function, stop_function, status_function 
 # need a definition!

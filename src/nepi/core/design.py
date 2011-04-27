@@ -6,71 +6,43 @@ Experiment design API
 """
 
 from nepi.core.attributes import AttributesMap, Attribute
+from nepi.core.connector import ConnectorTypeBase
 from nepi.core.metadata import Metadata
 from nepi.util import validation
 from nepi.util.guid import GuidGenerator
 from nepi.util.graphical_info import GraphicalInfo
 from nepi.util.parser._xml import XmlExperimentParser
 import sys
+    
 
-class ConnectorType(object):
+
+class ConnectorType(ConnectorTypeBase):
     def __init__(self, testbed_id, factory_id, name, help, max = -1, min = 0):
-        super(ConnectorType, self).__init__()
-        if max == -1:
-            max = sys.maxint
-        elif max <= 0:
-                raise RuntimeError(
-             "The maximum number of connections allowed need to be more than 0")
-        if min < 0:
-            raise RuntimeError(
-             "The minimum number of connections allowed needs to be at least 0")
-        # connector_type_id -- univoquely identifies a connector type 
-        # across testbeds
-        self._connector_type_id = (testbed_id.lower(), factory_id.lower(), 
-                name.lower())
-        # name -- display name for the connector type
-        self._name = name
+        super(ConnectorType, self).__init__(testbed_id, factory_id, name, max, min)
+        
         # help -- help text
         self._help = help
-        # max -- maximum amount of connections that this type support, 
-        # -1 for no limit
-        self._max = max
-        # min -- minimum amount of connections required by this type of connector
-        self._min = min
+        
         # allowed_connections -- keys in the dictionary correspond to the 
         # connector_type_id for possible connections. The value indicates if
         # the connection is allowed accros different testbed instances
         self._allowed_connections = dict()
 
     @property
-    def connector_type_id(self):
-        return self._connector_type_id
-
-    @property
     def help(self):
         return self._help
 
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def max(self):
-        return self._max
-
-    @property
-    def min(self):
-        return self._min
-
     def add_allowed_connection(self, testbed_id, factory_id, name, can_cross):
-        self._allowed_connections[(testbed_id.lower(), 
-            factory_id.lower(), name.lower())] = can_cross
+        type_id = self.make_connector_type_id(testbed_id, factory_id, name)
+        self._allowed_connections[type_id] = can_cross
 
     def can_connect(self, connector_type_id, testbed_guid1, testbed_guid2):
-        if not connector_type_id in self._allowed_connections.keys():
+        for lookup_type_id in self._type_resolution_order(connector_type_id):
+            if lookup_type_id in self._allowed_connections:
+                can_cross = self._allowed_connections[lookup_type_id]
+                return can_cross or (testbed_guid1 == testbed_guid2)
+        else:
             return False
-        can_cross = self._allowed_connections[connector_type_id]
-        return can_cross or (testbed_guid1 == testbed_guid2)
 
 class Connector(object):
     """A Connector sepcifies the connection points in an Object"""
