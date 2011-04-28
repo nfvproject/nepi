@@ -2393,4 +2393,12 @@ attributes = dict({
         "allowed": wifi_standards.keys(),
         "help": "Wifi PHY standard"
     }),
+    "LinuxSocketAddress": dict({
+        "name": "LinuxSocketAddress",
+        "value": "",
+        "validation_function": None,
+        "flags": Attribute.Invisible,
+        "type": Attribute.STRING,
+        "help": "Socket address assigned to the Linux socket created to recive file descriptor"
+    }),
 })

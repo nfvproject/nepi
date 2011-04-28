@@ -23,13 +23,11 @@ FDNETDEV = "ns3::FileDescriptorNetDevice"
 def connect_switch(testbed_instance, switch, interface):
     switch.connect(interface)
    
-#XXX: This connection function cannot be use to transfer a file descriptor
-# to a remote tap device
-def connect_fd_local(testbed_instance, tap, fdnd):
+def connect_fd(testbed_instance, tap, cross_data):
     import passfd
     import socket
     fd = tap.file_descriptor
-    address = fdnd.socket_address
+    address = cross_data["LinuxSocketAddress"]
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
     sock.connect(address)
     passfd.sendfd(sock, fd, '0')
@@ -220,7 +218,7 @@ connections = [
     dict({
         "from": (TESTBED_ID, TAPIFACE, "fd"),
         "to":   (NS3_TESTBED_ID, FDNETDEV, "fd"),
-        "compl_code": connect_fd_local,
+        "compl_code": connect_fd,
         "can_cross": True
     }),
      dict({

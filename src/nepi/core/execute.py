@@ -165,6 +165,14 @@ class TestbedController(object):
         self._testbed_version = testbed_version
 
     @property
+    def testbed_id(self):
+        return self._testbed_id
+
+    @property
+    def testbed_version(self):
+        return self._testbed_version
+
+    @property
     def guids(self):
         raise NotImplementedError
 
@@ -349,6 +357,12 @@ class ExperimentController(object):
         # (internal connections only)
         self._parallel([lambda : testbed.do_create()
                         for testbed in self._testbeds.itervalues()])
+
+        # TODO! DEBUG!!!!
+        # ONLY THE LAST TESTBED HAS ELEMENTS CREATED!!!
+        #for testbed in self._testbeds.itervalues():
+        #    print testbed._testbed_id
+        #    print testbed._elements
 
         self._parallel([lambda : testbed.do_connect_init()
                         for testbed in self._testbeds.itervalues()])
@@ -605,6 +619,8 @@ class ExperimentController(object):
                     testbed.defer_connect(guid, connector_type_name, 
                             cross_guid, cross_connector_type_name)
                 else: 
+                    cross_testbed = self._testbeds[cross_testbed_guid]
+                    cross_testbed_id = cross_testbed.testbed_id
                     testbed.defer_cross_connect(guid, connector_type_name, cross_guid, 
                             cross_testbed_id, cross_factory_id, 
                             cross_connector_type_name)
@@ -622,7 +638,7 @@ class ExperimentController(object):
                 testbed.defer_add_route(guid, destination, netprefix, nexthop)
                 
     def _add_crossdata(self, testbed_guid, guid, cross_testbed_guid, cross_guid):
-        if testbed_guid not in self._crossdata:
+        if testbed_guid not in self._cross_data:
             self._cross_data[testbed_guid] = dict()
         if cross_testbed_guid not in self._cross_data[testbed_guid]:
             self._cross_data[testbed_guid][cross_testbed_guid] = list()
@@ -637,16 +653,17 @@ class ExperimentController(object):
         cross_data = dict()
         if not testbed_guid in self._cross_data:
             return cross_data
-        for cross_testbed_guid, guid_list in self._cross_data[testbed_guid]:
+        for cross_testbed_guid, guid_list in \
+                self._cross_data[testbed_guid].iteritems():
             cross_data[cross_testbed_guid] = dict()
             cross_testbed = self._testbeds[cross_testbed_guid]
             for cross_guid in guid_list:
-                cross_data_guid = dict()
-                cross_data[cross_testbed_guid][cross_guid] = cross_data_guid
+                elem_cross_data = dict()
+                cross_data[cross_testbed_guid][cross_guid] = elem_cross_data
                 attributes_list = cross_testbed.get_attribute_list(cross_guid)
                 for attr_name in attributes_list:
                     attr_value = cross_testbed.get(TIME_NOW, cross_guid, 
                             attr_name)
-                    cross_data_guid[attr_name] = attr_value
-        return cross_data
+                    elem_cross_data[attr_name] = attr_value
+        return elem_cross_data
     

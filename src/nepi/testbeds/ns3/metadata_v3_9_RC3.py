@@ -61,6 +61,10 @@ def connect_node_application(testbed_instance, node, application):
 def connect_node_other(tesbed_instance, node, other):
     node.AggregateObject(other)
 
+def connect_fd(testbed_instance, fdnd, cross_data):
+    address = fdnd.socket_address
+    fdnd.set_attribute_value("LinuxSocketAddress", address)
+
 ### Connector information ###
 
 connector_types = dict({
@@ -448,7 +452,8 @@ connections = [
     dict({
         "from": ( "ns3", "ns3::FileDescriptorNetDevice", "fd" ),
         "to":   ( "netns", "TapNodeInterface", "fd" ),
-        "can_cross": False
+        "init_code": connect_fd,
+        "can_cross": True
     }),
 ]
 

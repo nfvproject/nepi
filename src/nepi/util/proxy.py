@@ -46,10 +46,12 @@ GUIDS  = 27
 GET_ROUTE = 28
 GET_ADDRESS = 29
 RECOVER = 30
-DO_PRECONFIGURE    = 31
-GET_ATTRIBUTE_LIST = 32
-DO_CONNECT_COMPL   = 33
+DO_PRECONFIGURE     = 31
+GET_ATTRIBUTE_LIST  = 32
+DO_CONNECT_COMPL    = 33
 DO_CROSS_CONNECT_COMPL  = 34
+TESTBED_ID  = 35
+TESTBED_VERSION  = 36
 
 # PARAMETER TYPE
 STRING  =  100
@@ -100,7 +102,9 @@ testbed_messages = dict({
     STATUS: "%d|%s" % (STATUS, "%d"),
     GUIDS:  "%d" % GUIDS,
     GET_ATTRIBUTE_LIST:  "%d" % GET_ATTRIBUTE_LIST,
-    })
+    TESTBED_ID:  "%d" % TESTBED_ID,
+    TESTBED_VERSION:  "%d" % TESTBED_VERSION,
+   })
 
 instruction_text = dict({
     OK:     "OK",
@@ -141,7 +145,9 @@ instruction_text = dict({
     STRING: "STRING",
     INTEGER:    "INTEGER",
     BOOL:   "BOOL",
-    FLOAT:  "FLOAT"
+    FLOAT:  "FLOAT",
+    TESTBED_ID: "TESTBED_ID",
+    TESTBED_VERSION: "TESTBED_VERSION",
     })
 
 def get_type(value):
@@ -402,6 +408,10 @@ class TestbedControllerServer(server.Server):
                     reply = self.guids(params)
                 elif instruction == GET_ATTRIBUTE_LIST:
                     reply = self.get_attribute_list(params)
+                elif instruction == TESTBED_ID:
+                    reply = self.testbed_id(params)
+                elif instruction == TESTBED_VERSION:
+                    reply = self.testbed_version(params)
                 else:
                     error = "Invalid instruction %s" % instruction
                     self.log_error(error)
@@ -416,8 +426,18 @@ class TestbedControllerServer(server.Server):
 
     def guids(self, params):
         guids = self._testbed.guids
-        guids = ",".join(map(str, guids))
-        result = base64.b64encode(guids)
+        value = cPickle.dumps(guids)
+        result = base64.b64encode(value)
+        return "%d|%s" % (OK, result)
+
+    def testbed_id(self, params):
+        testbed_id = self._testbed.testbed_id
+        result = base64.b64encode(str(testbed_id))
+        return "%d|%s" % (OK, result)
+
+    def testbed_version(self, params):
+        testbed_version = self._testbed.testbed_version
+        result = base64.b64encode(str(testbed_version))
         return "%d|%s" % (OK, result)
 
     def defer_create(self, params):
@@ -754,7 +774,32 @@ class TestbedControllerProxy(object):
         text = base64.b64decode(result[1])
         if code == ERROR:
             raise RuntimeError(text)
-        return map(int, text.split(","))
+        guids = cPickle.loads(text)
+        return guids
+
+    @property
+    def testbed_id(self):
+        msg = testbed_messages[TESTBED_ID]
+        self._client.send_msg(msg)
+        reply = self._client.read_reply()
+        result = reply.split("|")
+        code = int(result[0])
+        text = base64.b64decode(result[1])
+        if code == ERROR:
+            raise RuntimeError(text)
+        return int(text)
+
+    @property
+    def testbed_version(self):
+        msg = testbed_messages[TESTBED_VERSION]
+        self._client.send_msg(msg)
+        reply = self._client.read_reply()
+        result = reply.split("|")
+        code = int(result[0])
+        text = base64.b64decode(result[1])
+        if code == ERROR:
+            raise RuntimeError(text)
+        return int(text)
 
     def defer_configure(self, name, value):
         msg = testbed_messages[CONFIGURE]

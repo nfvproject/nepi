@@ -121,7 +121,7 @@ class TestbedController(execute.TestbedController):
         connector_type = factory.connector_type(connector_type_name)
         connector_type.can_connect(cross_testbed_id, cross_factory_id, 
                 cross_connector_type_name, count, must_cross = True)
-        if not guid in self._connect:
+        if not guid in self._cross_connect:
             self._cross_connect[guid] = dict()
         if not connector_type_name in self._cross_connect[guid]:
              self._cross_connect[guid][connector_type_name] = dict()
@@ -277,8 +277,8 @@ class TestbedController(execute.TestbedController):
                         cross_testbed_id, cross_factory_id, 
                         cross_conector_type_name)
                 if connect_code:
-                    cross_data_guid = cross_data[cross_testbed_id][cross_guid]
-                    connect_code(element, cross_guid, cross_data_guid)       
+                    elem_data_guid = cross_data[cross_testbed_id][cross_guid]
+                    connect_code(self, element, elem_cross_data)       
 
     def do_cross_connect_init(self, cross_data):
         self._do_cross_connect(cross_data)

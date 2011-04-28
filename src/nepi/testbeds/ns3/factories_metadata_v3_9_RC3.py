@@ -629,7 +629,8 @@ factories_info = dict({
         "help": "Network interface associated to a file descriptor",
         "connector_types": ["node", "fd"],
         "allow_addresses": True,
-        "box_attributes": ["Address"],
+        "box_attributes": ["Address", 
+            "LinuxSocketAddress"],
         "traces": ["fdpcap"]
     }),
      "ns3::CsmaNetDevice": dict({
