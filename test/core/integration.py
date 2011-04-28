@@ -50,6 +50,7 @@ class ExecuteTestCase(unittest.TestCase):
         xml = exp_desc.to_xml()
         access_config = None
         controller = proxy.create_controller(xml, access_config)
+
         controller.start()
         while not controller.is_finished(app.guid):
             time.sleep(0.5)

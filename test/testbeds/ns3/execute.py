@@ -64,7 +64,8 @@ class Ns3ExecuteTestCase(unittest.TestCase):
 
         instance.do_setup()
         instance.do_create()
-        instance.do_connect()
+        instance.do_connect_init()
+        instance.do_connect_compl()
         instance.do_preconfigure()
         instance.do_configure()
         instance.start()

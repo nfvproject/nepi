@@ -200,43 +200,38 @@ connections = [
     dict({
         "from": (TESTBED_ID, NODE, "devs"),
         "to":   (TESTBED_ID, P2PIFACE, "node"),
-        "code": None,
         "can_cross": False
     }),
     dict({
         "from": (TESTBED_ID, NODE, "devs"),
         "to":   (TESTBED_ID, TAPIFACE, "node"),
-        "code": None,
         "can_cross": False
     }),
     dict({
         "from": (TESTBED_ID, NODE, "devs"),
         "to":   (TESTBED_ID, NODEIFACE, "node"),
-        "code": None,
         "can_cross": False
     }),
     dict({
         "from": (TESTBED_ID, P2PIFACE, "p2p"),
         "to":   (TESTBED_ID, P2PIFACE, "p2p"),
-        "code": None,
         "can_cross": False
     }),
     dict({
         "from": (TESTBED_ID, TAPIFACE, "fd"),
         "to":   (NS3_TESTBED_ID, FDNETDEV, "fd"),
-        "code": connect_fd_local,
+        "compl_code": connect_fd_local,
         "can_cross": True
     }),
      dict({
         "from": (TESTBED_ID, SWITCH, "devs"),
         "to":   (TESTBED_ID, NODEIFACE, "switch"),
-        "code": connect_switch,
+        "init_code": connect_switch,
         "can_cross": False
     }),
     dict({
         "from": (TESTBED_ID, NODE, "apps"),
         "to":   (TESTBED_ID, APPLICATION, "node"),
-        "code": None,
         "can_cross": False
     })
 ]

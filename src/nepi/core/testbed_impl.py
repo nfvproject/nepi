@@ -192,7 +192,7 @@ class TestbedController(execute.TestbedController):
                 for name, value in parameters.iteritems():
                     self.set(TIME_NOW, guid, name, value)
 
-    def do_connect(self):
+    def _do_connect(self, init = True):
         for guid1, connections in self._connect.iteritems():
             element1 = self._elements[guid1]
             factory_id1 = self._create[guid1]
@@ -204,12 +204,23 @@ class TestbedController(execute.TestbedController):
                     factory_id2 = self._create[guid2]
                     # Connections are executed in a "From -> To" direction only
                     # This explicitly ignores the "To -> From" (mirror) 
-                    # connections of every connection pair. 
-                    code_to_connect = connector_type1.code_to_connect(
-                            self._testbed_id, factory_id2, 
-                            connector_type_name2)
-                    if code_to_connect:
-                        code_to_connect(self, element1, element2)
+                    # connections of every connection pair.
+                    if init:
+                        connect_code = connector_type1.connect_to_init_code(
+                                self._testbed_id, factory_id2, 
+                                connector_type_name2)
+                    else:
+                        connect_code = connector_type1.connect_to_compl_code(
+                                self._testbed_id, factory_id2, 
+                                connector_type_name2)
+                    if connect_code:
+                        connect_code(self, element1, element2)
+
+    def do_connect_init(self):
+        self._do_connect()
+
+    def do_connect_compl(self):
+        self._do_connect(init = False)
 
     def do_preconfigure(self):
         guids = dict()
@@ -247,7 +258,7 @@ class TestbedController(execute.TestbedController):
             for guid in guids[factory_id]:
                 factory.configure_function(self, guid)
 
-    def do_cross_connect(self):
+    def _do_cross_connect(self, cross_data, init = True):
         for guid, cross_connections in self._cross_connect.iteritems():
             element = self._elements[guid]
             factory_id = self._create[guid]
@@ -257,11 +268,23 @@ class TestbedController(execute.TestbedController):
                 connector_type = factory.connector_type(connector_type_name)
                 (cross_testbed_id, cross_factory_id, 
                         cross_connector_type_name) = cross_connection
-                code_to_connect = connector_type.code_to_connect(
-                    cross_guid, cross_testbed_id, cross_factory_id, 
-                    cross_conector_type_name)
-                if code_to_connect:
-                    code_to_connect(element, cross_guid)       
+                if init:
+                    connect_code = connector_type.connect_to_init_code(
+                        cross_testbed_id, cross_factory_id, 
+                        cross_conector_type_name)
+                else:
+                    connect_code = connector_type.connect_to_compl_code(
+                        cross_testbed_id, cross_factory_id, 
+                        cross_conector_type_name)
+                if connect_code:
+                    cross_data_guid = cross_data[cross_testbed_id][cross_guid]
+                    connect_code(element, cross_guid, cross_data_guid)       
+
+    def do_cross_connect_init(self, cross_data):
+        self._do_cross_connect(cross_data)
+
+    def do_cross_connect_compl(self, cross_data):
+        self._do_cross_connect(cross_data, init = False)
 
     def set(self, time, guid, name, value):
         if not guid in self._create:
@@ -355,6 +378,11 @@ class TestbedController(execute.TestbedController):
         
         return addresses[index][attribute_index]
 
+    def get_attribute_list(self, guid):
+        factory_id = self._create[guid]
+        factory = self._factories[factory_id]
+        attribute_list = list()
+        return factory.box_attributes.attributes_list
 
     def start(self, time = TIME_NOW):
         for guid, factory_id in self._create.iteritems():

@@ -134,7 +134,7 @@ class AttributesMap(object):
         return self._attributes.values()
 
     @property
-    def attributes_name(self):
+    def attributes_list(self):
         return self._attributes.keys()
 
     def set_attribute_value(self, name, value):

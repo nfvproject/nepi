@@ -6,6 +6,7 @@ from nepi.core.attributes import AttributesMap, Attribute
 from nepi.util import server, validation
 from nepi.util.constants import TIME_NOW
 import getpass
+import cPickle
 import sys
 import time
 import tempfile
@@ -34,9 +35,9 @@ ADD_ADDRESS = 16
 ADD_ROUTE   = 17
 DO_SETUP    = 18
 DO_CREATE   = 19
-DO_CONNECT  = 20
+DO_CONNECT_INIT = 20
 DO_CONFIGURE    = 21
-DO_CROSS_CONNECT    = 22
+DO_CROSS_CONNECT_INIT   = 22
 GET = 23
 SET = 24
 ACTION  = 25
@@ -46,6 +47,9 @@ GET_ROUTE = 28
 GET_ADDRESS = 29
 RECOVER = 30
 DO_PRECONFIGURE    = 31
+GET_ATTRIBUTE_LIST = 32
+DO_CONNECT_COMPL   = 33
+DO_CROSS_CONNECT_COMPL  = 34
 
 # PARAMETER TYPE
 STRING  =  100
@@ -82,10 +86,12 @@ testbed_messages = dict({
     ADD_ROUTE: "%d|%s" % (ADD_ROUTE, "%d|%s|%d|%s"),
     DO_SETUP:   "%d" % DO_SETUP,
     DO_CREATE:  "%d" % DO_CREATE,
-    DO_CONNECT: "%d" % DO_CONNECT,
-    DO_CONFIGURE:   "%d" % DO_CONFIGURE,
-    DO_PRECONFIGURE:   "%d" % DO_PRECONFIGURE,
-    DO_CROSS_CONNECT:   "%d" % DO_CROSS_CONNECT,
+    DO_CONNECT_INIT:    "%d" % DO_CONNECT_INIT,
+    DO_CONNECT_COMPL:   "%d" % DO_CONNECT_COMPL,
+    DO_CONFIGURE:       "%d" % DO_CONFIGURE,
+    DO_PRECONFIGURE:    "%d" % DO_PRECONFIGURE,
+    DO_CROSS_CONNECT_INIT:  "%d|%s" % (DO_CROSS_CONNECT_INIT, "%s"),
+    DO_CROSS_CONNECT_COMPL: "%d|%s" % (DO_CROSS_CONNECT_COMPL, "%s"),
     GET:    "%d|%s" % (GET, "%s|%d|%s"),
     SET:    "%d|%s" % (SET, "%s|%d|%s|%s|%d"),
     GET_ROUTE: "%d|%s" % (GET, "%d|%d|%s"),
@@ -93,6 +99,7 @@ testbed_messages = dict({
     ACTION: "%d|%s" % (ACTION, "%s|%d|%s"),
     STATUS: "%d|%s" % (STATUS, "%d"),
     GUIDS:  "%d" % GUIDS,
+    GET_ATTRIBUTE_LIST:  "%d" % GET_ATTRIBUTE_LIST,
     })
 
 instruction_text = dict({
@@ -117,14 +124,17 @@ instruction_text = dict({
     ADD_ROUTE:  "ADD_ROUTE",
     DO_SETUP:   "DO_SETUP",
     DO_CREATE:  "DO_CREATE",
-    DO_CONNECT: "DO_CONNECT",
+    DO_CONNECT_INIT: "DO_CONNECT_INIT",
+    DO_CONNECT_COMPL: "DO_CONNECT_COMPL",
     DO_CONFIGURE:   "DO_CONFIGURE",
     DO_PRECONFIGURE:   "DO_PRECONFIGURE",
-    DO_CROSS_CONNECT:   "DO_CROSS_CONNECT",
+    DO_CROSS_CONNECT_INIT:  "DO_CROSS_CONNECT_INIT",
+    DO_CROSS_CONNECT_COMPL: "DO_CROSS_CONNECT_COMPL",
     GET:    "GET",
     SET:    "SET",
     GET_ROUTE: "GET_ROUTE",
     GET_ADDRESS: "GET_ADDRESS",
+    GET_ATTRIBUTE_LIST: "GET_ATTRIBUTE_LIST",
     ACTION: "ACTION",
     STATUS: "STATUS",
     GUIDS:  "GUIDS",
@@ -364,14 +374,18 @@ class TestbedControllerServer(server.Server):
                     reply = self.do_setup(params)
                 elif instruction == DO_CREATE:
                     reply = self.do_create(params)
-                elif instruction == DO_CONNECT:
-                    reply = self.do_connect(params)
+                elif instruction == DO_CONNECT_INIT:
+                    reply = self.do_connect_init(params)
+                elif instruction == DO_CONNECT_COMPL:
+                    reply = self.do_connect_compl(params)
                 elif instruction == DO_CONFIGURE:
                     reply = self.do_configure(params)
                 elif instruction == DO_PRECONFIGURE:
                     reply = self.do_preconfigure(params)
-                elif instruction == DO_CROSS_CONNECT:
-                    reply = self.do_cross_connect(params)
+                elif instruction == DO_CROSS_CONNECT_INIT:
+                    reply = self.do_cross_connect_init(params)
+                elif instruction == DO_CROSS_CONNECT_COMPL:
+                    reply = self.do_cross_connect_compl(params)
                 elif instruction == GET:
                     reply = self.get(params)
                 elif instruction == SET:
@@ -386,6 +400,8 @@ class TestbedControllerServer(server.Server):
                     reply = self.status(params)
                 elif instruction == GUIDS:
                     reply = self.guids(params)
+                elif instruction == GET_ATTRIBUTE_LIST:
+                    reply = self.get_attribute_list(params)
                 else:
                     error = "Invalid instruction %s" % instruction
                     self.log_error(error)
@@ -508,8 +524,12 @@ class TestbedControllerServer(server.Server):
         self._testbed.do_create()
         return "%d|%s" % (OK, "")
 
-    def do_connect(self, params):
-        self._testbed.do_connect()
+    def do_connect_init(self, params):
+        self._testbed.do_connect_init()
+        return "%d|%s" % (OK, "")
+
+    def do_connect_compl(self, params):
+        self._testbed.do_connect_compl()
         return "%d|%s" % (OK, "")
 
     def do_configure(self, params):
@@ -520,13 +540,21 @@ class TestbedControllerServer(server.Server):
         self._testbed.do_preconfigure()
         return "%d|%s" % (OK, "")
 
-    def do_cross_connect(self, params):
-        self._testbed.do_cross_connect()
+    def do_cross_connect_init(self, params):
+        pcross_data = base64.b64decode(params[1])
+        cross_data = cPickle.loads(pcross_data)
+        self._testbed.do_cross_connect_init(cross_data)
+        return "%d|%s" % (OK, "")
+
+    def do_cross_connect_compl(self, params):
+        pcross_data = base64.b64decode(params[1])
+        cross_data = cPickle.loads(pcross_data)
+        self._testbed.do_cross_connect_compl(cross_data)
         return "%d|%s" % (OK, "")
 
     def get(self, params):
         time = params[1]
-        guid = int(param[2] )
+        guid = int(param[2])
         name = base64.b64decode(params[3])
         value = self._testbed.get(time, guid, name)
         result = base64.b64encode(str(value))
@@ -570,7 +598,14 @@ class TestbedControllerServer(server.Server):
         status = self._testbed.status(guid)
         result = base64.b64encode(str(status))
         return "%d|%s" % (OK, result)
- 
+
+    def get_attribute_list(self, params):
+        guid = int(param[1])
+        attr_list = self._testbed.get_attribute_list(guid)
+        value = cPickle.dumps(attr_list)
+        result = base64.b64encode(value)
+        return "%d|%s" % (OK, result)
+
 class ExperimentControllerServer(server.Server):
     def __init__(self, root_dir, log_level, experiment_xml):
         super(ExperimentControllerServer, self).__init__(root_dir, log_level)
@@ -856,8 +891,18 @@ class TestbedControllerProxy(object):
         if code == ERROR:
             raise RuntimeError(text)
 
-    def do_connect(self):
-        msg = testbed_messages[DO_CONNECT]
+    def do_connect_init(self):
+        msg = testbed_messages[DO_CONNECT_INIT]
+        self._client.send_msg(msg)
+        reply = self._client.read_reply()
+        result = reply.split("|")
+        code = int(result[0])
+        text = base64.b64decode(result[1])
+        if code == ERROR:
+            raise RuntimeError(text)
+
+    def do_connect_compl(self):
+        msg = testbed_messages[DO_CONNECT_COMPL]
         self._client.send_msg(msg)
         reply = self._client.read_reply()
         result = reply.split("|")
@@ -886,8 +931,24 @@ class TestbedControllerProxy(object):
         if code == ERROR:
             raise RuntimeError(text)
 
-    def do_cross_connect(self):
-        msg = testbed_messages[DO_CROSS_CONNECT]
+    def do_cross_connect_init(self, cross_data):
+        msg = testbed_messages[DO_CROSS_CONNECT_INIT]
+        pcross_data = cPickle.dumps(cross_data)
+        cross_data = base64.b64encode(pcross_data)
+        msg = msg % (cross_data)
+        self._client.send_msg(msg)
+        reply = self._client.read_reply()
+        result = reply.split("|")
+        code = int(result[0])
+        text = base64.b64decode(result[1])
+        if code == ERROR:
+            raise RuntimeError(text)
+
+    def do_cross_connect_compl(self, cross_data):
+        msg = testbed_messages[DO_CROSS_CONNECT_COMPL]
+        pcross_data = cPickle.dumps(cross_data)
+        cross_data = base64.b64encode(pcross_data)
+        msg = msg % (cross_data)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
         result = reply.split("|")
@@ -1008,6 +1069,19 @@ class TestbedControllerProxy(object):
         if code == ERROR:
             raise RuntimeError(text)
         return text
+
+    def get_attribute_list(self, guid):
+        msg = testbed_messages[GET_ATTRIBUTE_LIST]
+        msg = msg % (guid)
+        self._client.send_msg(msg)
+        reply = self._client.read_reply()
+        result = reply.split("|")
+        code = int(result[0])
+        text = base64.b64decode(result[1])
+        if code == ERROR:
+            raise RuntimeError(text)
+        attr_list = cPickle.loads(text)
+        return attr_list
 
     def shutdown(self):
         msg = testbed_messages[SHUTDOWN]

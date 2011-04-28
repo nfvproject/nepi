@@ -338,43 +338,43 @@ connections = [
     dict({
         "from": (TESTBED_ID, NODE, "devs"),
         "to":   (TESTBED_ID, NODEIFACE, "node"),
-        "code": connect_node_iface_node,
+        "init_code": connect_node_iface_node,
         "can_cross": False
     }),
     dict({
         "from": (TESTBED_ID, NODE, "devs"),
         "to":   (TESTBED_ID, TUNIFACE, "node"),
-        "code": connect_tun_iface_node,
+        "init_code": connect_tun_iface_node,
         "can_cross": False
     }),
     dict({
         "from": (TESTBED_ID, NODEIFACE, "inet"),
         "to":   (TESTBED_ID, INTERNET, "devs"),
-        "code": connect_node_iface_inet,
+        "init_code": connect_node_iface_inet,
         "can_cross": False
     }),
     dict({
         "from": (TESTBED_ID, NODE, "apps"),
         "to":   (TESTBED_ID, APPLICATION, "node"),
-        "code": connect_app,
+        "init_code": connect_app,
         "can_cross": False
     }),
     dict({
         "from": (TESTBED_ID, NODE, "pipes"),
         "to":   (TESTBED_ID, NETPIPE, "node"),
-        "code": connect_node_netpipe,
+        "init_code": connect_node_netpipe,
         "can_cross": False
     }),
     dict({
         "from": (TESTBED_ID, TUNIFACE, "tcp"),
         "to":   (TESTBED_ID, TUNIFACE, "tcp"),
-        "code": functools.partial(connect_tun_iface_peer,"tcp"),
+        "init_code": functools.partial(connect_tun_iface_peer,"tcp"),
         "can_cross": False
     }),
     dict({
         "from": (TESTBED_ID, TUNIFACE, "udp"),
         "to":   (TESTBED_ID, TUNIFACE, "udp"),
-        "code": functools.partial(connect_tun_iface_peer,"udp"),
+        "init_code": functools.partial(connect_tun_iface_peer,"udp"),
         "can_cross": False
     }),
 ]

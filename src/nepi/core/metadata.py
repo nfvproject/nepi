@@ -24,7 +24,9 @@ class VersionedMetadataInfo(object):
         dict({
             "from": (testbed_id1, factory_id1, connector_type_name1),
             "to": (testbed_id2, factory_id2, connector_type_name2),
-            "code": connection function to invoke upon connection creation
+            "init_code": connection function to invoke for connection initiation
+            "compl_code": connection function to invoke for connection 
+                completion
             "can_cross": whether the connection can be done across testbed 
                             instances
          }),
@@ -344,13 +346,18 @@ class Metadata(object):
                 from_ = connection["from"]
                 to = connection["to"]
                 can_cross = connection["can_cross"]
-                code = connection["code"]
+                init_code = connection["init_code"] \
+                        if "init_code" in connection else None
+                compl_code = connection["compl_code"] \
+                        if "compl_code" in connection else None
                 if from_ not in from_connections:
                     from_connections[from_] = list()
                 if to not in to_connections:
                     to_connections[to] = list()
-                from_connections[from_].append((to, can_cross, code))
-                to_connections[to].append((from_, can_cross, code))
+                from_connections[from_].append((to, can_cross, init_code, 
+                    compl_code))
+                to_connections[to].append((from_, can_cross, init_code,
+                    compl_code))
             for connector_id in info["connector_types"]:
                 connector_type_info = self._metadata.connector_types[
                         connector_id]
@@ -363,15 +370,18 @@ class Metadata(object):
                         max, min)
                 connector_key = (testbed_id, factory_id, name)
                 if connector_key in to_connections:
-                    for (from_, can_cross, code) in to_connections[connector_key]:
+                    for (from_, can_cross, init_code, compl_code) in \
+                            to_connections[connector_key]:
                         (testbed_id_from, factory_id_from, name_from) = from_
                         connector_type.add_from_connection(testbed_id_from, 
-                                factory_id_from, name_from, can_cross, code)
+                                factory_id_from, name_from, can_cross, 
+                                init_code, compl_code)
                 if connector_key in from_connections:
-                    for (to, can_cross, code) in from_connections[(testbed_id, 
-                            factory_id, name)]:
+                    for (to, can_cross, init_code, compl_code) in \
+                            from_connections[(testbed_id, factory_id, name)]:
                         (testbed_id_to, factory_id_to, name_to) = to
                         connector_type.add_to_connection(testbed_id_to, 
-                                factory_id_to, name_to, can_cross, code)
+                                factory_id_to, name_to, can_cross, init_code,
+                                compl_code)
                 factory.add_connector_type(connector_type)
  

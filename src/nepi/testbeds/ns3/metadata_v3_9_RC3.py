@@ -61,10 +61,6 @@ def connect_node_application(testbed_instance, node, application):
 def connect_node_other(tesbed_instance, node, other):
     node.AggregateObject(other)
 
-def connect_fd_tap(tesbed_instance, fd, tap):
-    print "CONNNECT TAP!!!"
-    # TODO!
-
 ### Connector information ###
 
 connector_types = dict({
@@ -188,271 +184,270 @@ connections = [
     dict({
             "from": ( "ns3", "ns3::Node", "devs" ),
             "to":   ( "ns3", "ns3::BridgeNetDevice", "node" ),
-            "code": connect_node_device,
+            "init_code": connect_node_device,
             "can_cross": False
     }),
     dict({
             "from": ( "ns3", "ns3::Node", "devs" ),
             "to":   ( "ns3", "ns3::CsmaNetDevice", "node" ),
-            "code": connect_node_device,
+            "init_code": connect_node_device,
             "can_cross": False
     }),
     dict({
             "from": ( "ns3", "ns3::Node", "devs" ),
             "to":   ( "ns3", "ns3::EmuNetDevice", "node" ),
-            "code": connect_node_device,
+            "init_code": connect_node_device,
             "can_cross": False
     }),
     dict({
             "from": ( "ns3", "ns3::Node", "devs" ),
             "to":   ( "ns3", "ns3::PointToPointNetDevice", "node" ),
-            "code": connect_node_device,
+            "init_code": connect_node_device,
             "can_cross": False
     }),
     dict({
             "from": ( "ns3", "ns3::Node", "devs" ),
             "to":   ( "ns3", "ns3::SimpleNetDevice", "node" ),
-            "code": connect_node_device,
+            "init_code": connect_node_device,
             "can_cross": False
     }),
     dict({
             "from": ( "ns3", "ns3::Node", "devs" ),
             "to":   ( "ns3", "ns3::FileDescriptorNetDevice", "node" ),
-            "code": connect_node_device,
+            "init_code": connect_node_device,
             "can_cross": False
     }),
     dict({
             "from": ( "ns3", "ns3::Node", "devs" ),
             "to":   ( "ns3", "ns3::WifiNetDevice", "node" ),
-            "code": connect_node_device,   
+            "init_code": connect_node_device,   
             "can_cross": False
     }),
     dict({
             "from": ( "ns3", "ns3::DropTailQueue", "dev" ),
             "to":   ( "ns3", "ns3::CsmaNetDevice", "queue" ),
-            "code": connect_queue_device,
+            "init_code": connect_queue_device,
             "can_cross": False
     }),
     dict({
             "from": ( "ns3", "ns3::DropTailQueue", "dev" ),
             "to":   ( "ns3", "ns3::EmuNetDevice", "queue" ),
-            "code": connect_queue_device,
+            "init_code": connect_queue_device,
             "can_cross": False
     }),
     dict({
             "from": ( "ns3", "ns3::DropTailQueue", "dev" ),
             "to":   ( "ns3", "ns3::PointToPointNetDevice", "queue" ),
-            "code": connect_queue_device,
+            "init_code": connect_queue_device,
             "can_cross": False
     }),
     dict({
             "from": ( "ns3", "ns3::ArfWifiManager", "dev" ),
             "to":   ( "ns3", "ns3::WifiNetDevice", "manager" ),  
-            "code": connect_manager_device,
+            "init_code": connect_manager_device,
             "can_cross": False
     }),
     dict({
             "from": ( "ns3", "ns3::ConstantRateWifiManager", "dev" ),
             "to":   ( "ns3", "ns3::WifiNetDevice", "manager" ),  
-            "code": connect_manager_device,
+            "init_code": connect_manager_device,
             "can_cross": False
     }),
     dict({
             "from": ( "ns3", "ns3::YansWifiPhy", "dev" ),
             "to":   ( "ns3", "ns3::WifiNetDevice", "phy" ),  
-            "code": connect_phy_device,
+            "init_code": connect_phy_device,
             "can_cross": False
     }),
     dict({
             "from": ( "ns3", "ns3::QapWifiMac", "dev" ),
             "to":   ( "ns3", "ns3::WifiNetDevice", "mac" ),
-            "code": connect_mac_device,
+            "init_code": connect_mac_device,
             "can_cross": False
     }),
     dict({
             "from": ( "ns3", "ns3::QstaWifiMac", "dev" ),
             "to":   ( "ns3", "ns3::WifiNetDevice", "mac" ),
-            "code": connect_mac_device,
+            "init_code": connect_mac_device,
             "can_cross": False
     }),
     dict({
             "from": ( "ns3", "ns3::RateErrorModel", "dev" ),
             "to":   ( "ns3", "ns3::CsmaNetDevice", "err" ),
-            "code": connect_errormodel_device,
+            "init_code": connect_errormodel_device,
             "can_cross": False
     }),
     dict({
             "from": ( "ns3", "ns3::RateErrorModel", "dev" ),
             "to":   ( "ns3", "ns3::PointToPointNetDevice", "err" ),
-            "code": connect_errormodel_device,
+            "init_code": connect_errormodel_device,
             "can_cross": False
     }),
     dict({
             "from": ( "ns3", "ns3::ListErrorModel", "dev" ),
             "to":   ( "ns3", "ns3::CsmaNetDevice", "err" ),
-            "code": connect_errormodel_device,
+            "init_code": connect_errormodel_device,
             "can_cross": False
     }),
     dict({
             "from": ( "ns3", "ns3::ListErrorModel", "dev" ),
             "to":   ( "ns3", "ns3::PointToPointNetDevice", "err" ),
-            "code": connect_errormodel_device,
+            "init_code": connect_errormodel_device,
             "can_cross": False
     }),
     dict({
         "from": ( "ns3", "ns3::NistErrorRateModel", "phy" ),        
         "to":   ( "ns3", "ns3::YansWifiPhy", "err" ),
-        "code": connect_errormodel_phy,
+        "init_code": connect_errormodel_phy,
         "can_cross": False
     }),
     dict({
         "from": ( "ns3", "ns3::CsmaChannel", "devs" ),
         "to":   ( "ns3", "ns3::CsmaNetDevice", "chan" ),
-        "code": connect_channel_device,
+        "init_code": connect_channel_device,
         "can_cross": False
     }),
     dict({
         "from": ( "ns3", "ns3::PointToPointChannel", "dev2" ),
         "to":   ( "ns3", "ns3::PointToPointNetDevice", "chan" ),
-        "code": connect_channel_device,
+        "init_code": connect_channel_device,
         "can_cross": False
     }),
     dict({
         "from": ( "ns3", "ns3::SimpleChannel", "devs" ),
         "to":   ( "ns3", "ns3::SimpleNetDevice", "chan" ),
-        "code": connect_simple_channel_device,
+        "init_code": connect_simple_channel_device,
         "can_cross": False
     }),
     dict({
         "from": ( "ns3", "ns3::YansWifiChannel", "phys" ),
         "to":   ( "ns3", "ns3::YansWifiPhy", "chan" ),  
-        "code": connect_simple_channel_device,
+        "init_code": connect_simple_channel_device,
         "can_cross": False
     }),
     dict({
         "from": ( "ns3", "ns3::LogDistancePropagationLossModel", "prev" ),
         "to":   ( "ns3", "ns3::YansWifiChannel", "loss" ),  
-        "code": connect_loss_channel,
+        "init_code": connect_loss_channel,
         "can_cross": False
     }),
     dict({
         "from": ( "ns3", "ns3::LogDistancePropagationLossModel", "prev" ),
         "to":   ( "ns3", "ns3::LogDistancePropagationLossModel", "next" ),  
-        "code": connect_next_loss,
+        "init_code": connect_next_loss,
         "can_cross": False
     }),
     dict({
         "from": ( "ns3", "ns3::ConstantSpeedPropagationDelayModel", "chan" ),
         "to":   ( "ns3", "ns3::YansWifiChannel", "delay" ),  
-        "code": connect_delay_channel,
+        "init_code": connect_delay_channel,
         "can_cross": False
     }),
     dict({
         "from": ( "ns3", "ns3::Node", "apps" ),
         "to":   ( "ns3", "ns3::OnOffApplication", "node" ),
-        "code": connect_node_application,
+        "init_code": connect_node_application,
         "can_cross": False
     }),
     dict({
         "from": ( "ns3", "ns3::Node", "apps" ),
         "to":   ( "ns3", "ns3::PacketSink", "node" ),
-        "code": connect_node_application,
+        "init_code": connect_node_application,
         "can_cross": False
     }),
     dict({
         "from": ( "ns3", "ns3::Node", "apps" ),
         "to":   ( "ns3", "ns3::UdpEchoClient", "node" ),
-        "code": connect_node_application,
+        "init_code": connect_node_application,
         "can_cross": False
     }),
     dict({
         "from": ( "ns3", "ns3::Node", "apps" ),
         "to":   ( "ns3", "ns3::UdpEchoServer", "node" ),
-        "code": connect_node_application,
+        "init_code": connect_node_application,
         "can_cross": False
     }),
     dict({
         "from": ( "ns3", "ns3::Node", "apps" ),
         "to":   ( "ns3", "ns3::V4Ping", "node" ),
-        "code": connect_node_application,
+        "init_code": connect_node_application,
         "can_cross": False
     }),
     dict({
         "from": ( "ns3", "ns3::Node", "protos" ),
         "to":   ( "ns3", "ns3::ArpL3Protocol", "node" ),
-        "code": connect_node_other,
+        "init_code": connect_node_other,
         "can_cross": False
     }),
     dict({
         "from": ( "ns3", "ns3::Node", "protos" ),
         "to":   ( "ns3", "ns3::Icmpv4L4Protocol", "node" ),
-        "code": connect_node_other,
+        "init_code": connect_node_other,
         "can_cross": False
     }),
     dict({
         "from": ( "ns3", "ns3::Node", "protos" ),
         "to":   ( "ns3", "ns3::Ipv4L3Protocol", "node" ),
-        "code": connect_node_other,
+        "init_code": connect_node_other,
         "can_cross": False
     }),
     dict({
         "from": ( "ns3", "ns3::Node", "protos" ),
         "to":   ( "ns3", "ns3::UdpL4Protocol", "node" ),
-        "code": connect_node_other,
+        "init_code": connect_node_other,
         "can_cross": False
     }),
     dict({
         "from": ( "ns3", "ns3::Node", "protos" ),
         "to":   ( "ns3", "ns3::TcpL4Protocol", "node" ),
-        "code": connect_node_other,
+        "init_code": connect_node_other,
         "can_cross": False
     }),
     dict({
         "from": ( "ns3", "ns3::Node", "mobility" ),
         "to":   ( "ns3", "ns3::ConstantAccelerationMobilityModel", "node" ),
-        "code": connect_node_other,
+        "init_code": connect_node_other,
         "can_cross": False
     }),
     dict({
         "from": ( "ns3", "ns3::Node", "mobility" ),
         "to":   ( "ns3", "ns3::ConstantPositionMobilityModel", "node" ),
-        "code": connect_node_other,
+        "init_code": connect_node_other,
         "can_cross": False
     }),
     dict({
         "from": ( "ns3", "ns3::Node", "mobility" ),
         "to":   ( "ns3", "ns3::ConstantVelocityMobilityModel", "node" ),
-        "code": connect_node_other,
+        "init_code": connect_node_other,
         "can_cross": False
     }),
     dict({
         "from": ( "ns3", "ns3::Node", "mobility" ),
         "to":   ( "ns3", "ns3::HierarchicalMobilityModel", "node" ),
-        "code": connect_node_other,
+        "init_code": connect_node_other,
         "can_cross": False
     }),
     dict({
         "from": ( "ns3", "ns3::Node", "mobility" ),
         "to":   ( "ns3", "ns3::RandomDirection2dMobilityModel", "node" ),
-        "code": connect_node_other,
+        "init_code": connect_node_other,
         "can_cross": False
     }),
     dict({
         "from": ( "ns3", "ns3::Node", "mobility" ),
         "to":   ( "ns3", "ns3::RandomWalk2dMobilityModel", "node" ),
-        "code": connect_node_other,
+        "init_code": connect_node_other,
         "can_cross": False
     }),
     dict({
         "from": ( "ns3", "ns3::Node", "mobility" ),
         "to":   ( "ns3", "ns3::RandomWaypointMobilityModel", "node" ),
-        "code": connect_node_other,
+        "init_code": connect_node_other,
         "can_cross": False
     }),
     dict({
         "from": ( "ns3", "ns3::FileDescriptorNetDevice", "fd" ),
         "to":   ( "netns", "TapNodeInterface", "fd" ),
-        "code": connect_fd_tap,
         "can_cross": False
     }),
 ]

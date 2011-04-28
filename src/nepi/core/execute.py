@@ -31,22 +31,24 @@ class ConnectorType(ConnectorTypeBase):
         self._from_connections = dict()
         self._to_connections = dict()
 
-    def add_from_connection(self, testbed_id, factory_id, name, can_cross, code):
+    def add_from_connection(self, testbed_id, factory_id, name, can_cross, 
+            init_code, compl_code):
         type_id = self.make_connector_type_id(testbed_id, factory_id, name)
-        self._from_connections[type_id] = (can_cross, code)
+        self._from_connections[type_id] = (can_cross, init_code, compl_code)
 
-    def add_to_connection(self, testbed_id, factory_id, name, can_cross, code):
+    def add_to_connection(self, testbed_id, factory_id, name, can_cross, 
+            init_code, compl_code):
         type_id = self.make_connector_type_id(testbed_id, factory_id, name)
-        self._to_connections[type_id] = (can_cross, code)
+        self._to_connections[type_id] = (can_cross, init_code, compl_code)
 
     def can_connect(self, testbed_id, factory_id, name, count, 
             must_cross = False):
         connector_type_id = self.make_connector_type_id(testbed_id, factory_id, name)
         for lookup_type_id in self._type_resolution_order(connector_type_id):
             if lookup_type_id in self._from_connections:
-                (can_cross, code) = self._from_connections[lookup_type_id]
+                (can_cross, init_code, compl_code) = self._from_connections[lookup_type_id]
             elif lookup_type_id in self._to_connections:
-                (can_cross, code) = self._to_connections[lookup_type_id]
+                (can_cross, init_code, compl_code) = self._to_connections[lookup_type_id]
             else:
                 # keey trying
                 continue
@@ -54,17 +56,21 @@ class ConnectorType(ConnectorTypeBase):
         else:
             return False
 
-    def code_to_connect(self, testbed_id, factory_id, name):
+    def _connect_to_code(self, testbed_id, factory_id, name):
         connector_type_id = self.make_connector_type_id(testbed_id, factory_id, name)
         for lookup_type_id in self._type_resolution_order(connector_type_id):
             if lookup_type_id in self._to_connections:
-                (can_cross, code) = self._to_connections[lookup_type_id]
-                return code
+                (can_cross, init_code, compl_code) = self._to_connections[lookup_type_id]
+                return (init_code, compl_code)
         else:
-            return False
+            return (False, False)
+    
+    def connect_to_init_code(self, testbed_id, factory_id, name):
+        return self._connect_to_code(testbed_id, factory_id, name)[0]
 
-# TODO: create_function, start_function, stop_function, status_function 
-# need a definition!
+    def connect_to_compl_code(self, testbed_id, factory_id, name):
+        return self._connect_to_code(testbed_id, factory_id, name)[1]
+
 class Factory(AttributesMap):
     def __init__(self, factory_id, create_function, start_function, 
             stop_function, status_function, 
@@ -214,10 +220,17 @@ class TestbedController(object):
         """
         raise NotImplementedError
 
-    def do_connect(self):
+    def do_connect_init(self):
+        """
+        After do_connect_init all internal connections between testbed elements
+        are initiated
+        """
+        raise NotImplementedError
+
+    def do_connect_compl(self):
         """
         After do_connect all internal connections between testbed elements
-        are done
+        are completed
         """
         raise NotImplementedError
 
@@ -225,10 +238,17 @@ class TestbedController(object):
         """After do_configure elements are configured"""
         raise NotImplementedError
 
-    def do_cross_connect(self):
+    def do_cross_connect_init(self, cross_data):
         """
-        After do_cross_connect all external connections between different testbed 
-        elements are done
+        After do_cross_connect_init initiation of all external connections 
+        between different testbed elements is performed
+        """
+        raise NotImplementedError
+
+    def do_cross_connect_compl(self, cross_data):
+        """
+        After do_cross_connect_compl completion of all external connections 
+        between different testbed elements is performed
         """
         raise NotImplementedError
 
@@ -264,6 +284,9 @@ class TestbedController(object):
         """
         raise NotImplementedError
 
+    def get_attribute_list(self, guid):
+        raise NotImplementedError
+
     def action(self, time, guid, action):
         raise NotImplementedError
 
@@ -282,7 +305,7 @@ class ExperimentController(object):
         self._testbeds = dict()
         self._access_config = dict()
         self._netrefs = dict()
-        self._crossdata = dict()
+        self._cross_data = dict()
         self._root_dir = root_dir
 
         self.persist_experiment_xml()
@@ -324,11 +347,18 @@ class ExperimentController(object):
         
         # perform create-connect in parallel, wait
         # (internal connections only)
-        self._parallel([lambda : (testbed.do_create(), 
-                                  testbed.do_connect(),
-                                  testbed.do_preconfigure())
+        self._parallel([lambda : testbed.do_create()
                         for testbed in self._testbeds.itervalues()])
-        
+
+        self._parallel([lambda : testbed.do_connect_init()
+                        for testbed in self._testbeds.itervalues()])
+
+        self._parallel([lambda : testbed.do_connect_compl()
+                        for testbed in self._testbeds.itervalues()])
+
+        self._parallel([lambda : testbed.do_preconfigure()
+                        for testbed in self._testbeds.itervalues()])
+
         # resolve netrefs
         self.do_netrefs(fail_if_undefined=True)
         
@@ -338,9 +368,13 @@ class ExperimentController(object):
                         for testbed in self._testbeds.itervalues()])
 
         # cross-connect (cannot be done in parallel)
-        for testbed in self._testbeds.values():
-            testbed.do_cross_connect()
-        
+        for guid, testbed in self._testbeds.iteritems():
+            cross_data = self._get_cross_data(guid)
+            testbed.do_cross_connect_init(cross_data)
+        for guid, testbed in self._testbeds.iteritems():
+            cross_data = self._get_cross_data(guid)
+            testbed.do_cross_connect_compl(cross_data)
+       
         # start experiment (parallel start on all testbeds)
         self._parallel([testbed.start
                         for testbed in self._testbeds.itervalues()])
@@ -354,7 +388,7 @@ class ExperimentController(object):
         for testbed_guid, testbed_config in self._access_config.iteritems():
             testbed_guid = str(testbed_guid)
             conf.add_section(testbed_guid)
-            for attr in testbed_config.attributes_name:
+            for attr in testbed_config.attributes_list:
                 if attr not in TRANSIENT:
                     conf.set(testbed_guid, attr, 
                         testbed_config.get_attribute_value(attr))
@@ -381,7 +415,7 @@ class ExperimentController(object):
                 
             testbed_guid = str(testbed_guid)
             conf.add_section(testbed_guid)
-            for attr in testbed_config.attributes_name:
+            for attr in testbed_config.attributes_list:
                 if attr not in TRANSIENT:
                     getter = getattr(conf, TYPEMAP.get(
                         testbed_config.get_attribute_type(attr),
@@ -562,23 +596,57 @@ class ExperimentController(object):
         for guid in element_guids: 
             (testbed_guid, factory_id) = data.get_box_data(guid)
             testbed = self._testbeds[testbed_guid]
-            for (connector_type_name, other_guid, other_connector_type_name) \
+            for (connector_type_name, cross_guid, cross_connector_type_name) \
                     in data.get_connection_data(guid):
                 (testbed_guid, factory_id) = data.get_box_data(guid)
-                (other_testbed_guid, other_factory_id) = data.get_box_data(
-                        other_guid)
-                if testbed_guid == other_testbed_guid:
-                    testbed.defer_connect(guid, connector_type_name, other_guid, 
-                        other_connector_type_name)
-                else:
-                    testbed.defer_cross_connect(guid, connector_type_name, other_guid, 
-                        other_testbed_id, other_factory_id, other_connector_type_name)
+                (cross_testbed_guid, cross_factory_id) = data.get_box_data(
+                        cross_guid)
+                if testbed_guid == cross_testbed_guid:
+                    testbed.defer_connect(guid, connector_type_name, 
+                            cross_guid, cross_connector_type_name)
+                else: 
+                    testbed.defer_cross_connect(guid, connector_type_name, cross_guid, 
+                            cross_testbed_id, cross_factory_id, 
+                            cross_connector_type_name)
+                    # save cross data for later
+                    self._add_crossdata(testbed_guid, guid, cross_testbed_guid,
+                            cross_guid)
             for trace_id in data.get_trace_data(guid):
                 testbed.defer_add_trace(guid, trace_id)
             for (autoconf, address, netprefix, broadcast) in \
                     data.get_address_data(guid):
                 if address != None:
-                    testbed.defer_add_address(guid, address, netprefix, broadcast)
+                    testbed.defer_add_address(guid, address, netprefix, 
+                            broadcast)
             for (destination, netprefix, nexthop) in data.get_route_data(guid):
                 testbed.defer_add_route(guid, destination, netprefix, nexthop)
+                
+    def _add_crossdata(self, testbed_guid, guid, cross_testbed_guid, cross_guid):
+        if testbed_guid not in self._crossdata:
+            self._cross_data[testbed_guid] = dict()
+        if cross_testbed_guid not in self._cross_data[testbed_guid]:
+            self._cross_data[testbed_guid][cross_testbed_guid] = list()
+        if cross_testbed_guid not in self._cross_data:
+            self._cross_data[cross_testbed_guid] = dict()
+        if testbed_guid not in self._cross_data[cross_testbed_guid]:
+            self._cross_data[cross_testbed_guid][testbed_guid] = list()
+        self._cross_data[testbed_guid][cross_testbed_guid].append(cross_guid)
+        self._cross_data[cross_testbed_guid][testbed_guid].append(guid)
 
+    def _get_cross_data(self, testbed_guid):
+        cross_data = dict()
+        if not testbed_guid in self._cross_data:
+            return cross_data
+        for cross_testbed_guid, guid_list in self._cross_data[testbed_guid]:
+            cross_data[cross_testbed_guid] = dict()
+            cross_testbed = self._testbeds[cross_testbed_guid]
+            for cross_guid in guid_list:
+                cross_data_guid = dict()
+                cross_data[cross_testbed_guid][cross_guid] = cross_data_guid
+                attributes_list = cross_testbed.get_attribute_list(cross_guid)
+                for attr_name in attributes_list:
+                    attr_value = cross_testbed.get(TIME_NOW, cross_guid, 
+                            attr_name)
+                    cross_data_guid[attr_name] = attr_value
+        return cross_data
+    
