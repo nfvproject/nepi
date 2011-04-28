@@ -20,5 +20,5 @@ setup(
             "nepi.util.parser",
             "nepi.util" ],
         package_dir = {"": "src"},
-        package_data = {"nepi.testbeds.planetlab" : ["scripts/*.py", "scripts/consts.c"] },
+        package_data = {"nepi.testbeds.planetlab" : ["scripts/*.py", "scripts/*.c"] },
     )

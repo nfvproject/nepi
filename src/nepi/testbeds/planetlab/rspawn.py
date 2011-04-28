@@ -61,20 +61,27 @@ def remote_spawn(command, pidfile, stdout='/dev/null', stderr=STDOUT, stdin='/de
         stderr = '&1'
     else:
         stderr = ' ' + stderr
-    (out,err),proc = server.popen_ssh_command(
-        "%(create)s%(gohome)s rm -f %(pidfile)s ; ( echo $$ $PPID > %(pidfile)s ; %(sudo)s nohup %(command)s > %(stdout)s 2>%(stderr)s < %(stdin)s ) &" % {
-            'command' : command,
-            
-            'stdout' : stdout,
-            'stderr' : stderr,
-            'stdin' : stdin,
+    
+    daemon_command = '{ { %(command)s  > %(stdout)s 2>%(stderr)s < %(stdin)s & } ; echo $! 1 > %(pidfile)s ; }' % {
+        'command' : command,
+        'pidfile' : server.shell_escape(pidfile),
+        
+        'stdout' : stdout,
+        'stderr' : stderr,
+        'stdin' : stdin,
+    }
+    
+    cmd = "%(create)s%(gohome)s rm -f %(pidfile)s ; %(sudo)s nohup bash -c %(command)s " % {
+            'command' : server.shell_escape(daemon_command),
             
             'sudo' : 'sudo -S' if sudo else '',
             
             'pidfile' : server.shell_escape(pidfile),
             'gohome' : 'cd %s ; ' % (server.shell_escape(home),) if home else '',
             'create' : 'mkdir -p %s ; ' % (server.shell_escape,) if create_home else '',
-        },
+        }
+    (out,err),proc = server.popen_ssh_command(
+        cmd,
         host = host,
         port = port,
         user = user,
@@ -194,7 +201,7 @@ def remote_kill(pid, ppid, sudo = False,
 
     (out,err),proc = server.popen_ssh_command(
         """
-%(sudo)s kill %(pid)d %(ppid)d 
+%(sudo)s kill %(pid)d
 for x in 1 2 3 4 5 6 7 8 9 0 ; do 
     sleep 0.1 
     if [ `ps --pid %(ppid)d -o pid | grep -c %(pid)d` == `0` ]; then

@@ -9,6 +9,8 @@ import subprocess
 import os
 import os.path
 
+import tunproto
+
 class NodeIface(object):
     def __init__(self, api=None):
         if not api:
@@ -96,14 +98,34 @@ class TunIface(object):
         self.device_name = None
         self.mtu = None
         self.snat = False
+        self.txqueuelen = None
+        
+        # Enabled traces
+        self.capture = False
 
         # These get initialized when the iface is connected to its node
         self.node = None
+        
+        # These get initialized when the iface is configured
+        self.external_iface = None
+        
+        # These get initialized when the iface is configured
+        # They're part of the TUN standard attribute set
+        self.tun_port = None
+        self.tun_addr = None
+        
+        # These get initialized when the iface is connected to its peer
+        self.peer_iface = None
+        self.peer_proto = None
+        self.peer_proto_impl = None
+
+        # same as peer proto, but for execute-time standard attribute lookups
+        self.tun_proto = None 
 
     def __str__(self):
         return "%s<ip:%s/%s %s%s>" % (
             self.__class__.__name__,
-            self.address, self.netmask,
+            self.address, self.netprefix,
             " up" if self.up else " down",
             " snat" if self.snat else "",
         )
@@ -116,11 +138,38 @@ class TunIface(object):
         
         self.address = address
         self.netprefix = netprefix
-        self.netmask = ipaddr2.ipv4_dot2mask(netprefix)
-
-    def validate(self):
-        pass
+        self.netmask = ipaddr2.ipv4_mask2dot(netprefix)
     
+    def validate(self):
+        if not self.node:
+            raise RuntimeError, "Unconnected TUN iface - missing node"
+        if self.peer_iface and self.peer_proto not in tunproto.PROTO_MAP:
+            raise RuntimeError, "Unsupported tunnelling protocol: %s" % (self.peer_proto,)
+        if not self.address or not self.netprefix or not self.netmask:
+            raise RuntimeError, "Misconfigured TUN iface - missing address"
+    
+    def prepare(self, home_path, listening):
+        if self.peer_iface:
+            if not self.peer_proto_impl:
+                self.peer_proto_impl = tunproto.PROTO_MAP[self.peer_proto](
+                    self, self.peer_iface, home_path, listening)
+                self.peer_proto_impl.port = self.tun_port
+            self.peer_proto_impl.prepare()
+    
+    def setup(self):
+        if self.peer_iface:
+            self.peer_proto_impl.setup()
+    
+    def destroy(self):
+        if self.peer_proto_impl:
+            self.peer_proto_impl.shutdown()
+            self.peer_proto_impl = None
+
+    def sync_trace(self, local_dir, whichtrace):
+        if self.peer_proto_impl:
+            return self.peer_proto_impl.sync_trace(local_dir, whichtrace)
+        else:
+            return None
 
 # Yep, it does nothing - yet
 class Internet(object):

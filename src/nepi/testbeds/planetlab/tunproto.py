@@ -1,0 +1,334 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import weakref
+import os
+import os.path
+import rspawn
+import subprocess
+
+from nepi.util import server
+
+class TunProtoBase(object):
+    def __init__(self, local, peer, home_path):
+        # Weak references, since ifaces do have a reference to the
+        # tunneling protocol implementation - we don't want strong
+        # circular references.
+        self.peer = weakref.ref(peer)
+        self.local = weakref.ref(local)
+        
+        self.port = 15000
+        self.mode = 'pl-tun'
+        
+        self.home_path = home_path
+        
+        self._started = False
+        self._pid = None
+        self._ppid = None
+
+    def _make_home(self):
+        local = self.local()
+        
+        if not local:
+            raise RuntimeError, "Lost reference to peering interfaces before launching"
+        if not local.node:
+            raise RuntimeError, "Unconnected TUN - missing node"
+        
+        # Make sure all the paths are created where 
+        # they have to be created for deployment
+        cmd = "mkdir -p %s" % (server.shell_escape(self.home_path),)
+        (out,err),proc = server.popen_ssh_command(
+            cmd,
+            host = local.node.hostname,
+            port = None,
+            user = local.node.slicename,
+            agent = None,
+            ident_key = local.node.ident_path,
+            server_key = local.node.server_key
+            )
+        
+        if proc.wait():
+            raise RuntimeError, "Failed to set up TUN forwarder: %s %s" % (out,err,)
+        
+    
+    def _install_scripts(self):
+        local = self.local()
+        
+        if not local:
+            raise RuntimeError, "Lost reference to peering interfaces before launching"
+        if not local.node:
+            raise RuntimeError, "Unconnected TUN - missing node"
+        
+        # Install the tun_connect script and tunalloc utility
+        source = os.path.join(os.path.dirname(__file__), 'scripts', 'tun_connect.py')
+        dest = "%s@%s:%s" % (
+            local.node.slicename, local.node.hostname, 
+            os.path.join(self.home_path,'.'),)
+        (out,err),proc = server.popen_scp(
+            source,
+            dest,
+            ident_key = local.node.ident_path,
+            server_key = local.node.server_key
+            )
+    
+        if proc.wait():
+            raise RuntimeError, "Failed upload TUN connect script %r: %s %s" % (source, out,err,)
+
+        source = os.path.join(os.path.dirname(__file__), 'scripts', 'tunalloc.c')
+        (out,err),proc = server.popen_scp(
+            source,
+            dest,
+            ident_key = local.node.ident_path,
+            server_key = local.node.server_key
+            )
+    
+        if proc.wait():
+            raise RuntimeError, "Failed upload TUN connect script %r: %s %s" % (source, out,err,)
+
+        cmd = "cd %s && gcc -shared tunalloc.c -o tunalloc.so" % (server.shell_escape(self.home_path),)
+        (out,err),proc = server.popen_ssh_command(
+            cmd,
+            host = local.node.hostname,
+            port = None,
+            user = local.node.slicename,
+            agent = None,
+            ident_key = local.node.ident_path,
+            server_key = local.node.server_key
+            )
+        
+        if proc.wait():
+            raise RuntimeError, "Failed to set up TUN forwarder: %s %s" % (out,err,)
+        
+    
+    def launch(self, check_proto, listen, extra_args=[]):
+        peer = self.peer()
+        local = self.local()
+        
+        if not peer or not local:
+            raise RuntimeError, "Lost reference to peering interfaces before launching"
+        
+        peer_port = peer.tun_port
+        peer_addr = peer.tun_addr
+        peer_proto= peer.tun_proto
+        
+        local_port = self.port
+        local_cap  = local.capture
+        local_addr = local.address
+        local_mask = local.netprefix
+        local_snat = local.snat
+        local_txq  = local.txqueuelen
+        
+        if check_proto != peer_proto:
+            raise RuntimeError, "Peering protocol mismatch: %s != %s" % (check_proto, peer_proto)
+        
+        if not listen and (not peer_port or not peer_addr):
+            raise RuntimeError, "Misconfigured peer: %s" % (peer,)
+        
+        if listen and (not local_port or not local_addr or not local_mask):
+            raise RuntimeError, "Misconfigured TUN: %s" % (local,)
+        
+        args = ["python", "tun_connect.py", 
+            "-m", str(self.mode),
+            "-p", str(local_port if listen else peer_port),
+            "-A", str(local_addr),
+            "-M", str(local_mask)]
+        
+        if local_snat:
+            args.append("-S")
+        if local_txq:
+            args.extend(("-Q",str(local_txq)))
+        if extra_args:
+            args.extend(map(str,extra_args))
+        if not listen:
+            args.append(str(peer_addr))
+        
+        self._make_home()
+        self._install_scripts()
+        
+        # Start process in a "daemonized" way, using nohup and heavy
+        # stdin/out redirection to avoid connection issues
+        (out,err),proc = rspawn.remote_spawn(
+            " ".join(args),
+            
+            pidfile = './pid',
+            home = self.home_path,
+            stdin = '/dev/null',
+            stdout = 'capture' if local_cap else '/dev/null',
+            stderr = rspawn.STDOUT,
+            sudo = True,
+            
+            host = local.node.hostname,
+            port = None,
+            user = local.node.slicename,
+            agent = None,
+            ident_key = local.node.ident_path,
+            server_key = local.node.server_key
+            )
+        
+        if proc.wait():
+            raise RuntimeError, "Failed to set up application: %s %s" % (out,err,)
+
+        self._started = True
+
+    def checkpid(self):            
+        local = self.local()
+        
+        if not local:
+            raise RuntimeError, "Lost reference to local interface"
+        
+        # Get PID/PPID
+        # NOTE: wait a bit for the pidfile to be created
+        if self._started and not self._pid or not self._ppid:
+            pidtuple = rspawn.remote_check_pid(
+                os.path.join(self.home_path,'pid'),
+                host = local.node.hostname,
+                port = None,
+                user = local.node.slicename,
+                agent = None,
+                ident_key = local.node.ident_path,
+                server_key = local.node.server_key
+                )
+            
+            if pidtuple:
+                self._pid, self._ppid = pidtuple
+    
+    def status(self):
+        local = self.local()
+        
+        if not local:
+            raise RuntimeError, "Lost reference to local interface"
+        
+        self.checkpid()
+        if not self._started:
+            return rspawn.NOT_STARTED
+        elif not self._pid or not self._ppid:
+            return rspawn.NOT_STARTED
+        else:
+            status = rspawn.remote_status(
+                self._pid, self._ppid,
+                host = local.node.hostname,
+                port = None,
+                user = local.node.slicename,
+                agent = None,
+                ident_key = local.node.ident_path
+                )
+            return status
+    
+    def kill(self):
+        local = self.local()
+        
+        if not local:
+            raise RuntimeError, "Lost reference to local interface"
+        
+        status = self.status()
+        if status == rspawn.RUNNING:
+            # kill by ppid+pid - SIGTERM first, then try SIGKILL
+            rspawn.remote_kill(
+                self._pid, self._ppid,
+                host = local.node.hostname,
+                port = None,
+                user = local.node.slicename,
+                agent = None,
+                ident_key = local.node.ident_path,
+                server_key = local.node.server_key,
+                sudo = True
+                )
+        
+    def sync_trace(self, local_dir, whichtrace):
+        if whichtrace != 'packets':
+            return None
+        
+        local = self.local()
+        
+        if not local:
+            return None
+        
+        local_path = os.path.join(local_dir, 'capture')
+        
+        # create parent local folders
+        proc = subprocess.Popen(
+            ["mkdir", "-p", os.path.dirname(local_path)],
+            stdout = open("/dev/null","w"),
+            stdin = open("/dev/null","r"))
+
+        if proc.wait():
+            raise RuntimeError, "Failed to synchronize trace: %s %s" % (out,err,)
+        
+        # sync files
+        (out,err),proc = server.popen_scp(
+            '%s@%s:%s' % (local.node.slicename, local.node.hostname, 
+                os.path.join(self.home_path, 'capture')),
+            local_path,
+            port = None,
+            agent = None,
+            ident_key = local.node.ident_path,
+            server_key = local.node.server_key
+            )
+        
+        if proc.wait():
+            raise RuntimeError, "Failed to synchronize trace: %s %s" % (out,err,)
+        
+        return local_path
+        
+        
+    def prepare(self):
+        """
+        First-phase setup
+        
+        eg: set up listening ports
+        """
+        raise NotImplementedError
+    
+    def setup(self):
+        """
+        Second-phase setup
+        
+        eg: connect to peer
+        """
+        raise NotImplementedError
+    
+    def shutdown(self):
+        """
+        Cleanup
+        """
+        raise NotImplementedError
+        
+
+class TunProtoUDP(TunProtoBase):
+    def __init__(self, local, peer, home_path, listening):
+        super(TunProtoTCP, self).__init__(local, peer, home_path)
+        self.listening = listening
+    
+    def prepare(self):
+        pass
+    
+    def setup(self):
+        self.launch('udp', False, ("-U",))
+    
+    def shutdown(self):
+        self.kill()
+
+class TunProtoTCP(TunProtoBase):
+    def __init__(self, local, peer, home_path, listening):
+        super(TunProtoTCP, self).__init__(local, peer, home_path)
+        self.listening = listening
+    
+    def prepare(self):
+        if self.listening:
+            self.launch('tcp', True)
+    
+    def setup(self):
+        if not self.listening:
+            self.launch('tcp', False)
+        
+        self.checkpid()
+    
+    def shutdown(self):
+        self.kill()
+
+PROTO_MAP = {
+    'tcp' : TunProtoTCP,
+    'udp' : TunProtoUDP,
+}
+
+

@@ -205,7 +205,7 @@ def vif_stop(tun_path, tun_name):
     
     
 def pl_tuntap_alloc(kind, tun_path, tun_name):
-    tunalloc_so = ctypes.cdll.LoadLibrary("./vsys-scripts/support/tunalloc.so")
+    tunalloc_so = ctypes.cdll.LoadLibrary("./tunalloc.so")
     c_tun_name = ctypes.c_char_p("\x00"*IFNAMSIZ) # the string will be mutated!
     kind = {"tun":IFF_TUN,
             "tap":IFF_TAP}[kind]

@@ -10,6 +10,10 @@ from nepi.util import validation
 from nepi.util.constants import STATUS_NOT_STARTED, STATUS_RUNNING, \
         STATUS_FINISHED
 
+import functools
+import os
+import os.path
+
 NODE = "Node"
 NODEIFACE = "NodeInterface"
 TUNIFACE = "TunInterface"
@@ -84,6 +88,11 @@ def connect_tun_iface_node(testbed_instance, node, iface):
     iface.node = node
     node.required_vsys.update(('fd_tuntap', 'vif_up'))
 
+def connect_tun_iface_peer(proto, testbed_instance, iface, peer_iface):
+    iface.peer_iface = peer_iface
+    iface.peer_proto = \
+    iface.tun_proto = proto
+
 def connect_app(testbed_instance, node, app):
     app.node = node
     
@@ -109,7 +118,7 @@ def create_node(testbed_instance, guid):
     # by counting connected devices
     dev_guids = testbed_instance.get_connected(guid, "node", "devs")
     num_open_ifaces = sum( # count True values
-        TUNEIFACE == testbed_instance._get_factory_id(guid)
+        NODEIFACE == testbed_instance._get_factory_id(guid)
         for guid in dev_guids )
     element.min_num_external_ifaces = num_open_ifaces
     
@@ -188,18 +197,44 @@ def configure_nodeiface(testbed_instance, guid):
     # Do some validations
     element.validate()
 
-def configure_tuniface(testbed_instance, guid):
+def preconfigure_tuniface(testbed_instance, guid):
     element = testbed_instance._elements[guid]
-    if not guid in testbed_instance._add_address:
-        return
     
-    addresses = testbed_instance._add_address[guid]
-    for address in addresses:
-        (address, netprefix, broadcast) = address
-        element.add_address(address, netprefix, broadcast)
+    # Set custom addresses if any
+    if guid in testbed_instance._add_address:
+        addresses = testbed_instance._add_address[guid]
+        for address in addresses:
+            (address, netprefix, broadcast) = address
+            element.add_address(address, netprefix, broadcast)
+    
+    # Link to external interface, if any
+    for iface in testbed_instance._elements.itervalues():
+        if isinstance(iface, testbed_instance._interfaces.NodeIface) and iface.node is element.node and iface.has_internet:
+            element.external_iface = iface
+            break
+
+    # Set standard TUN attributes
+    element.tun_addr = element.external_iface.address
+    element.tun_port = 15000 + int(guid)
+
+    # Set enabled traces
+    traces = testbed_instance._get_traces(guid)
+    element.capture = 'packets' in traces
     
     # Do some validations
     element.validate()
+    
+    # First-phase setup
+    element.prepare( 
+        'tun-%s' % (guid,),
+        id(element) < id(element.peer_iface) )
+
+def postconfigure_tuniface(testbed_instance, guid):
+    element = testbed_instance._elements[guid]
+    
+    # Second-phase setup
+    element.setup()
+    
 
 def configure_node(testbed_instance, guid):
     node = testbed_instance._elements[guid]
@@ -284,6 +319,19 @@ connector_types = dict({
                 "max": 2, 
                 "min": 0
             }),
+    
+    "tcp": dict({
+                "help": "ip-ip tunneling over TCP link", 
+                "name": "tcp",
+                "max": 1, 
+                "min": 0
+            }),
+    "udp": dict({
+                "help": "ip-ip tunneling over UDP datagrams", 
+                "name": "udp",
+                "max": 1, 
+                "min": 0
+            }),
    })
 
 connections = [
@@ -315,6 +363,18 @@ connections = [
         "from": (TESTBED_ID, NODE, "pipes"),
         "to":   (TESTBED_ID, NETPIPE, "node"),
         "code": connect_node_netpipe,
+        "can_cross": False
+    }),
+    dict({
+        "from": (TESTBED_ID, TUNIFACE, "tcp"),
+        "to":   (TESTBED_ID, TUNIFACE, "tcp"),
+        "code": functools.partial(connect_tun_iface_peer,"tcp"),
+        "can_cross": False
+    }),
+    dict({
+        "from": (TESTBED_ID, TUNIFACE, "udp"),
+        "to":   (TESTBED_ID, TUNIFACE, "udp"),
+        "code": functools.partial(connect_tun_iface_peer,"udp"),
         "can_cross": False
     }),
 ]
@@ -447,6 +507,14 @@ attributes = dict({
                 "type": Attribute.BOOL,
                 "value": False,
                 "validation_function": validation.is_bool
+            }),
+    "txqueuelen":  dict({
+                "name": "mask", 
+                "help": "Transmission queue length (in packets)",
+                "type": Attribute.INTEGER,
+                "flags": Attribute.DesignOnly,
+                "range" : (1,10000),
+                "validation_function": validation.is_integer
             }),
             
     "command": dict({
@@ -609,6 +677,11 @@ traces = dict({
                 "name": "netpipeStats",
                 "help": "Information about rule match counters, packets dropped, etc.",
               }),
+
+    "packets": dict({
+                "name": "packets",
+                "help": "Detailled log of all packets going through the interface",
+              }),
     })
 
 create_order = [ INTERNET, NODE, NODEIFACE, TUNIFACE, NETPIPE, APPLICATION ]
@@ -650,11 +723,14 @@ factories_info = dict({
             "help": "Virtual TUN network interface",
             "category": "devices",
             "create_function": create_tuniface,
-            "preconfigure_function": configure_tuniface,
+            "preconfigure_function": preconfigure_tuniface,
+            "configure_function": postconfigure_tuniface,
             "box_attributes": [
                 "up", "device_name", "mtu", "snat",
+                "txqueuelen"
             ],
-            "connector_types": ["node"]
+            "traces": ["packets"],
+            "connector_types": ["node","udp","tcp"]
         }),
     APPLICATION: dict({
             "help": "Generic executable command line application",

@@ -32,7 +32,7 @@ else:
 
 
 
-SHELL_SAFE = re.compile('[-a-zA-Z0-9_=+:.,/]*')
+SHELL_SAFE = re.compile('^[-a-zA-Z0-9_=+:.,/]*$')
 
 def shell_escape(s):
     """ Escapes strings so that they are safe to use as command-line arguments """
