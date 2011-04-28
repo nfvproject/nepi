@@ -160,7 +160,7 @@ class TunIface(object):
         if self.peer_iface:
             self.peer_proto_impl.setup()
     
-    def destroy(self):
+    def cleanup(self):
         if self.peer_proto_impl:
             self.peer_proto_impl.shutdown()
             self.peer_proto_impl = None
