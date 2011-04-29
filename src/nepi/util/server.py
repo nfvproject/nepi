@@ -415,6 +415,9 @@ def popen_scp(source, dest,
         read and written into dest.
         
         In these modes, recursive cannot be True.
+        
+        Source can be a list of files to copy to a single destination,
+        in which case it is advised that the destination be a folder.
         """
         
         if isinstance(source, file) or isinstance(dest, file) \
@@ -569,7 +572,10 @@ def popen_scp(source, dest,
                 # Create a temporary server key file
                 tmp_known_hosts = _make_server_key_args(
                     server_key, host, port, args)
-            args.append(source)
+            if isinstance(source,list):
+                args.extend(source)
+            else:
+                args.append(source)
             args.append(dest)
 
             # connects to the remote host and starts a remote connection

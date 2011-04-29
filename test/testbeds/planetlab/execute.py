@@ -56,7 +56,8 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
 
         instance.do_setup()
         instance.do_create()
-        instance.do_connect()
+        instance.do_connect_init()
+        instance.do_connect_compl()
         instance.do_preconfigure()
         
         # Manually replace netref
@@ -101,7 +102,8 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
 
         instance.do_setup()
         instance.do_create()
-        instance.do_connect()
+        instance.do_connect_init()
+        instance.do_connect_compl()
         instance.do_preconfigure()
         instance.do_configure()
         
@@ -137,7 +139,8 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
 
         instance.do_setup()
         instance.do_create()
-        instance.do_connect()
+        instance.do_connect_init()
+        instance.do_connect_compl()
         instance.do_preconfigure()
         instance.do_configure()
         
@@ -194,7 +197,8 @@ echo 'OKIDOKI'
 
         instance.do_setup()
         instance.do_create()
-        instance.do_connect()
+        instance.do_connect_init()
+        instance.do_connect_compl()
         instance.do_preconfigure()
         instance.do_configure()
         
@@ -237,7 +241,8 @@ echo 'OKIDOKI'
 
         instance.do_setup()
         instance.do_create()
-        instance.do_connect()
+        instance.do_connect_init()
+        instance.do_connect_compl()
         instance.do_preconfigure()
         instance.do_configure()
         
@@ -283,7 +288,8 @@ echo 'OKIDOKI'
         try:
             instance.do_setup()
             instance.do_create()
-            instance.do_connect()
+            instance.do_connect_init()
+            instance.do_connect_compl()
             instance.do_preconfigure()
             instance.do_configure()
             self.fail("Usage of TUN without emulation should fail")
@@ -322,7 +328,8 @@ echo 'OKIDOKI'
 
         instance.do_setup()
         instance.do_create()
-        instance.do_connect()
+        instance.do_connect_init()
+        instance.do_connect_compl()
         instance.do_preconfigure()
         
         # Manually replace netref

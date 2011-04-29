@@ -260,17 +260,16 @@ class Application(object):
             sources = self.sources.split(' ')
             
             # Copy all sources
-            for source in sources:
-                (out,err),proc = server.popen_scp(
-                    source,
-                    "%s@%s:%s" % (self.slicename, self.node.hostname, 
-                        os.path.join(self.home_path,'.'),),
-                    ident_key = self.ident_path,
-                    server_key = self.node.server_key
-                    )
-            
-                if proc.wait():
-                    raise RuntimeError, "Failed upload source file %r: %s %s" % (source, out,err,)
+            (out,err),proc = server.popen_scp(
+                sources,
+                "%s@%s:%s" % (self.slicename, self.node.hostname, 
+                    os.path.join(self.home_path,'.'),),
+                ident_key = self.ident_path,
+                server_key = self.node.server_key
+                )
+        
+            if proc.wait():
+                raise RuntimeError, "Failed upload source file %r: %s %s" % (source, out,err,)
             
         if self.buildDepends:
             # Install build dependencies

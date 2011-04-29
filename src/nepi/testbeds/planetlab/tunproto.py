@@ -60,23 +60,15 @@ class TunProtoBase(object):
             raise RuntimeError, "Unconnected TUN - missing node"
         
         # Install the tun_connect script and tunalloc utility
-        source = os.path.join(os.path.dirname(__file__), 'scripts', 'tun_connect.py')
+        sources = [
+            os.path.join(os.path.dirname(__file__), 'scripts', 'tun_connect.py'),
+            os.path.join(os.path.dirname(__file__), 'scripts', 'tunalloc.c'),
+        ]
         dest = "%s@%s:%s" % (
             local.node.slicename, local.node.hostname, 
             os.path.join(self.home_path,'.'),)
         (out,err),proc = server.popen_scp(
-            source,
-            dest,
-            ident_key = local.node.ident_path,
-            server_key = local.node.server_key
-            )
-    
-        if proc.wait():
-            raise RuntimeError, "Failed upload TUN connect script %r: %s %s" % (source, out,err,)
-
-        source = os.path.join(os.path.dirname(__file__), 'scripts', 'tunalloc.c')
-        (out,err),proc = server.popen_scp(
-            source,
+            sources,
             dest,
             ident_key = local.node.ident_path,
             server_key = local.node.server_key
