@@ -18,6 +18,8 @@ NODE = "Node"
 NODEIFACE = "NodeInterface"
 TUNIFACE = "TunInterface"
 APPLICATION = "Application"
+DEPENDENCY = "Dependency"
+NEPIDEPENDENCY = "NepiDependency"
 INTERNET = "Internet"
 NETPIPE = "NetPipe"
 
@@ -93,12 +95,16 @@ def connect_tun_iface_peer(proto, testbed_instance, iface, peer_iface):
     iface.peer_proto = \
     iface.tun_proto = proto
 
-def connect_app(testbed_instance, node, app):
+def connect_dep(testbed_instance, node, app):
     app.node = node
     
     if app.depends:
         node.required_packages.update(set(
             app.depends.split() ))
+    
+    if app.add_to_path:
+        if app.home_path and app.home_path not in node.pythonpath:
+            node.pythonpath.append(app.home_path)
 
 def connect_node_netpipe(testbed_instance, node, netpipe):
     if not node.emulation:
@@ -137,6 +143,28 @@ def create_tuniface(testbed_instance, guid):
 def create_application(testbed_instance, guid):
     parameters = testbed_instance._get_parameters(guid)
     element = testbed_instance._make_application(parameters)
+    
+    # Just inject configuration stuff
+    element.home_path = "nepi-app-%s" % (guid,)
+    
+    testbed_instance.elements[guid] = element
+
+def create_dependency(testbed_instance, guid):
+    parameters = testbed_instance._get_parameters(guid)
+    element = testbed_instance._make_dependency(parameters)
+    
+    # Just inject configuration stuff
+    element.home_path = "nepi-dep-%s" % (guid,)
+    
+    testbed_instance.elements[guid] = element
+
+def create_nepi_dependency(testbed_instance, guid):
+    parameters = testbed_instance._get_parameters(guid)
+    element = testbed_instance._make_nepi_dependency(parameters)
+    
+    # Just inject configuration stuff
+    element.home_path = "nepi-nepi-%s" % (guid,)
+    
     testbed_instance.elements[guid] = element
 
 def create_internet(testbed_instance, guid):
@@ -260,11 +288,6 @@ def configure_node(testbed_instance, guid):
 def configure_application(testbed_instance, guid):
     app = testbed_instance._elements[guid]
     
-    # Just inject configuration stuff
-    app.home_path = "nepi-app-%s" % (guid,)
-    app.ident_path = testbed_instance.sliceSSHKey
-    app.slicename = testbed_instance.slicename
-    
     # Do some validations
     app.validate()
     
@@ -273,6 +296,18 @@ def configure_application(testbed_instance, guid):
     
     # Install stuff
     app.setup()
+
+def configure_dependency(testbed_instance, guid):
+    dep = testbed_instance._elements[guid]
+    
+    # Do some validations
+    dep.validate()
+    
+    # Wait for dependencies
+    dep.node.wait_dependencies()
+    
+    # Install stuff
+    dep.setup()
 
 def configure_netpipe(testbed_instance, guid):
     netpipe = testbed_instance._elements[guid]
@@ -298,6 +333,13 @@ connector_types = dict({
     "devs": dict({
                 "help": "Connector from node to network interfaces", 
                 "name": "devs",
+                "max": -1, 
+                "min": 0
+            }),
+    "deps": dict({
+                "help": "Connector from node to application dependencies "
+                        "(packages and applications that need to be installed)", 
+                "name": "deps",
                 "max": -1, 
                 "min": 0
             }),
@@ -356,7 +398,19 @@ connections = [
     dict({
         "from": (TESTBED_ID, NODE, "apps"),
         "to":   (TESTBED_ID, APPLICATION, "node"),
-        "init_code": connect_app,
+        "init_code": connect_dep,
+        "can_cross": False
+    }),
+    dict({
+        "from": (TESTBED_ID, NODE, "deps"),
+        "to":   (TESTBED_ID, DEPENDENCY, "node"),
+        "init_code": connect_dep,
+        "can_cross": False
+    }),
+    dict({
+        "from": (TESTBED_ID, NODE, "deps"),
+        "to":   (TESTBED_ID, NEPIDEPENDENCY, "node"),
+        "init_code": connect_dep,
         "can_cross": False
     }),
     dict({
@@ -684,9 +738,9 @@ traces = dict({
               }),
     })
 
-create_order = [ INTERNET, NODE, NODEIFACE, TUNIFACE, NETPIPE, APPLICATION ]
+create_order = [ INTERNET, NODE, NODEIFACE, TUNIFACE, NETPIPE, NEPIDEPENDENCY, DEPENDENCY, APPLICATION ]
 
-configure_order = [ INTERNET, NODE, NODEIFACE, TUNIFACE, NETPIPE, APPLICATION ]
+configure_order = [ INTERNET, NODE, NODEIFACE, TUNIFACE, NETPIPE, NEPIDEPENDENCY, DEPENDENCY, APPLICATION ]
 
 factories_info = dict({
     NODE: dict({
@@ -707,7 +761,7 @@ factories_info = dict({
                 "min_bandwidth",
                 "max_bandwidth",
             ],
-            "connector_types": ["devs", "apps", "pipes"]
+            "connector_types": ["devs", "apps", "pipes", "deps"]
        }),
     NODEIFACE: dict({
             "has_addresses": True,
@@ -744,7 +798,26 @@ factories_info = dict({
                                "depends", "build-depends", "build", "install",
                                "sources" ],
             "connector_types": ["node"],
-            "traces": ["stdout", "stderr"]
+            "traces": ["stdout", "stderr", "buildlog"]
+        }),
+    DEPENDENCY: dict({
+            "help": "Requirement for package or application to be installed on some node",
+            "category": "applications",
+            "create_function": create_dependency,
+            "configure_function": configure_dependency,
+            "box_attributes": ["depends", "build-depends", "build", "install",
+                               "sources" ],
+            "connector_types": ["node"],
+            "traces": ["buildlog"]
+        }),
+    NEPIDEPENDENCY: dict({
+            "help": "Requirement for NEPI inside NEPI - required to run testbed instances inside a node",
+            "category": "applications",
+            "create_function": create_nepi_dependency,
+            "configure_function": configure_dependency,
+            "box_attributes": [ ],
+            "connector_types": ["node"],
+            "traces": ["buildlog"]
         }),
     INTERNET: dict({
             "help": "Internet routing",

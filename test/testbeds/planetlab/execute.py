@@ -54,34 +54,39 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
         instance.defer_add_trace(7, "stderr")
         instance.defer_connect(7, "node", 2, "apps")
 
-        instance.do_setup()
-        instance.do_create()
-        instance.do_connect_init()
-        instance.do_connect_compl()
-        instance.do_preconfigure()
-        
-        # Manually replace netref
-        instance.set(TIME_NOW, 7, "command",
-            instance.get(TIME_NOW, 7, "command")
-                .replace("{#[GUID-5].addr[0].[Address]#}", 
-                    instance.get_address(5, 0, "Address") )
-        )
-
-        instance.do_configure()
-        
-        instance.start()
-        while instance.status(7) != STATUS_FINISHED:
-            time.sleep(0.5)
-        ping_result = instance.trace(7, "stdout") or ""
         comp_result = r"""PING .* \(.*\) \d*\(\d*\) bytes of data.
 
 --- .* ping statistics ---
 1 packets transmitted, 1 received, 0% packet loss, time \d*ms.*
 """
+
+        try:
+            instance.do_setup()
+            instance.do_create()
+            instance.do_connect_init()
+            instance.do_connect_compl()
+            instance.do_preconfigure()
+            
+            # Manually replace netref
+            instance.set(TIME_NOW, 7, "command",
+                instance.get(TIME_NOW, 7, "command")
+                    .replace("{#[GUID-5].addr[0].[Address]#}", 
+                        instance.get_address(5, 0, "Address") )
+            )
+
+            instance.do_configure()
+            
+            instance.start()
+            while instance.status(7) != STATUS_FINISHED:
+                time.sleep(0.5)
+            ping_result = instance.trace(7, "stdout") or ""
+            instance.stop()
+        finally:
+            instance.shutdown()
+
+        # asserts at the end, to make sure there's proper cleanup
         self.assertTrue(re.match(comp_result, ping_result, re.MULTILINE),
             "Unexpected trace:\n" + ping_result)
-        instance.stop()
-        instance.shutdown()
         
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_depends(self):
@@ -100,22 +105,26 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
         instance.defer_add_trace(5, "stderr")
         instance.defer_connect(5, "node", 2, "apps")
 
-        instance.do_setup()
-        instance.do_create()
-        instance.do_connect_init()
-        instance.do_connect_compl()
-        instance.do_preconfigure()
-        instance.do_configure()
-        
-        instance.start()
-        while instance.status(5) != STATUS_FINISHED:
-            time.sleep(0.5)
-        ping_result = instance.trace(5, "stdout") or ""
-        comp_result = r".*GNU Fortran \(GCC\).*"
+        try:
+            instance.do_setup()
+            instance.do_create()
+            instance.do_connect_init()
+            instance.do_connect_compl()
+            instance.do_preconfigure()
+            instance.do_configure()
+            
+            instance.start()
+            while instance.status(5) != STATUS_FINISHED:
+                time.sleep(0.5)
+            ping_result = instance.trace(5, "stdout") or ""
+            comp_result = r".*GNU Fortran \(GCC\).*"
+            instance.stop()
+        finally:
+            instance.shutdown()
+
+        # asserts at the end, to make sure there's proper cleanup
         self.assertTrue(re.match(comp_result, ping_result, re.MULTILINE),
             "Unexpected trace:\n" + ping_result)
-        instance.stop()
-        instance.shutdown()
         
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_build(self):
@@ -137,17 +146,6 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
         instance.defer_add_trace(10, "stderr")
         instance.defer_connect(10, "node", 2, "apps")
 
-        instance.do_setup()
-        instance.do_create()
-        instance.do_connect_init()
-        instance.do_connect_compl()
-        instance.do_preconfigure()
-        instance.do_configure()
-        
-        instance.start()
-        while instance.status(10) != STATUS_FINISHED:
-            time.sleep(0.5)
-        ping_result = instance.trace(10, "stdout") or ""
         comp_result = \
 r""".*ETH_P_ALL = 0x[0-9a-fA-F]{8}
 ETH_P_IP = 0x[0-9a-fA-F]{8}
@@ -162,10 +160,26 @@ IFNAMSIZ = 0x[0-9a-fA-F]{8}
 IFREQ_SZ = 0x[0-9a-fA-F]{8}
 FIONREAD = 0x[0-9a-fA-F]{8}.*
 """
+
+        try:
+            instance.do_setup()
+            instance.do_create()
+            instance.do_connect_init()
+            instance.do_connect_compl()
+            instance.do_preconfigure()
+            instance.do_configure()
+            
+            instance.start()
+            while instance.status(10) != STATUS_FINISHED:
+                time.sleep(0.5)
+            ping_result = instance.trace(10, "stdout") or ""
+            instance.stop()
+        finally:
+            instance.shutdown()
+
+        # asserts at the end, to make sure there's proper cleanup
         self.assertTrue(re.match(comp_result, ping_result, re.MULTILINE),
             "Unexpected trace:\n" + ping_result)
-        instance.stop()
-        instance.shutdown()
         
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_simple_vsys(self):
@@ -195,21 +209,25 @@ echo 'OKIDOKI'
         instance.defer_add_trace(6, "stderr")
         instance.defer_connect(6, "node", 2, "apps")
 
-        instance.do_setup()
-        instance.do_create()
-        instance.do_connect_init()
-        instance.do_connect_compl()
-        instance.do_preconfigure()
-        instance.do_configure()
-        
-        instance.start()
-        while instance.status(6) != STATUS_FINISHED:
-            time.sleep(0.5)
-        test_result = (instance.trace(6, "stdout") or "").strip()
-        comp_result = "OKIDOKI"
+        try:
+            instance.do_setup()
+            instance.do_create()
+            instance.do_connect_init()
+            instance.do_connect_compl()
+            instance.do_preconfigure()
+            instance.do_configure()
+            
+            instance.start()
+            while instance.status(6) != STATUS_FINISHED:
+                time.sleep(0.5)
+            test_result = (instance.trace(6, "stdout") or "").strip()
+            comp_result = "OKIDOKI"
+            instance.stop()
+        finally:
+            instance.shutdown()
+
+        # asserts at the end, to make sure there's proper cleanup
         self.assertEqual(comp_result, test_result)
-        instance.stop()
-        instance.shutdown()
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_emulation(self):
@@ -239,22 +257,24 @@ echo 'OKIDOKI'
         instance.defer_add_trace(8, "stderr")
         instance.defer_connect(8, "node", 2, "apps")
 
-        instance.do_setup()
-        instance.do_create()
-        instance.do_connect_init()
-        instance.do_connect_compl()
-        instance.do_preconfigure()
-        instance.do_configure()
-        
-        instance.start()
-        while instance.status(8) != STATUS_FINISHED:
-            time.sleep(0.5)
-        test_result = (instance.trace(8, "stderr") or "").strip()
-        comp_result = r".*real\s*(?P<min>[0-9]+)m(?P<sec>[0-9]+[.][0-9]+)s.*"
-        netpipe_stats = instance.trace(7, "netpipeStats")
-        
-        instance.stop()
-        instance.shutdown()
+        try:
+            instance.do_setup()
+            instance.do_create()
+            instance.do_connect_init()
+            instance.do_connect_compl()
+            instance.do_preconfigure()
+            instance.do_configure()
+            
+            instance.start()
+            while instance.status(8) != STATUS_FINISHED:
+                time.sleep(0.5)
+            test_result = (instance.trace(8, "stderr") or "").strip()
+            comp_result = r".*real\s*(?P<min>[0-9]+)m(?P<sec>[0-9]+[.][0-9]+)s.*"
+            netpipe_stats = instance.trace(7, "netpipeStats")
+            
+            instance.stop()
+        finally:
+            instance.shutdown()
 
         # asserts at the end, to make sure there's proper cleanup
         match = re.match(comp_result, test_result, re.MULTILINE)
@@ -326,36 +346,75 @@ echo 'OKIDOKI'
         instance.defer_add_trace(9, "stderr")
         instance.defer_connect(9, "node", 2, "apps")
 
-        instance.do_setup()
-        instance.do_create()
-        instance.do_connect_init()
-        instance.do_connect_compl()
-        instance.do_preconfigure()
-        
-        # Manually replace netref
-        instance.set(TIME_NOW, 9, "command",
-            instance.get(TIME_NOW, 9, "command")
-                .replace("{#[GUID-8].addr[0].[Address]#}", 
-                    instance.get_address(8, 0, "Address") )
-        )
-        
-        instance.do_configure()
-        
-        instance.start()
-        while instance.status(9) != STATUS_FINISHED:
-            time.sleep(0.5)
-        ping_result = instance.trace(9, "stdout") or ""
         comp_result = r"""PING .* \(.*\) \d*\(\d*\) bytes of data.
 
 --- .* ping statistics ---
 1 packets transmitted, 1 received, 0% packet loss, time \d*ms.*
 """
-        instance.stop()
-        instance.shutdown()
+
+        try:
+            instance.do_setup()
+            instance.do_create()
+            instance.do_connect_init()
+            instance.do_connect_compl()
+            instance.do_preconfigure()
+            
+            # Manually replace netref
+            instance.set(TIME_NOW, 9, "command",
+                instance.get(TIME_NOW, 9, "command")
+                    .replace("{#[GUID-8].addr[0].[Address]#}", 
+                        instance.get_address(8, 0, "Address") )
+            )
+            
+            instance.do_configure()
+            
+            instance.start()
+            while instance.status(9) != STATUS_FINISHED:
+                time.sleep(0.5)
+            ping_result = instance.trace(9, "stdout") or ""
+            instance.stop()
+        finally:
+            instance.shutdown()
 
         # asserts at the end, to make sure there's proper cleanup
         self.assertTrue(re.match(comp_result, ping_result, re.MULTILINE),
             "Unexpected trace:\n" + ping_result)
+
+    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    def test_nepi_depends(self):
+        instance = self.make_instance()
+        
+        instance.defer_create(2, "Node")
+        instance.defer_create_set(2, "hostname", "onelab11.pl.sophia.inria.fr")
+        instance.defer_create(3, "NodeInterface")
+        instance.defer_connect(2, "devs", 3, "node")
+        instance.defer_create(4, "Internet")
+        instance.defer_connect(3, "inet", 4, "devs")
+        instance.defer_create(5, "NepiDependency")
+        instance.defer_connect(5, "node", 2, "deps")
+        instance.defer_create(12, "Application")
+        instance.defer_connect(12, "node", 2, "apps")
+        instance.defer_create_set(12, "command", "python -c 'import nepi'")
+        instance.defer_add_trace(12, "stderr")
+
+        try:
+            instance.do_setup()
+            instance.do_create()
+            instance.do_connect_init()
+            instance.do_connect_compl()
+            instance.do_preconfigure()
+            instance.do_configure()
+            
+            instance.start()
+            while instance.status(12) != STATUS_FINISHED:
+                time.sleep(0.5)
+            ping_result = (instance.trace(12, "stderr") or "").strip()
+            instance.stop()
+        finally:
+            instance.shutdown()
+        
+        # asserts at the end, to make sure there's proper cleanup
+        self.assertEqual(ping_result, "")
         
 
 if __name__ == '__main__':

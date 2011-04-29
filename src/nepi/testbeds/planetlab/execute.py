@@ -12,7 +12,7 @@ class TestbedController(testbed_impl.TestbedController):
         self._home_directory = None
         self.slicename = None
         self._traces = dict()
-        
+
         import node, interfaces, application
         self._node = node
         self._interfaces = interfaces
@@ -21,12 +21,12 @@ class TestbedController(testbed_impl.TestbedController):
     @property
     def home_directory(self):
         return self._home_directory
-    
+
     @property
     def plapi(self):
         if not hasattr(self, '_plapi'):
             import plcapi
-            
+
             if self.authUser:
                 self._plapi = plcapi.PLCAPI(
                     username = self.authUser,
@@ -35,7 +35,7 @@ class TestbedController(testbed_impl.TestbedController):
                 # anonymous access - may not be enough for much
                 self._plapi = plcapi.PLCAPI()
         return self._plapi
-    
+
     @property
     def slice_id(self):
         if not hasattr(self, '_slice_id'):
@@ -63,16 +63,16 @@ class TestbedController(testbed_impl.TestbedController):
         # Perform resource discovery if we don't have
         # specific resources assigned yet
         self.do_resource_discovery()
-        
+
         # Create PlanetLab slivers
         self.do_provisioning()
-        
+
         # Configure elements per XML data
         super(TestbedController, self).do_preconfigure()
-    
+
     def do_resource_discovery(self):
         # Do what?
-        
+
         # Provisional algo:
         #   look for perfectly defined nodes
         #   (ie: those with only one candidate)
@@ -103,18 +103,18 @@ class TestbedController(testbed_impl.TestbedController):
             cur_nodes = self.plapi.GetSlices(self.slicename, ['node_ids'])[0]['node_ids']
             new_nodes = list(set(cur_nodes) | self._to_provision)
             self.plapi.UpdateSlice(self.slicename, nodes=new_nodes)
-    
+
         # cleanup
         del self._to_provision
-    
+
 
     def set(self, time, guid, name, value):
         super(TestbedController, self).set(time, guid, name, value)
-        # TODO: take on account schedule time for the task 
+        # TODO: take on account schedule time for the task
         element = self._elements[guid]
         if element:
             setattr(element, name, value)
-            
+
             if hasattr(element, 'refresh'):
                 # invoke attribute refresh hook
                 element.refresh()
@@ -142,7 +142,7 @@ class TestbedController(testbed_impl.TestbedController):
 
     def get_address(self, guid, index, attribute='Address'):
         index = int(index)
-        
+
         # try the real stuff
         iface = self._elements.get(guid)
         if iface and index == 0:
@@ -152,7 +152,7 @@ class TestbedController(testbed_impl.TestbedController):
                 return iface.netprefix
             elif attribute == 'Broadcast':
                 return iface.broadcast
-        
+
         # if all else fails, query box
         try:
             return self.box_get_address(guid, index, attribute)
@@ -173,7 +173,7 @@ class TestbedController(testbed_impl.TestbedController):
 
     def trace(self, guid, trace_id, attribute='value'):
         app = self._elements[guid]
-        
+
         if attribute == 'value':
             path = app.sync_trace(self.home_directory, trace_id)
             if path:
@@ -187,68 +187,50 @@ class TestbedController(testbed_impl.TestbedController):
         else:
             content = None
         return content
-        
+
     def follow_trace(self, trace_id, trace):
         self._traces[trace_id] = trace
+    
+    def _make_generic(self, parameters, kind):
+        app = kind(self.plapi)
 
-    def _make_node(self, parameters):
-        node = self._node.Node(self.plapi)
-        
-        # Note: there is 1-to-1 correspondence between attribute names
-        #   If that changes, this has to change as well
-        for attr,val in parameters.iteritems():
-            setattr(node, attr, val)
-        
-        # If emulation is enabled, we automatically need 
-        # some vsys interfaces and packages
-        if node.emulation:
-            node.required_vsys.add('ipfw-be')
-            node.required_packages.add('ipfwslice')
-        
-        return node
-    
-    def _make_node_iface(self, parameters):
-        iface = self._interfaces.NodeIface(self.plapi)
-        
-        # Note: there is 1-to-1 correspondence between attribute names
-        #   If that changes, this has to change as well
-        for attr,val in parameters.iteritems():
-            setattr(iface, attr, val)
-        
-        return iface
-    
-    def _make_tun_iface(self, parameters):
-        iface = self._interfaces.TunIface(self.plapi)
-        
-        # Note: there is 1-to-1 correspondence between attribute names
-        #   If that changes, this has to change as well
-        for attr,val in parameters.iteritems():
-            setattr(iface, attr, val)
-        
-        return iface
-    
-    def _make_netpipe(self, parameters):
-        iface = self._interfaces.NetPipe(self.plapi)
-        
-        # Note: there is 1-to-1 correspondence between attribute names
-        #   If that changes, this has to change as well
-        for attr,val in parameters.iteritems():
-            setattr(iface, attr, val)
-        
-        return iface
-    
-    def _make_internet(self, parameters):
-        return self._interfaces.Internet(self.plapi)
-    
-    def _make_application(self, parameters):
-        app = self._app.Application(self.plapi)
-        
         # Note: there is 1-to-1 correspondence between attribute names
         #   If that changes, this has to change as well
         for attr,val in parameters.iteritems():
             setattr(app, attr, val)
-        
+
         return app
-        
+
+    def _make_node(self, parameters):
+        node = self._make_generic(parameters, self._node.Node)
+
+        # If emulation is enabled, we automatically need
+        # some vsys interfaces and packages
+        if node.emulation:
+            node.required_vsys.add('ipfw-be')
+            node.required_packages.add('ipfwslice')
+
+        return node
+
+    def _make_node_iface(self, parameters):
+        return self._make_generic(parameters, self._interfaces.NodeIface)
+
+    def _make_tun_iface(self, parameters):
+        return self._make_generic(parameters, self._interfaces.TunIface)
+
+    def _make_netpipe(self, parameters):
+        return self._make_generic(parameters, self._interfaces.NetPipe)
+
+    def _make_internet(self, parameters):
+        return self._make_generic(parameters, self._interfaces.Internet)
+
+    def _make_application(self, parameters):
+        return self._make_generic(parameters, self._app.Application)
+
+    def _make_dependency(self, parameters):
+        return self._make_generic(parameters, self._app.Dependency)
+
+    def _make_nepi_dependency(self, parameters):
+        return self._make_generic(parameters, self._app.NepiDependency)
 
 

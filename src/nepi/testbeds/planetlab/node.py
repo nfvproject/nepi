@@ -56,6 +56,7 @@ class Node(object):
         # Applications and routes add requirements to connected nodes
         self.required_packages = set()
         self.required_vsys = set()
+        self.pythonpath = []
         
         # Testbed-derived attributes
         self.slicename = None
