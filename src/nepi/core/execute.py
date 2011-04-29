@@ -355,22 +355,16 @@ class ExperimentController(object):
         
         # perform create-connect in parallel, wait
         # (internal connections only)
-        self._parallel([lambda : testbed.do_create()
+        self._parallel([testbed.do_create
                         for testbed in self._testbeds.itervalues()])
 
-        # TODO! DEBUG!!!!
-        # ONLY THE LAST TESTBED HAS ELEMENTS CREATED!!!
-        #for testbed in self._testbeds.itervalues():
-        #    print testbed._testbed_id
-        #    print testbed._elements
-
-        self._parallel([lambda : testbed.do_connect_init()
+        self._parallel([testbed.do_connect_init
                         for testbed in self._testbeds.itervalues()])
 
-        self._parallel([lambda : testbed.do_connect_compl()
+        self._parallel([testbed.do_connect_compl
                         for testbed in self._testbeds.itervalues()])
 
-        self._parallel([lambda : testbed.do_preconfigure()
+        self._parallel([testbed.do_preconfigure
                         for testbed in self._testbeds.itervalues()])
 
         # resolve netrefs
