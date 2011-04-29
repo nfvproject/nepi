@@ -6,6 +6,7 @@ import os
 import os.path
 import rspawn
 import subprocess
+import threading
 
 from nepi.util import server
 
@@ -22,6 +23,7 @@ class TunProtoBase(object):
         
         self.home_path = home_path
         
+        self._launcher = None
         self._started = False
         self._pid = None
         self._ppid = None
@@ -91,7 +93,6 @@ class TunProtoBase(object):
         if proc.wait():
             raise RuntimeError, "Failed to set up TUN forwarder: %s %s" % (out,err,)
         
-    
     def launch(self, check_proto, listen, extra_args=[]):
         peer = self.peer()
         local = self.local()
@@ -158,9 +159,25 @@ class TunProtoBase(object):
             )
         
         if proc.wait():
-            raise RuntimeError, "Failed to set up application: %s %s" % (out,err,)
+            raise RuntimeError, "Failed to set up TUN: %s %s" % (out,err,)
 
         self._started = True
+    
+    def async_launch(self, check_proto, listen, extra_args=[]):
+        if not self._launcher:
+            self._launcher = threading.Thread(
+                target = self.launch,
+                args = (check_proto, listen, extra_args))
+            self._launcher.start()
+    
+    def async_launch_wait(self):
+        if not self._started:
+            if self._launcher:
+                self._launcher.join()
+                if not self._started:
+                    raise RuntimeError, "Failed to launch TUN forwarder"
+            else:
+                self.launch()
 
     def checkpid(self):            
         local = self.local()
@@ -295,7 +312,7 @@ class TunProtoUDP(TunProtoBase):
         pass
     
     def setup(self):
-        self.launch('udp', False, ("-U",))
+        self.launch_async('udp', False, ("-U",))
     
     def shutdown(self):
         self.kill()
@@ -307,11 +324,19 @@ class TunProtoTCP(TunProtoBase):
     
     def prepare(self):
         if self.listening:
-            self.launch('tcp', True)
+            self.async_launch('tcp', True)
     
     def setup(self):
         if not self.listening:
+            # make sure our peer is ready
+            peer = self.peer()
+            if peer and peer.peer_proto_impl:
+                peer.peer_proto_impl.async_launch_wait()
+            
             self.launch('tcp', False)
+        else:
+            # make sure WE are ready
+            self.async_launch_wait()
         
         self.checkpid()
     

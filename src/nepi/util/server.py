@@ -24,6 +24,7 @@ STOP_MSG = "STOP"
 
 ERROR_LEVEL = 0
 DEBUG_LEVEL = 1
+TRACE = False
 
 if hasattr(os, "devnull"):
     DEV_NULL = os.devnull
@@ -365,6 +366,9 @@ def popen_ssh_command(command, host, port, user, agent,
         """
         Executes a remote commands, returns ((stdout,stderr),process)
         """
+        if TRACE:
+            print "ssh", host, command
+        
         tmp_known_hosts = None
         args = ['ssh',
                 # Don't bother with localhost. Makes test easier
@@ -419,6 +423,9 @@ def popen_scp(source, dest,
         Source can be a list of files to copy to a single destination,
         in which case it is advised that the destination be a folder.
         """
+        
+        if TRACE:
+            print "scp", source, dest
         
         if isinstance(source, file) or isinstance(dest, file) \
                 or hasattr(source, 'read')  or hasattr(dest, 'write'):

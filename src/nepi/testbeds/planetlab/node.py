@@ -231,7 +231,7 @@ class Node(object):
             if proc.wait():
                 raise RuntimeError, "Failed to set up application: %s %s" % (out,err,)
     
-    def wait_dependencies(self, pidprobe=1, probe=10, pidmax=10):
+    def wait_dependencies(self, pidprobe=1, probe=0.5, pidmax=10, probemax=10):
         if self.required_packages:
             pidfile = self.DEPENDS_PIDFILE
             
@@ -266,6 +266,7 @@ class Node(object):
                     server_key = self.server_key
                     ):
                 time.sleep(probe)
+                probe = min(probemax, 1.5*probe)
         
     def is_alive(self):
         # Make sure all the paths are created where 

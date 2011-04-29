@@ -47,6 +47,8 @@ class Application(object):
         #   Having both pid and ppid makes it harder
         #   for pid rollover to induce tracking mistakes
         self._started = False
+        self._setup = False
+        self._setuper = None
         self._pid = None
         self._ppid = None
     
@@ -212,6 +214,22 @@ class Application(object):
     def setup(self):
         self._make_home()
         self._build()
+        self._setup = True
+    
+    def async_setup(self):
+        if not self._setuper:
+            self._setuper = threading.Thread(
+                target = self.setup)
+            self._setuper.start()
+    
+    def async_setup_wait(self):
+        if not self._setup:
+            if self._setuper:
+                self._setuper.join()
+                if not self._setup:
+                    raise RuntimeError, "Failed to setup application"
+            else:
+                self.setup()
         
     def _make_home(self):
         # Make sure all the paths are created where 
