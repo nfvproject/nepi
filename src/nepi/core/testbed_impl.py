@@ -78,11 +78,10 @@ class TestbedController(execute.TestbedController):
     def defer_create_set(self, guid, name, value):
         if not guid in self._create:
             raise RuntimeError("Element guid %d doesn't exist" % guid)
-        factory_id = self._create[guid]
-        factory = self._factories[factory_id]
+        factory = self._get_factory(guid)
         if not factory.box_attributes.has_attribute(name):
             raise AttributeError("Invalid attribute %s for element type %s" %
-                    (name, factory_id))
+                    (name, factory.factory_id))
         if not factory.box_attributes.is_attribute_value_valid(name, value):
             raise AttributeError("Invalid value %s for attribute %s" % \
                 (value, name))
@@ -93,11 +92,10 @@ class TestbedController(execute.TestbedController):
     def defer_factory_set(self, guid, name, value):
         if not guid in self._create:
             raise RuntimeError("Element guid %d doesn't exist" % guid)
-        factory_id = self._create[guid]
-        factory = self._factories[factory_id]
+        factory = self._get_factory(guid)
         if not factory.has_attribute(name):
             raise AttributeError("Invalid attribute %s for element type %s" %
-                    (name, factory_id))
+                    (name, factory.factory_id))
         if not factory.is_attribute_value_valid(name, value):
             raise AttributeError("Invalid value %s for attribute %s" % \
                 (value, name))
@@ -107,10 +105,9 @@ class TestbedController(execute.TestbedController):
 
     def defer_connect(self, guid1, connector_type_name1, guid2, 
             connector_type_name2):
-        factory_id1 = self._create[guid1]
+        factory1 = self._get_factory(guid1)
         factory_id2 = self._create[guid2]
         count = self._get_connection_count(guid1, connector_type_name1)
-        factory1 = self._factories[factory_id1]
         connector_type = factory1.connector_type(connector_type_name1)
         connector_type.can_connect(self._testbed_id, factory_id2, 
                 connector_type_name2, count)
@@ -129,9 +126,8 @@ class TestbedController(execute.TestbedController):
 
     def defer_cross_connect(self, guid, connector_type_name, cross_guid, 
             cross_testbed_id, cross_factory_id, cross_connector_type_name):
-        factory_id = self._create[guid]
+        factory = self._get_factory(guid)
         count = self._get_connection_count(guid, connector_type_name)
-        factory = self._factories[factory_id]
         connector_type = factory.connector_type(connector_type_name)
         connector_type.can_connect(cross_testbed_id, cross_factory_id, 
                 cross_connector_type_name, count, must_cross = True)
@@ -146,11 +142,10 @@ class TestbedController(execute.TestbedController):
     def defer_add_trace(self, guid, trace_id):
         if not guid in self._create:
             raise RuntimeError("Element guid %d doesn't exist" % guid)
-        factory_id = self._create[guid]
-        factory = self._factories[factory_id]
+        factory = self._get_factory(guid)
         if not trace_id in factory.traces:
             raise RuntimeError("Element type '%s' has no trace '%s'" %
-                    (factory_id, trace_id))
+                    (factory.factory_id, trace_id))
         if not guid in self._add_trace:
             self._add_trace[guid] = list()
         self._add_trace[guid].append(trace_id)
@@ -158,17 +153,16 @@ class TestbedController(execute.TestbedController):
     def defer_add_address(self, guid, address, netprefix, broadcast):
         if not guid in self._create:
             raise RuntimeError("Element guid %d doesn't exist" % guid)
-        factory_id = self._create[guid]
-        factory = self._factories[factory_id]
+        factory = self._get_factory(guid)
         if not factory.allow_addresses:
             raise RuntimeError("Element type '%s' doesn't support addresses" %
-                    factory_id)
+                    factory.factory_id)
             max_addresses = 1 # TODO: MAKE THIS PARAMETRIZABLE
         if guid in self._add_address:
             count_addresses = len(self._add_address[guid])
             if max_addresses == count_addresses:
                 raise RuntimeError("Element guid %d of type '%s' can't accept \
-                        more addresses" % (guid, factory_id))
+                        more addresses" % (guid, factory.factory_id))
         else:
             self._add_address[guid] = list()
         self._add_address[guid].append((address, netprefix, broadcast))
@@ -176,11 +170,10 @@ class TestbedController(execute.TestbedController):
     def defer_add_route(self, guid, destination, netprefix, nexthop):
         if not guid in self._create:
             raise RuntimeError("Element guid %d doesn't exist" % guid)
-        factory_id = self._create[guid]
-        factory = self._factories[factory_id]
+        factory = self._get_factory(guid)
         if not factory.allow_routes:
             raise RuntimeError("Element type '%s' doesn't support routes" %
-                    factory_id)
+                    factory.factory_id)
         if not guid in self._add_route:
             self._add_route[guid] = list()
         self._add_route[guid].append((destination, netprefix, nexthop)) 
@@ -211,8 +204,7 @@ class TestbedController(execute.TestbedController):
     def _do_connect(self, init = True):
         for guid1, connections in self._connect.iteritems():
             element1 = self._elements[guid1]
-            factory_id1 = self._create[guid1]
-            factory1 = self._factories[factory_id1]
+            factory1 = self._get_factory(guid1)
             for connector_type_name1, connections2 in connections.iteritems():
                 connector_type1 = factory1.connector_type(connector_type_name1)
                 for guid2, connector_type_name2 in connections2.iteritems():
@@ -279,8 +271,7 @@ class TestbedController(execute.TestbedController):
     def _do_cross_connect(self, cross_data, init = True):
         for guid, cross_connections in self._cross_connect.iteritems():
             element = self._elements[guid]
-            factory_id = self._create[guid]
-            factory = self._factories[factory_id]
+            factory = self._get_factory(guid)
             for connector_type_name, cross_connection in \
                     cross_connections.iteritems():
                 connector_type = factory.connector_type(connector_type_name)
@@ -308,11 +299,10 @@ class TestbedController(execute.TestbedController):
     def set(self, time, guid, name, value):
         if not guid in self._create:
             raise RuntimeError("Element guid %d doesn't exist" % guid)
-        factory_id = self._create[guid]
-        factory = self._factories[factory_id]
+        factory = self._get_factory(guid)
         if not factory.box_attributes.has_attribute(name):
             raise AttributeError("Invalid attribute %s for element type %s" %
-                    (name, factory_id))
+                    (name, factory.factory_id))
         if self._status > TESTBED_STATUS_CREATED and \
                 factory.box_attributes.is_attribute_design_only(name):
             raise AttributeError("Attribute %s can only be modified during experiment design" % name)
@@ -336,10 +326,10 @@ class TestbedController(execute.TestbedController):
         """
         if not guid in self._create:
             raise KeyError, "Element guid %d doesn't exist" % guid
-        factory_id = self._create[guid]
-        factory = self._factories[factory_id]
+        factory = self._get_factory(guid)
         if not factory.box_attributes.has_attribute(name):
-            raise AttributeError, "Invalid attribute %s for element type %s" % (name, factory_id)
+            raise AttributeError, "Invalid attribute %s for element type %s" % \
+            (name, factory.factory_id)
         if self._status > TESTBED_STATUS_CREATED and \
                 factory.box_attributes.is_attribute_design_only(name):
             raise AttributeError, "Attribute %s can only be queried during experiment design" % name
@@ -406,8 +396,7 @@ class TestbedController(execute.TestbedController):
         return addresses[index][attribute_index]
 
     def get_attribute_list(self, guid):
-        factory_id = self._create[guid]
-        factory = self._factories[factory_id]
+        factory = self._get_factory(guid)
         attribute_list = list()
         return factory.box_attributes.attributes_list
 
@@ -432,8 +421,7 @@ class TestbedController(execute.TestbedController):
     def status(self, guid):
         if not guid in self._create:
             raise RuntimeError("Element guid %d doesn't exist" % guid)
-        factory_id = self._create[guid]
-        factory = self._factories[factory_id]
+        factory = self._get_factory(guid)
         status_function = factory.status_function
         if status_function:
             return status_function(self, guid)
@@ -493,4 +481,8 @@ class TestbedController(execute.TestbedController):
     def _get_parameters(self, guid):
         return dict() if guid not in self._create_set else \
                 self._create_set[guid]
+
+    def _get_factory(self, guid):
+        factory_id = self._create[guid]
+        return self._factories[factory_id]
 
