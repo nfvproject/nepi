@@ -2389,14 +2389,15 @@ attributes = dict({
         "name": "Standard",
         "validation_function": validation.is_string,
         "value": "WIFI_PHY_STANDARD_80211a",
+        "flags": Attribute.DesignOnly,
         "type": Attribute.ENUM,
         "allowed": wifi_standards.keys(),
         "help": "Wifi PHY standard"
     }),
     "LinuxSocketAddress": dict({
         "name": "LinuxSocketAddress",
-        "value": "",
         "validation_function": None,
+        "value": "",
         "flags": Attribute.Invisible,
         "type": Attribute.STRING,
         "help": "Socket address assigned to the Linux socket created to recive file descriptor"

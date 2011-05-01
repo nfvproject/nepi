@@ -160,7 +160,7 @@ def create_wifi_standard_model(testbed_instance, guid):
     if "Standard" in parameters:
         standard = parameters["Standard"]
         if standard:
-            elements.ConfigureStandard(wifi_standards[standard])
+            element.ConfigureStandard(wifi_standards[standard])
 
 def create_ipv4protocol(testbed_instance, guid):
     create_element(testbed_instance, guid)

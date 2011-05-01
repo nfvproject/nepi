@@ -4,12 +4,20 @@
 from nepi.core import execute
 from nepi.core.metadata import Metadata
 from nepi.util import validation
-from nepi.util.constants import AF_INET, AF_INET6, STATUS_UNDETERMINED, TIME_NOW
+from nepi.util.constants import STATUS_UNDETERMINED, TIME_NOW, \
+    TESTBED_STATUS_ZERO, \
+    TESTBED_STATUS_SETUP, \
+    TESTBED_STATUS_CREATED, \
+    TESTBED_STATUS_CONNECTED, \
+    TESTBED_STATUS_CROSS_CONNECTED, \
+    TESTBED_STATUS_CONFIGURED, \
+    TESTBED_STATUS_STARTED, \
+    TESTBED_STATUS_STOPPED
 
 class TestbedController(execute.TestbedController):
     def __init__(self, testbed_id, testbed_version):
         super(TestbedController, self).__init__(testbed_id, testbed_version)
-        self._started = False
+        self._status = TESTBED_STATUS_ZERO
         # testbed attributes for validation
         self._attributes = None
         # element factories for validation
@@ -175,7 +183,8 @@ class TestbedController(execute.TestbedController):
             self._add_route[guid] = list()
         self._add_route[guid].append((destination, netprefix, nexthop)) 
 
-    #do_setup(self): NotImplementedError
+    def do_setup(self):
+        self._status = TESTBED_STATUS_SETUP
 
     def do_create(self):
         guids = dict()
@@ -195,6 +204,7 @@ class TestbedController(execute.TestbedController):
                 parameters = self._get_parameters(guid)
                 for name, value in parameters.iteritems():
                     self.set(TIME_NOW, guid, name, value)
+        self._status = TESTBED_STATUS_CREATED
 
     def _do_connect(self, init = True):
         for guid1, connections in self._connect.iteritems():
@@ -225,6 +235,7 @@ class TestbedController(execute.TestbedController):
 
     def do_connect_compl(self):
         self._do_connect(init = False)
+        self._status = TESTBED_STATUS_CONNECTED
 
     def do_preconfigure(self):
         guids = dict()
@@ -261,6 +272,7 @@ class TestbedController(execute.TestbedController):
                 continue
             for guid in guids[factory_id]:
                 factory.configure_function(self, guid)
+        self._status = TESTBED_STATUS_CONFIGURED
 
     def _do_cross_connect(self, cross_data, init = True):
         for guid, cross_connections in self._cross_connect.iteritems():
@@ -289,6 +301,7 @@ class TestbedController(execute.TestbedController):
 
     def do_cross_connect_compl(self, cross_data):
         self._do_cross_connect(cross_data, init = False)
+        self._status = TESTBED_STATUS_CROSS_CONNECTED
 
     def set(self, time, guid, name, value):
         if not guid in self._create:
@@ -298,7 +311,8 @@ class TestbedController(execute.TestbedController):
         if not factory.box_attributes.has_attribute(name):
             raise AttributeError("Invalid attribute %s for element type %s" %
                     (name, factory_id))
-        if self._started and factory.is_attribute_design_only(name):
+        if self._status > TESTBED_STATUS_CREATED and \
+                factory.box_attributes.is_attribute_design_only(name):
             raise AttributeError("Attribute %s can only be modified during experiment design" % name)
         if not factory.box_attributes.is_attribute_value_valid(name, value):
             raise AttributeError("Invalid value %s for attribute %s" % \
@@ -322,7 +336,8 @@ class TestbedController(execute.TestbedController):
         factory = self._factories[factory_id]
         if not factory.box_attributes.has_attribute(name):
             raise AttributeError, "Invalid attribute %s for element type %s" % (name, factory_id)
-        if self._started and factory.is_attribute_design_only(name):
+        if self._status > TESTBED_STATUS_CREATED and \
+                factory.box_attributes.is_attribute_design_only(name):
             raise AttributeError, "Attribute %s can only be queried during experiment design" % name
         return factory.box_attributes.get_attribute_value(name)
 
@@ -396,7 +411,7 @@ class TestbedController(execute.TestbedController):
             start_function = factory.start_function
             if start_function:
                 start_function(self, guid)
-        self._started = True
+        self._status = TESTBED_STATUS_STARTED
 
     #action: NotImplementedError
 
@@ -406,6 +421,7 @@ class TestbedController(execute.TestbedController):
             stop_function = factory.stop_function
             if stop_function:
                 stop_function(self, guid)
+        self._status = TESTBED_STATUS_STOPPED
 
     def status(self, guid):
         if not guid in self._create:

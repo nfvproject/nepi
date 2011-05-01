@@ -4,6 +4,7 @@
 from constants import TESTBED_ID
 from nepi.core import testbed_impl
 from nepi.core.attributes import Attribute
+from nepi.util.constants import TESTBED_STATUS_CREATED
 import os
 import sys
 import threading
@@ -29,6 +30,7 @@ class TestbedController(testbed_impl.TestbedController):
         self._home_directory = self._attributes.\
             get_attribute_value("homeDirectory")
         self._ns3 = self._load_ns3_module()
+        super(TestbedController, self).do_setup()
 
     def start(self):
         super(TestbedController, self).start()
@@ -40,6 +42,9 @@ class TestbedController(testbed_impl.TestbedController):
     def set(self, time, guid, name, value):
         super(TestbedController, self).set(time, guid, name, value)
         # TODO: take on account schedule time for the task
+        if self._status < TESTBED_STATUS_CREATED or \
+                factory.box_attributes.is_attribute_design_only(name):
+            return
         element = self._elements[guid]
         ns3_value = self._to_ns3_value(guid, name, value) 
         element.SetAttribute(name, ns3_value)
@@ -197,8 +202,9 @@ class TestbedController(testbed_impl.TestbedController):
         typeid = TypeId.LookupByName(factory_id)
         for name, value in params.iteritems():
             info = self.ns3.TypeId.AttributeInfo()
-            typeid.LookupAttributeByName(name, info)
-            if info.flags & TypeId.ATTR_CONSTRUCT == TypeId.ATTR_CONSTRUCT:
+            found = typeid.LookupAttributeByName(name, info)
+            if found and \
+                (info.flags & TypeId.ATTR_CONSTRUCT == TypeId.ATTR_CONSTRUCT):
                 construct_params[name] = value
         return construct_params
 
