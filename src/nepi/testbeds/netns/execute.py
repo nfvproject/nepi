@@ -3,7 +3,7 @@
 
 from constants import TESTBED_ID
 from nepi.core import testbed_impl
-from nepi.util.constants import TESTBED_STATUS_CREATED
+from nepi.util.constants import TIME_NOW
 import os
 
 class TestbedController(testbed_impl.TestbedController):
@@ -27,15 +27,15 @@ class TestbedController(testbed_impl.TestbedController):
         self._netns = self._load_netns_module()
         super(TestbedController, self).do_setup()
 
-    def set(self, time, guid, name, value):
-        super(TestbedController, self).set(time, guid, name, value)
+    def set(self, guid, name, value, time = TIME_NOW):
+        super(TestbedController, self).set(guid, name, value, time)
         # TODO: take on account schedule time for the task 
         element = self._elements.get(guid)
         if element:
             setattr(element, name, value)
 
-    def get(self, time, guid, name):
-        value = super(TestbedController, self).get(time, guid, name)
+    def get(self, guid, name, time = TIME_NOW):
+        value = super(TestbedController, self).get(guid, name, time)
         # TODO: take on account schedule time for the task
         factory_id = self._create[guid]
         factory = self._factories[factory_id]

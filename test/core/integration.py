@@ -6,6 +6,8 @@ from nepi.util.constants import STATUS_FINISHED
 from nepi.util import proxy
 import mock
 import mock.metadata_v01
+import mock2
+import mock2.metadata_v01
 import os
 import shutil
 import sys
@@ -18,15 +20,14 @@ class ExecuteTestCase(unittest.TestCase):
     def setUp(self):
         sys.modules["nepi.testbeds.mock.metadata_v01"] = mock.metadata_v01
         sys.modules["nepi.testbeds.mock"] = mock
+        sys.modules["nepi.testbeds.mock2.metadata_v01"] = mock2.metadata_v01
+        sys.modules["nepi.testbeds.mock2"] = mock2
         self.root_dir = tempfile.mkdtemp()
 
     def tearDown(self):
         shutil.rmtree(self.root_dir)
-    
-    def make_test_experiment(self):
-        exp_desc = ExperimentDescription()
-        testbed_version = "01"
-        testbed_id = "mock"
+
+    def make_testbed(self, exp_desc, testbed_id, testbed_version):
         provider = FactoriesProvider(testbed_id, testbed_version)
         desc = exp_desc.add_testbed_description(provider)
         desc.set_attribute_value("fake", True)
@@ -44,6 +45,39 @@ class ExecuteTestCase(unittest.TestCase):
         app.enable_trace("fake")
         
         return exp_desc, desc, app, node1, node2, iface1, iface2
+
+    def make_test_experiment(self):
+        exp_desc = ExperimentDescription()
+        testbed_version = "01"
+        testbed_id = "mock"
+        return self.make_testbed(exp_desc, testbed_id, testbed_version)
+
+    def make_cross_test_experiment(self):
+        exp_desc = ExperimentDescription()
+        testbed_version = "01"
+        testbed_id1 = "mock"
+        testbed_id2 = "mock2"
+        exp_desc, desc1, app1, node11, node12, iface11, iface12 = \
+                self.make_testbed(exp_desc, testbed_id1, testbed_version)
+        exp_desc, desc2, app2, node21, node22, iface21, iface22 = \
+                 self.make_testbed(exp_desc, testbed_id2, testbed_version)
+        iface12.connector("cross").connect(iface21.connector("cross"))
+
+        return exp_desc, desc1, desc2, iface12, iface21
+
+    def test_single_process_cross_integration(self):
+        exp_desc, desc1, desc2, iface12, iface21 = \
+                self.make_cross_test_experiment()
+        xml = exp_desc.to_xml()
+        access_config = None
+        controller = proxy.create_controller(xml, access_config)
+
+        controller.start()
+        cross1 = controller.get(desc1.guid, iface12.guid, "cross")
+        cross2 = controller.get(desc2.guid, iface21.guid, "cross")
+        self.assertTrue(cross1 == cross2 == True)
+        controller.stop()
+        controller.shutdown()
 
     def test_single_process_integration(self):
         exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()

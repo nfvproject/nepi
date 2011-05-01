@@ -125,7 +125,8 @@ class TestbedController(execute.TestbedController):
                 connector_type_name1
 
     def defer_cross_connect(self, guid, connector_type_name, cross_guid, 
-            cross_testbed_id, cross_factory_id, cross_connector_type_name):
+            cross_testbed_guid, cross_testbed_id, cross_factory_id, 
+            cross_connector_type_name):
         factory = self._get_factory(guid)
         count = self._get_connection_count(guid, connector_type_name)
         connector_type = factory.connector_type(connector_type_name)
@@ -136,8 +137,8 @@ class TestbedController(execute.TestbedController):
         if not connector_type_name in self._cross_connect[guid]:
              self._cross_connect[guid][connector_type_name] = dict()
         self._cross_connect[guid][connector_type_name] = \
-                (cross_guid, cross_testbed_id, cross_factory_id, 
-                        cross_connector_type_name)
+                (cross_guid, cross_testbed_guid, cross_testbed_id, 
+                cross_factory_id, cross_connector_type_name)
 
     def defer_add_trace(self, guid, trace_id):
         if not guid in self._create:
@@ -198,17 +199,15 @@ class TestbedController(execute.TestbedController):
                 factory.create_function(self, guid)
                 parameters = self._get_parameters(guid)
                 for name, value in parameters.iteritems():
-                    self.set(TIME_NOW, guid, name, value)
+                    self.set(guid, name, value)
         self._status = TESTBED_STATUS_CREATED
 
     def _do_connect(self, init = True):
         for guid1, connections in self._connect.iteritems():
-            element1 = self._elements[guid1]
             factory1 = self._get_factory(guid1)
             for connector_type_name1, connections2 in connections.iteritems():
                 connector_type1 = factory1.connector_type(connector_type_name1)
                 for guid2, connector_type_name2 in connections2.iteritems():
-                    element2 = self._elements[guid2]
                     factory_id2 = self._create[guid2]
                     # Connections are executed in a "From -> To" direction only
                     # This explicitly ignores the "To -> From" (mirror) 
@@ -222,7 +221,7 @@ class TestbedController(execute.TestbedController):
                                 self._testbed_id, factory_id2, 
                                 connector_type_name2)
                     if connect_code:
-                        connect_code(self, element1, element2)
+                        connect_code(self, guid1, guid2)
 
     def do_connect_init(self):
         self._do_connect()
@@ -270,24 +269,23 @@ class TestbedController(execute.TestbedController):
 
     def _do_cross_connect(self, cross_data, init = True):
         for guid, cross_connections in self._cross_connect.iteritems():
-            element = self._elements[guid]
             factory = self._get_factory(guid)
             for connector_type_name, cross_connection in \
                     cross_connections.iteritems():
                 connector_type = factory.connector_type(connector_type_name)
-                (cross_testbed_id, cross_factory_id, 
-                        cross_connector_type_name) = cross_connection
+                (cross_guid, cross_testbed_guid, cross_testbed_id,
+                    cross_factory_id, cross_connector_type_name) = cross_connection
                 if init:
                     connect_code = connector_type.connect_to_init_code(
                         cross_testbed_id, cross_factory_id, 
-                        cross_conector_type_name)
+                        cross_connector_type_name)
                 else:
                     connect_code = connector_type.connect_to_compl_code(
                         cross_testbed_id, cross_factory_id, 
-                        cross_conector_type_name)
+                        cross_connector_type_name)
                 if connect_code:
-                    elem_data_guid = cross_data[cross_testbed_id][cross_guid]
-                    connect_code(self, element, elem_cross_data)       
+                    elem_cross_data = cross_data[cross_testbed_guid][cross_guid]
+                    connect_code(self, guid, elem_cross_data)       
 
     def do_cross_connect_init(self, cross_data):
         self._do_cross_connect(cross_data)
@@ -296,7 +294,7 @@ class TestbedController(execute.TestbedController):
         self._do_cross_connect(cross_data, init = False)
         self._status = TESTBED_STATUS_CROSS_CONNECTED
 
-    def set(self, time, guid, name, value):
+    def set(self, guid, name, value, time = TIME_NOW):
         if not guid in self._create:
             raise RuntimeError("Element guid %d doesn't exist" % guid)
         factory = self._get_factory(guid)
@@ -317,7 +315,7 @@ class TestbedController(execute.TestbedController):
         self._setlog[guid][time][name] = value
         self._set[guid][name] = value
 
-    def get(self, time, guid, name):
+    def get(self, guid, name, time = TIME_NOW):
         """
         gets an attribute from box definitions if available. 
         Throws KeyError if the GUID wasn't created
@@ -330,9 +328,6 @@ class TestbedController(execute.TestbedController):
         if not factory.box_attributes.has_attribute(name):
             raise AttributeError, "Invalid attribute %s for element type %s" % \
             (name, factory.factory_id)
-        if self._status > TESTBED_STATUS_CREATED and \
-                factory.box_attributes.is_attribute_design_only(name):
-            raise AttributeError, "Attribute %s can only be queried during experiment design" % name
         if guid in self._set and name in self._set[guid]:
             return self._set[guid][name]
         if guid in self._create_set and name in self._create_set[guid]:

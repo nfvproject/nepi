@@ -78,24 +78,33 @@ def is_portlist(attribute, value):
 
 ### Connection functions ####
 
-def connect_node_iface_node(testbed_instance, node, iface):
+def connect_node_iface_node(testbed_instance, node_guid, iface_guid):
+    node = testbed_instance._elements[node_guid]
+    iface = testbed_instance._elements[iface_guid]
     iface.node = node
 
-def connect_node_iface_inet(testbed_instance, iface, inet):
+def connect_node_iface_inet(testbed_instance, iface_guid, inet_guid):
+    iface = testbed_instance._elements[iface_guid]
     iface.has_internet = True
 
-def connect_tun_iface_node(testbed_instance, node, iface):
+def connect_tun_iface_node(testbed_instance, node_guid, iface_guid):
+    node = testbed_instance._elements[node_guid]
+    iface = testbed_instance._elements[iface_guid]
     if not node.emulation:
         raise RuntimeError, "Use of TUN interfaces requires emulation"
     iface.node = node
     node.required_vsys.update(('fd_tuntap', 'vif_up'))
 
-def connect_tun_iface_peer(proto, testbed_instance, iface, peer_iface):
+def connect_tun_iface_peer(proto, testbed_instance, iface_guid, peer_iface_guid):
+    iface = testbed_instance._elements[iface_guid]
+    peer_iface = testbed_instance._elements[peer_iface_guid]
     iface.peer_iface = peer_iface
     iface.peer_proto = \
     iface.tun_proto = proto
 
-def connect_dep(testbed_instance, node, app):
+def connect_dep(testbed_instance, node_guid, app_guid):
+    node = testbed_instance._elements[node_guid]
+    app = testbed_instance._elements[app_guid]
     app.node = node
     
     if app.depends:
@@ -106,7 +115,9 @@ def connect_dep(testbed_instance, node, app):
         if app.home_path and app.home_path not in node.pythonpath:
             node.pythonpath.append(app.home_path)
 
-def connect_node_netpipe(testbed_instance, node, netpipe):
+def connect_node_netpipe(testbed_instance, node_guid, netpipe_guid):
+    node = testbed_instance._elements[node_guid]
+    netpipe = testbed_instance._elements[netpipe_guid]
     if not node.emulation:
         raise RuntimeError, "Use of NetPipes requires emulation"
     netpipe.node = node

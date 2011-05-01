@@ -20,12 +20,15 @@ FDNETDEV = "ns3::FileDescriptorNetDevice"
 
 ### Connection functions ####
 
-def connect_switch(testbed_instance, switch, interface):
+def connect_switch(testbed_instance, switch_guid, interface_guid):
+    switch = testbed_instance._elements[switch_guid]
+    interface = testbed_instance._elements[interface_guid]
     switch.connect(interface)
    
-def connect_fd(testbed_instance, tap, cross_data):
+def connect_fd(testbed_instance, tap_guid, cross_data):
     import passfd
     import socket
+    tap = testbed_instance._elements[tap_guid]
     fd = tap.file_descriptor
     address = cross_data["LinuxSocketAddress"]
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)

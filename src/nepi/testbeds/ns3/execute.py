@@ -4,7 +4,7 @@
 from constants import TESTBED_ID
 from nepi.core import testbed_impl
 from nepi.core.attributes import Attribute
-from nepi.util.constants import TESTBED_STATUS_CREATED
+from nepi.util.constants import TIME_NOW
 import os
 import sys
 import threading
@@ -39,8 +39,8 @@ class TestbedController(testbed_impl.TestbedController):
                 args = [self._condition])
         self._simulator_thread.start()
 
-    def set(self, time, guid, name, value):
-        super(TestbedController, self).set(time, guid, name, value)
+    def set(self, guid, name, value, time = TIME_NOW):
+        super(TestbedController, self).set(guid, name, value, time)
         # TODO: take on account schedule time for the task
         factory_id = self._create[guid]
         factory = self._factories[factory_id]
@@ -50,8 +50,8 @@ class TestbedController(testbed_impl.TestbedController):
         ns3_value = self._to_ns3_value(guid, name, value) 
         element.SetAttribute(name, ns3_value)
 
-    def get(self, time, guid, name):
-        value = super(TestbedController, self).get(time, guid, name)
+    def get(self, guid, name, time = TIME_NOW):
+        value = super(TestbedController, self).get(guid, name, time)
         # TODO: take on account schedule time for the task
         factory_id = self._create[guid]
         factory = self._factories[factory_id]

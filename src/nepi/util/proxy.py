@@ -52,6 +52,8 @@ DO_CONNECT_COMPL    = 33
 DO_CROSS_CONNECT_COMPL  = 34
 TESTBED_ID  = 35
 TESTBED_VERSION  = 36
+EXPERIMENT_SET = 37
+EXPERIMENT_GET = 38
 
 # PARAMETER TYPE
 STRING  =  100
@@ -82,7 +84,7 @@ testbed_messages = dict({
     CREATE_SET: "%d|%s" % (CREATE_SET, "%d|%s|%s|%d"),
     FACTORY_SET: "%d|%s" % (FACTORY_SET, "%d|%s|%s|%d"),
     CONNECT: "%d|%s" % (CONNECT, "%d|%s|%d|%s"),
-    CROSS_CONNECT: "%d|%s" % (CROSS_CONNECT, "%d|%s|%d|%d|%s|%s"),
+    CROSS_CONNECT: "%d|%s" % (CROSS_CONNECT, "%d|%s|%d|%d|%s|%s|%s"),
     ADD_TRACE: "%d|%s" % (ADD_TRACE, "%d|%s"),
     ADD_ADDRESS: "%d|%s" % (ADD_ADDRESS, "%d|%s|%d|%s"),
     ADD_ROUTE: "%d|%s" % (ADD_ROUTE, "%d|%s|%d|%s"),
@@ -94,8 +96,10 @@ testbed_messages = dict({
     DO_PRECONFIGURE:    "%d" % DO_PRECONFIGURE,
     DO_CROSS_CONNECT_INIT:  "%d|%s" % (DO_CROSS_CONNECT_INIT, "%s"),
     DO_CROSS_CONNECT_COMPL: "%d|%s" % (DO_CROSS_CONNECT_COMPL, "%s"),
-    GET:    "%d|%s" % (GET, "%s|%d|%s"),
-    SET:    "%d|%s" % (SET, "%s|%d|%s|%s|%d"),
+    GET:    "%d|%s" % (GET, "%d|%s|%s"),
+    SET:    "%d|%s" % (SET, "%d|%s|%s|%d|%s"),
+    EXPERIMENT_GET:    "%d|%s" % (EXPERIMENT_GET, "%d|%d|%s|%s"),
+    EXPERIMENT_SET:    "%d|%s" % (EXPERIMENT_SET, "%d|%d|%s|%s|%d|%s"),
     GET_ROUTE: "%d|%s" % (GET, "%d|%d|%s"),
     GET_ADDRESS: "%d|%s" % (GET, "%d|%d|%s"),
     ACTION: "%d|%s" % (ACTION, "%s|%d|%s"),
@@ -148,6 +152,8 @@ instruction_text = dict({
     FLOAT:  "FLOAT",
     TESTBED_ID: "TESTBED_ID",
     TESTBED_VERSION: "TESTBED_VERSION",
+    EXPERIMENT_SET: "EXPERIMENT_SET",
+    EXPERIMENT_GET: "EXPERIMENT_GET",
     })
 
 def get_type(value):
@@ -506,11 +512,13 @@ class TestbedControllerServer(server.Server):
         cross_guid = int(params[3])
         connector_type_name = params[4]
         cross_guid = int(params[5])
-        cross_testbed_id = params[6]
-        cross_factory_id = params[7]
-        cross_connector_type_name = params[8]
+        cross_testbed_guid = int(params[6])
+        cross_testbed_id = params[7]
+        cross_factory_id = params[8]
+        cross_connector_type_name = params[9]
         self._testbed.defer_cross_connect(guid, connector_type_name, cross_guid, 
-            cross_testbed_id, cross_factory_id, cross_connector_type_name)
+            cross_testbed_guid, cross_testbed_id, cross_factory_id, 
+            cross_connector_type_name)
         return "%d|%s" % (OK, "")
 
     def defer_add_trace(self, params):
@@ -573,21 +581,21 @@ class TestbedControllerServer(server.Server):
         return "%d|%s" % (OK, "")
 
     def get(self, params):
-        time = params[1]
-        guid = int(param[2])
-        name = base64.b64decode(params[3])
-        value = self._testbed.get(time, guid, name)
+        guid = int(param[1])
+        name = base64.b64decode(params[2])
+        value = self._testbed.get(guid, name, time)
+        time = params[3]
         result = base64.b64encode(str(value))
         return "%d|%s" % (OK, result)
 
     def set(self, params):
-        time = params[1]
-        guid = int(params[2])
-        name = base64.b64decode(params[3])
-        value = base64.b64decode(params[4])
-        type = int(params[3])
+        guid = int(params[1])
+        name = base64.b64decode(params[2])
+        value = base64.b64decode(params[3])
+        type = int(params[2])
+        time = params[4]
         value = set_type(type, value)
-        self._testbed.set(time, guid, name, value)
+        self._testbed.set(guid, name, value, time)
         return "%d|%s" % (OK, "")
 
     def get_address(self, params):
@@ -656,6 +664,10 @@ class ExperimentControllerServer(server.Server):
                     reply = self.trace(params)
                 elif instruction == FINISHED:
                     reply = self.is_finished(params)
+                elif instruction == EXPERIMENT_GET:
+                    reply = self.get(params)
+                elif instruction == EXPERIMENT_SET:
+                    reply = self.set(params)
                 elif instruction == START:
                     reply = self.start(params)
                 elif instruction == STOP:
@@ -718,6 +730,26 @@ class ExperimentControllerServer(server.Server):
         status = self._controller.is_finished(guid)
         result = base64.b64encode(str(status))
         return "%d|%s" % (OK, result)
+
+    def get(self, params):
+        testbed_guid = int(param[1])
+        guid = int(params[2])
+        name = base64.b64decode(params[3])
+        value = self._controller.get(testbed_guid, guid, name, time)
+        time = params[4]
+        result = base64.b64encode(str(value))
+        return "%d|%s" % (OK, result)
+
+    def set(self, params):
+        testbed_guid = int(params[1])
+        guid = int(params[2])
+        name = base64.b64decode(params[3])
+        value = base64.b64decode(params[4])
+        type = int(params[3])
+        time = params[5]
+        value = set_type(type, value)
+        self._controller.set(testbed_guid, guid, name, value, time)
+        return "%d|%s" % (OK, "")
 
     def start(self, params):
         self._controller.start()
@@ -873,9 +905,10 @@ class TestbedControllerProxy(object):
             raise RuntimeError(text)
 
     def defer_cross_connect(self, guid, connector_type_name, cross_guid, 
-            cross_testbed_id, cross_factory_id, cross_connector_type_name):
+            cross_testbed_guid, cross_testbed_id, cross_factory_id, 
+            cross_connector_type_name):
         msg = testbed_messages[CROSS_CONNECT]
-        msg = msg % (guid, connector_type_name, cross_guid, 
+        msg = msg % (guid, connector_type_name, cross_guid, cross_testbed_guid,
             cross_testbed_id, cross_factory_id, cross_connector_type_name)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
@@ -1024,13 +1057,13 @@ class TestbedControllerProxy(object):
         if code == ERROR:
             raise RuntimeError(text)
 
-    def set(self, time, guid, name, value):
+    def set(self, guid, name, value, time = TIME_NOW):
         msg = testbed_messages[SET]
         type = get_type(value)
         # avoid having "|" in this parameters
         name = base64.b64encode(name)
         value = base64.b64encode(str(value))
-        msg = msg % (time, guid, name, value, type)
+        msg = msg % (guid, name, value, type, time)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
         result = reply.split("|")
@@ -1039,11 +1072,11 @@ class TestbedControllerProxy(object):
         if code == ERROR:
             raise RuntimeError(text)
 
-    def get(self, time, guid, name):
+    def get(self, guid, name, time = TIME_NOW):
         msg = testbed_messages[GET]
         # avoid having "|" in this parameters
         name = base64.b64encode(name)
-        msg = msg % (time, guid, name)
+        msg = msg % (guid, name, time)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
         result = reply.split("|")
@@ -1258,6 +1291,35 @@ class ExperimentControllerProxy(object):
         if code == ERROR:
             raise RuntimeError(text)
         return text == "True"
+
+    def set(self, testbed_guid, guid, name, value, time = TIME_NOW):
+        msg = testbed_messages[EXPERIMENT_SET]
+        type = get_type(value)
+        # avoid having "|" in this parameters
+        name = base64.b64encode(name)
+        value = base64.b64encode(str(value))
+        msg = msg % (testbed_guid, guid, name, value, type, time)
+        self._client.send_msg(msg)
+        reply = self._client.read_reply()
+        result = reply.split("|")
+        code = int(result[0])
+        text = base64.b64decode(result[1])
+        if code == ERROR:
+            raise RuntimeError(text)
+
+    def get(self, testbed_guid, guid, name, time = TIME_NOW):
+        msg = testbed_messages[EXPERIMENT_GET]
+        # avoid having "|" in this parameters
+        name = base64.b64encode(name)
+        msg = msg % (testbed_guid, guid, name, time)
+        self._client.send_msg(msg)
+        reply = self._client.read_reply()
+        result = reply.split("|")
+        code = int(result[0])
+        text = base64.b64decode(result[1])
+        if code == ERROR:
+            raise RuntimeError(text)
+        return text
 
     def shutdown(self):
         msg = controller_messages[SHUTDOWN]

@@ -14,8 +14,8 @@ APP = "Application"
 ### Connection functions ####
 
 def connect_cross(testbed_instance, guid, cross_data):
-    connected = True
-    testbed_instance.set(guid, "cross", True)
+    connected = cross_data["cross"]
+    testbed_instance.set(guid, "cross", connected)
 
 ### Creation functions ###
 
@@ -88,8 +88,8 @@ connections = [
     }),
     dict({
         "from": (TESTBED_ID, IFACE, "cross"),
-        "to":   ("mock2", IFACE, "cross"),
-        "init_code": connect_cross,
+        "to":   ("mock", IFACE, "cross"),
+        "compl_code": connect_cross,
         "can_cross": True,
     })]
 
@@ -113,7 +113,7 @@ attributes = dict({
                 "type": Attribute.BOOL,
                 "value": False,
                 "validation_function": validation.is_bool
-        })
+            })
     })
 
 traces = dict({

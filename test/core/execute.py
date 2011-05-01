@@ -38,7 +38,7 @@ class ExecuteTestCase(unittest.TestCase):
         instance.do_configure()
         instance.start()
         attr_list = instance.get_attribute_list(5)
-        self.assertEquals(attr_list, ["test", "fake", "label"])
+        self.assertEquals(attr_list, ["test", "fake", "cross", "label"])
         while instance.status(7) != STATUS_FINISHED:
             time.sleep(0.5)
         app_result = instance.trace(7, "fake")

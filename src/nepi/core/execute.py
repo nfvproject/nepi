@@ -266,10 +266,10 @@ class TestbedController(object):
     def stop(self):
         raise NotImplementedError
 
-    def set(self, time, guid, name, value):
+    def set(self, guid, name, value, time = TIME_NOW):
         raise NotImplementedError
 
-    def get(self, time, guid, name):
+    def get(self, guid, name, time = TIME_NOW):
         raise NotImplementedError
     
     def get_route(self, guid, index, attribute):
@@ -458,6 +458,14 @@ class ExperimentController(object):
                     return testbed.status(guid) == STATUS_FINISHED
         raise RuntimeError("No element exists with guid %d" % guid)    
 
+    def set(self, testbed_guid, guid, name, value, time = TIME_NOW):
+        testbed = self._testbeds[testbed_guid]
+        testbed.set(guid, name, value, time)
+
+    def get(self, testbed_guid, guid, name, time = TIME_NOW):
+        testbed = self._testbeds[testbed_guid]
+        return testbed.get(guid, name, time)
+
     def shutdown(self):
        for testbed in self._testbeds.values():
            testbed.shutdown()
@@ -483,13 +491,13 @@ class ExperimentController(object):
                     testbed.trace(guid, index, name),
             '' : 
                 lambda testbed, guid, index, name: 
-                    testbed.get(TIME_NOW, guid, name),
+                    testbed.get(guid, name),
         }
         
         for (testbed_guid, guid), attrs in self._netrefs.iteritems():
             testbed = self._testbeds[testbed_guid]
             for name in attrs:
-                value = testbed.get(TIME_NOW, guid, name)
+                value = testbed.get(guid, name)
                 if isinstance(value, basestring):
                     match = ATTRIBUTE_PATTERN_BASE.search(value)
                     if match:
@@ -513,8 +521,8 @@ class ExperimentController(object):
                                         ref_value = COMPONENT_GETTERS[component](
                                             ref_testbed, ref_guid, component_index, attribute)
                                         if ref_value:
-                                            testbed.set(TIME_NOW, guid, name, 
-                                                value.replace(match.group(), ref_value))
+                                            testbed.set(guid, name, 
+                                                    value.replace(match.group(), ref_value))
                                             break
                                 else:
                                     # couldn't find value
@@ -616,7 +624,7 @@ class ExperimentController(object):
                     cross_testbed = self._testbeds[cross_testbed_guid]
                     cross_testbed_id = cross_testbed.testbed_id
                     testbed.defer_cross_connect(guid, connector_type_name, cross_guid, 
-                            cross_testbed_id, cross_factory_id, 
+                            cross_testbed_guid, cross_testbed_id, cross_factory_id, 
                             cross_connector_type_name)
                     # save cross data for later
                     self._add_crossdata(testbed_guid, guid, cross_testbed_guid,
@@ -635,13 +643,8 @@ class ExperimentController(object):
         if testbed_guid not in self._cross_data:
             self._cross_data[testbed_guid] = dict()
         if cross_testbed_guid not in self._cross_data[testbed_guid]:
-            self._cross_data[testbed_guid][cross_testbed_guid] = list()
-        if cross_testbed_guid not in self._cross_data:
-            self._cross_data[cross_testbed_guid] = dict()
-        if testbed_guid not in self._cross_data[cross_testbed_guid]:
-            self._cross_data[cross_testbed_guid][testbed_guid] = list()
-        self._cross_data[testbed_guid][cross_testbed_guid].append(cross_guid)
-        self._cross_data[cross_testbed_guid][testbed_guid].append(guid)
+            self._cross_data[testbed_guid][cross_testbed_guid] = set()
+        self._cross_data[testbed_guid][cross_testbed_guid].add(cross_guid)
 
     def _get_cross_data(self, testbed_guid):
         cross_data = dict()
@@ -656,8 +659,7 @@ class ExperimentController(object):
                 cross_data[cross_testbed_guid][cross_guid] = elem_cross_data
                 attributes_list = cross_testbed.get_attribute_list(cross_guid)
                 for attr_name in attributes_list:
-                    attr_value = cross_testbed.get(TIME_NOW, cross_guid, 
-                            attr_name)
+                    attr_value = cross_testbed.get(cross_guid, attr_name)
                     elem_cross_data[attr_name] = attr_value
-        return elem_cross_data
+        return cross_data
     

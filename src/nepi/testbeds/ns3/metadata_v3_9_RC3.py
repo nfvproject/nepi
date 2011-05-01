@@ -8,16 +8,24 @@ from nepi.util import validation
 
 ### Connection functions ####
 
-def connect_node_device(testbed_instance, node, device):
+def connect_node_device(testbed_instance, node_guid, device_guid):
+    node = testbed_instance._elements[node_guid]
+    device = testbed_instance._elements[device_guid]
     node.AddDevice(device)
 
-def connect_queue_device(testbed_instance, queue, device):
+def connect_queue_device(testbed_instance, queue_guid, device_guid):
+    queue = testbed_instance._elements[queue_guid]
+    device = testbed_instance._elements[device_guid]
     device.SetQueue(queue)
 
-def connect_manager_device(testbed_instance, manager, device):
+def connect_manager_device(testbed_instance, manager_guid, device_guid):
+    manager = testbed_instance._elements[manager_guid]
+    device = testbed_instance._elements[device_guid]
     device.SetRemoteStationManager(manager)
 
-def connect_phy_device(testbed_instance, phy, device):
+def connect_phy_device(testbed_instance, phy_guid, device_guid):
+    phy = testbed_instance._elements[phy_guid]
+    device = testbed_instance._elements[device_guid]
     device.SetPhy(phy)
     phy.SetDevice(device)
     # search for the node asociated with the device
@@ -28,40 +36,61 @@ def connect_phy_device(testbed_instance, phy, device):
     node = testbed_instance.elements[node_guid[0]]
     phy.SetMobility(node)
 
-def connect_mac_device(testbed_instance, mac, device):
+def connect_mac_device(testbed_instance, mac_guid, device_guid):
+    mac = testbed_instance._elements[mac_guid]
+    device = testbed_instance._elements[device_guid]
     device.SetMac(mac)
 
-def connect_errormodel_device(testbed_instance, model, device):
+def connect_errormodel_device(testbed_instance, model_guid, device_guid):
+    model = testbed_instance._elements[model_guid]
+    device = testbed_instance._elements[device_guid]
     device.SetReceiveErrorModel(model)
 
-def connect_errormodel_phy(testbed_instance, err, phy):
+def connect_errormodel_phy(testbed_instance, err_guid, phy_guid):
+    err = testbed_instance._elements[err_guid]
+    phy = testbed_instance._elements[phy_guid]
     phy.SetErrorRateModel(err)
 
-def connect_channel_device(testbed_instance, channel, device):
+def connect_channel_device(testbed_instance, channel_guid, device_guid):
+    channel = testbed_instance._elements[channel_guid]
+    device = testbed_instance._elements[device_guid]
     device.Attach(channel)
 
-def connect_simple_channel_device(testbed_instance, channel, device):
+def connect_simple_channel_device(testbed_instance, channel_guid, device_guid):
+    channel = testbed_instance._elements[channel_guid]
+    device = testbed_instance._elements[device_guid]
     device.SetChannel(channel)
 
 def connect_loss_channel(testbed_instance, loss, channel):
+    loss = testbed_instance._elements[loss_guid]
+    channel = testbed_instance._elements[channel_guid]
     channel.SetPropagationLossModel(loss)
 
-def connect_next_loss(testbed_instance, prev, next):
+def connect_next_loss(testbed_instance, prev_guid, next_guid):
+    prev = testbed_instance._elements[prev_guid]
+    next = testbed_instance._elements[next_guid]
     prev.SetNext(next)
 
-def connect_delay_channel(testbed_instance, delay, channel):
+def connect_delay_channel(testbed_instance, delay_guid, channel_guid):
+    delay = testbed_instance._elements[delay_guid]
+    channel = testbed_instance._elements[channel_guid]
     channel.SetPropagationDelayModel(delay)
 
-def connect_node_application(testbed_instance, node, application):
+def connect_node_application(testbed_instance, node_guid, application_guid):
+    node = testbed_instance._elements[node_guid]
+    application = testbed_instance._elements[application_guid]
     node.AddApplication(application)
 # works for ArpL3Protocol, Ipv4L3Protocol, UdpL4Protocol, TcpL4Protocol,
 # NscTcpL4Protocol, MobilityModel (every subclass), 
 # RoutingProtocol (every subclass)
 
-def connect_node_other(tesbed_instance, node, other):
+def connect_node_other(testbed_instance, node_guid, other_guid):
+    node = testbed_instance._elements[node_guid]
+    other = testbed_instance._elements[other_guid]
     node.AggregateObject(other)
 
-def connect_fd(testbed_instance, fdnd, cross_data):
+def connect_fd(testbed_instance, fdnd_guid, cross_data):
+    fdnd = testbed_instance._elements[fdnd_guid]
     address = fdnd.socket_address
     fdnd.set_attribute_value("LinuxSocketAddress", address)
 
