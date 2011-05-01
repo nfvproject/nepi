@@ -47,21 +47,6 @@ class TestbedController(testbed_impl.TestbedController):
         except KeyError, AttributeError:
             return value
 
-    def get_route(self, guid, index, attribute):
-        # TODO: fetch real data from netns
-        try:
-            return self.box_get_route(guid, int(index), attribute)
-        except KeyError, AttributeError:
-            return None
-
-    def get_address(self, guid, index, attribute='Address'):
-        # TODO: fetch real data from netns
-        try:
-            return self.box_get_address(guid, int(index), attribute)
-        except KeyError, AttributeError:
-            return None
-
-
     def action(self, time, guid, action):
         raise NotImplementedError
 

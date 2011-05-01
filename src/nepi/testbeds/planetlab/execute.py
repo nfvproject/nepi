@@ -132,13 +132,6 @@ class TestbedController(testbed_impl.TestbedController):
         except KeyError, AttributeError:
             return value
 
-    def get_route(self, guid, index, attribute):
-        # TODO: fetch real data from planetlab
-        try:
-            return self.box_get_route(guid, int(index), attribute)
-        except KeyError, AttributeError:
-            return None
-
     def get_address(self, guid, index, attribute='Address'):
         index = int(index)
 
@@ -153,11 +146,7 @@ class TestbedController(testbed_impl.TestbedController):
                 return iface.broadcast
 
         # if all else fails, query box
-        try:
-            return self.box_get_address(guid, index, attribute)
-        except KeyError, AttributeError:
-            return None
-
+        return self.get_address(guid, index, attribute)
 
     def action(self, time, guid, action):
         raise NotImplementedError

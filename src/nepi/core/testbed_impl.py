@@ -341,7 +341,7 @@ class TestbedController(execute.TestbedController):
             raise AttributeError, "Attribute %s can only be queried during experiment design" % name
         return factory.box_attributes.get_attribute_value(name)
 
-    def box_get_route(self, guid, index, attribute):
+    def get_route(self, guid, index, attribute):
         """
         Helper implementation for get_route, returns information
         given to defer_add_route.
@@ -369,7 +369,7 @@ class TestbedController(execute.TestbedController):
         
         return routes[index][attribute_index]
 
-    def box_get_address(self, guid, index, attribute='Address'):
+    def get_address(self, guid, index, attribute='Address'):
         """
         Helper implementation for get_address, returns information
         given to defer_add_address
