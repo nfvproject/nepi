@@ -11,18 +11,6 @@ class TestbedController(testbed_impl.TestbedController):
     def do_configure(self):
         pass
 
-    def get_route(self, guid, index, attribute):
-        try:
-            return self.box_get_route(guid, int(index), attribute)
-        except KeyError, AttributeError:
-            return None
-
-    def get_address(self, guid, index, attribute='Address'):
-        try:
-            return self.box_get_address(guid, int(index), attribute)
-        except KeyError, AttributeError:
-            return None
-
     def action(self, time, guid, action):
         raise NotImplementedError
 

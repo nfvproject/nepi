@@ -35,6 +35,8 @@ class TestbedController(execute.TestbedController):
         self._configure = dict()
 
         # log of set operations
+        self._setlog = dict()
+        # last set operations
         self._set = dict()
 
         # testbed element instances
@@ -319,14 +321,16 @@ class TestbedController(execute.TestbedController):
                     (value, name))
         if guid not in self._set:
             self._set[guid] = dict()
-        if time not in self._set[guid]:
-            self._set[guid][time] = dict()
-        self._set[guid][time][name] = value
+            self._setlog[guid] = dict()
+        if time not in self._setlog[guid]:
+            self._setlog[guid][time] = dict()
+        self._setlog[guid][time][name] = value
+        self._set[guid][name] = value
 
     def get(self, time, guid, name):
         """
-        Helper for subclasses, gets an attribute from box definitions
-        if available. Throws KeyError if the GUID wasn't created
+        gets an attribute from box definitions if available. 
+        Throws KeyError if the GUID wasn't created
         through the defer_create interface, and AttributeError if the
         attribute isn't available (doesn't exist or is design-only)
         """
@@ -339,12 +343,15 @@ class TestbedController(execute.TestbedController):
         if self._status > TESTBED_STATUS_CREATED and \
                 factory.box_attributes.is_attribute_design_only(name):
             raise AttributeError, "Attribute %s can only be queried during experiment design" % name
+        if guid in self._set and name in self._set[guid]:
+            return self._set[guid][name]
+        if guid in self._create_set and name in self._create_set[guid]:
+            return self._create_set[guid][name]
         return factory.box_attributes.get_attribute_value(name)
 
     def get_route(self, guid, index, attribute):
         """
-        Helper implementation for get_route, returns information
-        given to defer_add_route.
+        returns information given to defer_add_route.
         
         Raises AttributeError if an invalid attribute is requested
             or if the indexed routing rule does not exist.
@@ -362,7 +369,8 @@ class TestbedController(execute.TestbedController):
         routes = self._add_route.get(guid)
         if not routes:
             raise KeyError, "GUID %r not found in %s" % (guid, self._testbed_id)
-        
+       
+        index = int(index)
         if not (0 <= index < len(addresses)):
             raise AttributeError, "GUID %r at %s does not have a routing entry #%s" % (
                 guid, self._testbed_id, index)
@@ -371,8 +379,7 @@ class TestbedController(execute.TestbedController):
 
     def get_address(self, guid, index, attribute='Address'):
         """
-        Helper implementation for get_address, returns information
-        given to defer_add_address
+        returns information given to defer_add_address
         
         Raises AttributeError if an invalid attribute is requested
             or if the indexed routing rule does not exist.
@@ -391,6 +398,7 @@ class TestbedController(execute.TestbedController):
         if not addresses:
             raise KeyError, "GUID %r not found in %s" % (guid, self._testbed_id)
         
+        index = int(index)
         if not (0 <= index < len(addresses)):
             raise AttributeError, "GUID %r at %s does not have an address #%s" % (
                 guid, self._testbed_id, index)

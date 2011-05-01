@@ -472,17 +472,17 @@ class ExperimentController(object):
 
     def do_netrefs(self, fail_if_undefined = False):
         COMPONENT_GETTERS = {
-            'addr' :
-                lambda testbed, guid, index, name : 
+            'addr':
+                lambda testbed, guid, index, name: 
                     testbed.get_address(guid, index, name),
             'route' :
-                lambda testbed, guid, index, name : 
+                lambda testbed, guid, index, name: 
                     testbed.get_route(guid, index, name),
             'trace' :
-                lambda testbed, guid, index, name : 
+                lambda testbed, guid, index, name: 
                     testbed.trace(guid, index, name),
             '' : 
-                lambda testbed, guid, index, name : 
+                lambda testbed, guid, index, name: 
                     testbed.get(TIME_NOW, guid, name),
         }
         
