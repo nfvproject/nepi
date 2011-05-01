@@ -51,17 +51,17 @@ class TestbedController(execute.TestbedController):
 
     def defer_configure(self, name, value):
         if not self._attributes.has_attribute(name):
-            raise RuntimeError("Invalid attribute %s for testbed" % name)
+            raise AttributeError("Invalid attribute %s for testbed" % name)
         # Validation
         self._attributes.set_attribute_value(name, value)
         self._configure[name] = value
 
     def defer_create(self, guid, factory_id):
         if factory_id not in self._factories:
-            raise RuntimeError("Invalid element type %s for testbed version %s" %
+            raise AttributeError("Invalid element type %s for testbed version %s" %
                     (factory_id, self._testbed_version))
         if guid in self._create:
-            raise RuntimeError("Cannot add elements with the same guid: %d" %
+            raise AttributeError("Cannot add elements with the same guid: %d" %
                     guid)
         self._create[guid] = factory_id
 
@@ -71,9 +71,11 @@ class TestbedController(execute.TestbedController):
         factory_id = self._create[guid]
         factory = self._factories[factory_id]
         if not factory.box_attributes.has_attribute(name):
-            raise RuntimeError("Invalid attribute %s for element type %s" %
+            raise AttributeError("Invalid attribute %s for element type %s" %
                     (name, factory_id))
-        factory.box_attributes.set_attribute_value(name, value)
+        if not factory.box_attributes.is_attribute_value_valid(name, value):
+            raise AttributeError("Invalid value %s for attribute %s" % \
+                (value, name))
         if guid not in self._create_set:
             self._create_set[guid] = dict()
         self._create_set[guid][name] = value
@@ -84,9 +86,11 @@ class TestbedController(execute.TestbedController):
         factory_id = self._create[guid]
         factory = self._factories[factory_id]
         if not factory.has_attribute(name):
-            raise RuntimeError("Invalid attribute %s for element type %s" %
+            raise AttributeError("Invalid attribute %s for element type %s" %
                     (name, factory_id))
-        factory.set_attribute_value(name, value)
+        if not factory.is_attribute_value_valid(name, value):
+            raise AttributeError("Invalid value %s for attribute %s" % \
+                (value, name))
         if guid not in self._factory_set:
             self._factory_set[guid] = dict()
         self._factory_set[guid][name] = value
@@ -292,11 +296,13 @@ class TestbedController(execute.TestbedController):
         factory_id = self._create[guid]
         factory = self._factories[factory_id]
         if not factory.box_attributes.has_attribute(name):
-            raise RuntimeError("Invalid attribute %s for element type %s" %
+            raise AttributeError("Invalid attribute %s for element type %s" %
                     (name, factory_id))
         if self._started and factory.is_attribute_design_only(name):
-            raise RuntimeError("Attribute %s can only be modified during experiment design" % name)
-        factory.box_attributes.set_attribute_value(name, value)
+            raise AttributeError("Attribute %s can only be modified during experiment design" % name)
+        if not factory.box_attributes.is_attribute_value_valid(name, value):
+            raise AttributeError("Invalid value %s for attribute %s" % \
+                    (value, name))
         if guid not in self._set:
             self._set[guid] = dict()
         if time not in self._set[guid]:

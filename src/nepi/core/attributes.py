@@ -100,9 +100,7 @@ class Attribute(object):
         return self._value
 
     def set_value(self, value):
-        if self._is_in_range(value) and \
-                self._is_in_allowed_values(value) and \
-                self._is_valid(value):
+        if self.is_valid_value(value):
             self._value = value
             self._modified = True
         else:
@@ -110,6 +108,11 @@ class Attribute(object):
                     (str(value), self.name))
 
     value = property(get_value, set_value)
+
+    def is_valid_value(self, value):
+        return self._is_in_range(value) and \
+            self._is_in_allowed_values(value) and \
+                self._is_valid(value)    
 
     def _is_in_range(self, value):
         return not self.range or \
@@ -171,6 +174,9 @@ class AttributesMap(object):
 
     def is_attribute_modified(self, name):
         return self._attributes[name].modified
+
+    def is_attribute_value_valid(self, name, value):
+        return self._attributes[name].is_valid_value(value)
 
     def add_attribute(self, name, help, type, value = None, range = None,
         allowed = None, flags = Attribute.NoFlags, validation_function = None):
