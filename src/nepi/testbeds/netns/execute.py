@@ -3,6 +3,7 @@
 
 from constants import TESTBED_ID
 from nepi.core import testbed_impl
+from nepi.util.constants import TESTBED_STATUS_CREATED
 import os
 
 class TestbedController(testbed_impl.TestbedController):
@@ -24,28 +25,27 @@ class TestbedController(testbed_impl.TestbedController):
         self._home_directory = self._attributes.\
             get_attribute_value("homeDirectory")
         self._netns = self._load_netns_module()
+        super(TestbedController, self).do_setup()
 
     def set(self, time, guid, name, value):
         super(TestbedController, self).set(time, guid, name, value)
-        
         # TODO: take on account schedule time for the task 
         element = self._elements.get(guid)
         if element:
             setattr(element, name, value)
 
     def get(self, time, guid, name):
+        value = super(TestbedController, self).get(time, guid, name)
         # TODO: take on account schedule time for the task
+        factory_id = self._create[guid]
+        factory = self._factories[factory_id]
+        if factory.box_attributes.is_attribute_design_only(name):
+            return value
         element = self._elements.get(guid)
-        if element:
-            try:
-                if hasattr(element, name):
-                    # Runtime attribute
-                    return getattr(element, name)
-                else:
-                    # Try design-time attributes
-                    return self.box_get(time, guid, name)
-            except KeyError, AttributeError:
-                return None
+        try:
+            return getattr(element, name)
+        except KeyError, AttributeError:
+            return value
 
     def get_route(self, guid, index, attribute):
         # TODO: fetch real data from netns

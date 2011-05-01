@@ -8,20 +8,8 @@ class TestbedController(testbed_impl.TestbedController):
     def __init__(self, testbed_version):
         super(TestbedController, self).__init__(TESTBED_ID, testbed_version)
 
-    def do_setup(self):
-        pass
-
     def do_configure(self):
         pass
-
-    def set(self, time, guid, name, value):
-        super(TestbedController, self).set(time, guid, name, value)
-
-    def get(self, time, guid, name):
-        try:
-            return self.box_get(time, guid, name)
-        except KeyError, AttributeError:
-            return None
 
     def get_route(self, guid, index, attribute):
         try:

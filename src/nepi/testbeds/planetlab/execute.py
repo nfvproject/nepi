@@ -58,6 +58,7 @@ class TestbedController(testbed_impl.TestbedController):
             get_attribute_value("authPass")
         self.sliceSSHKey = self._attributes.\
             get_attribute_value("sliceSSHKey")
+        super(TestbedController, self).do_setup()
 
     def do_preconfigure(self):
         # Perform resource discovery if we don't have
@@ -107,7 +108,6 @@ class TestbedController(testbed_impl.TestbedController):
         # cleanup
         del self._to_provision
 
-
     def set(self, time, guid, name, value):
         super(TestbedController, self).set(time, guid, name, value)
         # TODO: take on account schedule time for the task
@@ -120,18 +120,17 @@ class TestbedController(testbed_impl.TestbedController):
                 element.refresh()
 
     def get(self, time, guid, name):
+        value = super(TestbedController, self).get(time, guid, name)
         # TODO: take on account schedule time for the task
+        factory_id = self._create[guid]
+        factory = self._factories[factory_id]
+        if factory.box_attributes.is_attribute_design_only(name):
+            return value
         element = self._elements.get(guid)
-        if element:
-            try:
-                if hasattr(element, name):
-                    # Runtime attribute
-                    return getattr(element, name)
-                else:
-                    # Try design-time attributes
-                    return self.box_get(time, guid, name)
-            except KeyError, AttributeError:
-                return None
+        try:
+            return getattr(element, name)
+        except KeyError, AttributeError:
+            return value
 
     def get_route(self, guid, index, attribute):
         # TODO: fetch real data from planetlab

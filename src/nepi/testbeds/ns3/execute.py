@@ -42,31 +42,32 @@ class TestbedController(testbed_impl.TestbedController):
     def set(self, time, guid, name, value):
         super(TestbedController, self).set(time, guid, name, value)
         # TODO: take on account schedule time for the task
-        if self._status < TESTBED_STATUS_CREATED or \
-                factory.box_attributes.is_attribute_design_only(name):
+        factory_id = self._create[guid]
+        factory = self._factories[factory_id]
+        if factory.box_attributes.is_attribute_design_only(name):
             return
         element = self._elements[guid]
         ns3_value = self._to_ns3_value(guid, name, value) 
         element.SetAttribute(name, ns3_value)
 
     def get(self, time, guid, name):
+        value = super(TestbedController, self).get(time, guid, name)
         # TODO: take on account schedule time for the task
+        factory_id = self._create[guid]
+        factory = self._factories[factory_id]
+        if factory.box_attributes.is_attribute_design_only(name):
+            return value
         TypeId = self.ns3.TypeId()
         typeid = TypeId.LookupByName(factory_id)
         info = TypeId.AttributeInfo()
         if not typeid or not typeid.LookupAttributeByName(name, info):
-            try:
-                # Try design-time attributes
-                return self.box_get(time, guid, name)
-            except KeyError, AttributeError:
-                return None
+            raise AttributeError("Invalid attribute %s for element type %d" % \
+                (name, guid))
         checker = info.checker
         ns3_value = checker.Create() 
         element = self._elements[guid]
         element.GetAttribute(name, ns3_value)
         value = ns3_value.SerializeToString(checker)
-        factory_id = self._create[guid]
-        factory = self._factories[factory_id]
         attr_type = factory.box_attributes.get_attribute_type(name)
         if attr_type == Attribute.INTEGER:
             return int(value)

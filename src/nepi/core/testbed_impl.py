@@ -323,7 +323,7 @@ class TestbedController(execute.TestbedController):
             self._set[guid][time] = dict()
         self._set[guid][time][name] = value
 
-    def box_get(self, time, guid, name):
+    def get(self, time, guid, name):
         """
         Helper for subclasses, gets an attribute from box definitions
         if available. Throws KeyError if the GUID wasn't created
@@ -340,8 +340,6 @@ class TestbedController(execute.TestbedController):
                 factory.box_attributes.is_attribute_design_only(name):
             raise AttributeError, "Attribute %s can only be queried during experiment design" % name
         return factory.box_attributes.get_attribute_value(name)
-
-    #get: NotImplementedError
 
     def box_get_route(self, guid, index, attribute):
         """
