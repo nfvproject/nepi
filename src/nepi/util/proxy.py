@@ -99,7 +99,7 @@ testbed_messages = dict({
     GET_ROUTE: "%d|%s" % (GET, "%d|%d|%s"),
     GET_ADDRESS: "%d|%s" % (GET, "%d|%d|%s"),
     ACTION: "%d|%s" % (ACTION, "%s|%d|%s"),
-    STATUS: "%d|%s" % (STATUS, "%d"),
+    STATUS: "%d|%s" % (STATUS, "%s"),
     GUIDS:  "%d" % GUIDS,
     GET_ATTRIBUTE_LIST:  "%d" % GET_ATTRIBUTE_LIST,
     TESTBED_ID:  "%d" % TESTBED_ID,
@@ -591,16 +591,16 @@ class TestbedControllerServer(server.Server):
         return "%d|%s" % (OK, "")
 
     def get_address(self, params):
-        guid = int(param[1])
-        index = int(param[2])
+        guid = int(params[1])
+        index = int(params[2])
         attribute = base64.b64decode(param[3])
         value = self._testbed.get_address(guid, index, attribute)
         result = base64.b64encode(str(value))
         return "%d|%s" % (OK, result)
 
     def get_route(self, params):
-        guid = int(param[1])
-        index = int(param[2])
+        guid = int(params[1])
+        index = int(params[2])
         attribute = base64.b64decode(param[3])
         value = self._testbed.get_route(guid, index, attribute)
         result = base64.b64encode(str(value))
@@ -614,13 +614,15 @@ class TestbedControllerServer(server.Server):
         return "%d|%s" % (OK, "")
 
     def status(self, params):
-        guid = int(params[1])
+        guid = None
+        if params[1] != "None":
+            guid = int(params[1])
         status = self._testbed.status(guid)
         result = base64.b64encode(str(status))
         return "%d|%s" % (OK, result)
 
     def get_attribute_list(self, params):
-        guid = int(param[1])
+        guid = int(params[1])
         attr_list = self._testbed.get_attribute_list(guid)
         value = cPickle.dumps(attr_list)
         result = base64.b64encode(value)
@@ -1090,9 +1092,9 @@ class TestbedControllerProxy(object):
         if code == ERROR:
             raise RuntimeError(text)
 
-    def status(self, guid):
+    def status(self, guid = None):
         msg = testbed_messages[STATUS]
-        msg = msg % (guid)
+        msg = msg % str(guid)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
         result = reply.split("|")

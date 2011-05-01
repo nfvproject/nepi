@@ -418,7 +418,9 @@ class TestbedController(execute.TestbedController):
                 stop_function(self, guid)
         self._status = TESTBED_STATUS_STOPPED
 
-    def status(self, guid):
+    def status(self, guid = None):
+        if not guid:
+            return self._status
         if not guid in self._create:
             raise RuntimeError("Element guid %d doesn't exist" % guid)
         factory = self._get_factory(guid)
