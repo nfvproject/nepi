@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import getpass
-from nepi.util.constants import STATUS_FINISHED, TIME_NOW
+from nepi.util.constants import STATUS_FINISHED
 from nepi.testbeds import planetlab
 import os
 import shutil
@@ -68,8 +68,8 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
             instance.do_preconfigure()
             
             # Manually replace netref
-            instance.set(TIME_NOW, 7, "command",
-                instance.get(TIME_NOW, 7, "command")
+            instance.set(7, "command",
+                instance.get(7, "command")
                     .replace("{#[GUID-5].addr[0].[Address]#}", 
                         instance.get_address(5, 0, "Address") )
             )
@@ -360,8 +360,8 @@ echo 'OKIDOKI'
             instance.do_preconfigure()
             
             # Manually replace netref
-            instance.set(TIME_NOW, 9, "command",
-                instance.get(TIME_NOW, 9, "command")
+            instance.set(9, "command",
+                instance.get(9, "command")
                     .replace("{#[GUID-8].addr[0].[Address]#}", 
                         instance.get_address(8, 0, "Address") )
             )
