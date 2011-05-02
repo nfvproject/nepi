@@ -301,7 +301,7 @@ class TestbedController(execute.TestbedController):
         if not factory.box_attributes.has_attribute(name):
             raise AttributeError("Invalid attribute %s for element type %s" %
                     (name, factory.factory_id))
-        if self._status > TESTBED_STATUS_CREATED and \
+        if self._status > TESTBED_STATUS_STARTED and \
                 factory.box_attributes.is_attribute_design_only(name):
             raise AttributeError("Attribute %s can only be modified during experiment design" % name)
         if not factory.box_attributes.is_attribute_value_valid(name, value):
