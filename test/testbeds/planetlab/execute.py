@@ -418,6 +418,44 @@ echo 'OKIDOKI'
         
         # asserts at the end, to make sure there's proper cleanup
         self.assertEqual(ping_result, "")
+
+    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    def test_ns3_depends(self):
+        instance = self.make_instance()
+        
+        instance.defer_create(2, "Node")
+        instance.defer_create_set(2, "hostname", "onelab11.pl.sophia.inria.fr")
+        instance.defer_create(3, "NodeInterface")
+        instance.defer_connect(2, "devs", 3, "node")
+        instance.defer_create(4, "Internet")
+        instance.defer_connect(3, "inet", 4, "devs")
+        instance.defer_create(5, "NepiDependency")
+        instance.defer_connect(5, "node", 2, "deps")
+        instance.defer_create(6, "NS3Dependency")
+        instance.defer_connect(6, "node", 2, "deps")
+        instance.defer_create(12, "Application")
+        instance.defer_connect(12, "node", 2, "apps")
+        instance.defer_create_set(12, "command", "python -c 'import nepi.testbeds.ns3.execute ; tb = nepi.testbeds.ns3.execute.TestbedController(\"3_9_RC3\") ; mod = tb._load_ns3_module()'")
+        instance.defer_add_trace(12, "stderr")
+
+        try:
+            instance.do_setup()
+            instance.do_create()
+            instance.do_connect_init()
+            instance.do_connect_compl()
+            instance.do_preconfigure()
+            instance.do_configure()
+            
+            instance.start()
+            while instance.status(12) != STATUS_FINISHED:
+                time.sleep(0.5)
+            ping_result = (instance.trace(12, "stderr") or "").strip()
+            instance.stop()
+        finally:
+            instance.shutdown()
+        
+        # asserts at the end, to make sure there's proper cleanup
+        self.assertEqual(ping_result, "")
         
 
 if __name__ == '__main__':

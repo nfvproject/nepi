@@ -1,19 +1,30 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import getpass
 from nepi.core.design import ExperimentDescription, FactoriesProvider
 from nepi.core.execute import ExperimentController
+from optparse import OptionParser, SUPPRESS_HELP
 from nepi.util import proxy
 import os
 import shutil
 import tempfile
 import test_util
 import time
-import unittest
 
-class VlcWirelessNetnsNs3TestCase(unittest.TestCase):
-    def setUp(self):
+class VlcWirelessNetnsNs3Example(object):
+    def __init__(self):
+        usage = "usage: %prog -m movie -u user"
+        parser = OptionParser(usage=usage)
+        parser.add_option("-u", "--user", dest="user", help="Valid linux system user (not root).", type="str")
+        parser.add_option("-m", "--movie", dest="movie", help="Path to movie file to play", type="str")
+        (options, args) = parser.parse_args()
+        if not options.movie:
+            parser.error("Missing 'movie' option.")
+        if options.user == 'root':
+            parser.error("Missing or invalid 'user' option.")
+
+        self.user = options.user if options.user else os.getlogin()
+        self.movie =  options.movie
         self.root_dir = tempfile.mkdtemp()
 
     def add_netns_tap(self, node, netns_desc):
@@ -100,13 +111,10 @@ class VlcWirelessNetnsNs3TestCase(unittest.TestCase):
         route.set_attribute_value("NetPrefix", netprefix)
         route.set_attribute_value("NextHop", nexthop)
 
-    @test_util.skipUnless(os.getuid() == 0, "Test requires root privileges")
-    def test_local(self):
+    def run(self):
         bounds_width = bounds_height = 200
         x = y = 100
         speed = 1
-        user = "alina"
-        movie = "/tmp/test.ts"
 
         exp_desc = ExperimentDescription()
 
@@ -127,7 +135,7 @@ class VlcWirelessNetnsNs3TestCase(unittest.TestCase):
         self.add_ip_address(fdnd1, "10.0.0.1")
         # create node 2
         node2 = self.add_ns3_node(ns3_desc)
-        mobility2 = self.add_ns3_random_mobility(node2, ns3_desc, 0, 0, 0, 
+        mobility2 = self.add_ns3_random_mobility(node2, ns3_desc, x, y, 0, 
                 speed, bounds_width, bounds_height)
         wifi2, phy2 = self.add_ns3_wifi(node2, ns3_desc, access_point = True)
         self.add_ip_address(wifi2, "10.0.1.2")
@@ -154,16 +162,16 @@ class VlcWirelessNetnsNs3TestCase(unittest.TestCase):
         # DEBUG!! target = "{#[vlc_client].addr[0].[Address]#}"
         target = "10.0.2.2" 
         command = "vlc -I dummy -vvv %s --sout '#rtp{dst=%s,port=5004,mux=ts}' vlc:quit" \
-                % (movie, target)
+                % (self.movie, target)
         vlc_server = netns_desc1.create("Application")
         vlc_server.set_attribute_value("command", command)
-        vlc_server.set_attribute_value("user", user)
+        vlc_server.set_attribute_value("user", self.user)
         vlc_server.connector("node").connect(node3.connector("apps"))
 
         #command = "xterm"
         #xterm1 = netns_desc1.create("Application")
         #xterm1.set_attribute_value("command", command)
-        #xterm1.set_attribute_value("user", user)
+        #xterm1.set_attribute_value("user", self.user)
         #xterm1.connector("node").connect(node3.connector("apps"))
 
         ## NETNS testbed description 2 ##
@@ -180,7 +188,7 @@ class VlcWirelessNetnsNs3TestCase(unittest.TestCase):
         vlc_client = netns_desc2.create("Application")
         command = "vlc rtp://%s:5004/test.ts" % target
         vlc_client.set_attribute_value("command", command)
-        vlc_client.set_attribute_value("user", user)
+        vlc_client.set_attribute_value("user", self.user)
         vlc_client.connector("node").connect(node4.connector("apps"))
         #vlc_trace = vlc_server.get_trace("StderrTrace")
         #vlc_trace.get_attribute("Filename").value = "vlc_server.err"
@@ -189,7 +197,7 @@ class VlcWirelessNetnsNs3TestCase(unittest.TestCase):
         #command = "xterm"
         #xterm2 = netns_desc2.create("Application")
         #xterm2.set_attribute_value("command", command)
-        #xterm2.set_attribute_value("user", user)
+        #xterm2.set_attribute_value("user", self.user)
         #xterm2.connector("node").connect(node4.connector("apps"))
 
         ## testbed_interconnection
@@ -204,7 +212,6 @@ class VlcWirelessNetnsNs3TestCase(unittest.TestCase):
         self.add_route(node2, "10.0.0.0", 24, "10.0.1.1")
         self.add_route(node1, "10.0.2.0", 24, "10.0.1.2")
 
-
         xml = exp_desc.to_xml()
         controller = ExperimentController(xml, self.root_dir)
         controller.start()
@@ -213,8 +220,11 @@ class VlcWirelessNetnsNs3TestCase(unittest.TestCase):
         controller.stop()
         controller.shutdown()
 
-    def tearDown(self):
+    def clean(self):
         shutil.rmtree(self.root_dir)
 
 if __name__ == '__main__':
-    unittest.main()
+    example = VlcWirelessNetnsNs3Example()
+    example.run()
+    example.clean()
+

@@ -20,6 +20,7 @@ TUNIFACE = "TunInterface"
 APPLICATION = "Application"
 DEPENDENCY = "Dependency"
 NEPIDEPENDENCY = "NepiDependency"
+NS3DEPENDENCY = "NS3Dependency"
 INTERNET = "Internet"
 NETPIPE = "NetPipe"
 
@@ -114,6 +115,11 @@ def connect_dep(testbed_instance, node_guid, app_guid):
     if app.add_to_path:
         if app.home_path and app.home_path not in node.pythonpath:
             node.pythonpath.append(app.home_path)
+    
+    if app.env:
+        for envkey, envval in app.env.iteritems():
+            envval = app._replace_paths(envval)
+            node.env[envkey].append(envval)
 
 def connect_node_netpipe(testbed_instance, node_guid, netpipe_guid):
     node = testbed_instance._elements[node_guid]
@@ -175,6 +181,15 @@ def create_nepi_dependency(testbed_instance, guid):
     
     # Just inject configuration stuff
     element.home_path = "nepi-nepi-%s" % (guid,)
+    
+    testbed_instance.elements[guid] = element
+
+def create_ns3_dependency(testbed_instance, guid):
+    parameters = testbed_instance._get_parameters(guid)
+    element = testbed_instance._make_ns3_dependency(parameters)
+    
+    # Just inject configuration stuff
+    element.home_path = "nepi-ns3-%s" % (guid,)
     
     testbed_instance.elements[guid] = element
 
@@ -421,6 +436,12 @@ connections = [
     dict({
         "from": (TESTBED_ID, NODE, "deps"),
         "to":   (TESTBED_ID, NEPIDEPENDENCY, "node"),
+        "init_code": connect_dep,
+        "can_cross": False
+    }),
+    dict({
+        "from": (TESTBED_ID, NODE, "deps"),
+        "to":   (TESTBED_ID, NS3DEPENDENCY, "node"),
         "init_code": connect_dep,
         "can_cross": False
     }),
@@ -749,9 +770,9 @@ traces = dict({
               }),
     })
 
-create_order = [ INTERNET, NODE, NODEIFACE, TUNIFACE, NETPIPE, NEPIDEPENDENCY, DEPENDENCY, APPLICATION ]
+create_order = [ INTERNET, NODE, NODEIFACE, TUNIFACE, NETPIPE, NEPIDEPENDENCY, NS3DEPENDENCY, DEPENDENCY, APPLICATION ]
 
-configure_order = [ INTERNET, NODE, NODEIFACE, TUNIFACE, NETPIPE, NEPIDEPENDENCY, DEPENDENCY, APPLICATION ]
+configure_order = [ INTERNET, NODE, NODEIFACE, TUNIFACE, NETPIPE, NEPIDEPENDENCY, NS3DEPENDENCY, DEPENDENCY, APPLICATION ]
 
 factories_info = dict({
     NODE: dict({
@@ -825,6 +846,15 @@ factories_info = dict({
             "help": "Requirement for NEPI inside NEPI - required to run testbed instances inside a node",
             "category": "applications",
             "create_function": create_nepi_dependency,
+            "configure_function": configure_dependency,
+            "box_attributes": [ ],
+            "connector_types": ["node"],
+            "traces": ["buildlog"]
+        }),
+    NS3DEPENDENCY: dict({
+            "help": "Requirement for NS3 inside NEPI - required to run NS3 testbed instances inside a node. It also needs NepiDependency.",
+            "category": "applications",
+            "create_function": create_ns3_dependency,
             "configure_function": configure_dependency,
             "box_attributes": [ ],
             "connector_types": ["node"],

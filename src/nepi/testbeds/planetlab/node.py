@@ -57,6 +57,7 @@ class Node(object):
         self.required_packages = set()
         self.required_vsys = set()
         self.pythonpath = []
+        self.env = collections.defaultdict(list)
         
         # Testbed-derived attributes
         self.slicename = None

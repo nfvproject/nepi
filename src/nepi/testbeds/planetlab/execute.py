@@ -222,4 +222,6 @@ class TestbedController(testbed_impl.TestbedController):
     def _make_nepi_dependency(self, parameters):
         return self._make_generic(parameters, self._app.NepiDependency)
 
+    def _make_ns3_dependency(self, parameters):
+        return self._make_generic(parameters, self._app.NS3Dependency)
 
