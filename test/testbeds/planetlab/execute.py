@@ -27,7 +27,7 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
         
         instance.defer_configure("homeDirectory", self.root_dir)
         instance.defer_configure("slice", slicename)
-        instance.defer_configure("sliceSSHKey", "/user/%s/home/.ssh/id_rsa_planetlab" % (getpass.getuser(),))
+        instance.defer_configure("sliceSSHKey", "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'],))
         instance.defer_configure("authUser", pl_user)
         instance.defer_configure("authPass", pl_pwd)
         
