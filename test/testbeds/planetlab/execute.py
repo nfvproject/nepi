@@ -23,14 +23,14 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
         testbed_version = "01"
         instance = planetlab.TestbedController(testbed_version)
         slicename = "inria_nepi12"
+        pl_ssh_key = os.environ.get(
+            "PL_SSH_KEY",
+            "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'],) )
         pl_user, pl_pwd = test_util.pl_auth()
         
         instance.defer_configure("homeDirectory", self.root_dir)
         instance.defer_configure("slice", slicename)
-        instance.defer_configure("sliceSSHKey", 
-            os.environ.get(
-                "PL_SSH_KEY",
-                "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'],) ) )
+        instance.defer_configure("sliceSSHKey", pl_ssh_key)
         instance.defer_configure("authUser", pl_user)
         instance.defer_configure("authPass", pl_pwd)
         
