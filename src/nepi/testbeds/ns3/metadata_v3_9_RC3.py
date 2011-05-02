@@ -29,10 +29,10 @@ def connect_phy_device(testbed_instance, phy_guid, device_guid):
     device.SetPhy(phy)
     phy.SetDevice(device)
     # search for the node asociated with the device
-    node_guid = testbed_instance.get_connected(guid, "node", "devs")
+    node_guid = testbed_instance.get_connected(device_guid, "node", "devs")
     if len(node_guid) == 0:
         raise RuntimeError("Can't instantiate interface %d outside netns \
-                node" % guid)
+                node" % device_guid)
     node = testbed_instance.elements[node_guid[0]]
     phy.SetMobility(node)
 
@@ -61,7 +61,7 @@ def connect_simple_channel_device(testbed_instance, channel_guid, device_guid):
     device = testbed_instance._elements[device_guid]
     device.SetChannel(channel)
 
-def connect_loss_channel(testbed_instance, loss, channel):
+def connect_loss_channel(testbed_instance, loss_guid, channel_guid):
     loss = testbed_instance._elements[loss_guid]
     channel = testbed_instance._elements[channel_guid]
     channel.SetPropagationLossModel(loss)
@@ -91,8 +91,11 @@ def connect_node_other(testbed_instance, node_guid, other_guid):
 
 def connect_fd(testbed_instance, fdnd_guid, cross_data):
     fdnd = testbed_instance._elements[fdnd_guid]
-    address = fdnd.socket_address
-    fdnd.set_attribute_value("LinuxSocketAddress", address)
+    endpoint = fdnd.GetEndpoint()
+    # XXX: check the method StringToBuffer of ns3::FileDescriptorNetDevice
+    # to see how the address should be decoded
+    address = endpoint.replace(":", "").decode('hex')[2:]
+    testbed_instance.set(fdnd_guid, "LinuxSocketAddress", address)
 
 ### Connector information ###
 

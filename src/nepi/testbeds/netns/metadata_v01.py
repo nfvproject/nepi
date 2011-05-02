@@ -29,11 +29,10 @@ def connect_fd(testbed_instance, tap_guid, cross_data):
     import passfd
     import socket
     tap = testbed_instance._elements[tap_guid]
-    fd = tap.file_descriptor
     address = cross_data["LinuxSocketAddress"]
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
     sock.connect(address)
-    passfd.sendfd(sock, fd, '0')
+    passfd.sendfd(sock, tap.fd, '0')
     # TODO: after succesful transfer, the tap device should close the fd
 
 ### Creation functions ###

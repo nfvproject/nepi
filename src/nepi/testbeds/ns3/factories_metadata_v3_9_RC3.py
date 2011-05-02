@@ -67,7 +67,7 @@ def _csmapcap_trace(testbed_instance, guid, trace_id, promisc):
     node_guid = _get_node_guid(testbed_instance, guid)
     interface_number = _get_dev_number(testbed_instance, guid)
     element = testbed_instance._elements[guid]
-    filename = "trace-csma-node-%d-dev-%d.pcap" % (node_name, interface_number)
+    filename = "trace-csma-node-%d-dev-%d.pcap" % (node_guid, interface_number)
     testbed_instance.follow_trace(guid, trace_id, filename)
     filepath = testbed_instance.trace_filename(guid, trace_id)
     helper = testbed_instance.ns3.CsmaHelper()
@@ -86,7 +86,7 @@ def fdpcap_trace(testbed_instance, guid, trace_id):
     node_guid = _get_node_guid(testbed_instance, guid)
     interface_number = _get_dev_number(testbed_instance, guid)
     element = testbed_instance._elements[guid]
-    filename = "trace-fd-node-%d-dev-%d.pcap" % (node_name, interface_number)
+    filename = "trace-fd-node-%d-dev-%d.pcap" % (node_guid, interface_number)
     testbed_instance.follow_trace(guid, trace_id, filename)
     filepath = testbed_instance.trace_filename(guid, trace_id)
     helper = testbed_instance.ns3.FileDescriptorHelper()
@@ -97,7 +97,7 @@ def yanswifipcap_trace(testbed_instance, guid, trace_id):
     node_guid = _get_node_guid(testbed_instance, dev_guid)
     interface_number = _get_dev_number(testbed_instance, dev_guid)
     element = testbed_instance._elements[dev_guid]
-    filename = "trace-yanswifi-node-%d-dev-%d.pcap" % (node_name, interface_number)
+    filename = "trace-yanswifi-node-%d-dev-%d.pcap" % (node_guid, interface_number)
     testbed_instance.follow_trace(guid, trace_id, filename)
     filepath = testbed_instance.trace_filename(guid, trace_id)
     helper = testbed_instance.ns3.YansWifiPhyHelper()
@@ -141,17 +141,6 @@ def create_node(testbed_instance, guid):
     create_element(testbed_instance, guid)
     element = testbed_instance._elements[guid]
     element.AggregateObject(testbed_instance.ns3.PacketSocketFactory())
-
-def create_device(testbed_instance, guid):
-    create_element(testbed_instance, guid)
-    element = testbed_instance._elements[guid]
-    parameters = testbed_instance._get_parameters(guid)
-    if "macAddress" in parameters:
-        address = parameters["macAddress"]
-        macaddr = testbed_instance.ns3.Mac48Address(address)
-    else:
-        macaddr = testbed_instance.ns3.Mac48Address.Allocate()
-    element.SetAddress(macaddr)
 
 def create_wifi_standard_model(testbed_instance, guid):
     create_element(testbed_instance, guid)
@@ -222,6 +211,15 @@ def configure_device(testbed_instance, guid):
     configure_traces(testbed_instance, guid)
 
     element = testbed_instance._elements[guid]
+
+    parameters = testbed_instance._get_parameters(guid)
+    if "macAddress" in parameters:
+        address = parameters["macAddress"]
+        macaddr = testbed_instance.ns3.Mac48Address(address)
+    else:
+        macaddr = testbed_instance.ns3.Mac48Address.Allocate()
+    element.SetAddress(macaddr)
+
     if not guid in testbed_instance._add_address:
         return
     # search for the node asociated with the device
@@ -341,7 +339,7 @@ factories_info = dict({
     }),
      "ns3::TapBridge": dict({
         "category": "Device",
-        "create_function": create_device,
+        "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
         "connector_types": [],
@@ -408,7 +406,7 @@ factories_info = dict({
     }),
      "ns3::PointToPointNetDevice": dict({
         "category": "Device",
-        "create_function": create_device,
+        "create_function": create_element,
         "configure_function": configure_device,
         "help": "",
         "connector_types": ["node", "err", "queue", "chan"],
@@ -624,7 +622,7 @@ factories_info = dict({
     }),
      "ns3::FileDescriptorNetDevice": dict({
         "category": "Device",
-        "create_function": create_device,
+        "create_function": create_element,
         "configure_function": configure_device,
         "help": "Network interface associated to a file descriptor",
         "connector_types": ["node", "fd"],
@@ -635,7 +633,7 @@ factories_info = dict({
     }),
      "ns3::CsmaNetDevice": dict({
         "category": "Device",
-        "create_function": create_device,
+        "create_function": create_element,
         "configure_function": configure_device,
         "help": "CSMA (carrier sense, multiple access) interface",
         "connector_types": ["node", "chan", "err", "queue"],
@@ -685,7 +683,7 @@ factories_info = dict({
     }),
      "ns3::SimpleNetDevice": dict({
         "category": "Device",
-        "create_function": create_device,
+        "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
         "connector_types": ["node", "chan"],
@@ -740,7 +738,7 @@ factories_info = dict({
     }),
      "ns3::LoopbackNetDevice": dict({
         "category": "Device",
-        "create_function": create_device,
+        "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
         "connector_types": [],
@@ -1013,7 +1011,7 @@ factories_info = dict({
     }),
      "ns3::BaseStationNetDevice": dict({
         "category": "Device",
-        "create_function": create_device,
+        "create_function": create_element,
         "configure_function": configure_device,
         "help": "",
         "connector_types": [],
@@ -1085,7 +1083,7 @@ factories_info = dict({
     }),
      "ns3::EmuNetDevice": dict({
         "category": "Device",
-        "create_function": create_device,
+        "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
         "connector_types": ["node", "queue"],
@@ -1142,7 +1140,7 @@ factories_info = dict({
     }),
      "ns3::WifiNetDevice": dict({
         "category": "Device",
-        "create_function": create_device,
+        "create_function": create_element,
         "configure_function": configure_device,
         "help": "",
         "connector_types": ["node", "mac", "phy", "manager"],
@@ -1160,7 +1158,7 @@ factories_info = dict({
     }),
      "ns3::BridgeNetDevice": dict({
         "category": "Device",
-        "create_function": create_device,
+        "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
         "connector_types": ["node"],
@@ -1317,7 +1315,7 @@ factories_info = dict({
     }),
      "ns3::MeshPointDevice": dict({
         "category": "Device",
-        "create_function": create_device,
+        "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
         "connector_types": [],
@@ -1381,7 +1379,7 @@ factories_info = dict({
     }),
      "ns3::NonCommunicatingNetDevice": dict({
         "category": "Device",
-        "create_function": create_device,
+        "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
         "connector_types": [],
@@ -1445,7 +1443,7 @@ factories_info = dict({
     }),
      "ns3::YansWifiPhy": dict({
         "category": "Phy",
-        "create_function": create_element,
+        "create_function": create_wifi_standard_model,
         "configure_function": configure_element,
         "help": "",
         "connector_types": ["dev", "err", "chan"],
@@ -1679,7 +1677,7 @@ factories_info = dict({
     }),
      "ns3::VirtualNetDevice": dict({
         "category": "Device",
-        "create_function": create_device,
+        "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
         "connector_types": [],
@@ -1968,7 +1966,7 @@ factories_info = dict({
     }),
      "ns3::SubscriberStationNetDevice": dict({
         "category": "Device",
-        "create_function": create_device,
+        "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
         "connector_types": [],

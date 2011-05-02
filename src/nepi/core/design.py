@@ -157,7 +157,7 @@ class Route(AttributesMap):
         self.add_attribute(name = "NetPrefix",
                 help = "Network destination prefix", 
                 type = Attribute.INTEGER, 
-                prefix_range = (0,128),
+                range = (0, 128),
                 value = 24,
                 flags = Attribute.HasNoDefaultValue,
                 validation_function = validation.is_integer)

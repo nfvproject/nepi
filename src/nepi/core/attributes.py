@@ -24,9 +24,8 @@ class Attribute(object):
     # Attribute is read only and can't be modified by the user
     # Note: ReadOnly implies DesignOnly
     ReadOnly    = 0x03
-    # Attribute is invisible to the user
-    # Note: Invisible implies ReadOnly and DesignOnly
-    Invisible   = 0x07
+    # Attribute is invisible to the user but can be modified
+    Invisible   = 0x04
     # Attribute has no default value in the testbed instance. 
     # So it needs to be set explicitely
     HasNoDefaultValue = 0x08
@@ -64,7 +63,7 @@ class Attribute(object):
         return self._flags
 
     @property
-    def invsible(self):
+    def invisible(self):
         return (self._flags & Attribute.Invisible) == Attribute.Invisible
 
     @property

@@ -44,7 +44,8 @@ class TestbedController(testbed_impl.TestbedController):
         # TODO: take on account schedule time for the task
         factory_id = self._create[guid]
         factory = self._factories[factory_id]
-        if factory.box_attributes.is_attribute_design_only(name):
+        if factory.box_attributes.is_attribute_design_only(name) or \
+                factory.box_attributes.is_attribute_invisible(name):
             return
         element = self._elements[guid]
         ns3_value = self._to_ns3_value(guid, name, value) 
@@ -55,7 +56,8 @@ class TestbedController(testbed_impl.TestbedController):
         # TODO: take on account schedule time for the task
         factory_id = self._create[guid]
         factory = self._factories[factory_id]
-        if factory.box_attributes.is_attribute_design_only(name):
+        if factory.box_attributes.is_attribute_design_only(name) or \
+                factory.box_attributes.is_attribute_invisible(name):
             return value
         TypeId = self.ns3.TypeId()
         typeid = TypeId.LookupByName(factory_id)
