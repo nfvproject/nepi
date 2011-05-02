@@ -616,12 +616,16 @@ def popen_ssh_subprocess(python_code, host, port, user, agent,
         python_path = None,
         ident_key = None,
         server_key = None,
-        tty = False):
+        tty = False,
+        environment_setup = ""):
         if python_path:
             python_path.replace("'", r"'\''")
             cmd = """PYTHONPATH="$PYTHONPATH":'%s' """ % python_path
         else:
             cmd = ""
+        if environment_setup:
+            cmd += environment_setup
+            cmd += " "
         # Uncomment for debug (to run everything under strace)
         # We had to verify if strace works (cannot nest them)
         #cmd += "if strace echo >/dev/null 2>&1; then CMD='strace -ff -tt -s 200 -o strace.out'; else CMD=''; fi\n"

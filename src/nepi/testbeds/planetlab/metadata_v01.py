@@ -8,7 +8,7 @@ from nepi.core import metadata
 from nepi.core.attributes import Attribute
 from nepi.util import validation
 from nepi.util.constants import STATUS_NOT_STARTED, STATUS_RUNNING, \
-        STATUS_FINISHED
+        STATUS_FINISHED, ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP
 
 import functools
 import os
@@ -679,6 +679,13 @@ attributes = dict({
                 "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_string
             }),
+    ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP: dict({
+                "name": ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP,
+                "help": "Commands to set up the environment needed to run NEPI testbeds",
+                "type": Attribute.STRING,
+                "flags": Attribute.Invisible | Attribute.ReadOnly,
+                "validation_function": validation.is_string
+            }),
     
     "netpipe_mode": dict({      
                 "name": "mode",
@@ -792,6 +799,9 @@ factories_info = dict({
                 "max_reliability",
                 "min_bandwidth",
                 "max_bandwidth",
+                
+                # NEPI-in-NEPI attributes
+                ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP,
             ],
             "connector_types": ["devs", "apps", "pipes", "deps"]
        }),
