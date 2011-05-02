@@ -171,8 +171,20 @@ class TestbedController(testbed_impl.TestbedController):
         if bindings:
             path = [ bindings ] + path
 
-        module = imp.find_module ('ns3', path)
-        mod = imp.load_module ('ns3', *module)
+        try:
+            module = imp.find_module ('ns3', path)
+            mod = imp.load_module ('ns3', *module)
+        except ImportError:
+            # In some environments, ns3 per-se does not exist,
+            # only the low-level _ns3
+            module = imp.find_module ('_ns3', path)
+            mod = imp.load_module ('_ns3', *module)
+            sys.modules["ns3"] = mod # install it as ns3 too
+            
+            # When using _ns3, we have to make sure we destroy
+            # the simulator when the process finishes
+            import atexit
+            atexit.register(mod.Simulator.Destroy)
     
         if simu_impl_type:
             value = mod.StringValue(simu_impl_type)

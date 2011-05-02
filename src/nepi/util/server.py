@@ -24,7 +24,7 @@ STOP_MSG = "STOP"
 
 ERROR_LEVEL = 0
 DEBUG_LEVEL = 1
-TRACE = False
+TRACE = os.environ.get("NEPI_TRACE", "false").lower() in ("true", "1", "on")
 
 if hasattr(os, "devnull"):
     DEV_NULL = os.devnull
@@ -410,7 +410,11 @@ def popen_ssh_command(command, host, port, user, agent,
         # alive until the process is finished with it
         proc._known_hosts = tmp_known_hosts
         
-        return (proc.communicate(stdin), proc)
+        out, err = proc.communicate(stdin)
+        if TRACE:
+            print " -> ", out, err
+
+        return ((out, err), proc)
  
 def popen_scp(source, dest, 
             port = None, 

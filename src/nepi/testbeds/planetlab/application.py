@@ -41,6 +41,7 @@ class Dependency(object):
         self.depends = None
         self.buildDepends = None
         self.sources = None
+        self.env = {}
         
         self.stdin = None
         self.stdout = None
@@ -223,7 +224,7 @@ class Dependency(object):
         if self.build:
             # Build sources
             (out,err),proc = server.popen_ssh_command(
-                "cd %(home)s && mkdir -p build && cd build && %(command)s" % {
+                "cd %(home)s && mkdir -p build && cd build && ( %(command)s ) > ${HOME}/%(home)s/buildlog 2>&1 || ( tail ${HOME}/%(home)s/buildlog >&2 && false )" % {
                     'command' : self._replace_paths(self.build),
                     'home' : server.shell_escape(self.home_path),
                 },
@@ -258,7 +259,7 @@ class Dependency(object):
         if self.install:
             # Install application
             (out,err),proc = server.popen_ssh_command(
-                "cd %(home)s && cd build && %(command)s" % {
+                "cd %(home)s && cd build && ( %(command)s ) > ${HOME}/%(home)s/installlog 2>&1 || ( tail ${HOME}/%(home)s/installlog >&2 && false )" % {
                     'command' : self._replace_paths(self.install),
                     'home' : server.shell_escape(self.home_path),
                 },
@@ -321,6 +322,10 @@ class Application(Dependency):
         command.write('export PATH=$PATH:%s\n' % (
             ':'.join(["${HOME}/"+server.shell_escape(s) for s in self.node.pythonpath])
         ))
+        if self.node.env:
+            for envkey, envvals in self.node.env.iteritems():
+                for envval in envvals:
+                    command.write('export %s=%s\n' % (envkey, envval))
         command.write(self.command)
         command.seek(0)
         
@@ -421,13 +426,8 @@ class Application(Dependency):
     
 class NepiDependency(Dependency):
     """
-    A Dependency is in every respect like an application.
-    
-    It depends on some packages, it may require building binaries, it must deploy
-    them...
-    
-    But it has no command. Dependencies aren't ever started, or stopped, and have
-    no status.
+    This dependency adds nepi itself to the python path,
+    so that you may run testbeds within PL nodes.
     """
     
     # Class attribute holding a *weak* reference to the shared NEPI tar file
@@ -440,7 +440,7 @@ class NepiDependency(Dependency):
         
         self._tarball = None
         
-        self.depends = 'python python-ipaddrn python-setuptools'
+        self.depends = 'python python-ipaddr python-setuptools'
         
         # our sources are in our ad-hoc tarball
         self.sources = self.tarball.name
@@ -452,6 +452,93 @@ class NepiDependency(Dependency):
         
         # unpack it into sources, and we're done
         self.install = "tar xzf ${BUILD}/%s -C .." % (tarname,)
+    
+    @property
+    def tarball(self):
+        if self._tarball is None:
+            shared_tar = self._shared_nepi_tar and self._shared_nepi_tar()
+            if shared_tar is not None:
+                self._tarball = shared_tar
+            else:
+                # Build an ad-hoc tarball
+                # Prebuilt
+                import nepi
+                import tempfile
+                
+                shared_tar = tempfile.NamedTemporaryFile(prefix='nepi-src-', suffix='.tar.gz')
+                
+                proc = subprocess.Popen(
+                    ["tar", "czf", shared_tar.name, 
+                        '-C', os.path.join(os.path.dirname(os.path.dirname(nepi.__file__)),'.'), 
+                        'nepi'],
+                    stdout = open("/dev/null","w"),
+                    stdin = open("/dev/null","r"))
+
+                if proc.wait():
+                    raise RuntimeError, "Failed to create nepi tarball"
+                
+                self._tarball = self._shared_nepi_tar = shared_tar
+                
+        return self._tarball
+
+class NS3Dependency(Dependency):
+    """
+    This dependency adds NS3 libraries to the library paths,
+    so that you may run the NS3 testbed within PL nodes.
+    
+    You'll also need the NepiDependency.
+    """
+    
+    def __init__(self, api = None):
+        super(NS3Dependency, self).__init__(api)
+        
+        self.buildDepends = 'build-essential waf gcc gcc-c++ gccxml unzip'
+        
+        # We have to download the sources, untar, build...
+        pybindgen_source_url = "http://pybindgen.googlecode.com/files/pybindgen-0.15.0.zip"
+        pygccxml_source_url = "http://leaseweb.dl.sourceforge.net/project/pygccxml/pygccxml/pygccxml-1.0/pygccxml-1.0.0.zip"
+        ns3_source_url = "http://yans.pl.sophia.inria.fr/code/hgwebdir.cgi/ns-3-dev/archive/tip.tar.gz"
+        self.build =("wget -q -c -O pybindgen-src.zip %(pybindgen_source_url)s && " # continue, to exploit the case when it has already been dl'ed
+                     "wget -q -c -O pygccxml-1.0.0.zip %(pygccxml_source_url)s && " 
+                     "wget -q -c -O ns3-src.tar.gz %(ns3_source_url)s && "  
+                     "unzip -n pybindgen-src.zip && " # Do not overwrite files, to exploit the case when it has already been built
+                     "unzip -n pygccxml-1.0.0.zip && "
+                     "mkdir -p ns3-src && "
+                     "tar xzf ns3-src.tar.gz --strip-components=1 -C ns3-src && "
+                     "rm -rf target && "    # mv doesn't like unclean targets
+                     "mkdir -p target && "
+                     "cd pygccxml-1.0.0 && "
+                     "python setup.py build && "
+                     "python setup.py install --install-lib ${BUILD}/target && "
+                     "python setup.py clean && "
+                     "cd ../pybindgen-0.15.0 && "
+                     "export PYTHONPATH=$PYTHONPATH:${BUILD}/target && "
+                     "./waf configure --prefix=${BUILD}/target -d release && "
+                     "./waf && "
+                     "./waf install && "
+                     "./waf clean && "
+                     "mv -f ${BUILD}/target/lib/python*/site-packages/pybindgen ${BUILD}/target/. && "
+                     "rm -rf ${BUILD}/target/lib && "
+                     "cd ../ns3-src && "
+                     "./waf configure --prefix=${BUILD}/target -d release && "
+                     "./waf &&"
+                     "./waf install && "
+                     "./waf clean"
+                     % dict(
+                        pybindgen_source_url = server.shell_escape(pybindgen_source_url),
+                        pygccxml_source_url = server.shell_escape(pygccxml_source_url),
+                        ns3_source_url = server.shell_escape(ns3_source_url),
+                     ))
+        
+        # Just move ${BUILD}/target
+        self.install = (
+            "( for i in ${BUILD}/target/* ; do rm -rf ${SOURCES}/${i##*/} ; done ) && " # mv doesn't like unclean targets
+            "mv -f ${BUILD}/target/* ${SOURCES}"
+        )
+        
+        # Set extra environment paths
+        self.env['NEPI_NS3BINDINGS'] = "${SOURCES}/lib"
+        self.env['NEPI_NS3LIBRARY'] = "${SOURCES}/lib/libns3.so"
     
     @property
     def tarball(self):
