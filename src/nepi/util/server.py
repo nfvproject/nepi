@@ -353,8 +353,20 @@ def _make_server_key_args(server_key, host, port, args):
         host = '%s:%s' % (host,port)
     # Create a temporary server key file
     tmp_known_hosts = tempfile.NamedTemporaryFile()
+    
+    # Add the intended host key
     tmp_known_hosts.write('%s,%s %s\n' % (host, socket.gethostbyname(host), server_key))
+    
+    # If we're not in strict mode, add user-configured keys
+    if os.environ.get('NEPI_STRICT_AUTH_MODE',"").lower() not in ('1','true','on'):
+        user_hosts_path = '%s/.ssh/known_hosts' % (os.environ.get('HOME',""),)
+        if os.access(user_hosts_path, os.R_OK):
+            f = open(user_hosts_path, "r")
+            tmp_known_hosts.write(f.read())
+            f.close()
+        
     tmp_known_hosts.flush()
+    
     args.extend(['-o', 'UserKnownHostsFile=%s' % (tmp_known_hosts.name,)])
     return tmp_known_hosts
 
