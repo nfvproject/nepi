@@ -4,7 +4,7 @@
 import base64
 from nepi.core.attributes import AttributesMap, Attribute
 from nepi.util import server, validation
-from nepi.util.constants import TIME_NOW
+from nepi.util.constants import TIME_NOW, ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP
 import getpass
 import cPickle
 import sys
@@ -317,6 +317,10 @@ def create_testbed_controller(testbed_id, testbed_version, access_config):
             else access_config.get_attribute_value("mode")
     launch = True if not access_config \
             else not access_config.get_attribute_value("recover")
+    environment_setup = access_config \
+            and access_config.has_attribute(ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP) \
+            and access_config.get_attribute_value(ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP) \
+            or ""
     if not mode or mode == AccessConfiguration.MODE_SINGLE_PROCESS:
         if not launch:
             raise ValueError, "Unsupported instantiation mode: %s with lanch=False" % (mode,)
@@ -326,7 +330,8 @@ def create_testbed_controller(testbed_id, testbed_version, access_config):
                 get_access_config_params(access_config)
         return TestbedControllerProxy(root_dir, log_level, testbed_id = testbed_id, 
                 testbed_version = testbed_version, host = host, port = port,
-                user = user, agent = agent, launch = launch)
+                user = user, agent = agent, launch = launch,
+                environment_setup = environment_setup)
     raise RuntimeError("Unsupported access configuration '%s'" % mode)
 
 def _build_testbed_controller(testbed_id, testbed_version):
@@ -770,7 +775,8 @@ class ExperimentControllerServer(server.Server):
 class TestbedControllerProxy(object):
     def __init__(self, root_dir, log_level, testbed_id = None, 
             testbed_version = None, launch = True, host = None, 
-            port = None, user = None, agent = None):
+            port = None, user = None, agent = None,
+            environment_setup = ""):
         if launch:
             if testbed_id == None or testbed_version == None:
                 raise RuntimeError("To launch a TesbedInstance server a \
@@ -783,7 +789,8 @@ class TestbedControllerProxy(object):
                         s.run()" % (root_dir, log_level, testbed_id, 
                                 testbed_version)
                 proc = server.popen_ssh_subprocess(python_code, host = host,
-                    port = port, user = user, agent = agent)
+                    port = port, user = user, agent = agent,
+                    environment_setup = environment_setup)
                 if proc.poll():
                     err = proc.stderr.read()
                     raise RuntimeError("Server could not be executed: %s" % \
@@ -1178,7 +1185,7 @@ class TestbedControllerProxy(object):
 class ExperimentControllerProxy(object):
     def __init__(self, root_dir, log_level, experiment_xml = None, 
             launch = True, host = None, port = None, user = None, 
-            agent = None):
+            agent = None, environment_setup = ""):
         if launch:
             # launch server
             if experiment_xml == None:
@@ -1191,7 +1198,8 @@ class ExperimentControllerProxy(object):
                         s = ExperimentControllerServer(%r, %r, %r);\
                         s.run()" % (root_dir, log_level, xml)
                 proc = server.popen_ssh_subprocess(python_code, host = host,
-                    port = port, user = user, agent = agent)
+                    port = port, user = user, agent = agent,
+                    environment_setup = environment_setup)
                 if proc.poll():
                     err = proc.stderr.read()
                     raise RuntimeError("Server could not be executed: %s" % \

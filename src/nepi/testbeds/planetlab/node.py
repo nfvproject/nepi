@@ -8,6 +8,7 @@ import rspawn
 import time
 import os
 import collections
+import cStringIO
 
 from nepi.util import server
 
@@ -67,6 +68,22 @@ class Node(object):
         
         # Those are filled when an actual node is allocated
         self._node_id = None
+    
+    @property
+    def _nepi_testbed_environment_setup(self):
+        command = cStringIO.StringIO()
+        command.write('PYTHONPATH=$PYTHONPATH:%s' % (
+            ':'.join(["${HOME}/"+server.shell_escape(s) for s in self.pythonpath])
+        ))
+        command.write(' PATH=$PATH:%s' % (
+            ':'.join(["${HOME}/"+server.shell_escape(s) for s in self.pythonpath])
+        ))
+        if self.node.env:
+            for envkey, envvals in self.node.env.iteritems():
+                for envval in envvals:
+                    command.write(' %s=%s' % (envkey, envval))
+        command.write(self.command)
+        return command.getvalue()
     
     def build_filters(self, target_filters, filter_map):
         for attr, tag in filter_map.iteritems():
