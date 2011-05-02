@@ -24,6 +24,9 @@ class PlanetLabIntegrationTestCase(unittest.TestCase):
         testbed_id = "planetlab"
         testbed_version = "01"
         slicename = "inria_nepi12"
+        pl_ssh_key = os.environ.get(
+            "PL_SSH_KEY",
+            "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'],) )
         pl_user, pl_pwd = test_util.pl_auth()
 
         exp_desc = ExperimentDescription()
@@ -31,7 +34,7 @@ class PlanetLabIntegrationTestCase(unittest.TestCase):
         pl_desc = exp_desc.add_testbed_description(pl_provider)
         pl_desc.set_attribute_value("homeDirectory", self.root_dir)
         pl_desc.set_attribute_value("slice", slicename)
-        pl_desc.set_attribute_value("sliceSSHKey", "/user/%s/home/.ssh/id_rsa_planetlab" % (getpass.getuser(),))
+        pl_desc.set_attribute_value("sliceSSHKey", pl_ssh_key)
         pl_desc.set_attribute_value("authUser", pl_user)
         pl_desc.set_attribute_value("authPass", pl_pwd)
         
