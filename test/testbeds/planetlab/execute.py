@@ -419,7 +419,10 @@ echo 'OKIDOKI'
         # asserts at the end, to make sure there's proper cleanup
         self.assertEqual(ping_result, "")
 
-    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    @test_util.skipUnless(test_util.pl_auth() is not None, 
+        "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    @test_util.skipUnless(os.environ.get('NEPI_FULL_TESTS','').lower() in ('1','yes','true','on'),
+        "Test is expensive, requires NEPI_FULL_TESTS=yes")
     def test_ns3_depends(self):
         instance = self.make_instance()
         
