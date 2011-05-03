@@ -38,6 +38,7 @@ class DeploymentConfiguration:
     DEPLOYMENT_HOST = "deployment_host"
     DEPLOYMENT_USER = "deployment_user"
     DEPLOYMENT_PORT = "deployment_port"
+    DEPLOYMENT_KEY  = "deployment_key"
     
     DEPLOYMENT_ENVIRONMENT_SETUP = "deployment_environment_setup"
     

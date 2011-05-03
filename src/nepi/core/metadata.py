@@ -198,6 +198,12 @@ class Metadata(object):
                 flags = Attribute.DesignOnly,
                 validation_function = validation.is_string
         )),
+        (DC.DEPLOYMENT_KEY, dict(name = DC.DEPLOYMENT_KEY,
+                help = "Path to SSH key to use for connecting",
+                type = Attribute.STRING,
+                flags = Attribute.DesignOnly,
+                validation_function = validation.is_string
+        )),
         (DC.DEPLOYMENT_PORT, dict(name = DC.DEPLOYMENT_PORT,
                 help = "Port on the Host",
                 type = Attribute.INTEGER,

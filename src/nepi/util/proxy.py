@@ -199,7 +199,7 @@ def get_access_config_params(access_config):
     root_dir = access_config.get_attribute_value(DC.ROOT_DIRECTORY)
     log_level = access_config.get_attribute_value(DC.LOG_LEVEL)
     log_level = to_server_log_level(log_level)
-    user = host = port = agent = None
+    user = host = port = agent = key = None
     communication = access_config.get_attribute_value(DC.DEPLOYMENT_COMMUNICATION)
     environment_setup = (
         access_config.get_attribute_value(DC.DEPLOYMENT_ENVIRONMENT_SETUP)
@@ -211,7 +211,8 @@ def get_access_config_params(access_config):
         host = access_config.get_attribute_value(DC.DEPLOYMENT_HOST)
         port = access_config.get_attribute_value(DC.DEPLOYMENT_PORT)
         agent = access_config.get_attribute_value(DC.USE_AGENT)
-    return (root_dir, log_level, user, host, port, agent, environment_setup)
+        key = access_config.get_attribute_value(DC.DEPLOYMENT_KEY)
+    return (root_dir, log_level, user, host, port, key, agent, environment_setup)
 
 class AccessConfiguration(AttributesMap):
     def __init__(self, params = None):
@@ -262,10 +263,10 @@ def create_controller(xml, access_config = None):
         
         return controller
     elif mode == DC.MODE_DAEMON:
-        (root_dir, log_level, user, host, port, agent, environment_setup) = \
+        (root_dir, log_level, user, host, port, key, agent, environment_setup) = \
                 get_access_config_params(access_config)
         return ExperimentControllerProxy(root_dir, log_level,
-                experiment_xml = xml, host = host, port = port, user = user, 
+                experiment_xml = xml, host = host, port = port, user = user, ident_key = key,
                 agent = agent, launch = launch,
                 environment_setup = environment_setup)
     raise RuntimeError("Unsupported access configuration '%s'" % mode)
@@ -280,10 +281,10 @@ def create_testbed_controller(testbed_id, testbed_version, access_config):
             raise ValueError, "Unsupported instantiation mode: %s with lanch=False" % (mode,)
         return  _build_testbed_controller(testbed_id, testbed_version)
     elif mode == DC.MODE_DAEMON:
-        (root_dir, log_level, user, host, port, agent, environment_setup) = \
+        (root_dir, log_level, user, host, port, key, agent, environment_setup) = \
                 get_access_config_params(access_config)
         return TestbedControllerProxy(root_dir, log_level, testbed_id = testbed_id, 
-                testbed_version = testbed_version, host = host, port = port,
+                testbed_version = testbed_version, host = host, port = port, ident_key = key,
                 user = user, agent = agent, launch = launch,
                 environment_setup = environment_setup)
     raise RuntimeError("Unsupported access configuration '%s'" % mode)
@@ -704,7 +705,7 @@ class ExperimentControllerServer(server.Server):
 class TestbedControllerProxy(object):
     def __init__(self, root_dir, log_level, testbed_id = None, 
             testbed_version = None, launch = True, host = None, 
-            port = None, user = None, agent = None,
+            port = None, user = None, ident_key = None, agent = None,
             environment_setup = ""):
         if launch:
             if testbed_id == None or testbed_version == None:
@@ -719,6 +720,7 @@ class TestbedControllerProxy(object):
                                 testbed_version)
                 proc = server.popen_ssh_subprocess(python_code, host = host,
                     port = port, user = user, agent = agent,
+                    ident_key = ident_key,
                     environment_setup = environment_setup)
                 if proc.poll():
                     err = proc.stderr.read()
@@ -1114,7 +1116,7 @@ class TestbedControllerProxy(object):
 class ExperimentControllerProxy(object):
     def __init__(self, root_dir, log_level, experiment_xml = None, 
             launch = True, host = None, port = None, user = None, 
-            agent = None, environment_setup = ""):
+            ident_key = None, agent = None, environment_setup = ""):
         if launch:
             # launch server
             if experiment_xml == None:
@@ -1128,6 +1130,7 @@ class ExperimentControllerProxy(object):
                         s.run()" % (root_dir, log_level, xml)
                 proc = server.popen_ssh_subprocess(python_code, host = host,
                     port = port, user = user, agent = agent,
+                    ident_key = ident_key,
                     environment_setup = environment_setup)
                 if proc.poll():
                     err = proc.stderr.read()
