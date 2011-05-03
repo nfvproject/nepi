@@ -171,6 +171,12 @@ testbed_attributes = dict({
                 "allowed": None,
                 "validation_function": validation.is_bool
             }),
+        "test": dict({
+                "name": "test",
+                "help": "test attribute",
+                "type": Attribute.STRING,
+                "validation_function": validation.is_string
+            }),
     })
 
 class VersionedMetadataInfo(metadata.VersionedMetadataInfo):

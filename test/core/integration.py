@@ -224,7 +224,40 @@ class ExecuteTestCase(unittest.TestCase):
         addr.set_attribute_value("Address", "10.0.0.2")
         iface2.set_attribute_value("test", "{#[some].addr[0].[Address]#}")
         
-        # TODO: Test actual substitution
+        xml = exp_desc.to_xml()
+        access_config = None
+        controller = proxy.create_controller(xml, access_config)
+        controller.start()
+        while not controller.is_finished(app.guid):
+            time.sleep(0.5)
+        fake_result = controller.trace(desc.guid, app.guid, "fake")
+        comp_result = """PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
+
+--- 10.0.0.2 ping statistics ---
+1 packets transmitted, 1 received, 0% packet loss, time 0ms
+"""
+        
+        self.assertTrue(fake_result.startswith(comp_result))
+        
+        self.assertEqual(
+            controller._testbeds[desc.guid].get(iface2.guid, "test"),
+            addr.get_attribute_value("Address") )
+        
+        controller.stop()
+        controller.shutdown()
+
+    def test_testbed_reference_expressions(self):
+        exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()
+        
+        iface1.set_attribute_value("label", "some")
+        addr = iface1.add_address()
+        addr.set_attribute_value("Address", "10.0.0.2")
+
+        desc2 = exp_desc.add_testbed_description(
+            FactoriesProvider("mock2", "01") )
+        desc2.set_attribute_value(DC.DEPLOYMENT_HOST, "{#[some].addr[0].[Address]#}")
+        # DC.DEPLOYMENT_HOST should be ignored if DC.DEPLOYMENT_CONNECTION is not set
+        # But it should be resolved anyway
         
         xml = exp_desc.to_xml()
         access_config = None
@@ -239,6 +272,12 @@ class ExecuteTestCase(unittest.TestCase):
 1 packets transmitted, 1 received, 0% packet loss, time 0ms
 """
         self.assertTrue(fake_result.startswith(comp_result))
+
+        self.assertEqual(
+            controller._deployment_config[desc2.guid]
+                .get_attribute_value(DC.DEPLOYMENT_HOST),
+            addr.get_attribute_value("Address") )
+        
         controller.stop()
         controller.shutdown()
 
