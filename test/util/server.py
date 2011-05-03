@@ -9,6 +9,7 @@ import sys
 import tempfile
 import test_util
 import unittest
+import time
 
 class ServerTestCase(unittest.TestCase):
     def setUp(self):
@@ -161,7 +162,12 @@ class ServerTestCase(unittest.TestCase):
         self.assertEqual(reply, "Stopping server")
 
     def tearDown(self):
-        shutil.rmtree(self.root_dir)
+        try:
+            shutil.rmtree(self.root_dir)
+        except:
+            # retry
+            time.sleep(0.1)
+            shutil.rmtree(self.root_dir)
 
 if __name__ == '__main__':
     unittest.main()

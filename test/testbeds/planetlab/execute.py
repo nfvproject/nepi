@@ -17,7 +17,12 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
         self.root_dir = tempfile.mkdtemp()
         
     def tearDown(self):
-        shutil.rmtree(self.root_dir)
+        try:
+            shutil.rmtree(self.root_dir)
+        except:
+            # retry
+            time.sleep(0.1)
+            shutil.rmtree(self.root_dir)
 
     def make_instance(self):
         testbed_version = "01"
