@@ -315,6 +315,7 @@ class ExperimentController(object):
         self._netrefs = dict()
         self._cross_data = dict()
         self._root_dir = root_dir
+        self._netreffed_testbeds = set()
 
         self.persist_experiment_xml()
 
@@ -345,26 +346,49 @@ class ExperimentController(object):
         # persist testbed connection data, for potential recovery
         self._persist_testbed_proxies()
         
-        # perform setup in parallel for all test beds,
-        # wait for all threads to finish
-        self._parallel([testbed.do_setup 
-                        for testbed in self._testbeds.itervalues()])
+        def steps_to_configure(self, allowed_guids):
+            # perform setup in parallel for all test beds,
+            # wait for all threads to finish
+            self._parallel([testbed.do_setup 
+                            for guid,testbed in self._testbeds.iteritems()
+                            if guid in allowed_guids])
+            
+            # perform create-connect in parallel, wait
+            # (internal connections only)
+            self._parallel([testbed.do_create
+                            for guid,testbed in self._testbeds.iteritems()
+                            if guid in allowed_guids])
+
+            self._parallel([testbed.do_connect_init
+                            for guid,testbed in self._testbeds.iteritems()
+                            if guid in allowed_guids])
+
+            self._parallel([testbed.do_connect_compl
+                            for guid,testbed in self._testbeds.iteritems()
+                            if guid in allowed_guids])
+
+            self._parallel([testbed.do_preconfigure
+                            for guid,testbed in self._testbeds.iteritems()
+                            if guid in allowed_guids])
+            
+        steps_to_configure(self, self._testbeds)
         
-        # perform create-connect in parallel, wait
-        # (internal connections only)
-        self._parallel([testbed.do_create
-                        for testbed in self._testbeds.itervalues()])
+        if self._netreffed_testbeds:
+            # initally resolve netrefs
+            self.do_netrefs(fail_if_undefined=False)
+            
+            # rinse and repeat, for netreffed testbeds
+            netreffed_testbeds = set(self._netreffed_testbeds)
 
-        self._parallel([testbed.do_connect_init
-                        for testbed in self._testbeds.itervalues()])
+            self._init_testbed_controllers()
+            
+            # persist testbed connection data, for potential recovery
+            self._persist_testbed_proxies()
 
-        self._parallel([testbed.do_connect_compl
-                        for testbed in self._testbeds.itervalues()])
-
-        self._parallel([testbed.do_preconfigure
-                        for testbed in self._testbeds.itervalues()])
-
-        # resolve netrefs
+            # configure dependant testbeds
+            steps_to_configure(self, netreffed_testbeds)
+            
+        # final netref step, fail if anything's left unresolved
         self.do_netrefs(fail_if_undefined=True)
         
         # perform do_configure in parallel for al testbeds
@@ -446,6 +470,9 @@ class ExperimentController(object):
         self._load_testbed_proxies()
         
         # recreate testbed proxies by reconnecting only
+        self._init_testbed_controllers(recover = True)
+        
+        # another time, for netrefs
         self._init_testbed_controllers(recover = True)
 
     def is_finished(self, guid):
@@ -529,6 +556,7 @@ class ExperimentController(object):
     def _init_testbed_controllers(self, recover = False):
         parser = XmlExperimentParser()
         data = parser.from_xml_to_data(self._experiment_xml)
+        blacklist_testbeds = set(self._testbeds)
         element_guids = list()
         label_guids = dict()
         data_guids = data.guids
@@ -536,15 +564,18 @@ class ExperimentController(object):
         # create testbed controllers
         for guid in data_guids:
             if data.is_testbed_data(guid):
-                self._create_testbed_controller(guid, data, element_guids, 
-                        recover)
+                if guid not in self._testbeds:
+                    self._create_testbed_controller(guid, data, element_guids,
+                            recover)
             else:
-                element_guids.append(guid)
-                label = data.get_attribute_data(guid, "label")
-                if label is not None:
-                    if label in label_guids:
-                        raise RuntimeError, "Label %r is not unique" % (label,)
-                    label_guids[label] = guid
+                (testbed_guid, factory_id) = data.get_box_data(guid)
+                if testbed_guid not in blacklist_testbeds:
+                    element_guids.append(guid)
+                    label = data.get_attribute_data(guid, "label")
+                    if label is not None:
+                        if label in label_guids:
+                            raise RuntimeError, "Label %r is not unique" % (label,)
+                        label_guids[label] = guid
 
         # replace references to elements labels for its guid
         self._resolve_labels(data, data_guids, label_guids)
@@ -590,6 +621,14 @@ class ExperimentController(object):
             
             for (name, value) in data.get_attribute_data(guid):
                 if value is not None and deployment_config.has_attribute(name):
+                    # if any deployment config attribute has a netref, we can't
+                    # create this controller yet
+                    if isinstance(value, basestring) and ATTRIBUTE_PATTERN_BASE.search(value):
+                        # remember to re-issue this one
+                        self._netreffed_testbeds.add(guid)
+                        return
+                    
+                    # copy deployment config attribute
                     deployment_config.set_attribute_value(name, value)
         
         if deployment_config is not None:
@@ -601,6 +640,8 @@ class ExperimentController(object):
         for (name, value) in data.get_attribute_data(guid):
             testbed.defer_configure(name, value)
         self._testbeds[guid] = testbed
+        if guid in self._netreffed_testbeds:
+            self._netreffed_testbeds.remove(guid)
 
     def _program_testbed_controllers(self, element_guids, data):
         for guid in element_guids:
