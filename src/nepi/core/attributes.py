@@ -16,6 +16,14 @@ class Attribute(object):
         DOUBLE, 
         INTEGER
     ]
+    
+    type_parsers = {
+        STRING : str,
+        BOOL : lambda x : str(x).lower() in ("1","on","yes","true"),
+        ENUM : str,
+        DOUBLE : float,
+        INTEGER : int,
+    }
 
     ### Attribute Flags
     NoFlags     = 0x00

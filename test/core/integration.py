@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from nepi.core.design import ExperimentDescription, FactoriesProvider
-from nepi.util.constants import STATUS_FINISHED
+from nepi.util.constants import STATUS_FINISHED, DeploymentConfiguration as DC
 from nepi.util import proxy
 import mock
 import mock.metadata_v01
@@ -102,9 +102,8 @@ class ExecuteTestCase(unittest.TestCase):
         exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()
         xml = exp_desc.to_xml()
         access_config = proxy.AccessConfiguration()
-        access_config.set_attribute_value("mode", 
-                proxy.AccessConfiguration.MODE_DAEMON)
-        access_config.set_attribute_value("rootDirectory", self.root_dir)
+        access_config.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
+        access_config.set_attribute_value(DC.ROOT_DIRECTORY, self.root_dir)
         controller = proxy.create_controller(xml, access_config)
 
         controller.start()
@@ -122,13 +121,13 @@ class ExecuteTestCase(unittest.TestCase):
 
     def test_daemonized_testbed_integration(self):
         exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()
+        
+        desc.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
+        desc.set_attribute_value(DC.ROOT_DIRECTORY, self.root_dir)
+
         xml = exp_desc.to_xml()
+        
         controller = proxy.create_controller(xml, access_config = None)
-        access_config = proxy.AccessConfiguration()
-        access_config.set_attribute_value("mode", 
-                proxy.AccessConfiguration.MODE_DAEMON)
-        access_config.set_attribute_value("rootDirectory", self.root_dir)
-        controller.set_access_configuration(desc.guid, access_config)
 
         controller.start()
         while not controller.is_finished(app.guid):
@@ -145,20 +144,18 @@ class ExecuteTestCase(unittest.TestCase):
 
     def test_daemonized_all_integration(self):
         exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()
-        xml = exp_desc.to_xml()
-        access_config = proxy.AccessConfiguration()
-        access_config.set_attribute_value("mode", 
-                proxy.AccessConfiguration.MODE_DAEMON)
-        access_config.set_attribute_value("rootDirectory", self.root_dir)
-        controller = proxy.create_controller(xml, access_config)
-
-        access_config2 = proxy.AccessConfiguration()
-        access_config2.set_attribute_value("mode", 
-                proxy.AccessConfiguration.MODE_DAEMON)
+        
+        desc.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
         inst_root_dir = os.path.join(self.root_dir, "instance")
         os.mkdir(inst_root_dir)
-        access_config2.set_attribute_value("rootDirectory", inst_root_dir)
-        controller.set_access_configuration(desc.guid, access_config2)
+        desc.set_attribute_value(DC.ROOT_DIRECTORY, inst_root_dir)
+        
+        xml = exp_desc.to_xml()
+        
+        access_config = proxy.AccessConfiguration()
+        access_config.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
+        access_config.set_attribute_value(DC.ROOT_DIRECTORY, self.root_dir)
+        controller = proxy.create_controller(xml, access_config)
 
         controller.start()
         while not controller.is_finished(app.guid):
@@ -175,20 +172,18 @@ class ExecuteTestCase(unittest.TestCase):
 
     def test_daemonized_all_integration_recovery(self):
         exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()
-        xml = exp_desc.to_xml()
-        access_config = proxy.AccessConfiguration()
-        access_config.set_attribute_value("mode", 
-                proxy.AccessConfiguration.MODE_DAEMON)
-        access_config.set_attribute_value("rootDirectory", self.root_dir)
-        controller = proxy.create_controller(xml, access_config)
-
-        access_config2 = proxy.AccessConfiguration()
-        access_config2.set_attribute_value("mode", 
-                proxy.AccessConfiguration.MODE_DAEMON)
+        
+        desc.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
         inst_root_dir = os.path.join(self.root_dir, "instance")
         os.mkdir(inst_root_dir)
-        access_config2.set_attribute_value("rootDirectory", inst_root_dir)
-        controller.set_access_configuration(desc.guid, access_config2)
+        desc.set_attribute_value(DC.ROOT_DIRECTORY, inst_root_dir)
+        
+        xml = exp_desc.to_xml()
+        
+        access_config = proxy.AccessConfiguration()
+        access_config.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
+        access_config.set_attribute_value(DC.ROOT_DIRECTORY, self.root_dir)
+        controller = proxy.create_controller(xml, access_config)
 
         controller.start()
         while not controller.is_finished(app.guid):
@@ -205,7 +200,7 @@ class ExecuteTestCase(unittest.TestCase):
         del controller
         
         # recover
-        access_config.set_attribute_value("recover",True)
+        access_config.set_attribute_value(DC.RECOVER,True)
         controller = proxy.create_controller(xml, access_config)
         
         # test recovery
@@ -247,28 +242,25 @@ class ExecuteTestCase(unittest.TestCase):
         # sys.modules["nepi.testbeds.mock"] = mock
         # is not set in the ssh process
         exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()
-        xml = exp_desc.to_xml()
-        access_config = proxy.AccessConfiguration()
-        access_config.set_attribute_value("mode", 
-                proxy.AccessConfiguration.MODE_DAEMON)
-        access_config.set_attribute_value("rootDirectory", self.root_dir)
-        access_config.set_attribute_value("communication", 
-                proxy.AccessConfiguration.ACCESS_SSH)
-        access_config.set_attribute_value("port", env.port)
-        access_config.set_attribute_value("useAgent", True)
-        controller = proxy.create_controller(xml, access_config)
-
-        access_config2 = proxy.AccessConfiguration()
-        access_config2.set_attribute_value("mode", 
-                proxy.AccessConfiguration.MODE_DAEMON)
+        env = test_util.test_environment()
+        
+        desc.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
         inst_root_dir = os.path.join(self.root_dir, "instance")
         os.mkdir(inst_root_dir)
-        access_config2.set_attribute_value("rootDirectory", inst_root_dir)
-        access_config2.set_attribute_value("communication", 
-                proxy.AccessConfiguration.ACCESS_SSH)
-        access_config2.set_attribute_value("port", env.port)
-        access_config2.set_attribute_value("useAgent", True)
-        controller.set_access_configuration(desc.guid, access_config2)
+        desc.set_attribute_value(DC.ROOT_DIRECTORY, inst_root_dir)
+        desc.set_attribute_value(DC.DEPLOYMENT_COMMUNICATION, DC.ACCESS_SSH)
+        desc.set_attribute_value(DC.DEPLOYMENT_PORT, env.port)
+        desc.set_attribute_value(DC.USE_AGENT, True)
+        
+        xml = exp_desc.to_xml()
+        
+        access_config = proxy.AccessConfiguration()
+        access_config.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
+        access_config.set_attribute_value(DC.ROOT_DIRECTORY, self.root_dir)
+        access_config.set_attribute_value(DC.DEPLOYMENT_COMMUNICATION, DC.ACCESS_SSH)
+        access_config.set_attribute_value(DC.DEPLOYMENT_PORT, env.port)
+        access_config.set_attribute_value(DC.USE_AGENT, True)
+        controller = proxy.create_controller(xml, access_config)
 
         controller.start()
         while not controller.is_finished(app.guid):

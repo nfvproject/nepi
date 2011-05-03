@@ -508,6 +508,7 @@ class NS3Dependency(Dependency):
                      "rm -rf target && "    # mv doesn't like unclean targets
                      "mkdir -p target && "
                      "cd pygccxml-1.0.0 && "
+                     "rm -rf unittests docs && " # pygccxml has ~100M of unit tests - excessive - docs aren't needed either
                      "python setup.py build && "
                      "python setup.py install --install-lib ${BUILD}/target && "
                      "python setup.py clean && "

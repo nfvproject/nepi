@@ -311,7 +311,7 @@ class ExperimentController(object):
     def __init__(self, experiment_xml, root_dir):
         self._experiment_xml = experiment_xml
         self._testbeds = dict()
-        self._access_config = dict()
+        self._deployment_config = dict()
         self._netrefs = dict()
         self._cross_data = dict()
         self._root_dir = root_dir
@@ -327,9 +327,6 @@ class ExperimentController(object):
         f = open(xml_path, "w")
         f.write(self._experiment_xml)
         f.close()
-
-    def set_access_configuration(self, testbed_guid, access_config):
-        self._access_config[testbed_guid] = access_config
 
     def trace(self, testbed_guid, guid, trace_id, attribute='value'):
         return self._testbeds[testbed_guid].trace(guid, trace_id, attribute)
@@ -393,7 +390,7 @@ class ExperimentController(object):
         # persist access configuration for all testbeds, so that
         # recovery mode can reconnect to them if it becomes necessary
         conf = ConfigParser.RawConfigParser()
-        for testbed_guid, testbed_config in self._access_config.iteritems():
+        for testbed_guid, testbed_config in self._deployment_config.iteritems():
             testbed_guid = str(testbed_guid)
             conf.add_section(testbed_guid)
             for attr in testbed_config.attributes_list:
@@ -401,7 +398,7 @@ class ExperimentController(object):
                     conf.set(testbed_guid, attr, 
                         testbed_config.get_attribute_value(attr))
         
-        f = open(os.path.join(self._root_dir, 'access_config.ini'), 'w')
+        f = open(os.path.join(self._root_dir, 'deployment_config.ini'), 'w')
         conf.write(f)
         f.close()
     
@@ -414,7 +411,7 @@ class ExperimentController(object):
         }
         
         conf = ConfigParser.RawConfigParser()
-        conf.read(os.path.join(self._root_dir, 'access_config.ini'))
+        conf.read(os.path.join(self._root_dir, 'deployment_config.ini'))
         for testbed_guid in conf.sections():
             testbed_config = proxy.AccessConfiguration()
             for attr in conf.options(testbed_guid):
@@ -433,7 +430,7 @@ class ExperimentController(object):
     
     def _unpersist_testbed_proxies(self):
         try:
-            os.remove(os.path.join(self._root_dir, 'access_config.ini'))
+            os.remove(os.path.join(self._root_dir, 'deployment_config.ini'))
         except:
             # Just print exceptions, this is just cleanup
             import traceback
@@ -585,18 +582,22 @@ class ExperimentController(object):
 
     def _create_testbed_controller(self, guid, data, element_guids, recover):
         (testbed_id, testbed_version) = data.get_testbed_data(guid)
-        access_config = None if guid not in self._access_config else\
-                self._access_config[guid]
+        deployment_config = self._deployment_config.get(guid)
         
-        if recover and access_config is None:
+        if deployment_config is None:
             # need to create one
-            access_config = self._access_config[guid] = proxy.AccessConfiguration()
-        if access_config is not None:
+            deployment_config = self._deployment_config[guid] = proxy.AccessConfiguration()
+            
+            for (name, value) in data.get_attribute_data(guid):
+                if value is not None and deployment_config.has_attribute(name):
+                    deployment_config.set_attribute_value(name, value)
+        
+        if deployment_config is not None:
             # force recovery mode 
-            access_config.set_attribute_value("recover",recover)
+            deployment_config.set_attribute_value("recover",recover)
         
         testbed = proxy.create_testbed_controller(testbed_id, 
-                testbed_version, access_config)
+                testbed_version, deployment_config)
         for (name, value) in data.get_attribute_data(guid):
             testbed.defer_configure(name, value)
         self._testbeds[guid] = testbed
