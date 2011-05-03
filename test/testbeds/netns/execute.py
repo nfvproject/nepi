@@ -164,7 +164,12 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.shutdown()
         
     def tearDown(self):
-        shutil.rmtree(self.root_dir)
+        try:
+            shutil.rmtree(self.root_dir)
+        except:
+            # retry
+            time.sleep(0.1)
+            shutil.rmtree(self.root_dir)
 
 if __name__ == '__main__':
     unittest.main()
