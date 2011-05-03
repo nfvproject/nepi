@@ -5,6 +5,7 @@ import getpass
 from nepi.core.design import ExperimentDescription, FactoriesProvider
 from nepi.core.execute import ExperimentController
 from nepi.util import proxy
+from nepi.util.constants import DeploymentConfiguration as DC
 import os
 import shutil
 import tempfile
@@ -94,25 +95,20 @@ class NetnsIntegrationTestCase(unittest.TestCase):
         app.set_attribute_value("user", user)
         app.connector("node").connect(node1.connector("apps"))
         app.enable_trace("stdout")
+
+        netns_desc.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
+        inst_root_dir = os.path.join(self.root_dir, "instance")
+        os.mkdir(inst_root_dir)
+        netns_desc.set_attribute_value(DC.ROOT_DIRECTORY, inst_root_dir)
+        netns_desc.set_attribute_value(DC.LOG_LDEVEL, DC.DEBUG_LEVEL)
+
         xml = exp_desc.to_xml()
 
         access_config = proxy.AccessConfiguration()
-        access_config.set_attribute_value("mode", 
-                proxy.AccessConfiguration.MODE_DAEMON)
-        access_config.set_attribute_value("rootDirectory", self.root_dir)
-        access_config.set_attribute_value("logLevel", 
-                proxy.AccessConfiguration.DEBUG_LEVEL)
+        access_config.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
+        access_config.set_attribute_value(DC.ROOT_DIRECTORY, self.root_dir)
+        access_config.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
         controller = proxy.create_controller(xml, access_config)
-
-        access_config2 = proxy.AccessConfiguration()
-        access_config2.set_attribute_value("mode", 
-                proxy.AccessConfiguration.MODE_DAEMON)
-        inst_root_dir = os.path.join(self.root_dir, "instance")
-        os.mkdir(inst_root_dir)
-        access_config2.set_attribute_value("rootDirectory", inst_root_dir)
-        access_config2.set_attribute_value("logLevel", 
-                proxy.AccessConfiguration.DEBUG_LEVEL)
-        controller.set_access_configuration(netns_desc.guid, access_config2)
 
         controller.start()
         while not controller.is_finished(app.guid):
@@ -159,29 +155,23 @@ class NetnsIntegrationTestCase(unittest.TestCase):
         app.set_attribute_value("user", user)
         app.connector("node").connect(node1.connector("apps"))
         app.enable_trace("stdout")
+
+        netns_desc.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
+        inst_root_dir = os.path.join(self.root_dir, "instance")
+        os.mkdir(inst_root_dir)
+        netns_desc.set_attribute_value(DC.ROOT_DIRECTORY, inst_root_dir)
+        netns_desc.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
+
         xml = exp_desc.to_xml()
 
         access_config = proxy.AccessConfiguration()
-        access_config.set_attribute_value("mode", 
-                proxy.AccessConfiguration.MODE_DAEMON)
-        access_config.set_attribute_value("rootDirectory", self.root_dir)
-        access_config.set_attribute_value("logLevel", 
-                proxy.AccessConfiguration.DEBUG_LEVEL)
-        access_config.set_attribute_value("communication", 
-                proxy.AccessConfiguration.ACCESS_SSH)
-        access_config.set_attribute_value("port", env.port)
-        access_config.set_attribute_value("useAgent", True)
+        access_config.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
+        access_config.set_attribute_value(DC.ROOT_DIRECTORY, self.root_dir)
+        access_config.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
+        access_config.set_attribute_value(DC.DEPLOYMENT_COMMUNICATION, DC.ACCESS_SSH)
+        access_config.set_attribute_value(DC.DEPLOYMENT_PORT, env.port)
+        access_config.set_attribute_value(DC.USE_AGENT, True)
         controller = proxy.create_controller(xml, access_config)
-
-        access_config2 = proxy.AccessConfiguration()
-        access_config2.set_attribute_value("mode", 
-                proxy.AccessConfiguration.MODE_DAEMON)
-        inst_root_dir = os.path.join(self.root_dir, "instance")
-        os.mkdir(inst_root_dir)
-        access_config2.set_attribute_value("rootDirectory", inst_root_dir)
-        access_config2.set_attribute_value("logLevel", 
-                proxy.AccessConfiguration.DEBUG_LEVEL)
-        controller.set_access_configuration(netns_desc.guid, access_config2)
 
         controller.start()
         while not controller.is_finished(app.guid):

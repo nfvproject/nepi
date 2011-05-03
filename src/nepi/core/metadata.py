@@ -3,7 +3,9 @@
 
 from nepi.core.attributes import Attribute, AttributesMap
 import sys
+import getpass
 from nepi.util import validation
+from nepi.util.constants import ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP, DeploymentConfiguration
 
 class VersionedMetadataInfo(object):
     @property
@@ -127,25 +129,120 @@ class VersionedMetadataInfo(object):
 
 class Metadata(object):
     STANDARD_BOX_ATTRIBUTES = (
-        ("label", dict({
-            "name": "label",
-            "validation_function": validation.is_string,
-            "type": Attribute.STRING,
-            "flags": Attribute.DesignOnly,
-            "help": "A unique identifier for referring to this box",
-        })),
+        ("label", dict(
+            name = "label",
+            validation_function = validation.is_string,
+            type = Attribute.STRING,
+            flags = Attribute.DesignOnly,
+            help = "A unique identifier for referring to this box",
+        )),
     )
+    
+    # Shorthand for DeploymentConfiguration
+    # Syntactic sugar to shorten stuff
+    DC = DeploymentConfiguration
 
     STANDARD_TESTBED_ATTRIBUTES = (
-        ("home_directory", dict({
-            "name": "homeDirectory",
-            "validation_function": validation.is_string,
-            "help": "Path to the directory where traces and other files will be stored",
-            "type": Attribute.STRING,
-            "value": "",
-            "flags": Attribute.DesignOnly,
-        })),
+        ("home_directory", dict(
+            name = "homeDirectory",
+            validation_function = validation.is_string,
+            help = "Path to the directory where traces and other files will be stored",
+            type = Attribute.STRING,
+            value = "",
+            flags = Attribute.DesignOnly,
+        )),
     )
+    
+    DEPLOYMENT_ATTRIBUTES = (
+        # TESTBED DEPLOYMENT ATTRIBUTES
+        (DC.DEPLOYMENT_ENVIRONMENT_SETUP, dict(
+                name = DC.DEPLOYMENT_ENVIRONMENT_SETUP,
+                validation_function = validation.is_string,
+                help = "Shell commands to run before spawning TestbedController processes",
+                type = Attribute.STRING,
+                flags = Attribute.DesignOnly,
+        )),
+        (DC.DEPLOYMENT_MODE, dict(name = DC.DEPLOYMENT_MODE,
+                help = "Instance execution mode",
+                type = Attribute.ENUM,
+                value = DC.MODE_SINGLE_PROCESS,
+                allowed = [
+                    DC.MODE_DAEMON,
+                    DC.MODE_SINGLE_PROCESS
+                ],
+                flags = Attribute.DesignOnly,
+                validation_function = validation.is_enum
+        )),
+        (DC.DEPLOYMENT_COMMUNICATION, dict(name = DC.DEPLOYMENT_COMMUNICATION,
+                help = "Instance communication mode",
+                type = Attribute.ENUM,
+                value = DC.ACCESS_LOCAL,
+                allowed = [
+                    DC.ACCESS_LOCAL,
+                    DC.ACCESS_SSH
+                ],
+                flags = Attribute.DesignOnly,
+                validation_function = validation.is_enum
+        )),
+        (DC.DEPLOYMENT_HOST, dict(name = DC.DEPLOYMENT_HOST,
+                help = "Host where the testbed will be executed",
+                type = Attribute.STRING,
+                value = "localhost",
+                flags = Attribute.DesignOnly,
+                validation_function = validation.is_string
+        )),
+        (DC.DEPLOYMENT_USER, dict(name = DC.DEPLOYMENT_USER,
+                help = "User on the Host to execute the testbed",
+                type = Attribute.STRING,
+                value = getpass.getuser(),
+                flags = Attribute.DesignOnly,
+                validation_function = validation.is_string
+        )),
+        (DC.DEPLOYMENT_PORT, dict(name = DC.DEPLOYMENT_PORT,
+                help = "Port on the Host",
+                type = Attribute.INTEGER,
+                value = 22,
+                flags = Attribute.DesignOnly,
+                validation_function = validation.is_integer
+        )),
+        (DC.ROOT_DIRECTORY, dict(name = DC.ROOT_DIRECTORY,
+                help = "Root directory for storing process files",
+                type = Attribute.STRING,
+                value = ".",
+                flags = Attribute.DesignOnly,
+                validation_function = validation.is_string # TODO: validation.is_path
+        )),
+        (DC.USE_AGENT, dict(name = DC.USE_AGENT,
+                help = "Use -A option for forwarding of the authentication agent, if ssh access is used", 
+                type = Attribute.BOOL,
+                value = False,
+                flags = Attribute.DesignOnly,
+                validation_function = validation.is_bool
+        )),
+        (DC.LOG_LEVEL, dict(name = DC.LOG_LEVEL,
+                help = "Log level for instance",
+                type = Attribute.ENUM,
+                value = DC.ERROR_LEVEL,
+                allowed = [
+                    DC.ERROR_LEVEL,
+                    DC.DEBUG_LEVEL
+                ],
+                flags = Attribute.DesignOnly,
+                validation_function = validation.is_enum
+        )),
+        (DC.RECOVER, dict(name = DC.RECOVER,
+                help = "Do not intantiate testbeds, rather, reconnect to already-running instances. Used to recover from a dead controller.", 
+                type = Attribute.BOOL,
+                value = False,
+                flags = Attribute.DesignOnly,
+                validation_function = validation.is_bool
+        )),
+    )
+    
+    STANDARD_TESTBED_ATTRIBUTES += DEPLOYMENT_ATTRIBUTES
+    
+    del DC
+    
 
     def __init__(self, testbed_id, version):
         self._version = version
