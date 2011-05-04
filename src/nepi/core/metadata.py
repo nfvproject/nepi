@@ -258,6 +258,15 @@ class Metadata(object):
                 "flags": Attribute.Invisible | Attribute.ReadOnly,
                 "validation_function": validation.is_string,
             }),
+            "tun_key" : dict({
+                "name": "tun_key", 
+                "help": "Randomly selected TUNneling protocol cryptographic key. "
+                        "Endpoints must agree to use the minimum (in lexicographic order) "
+                        "of both the remote and local sides.",
+                "type": Attribute.STRING,
+                "flags": Attribute.Invisible | Attribute.ReadOnly,
+                "validation_function": validation.is_string,
+            }),
             "tun_addr" : dict({
                 "name": "tun_addr", 
                 "help": "IP address of the tunnel endpoint",

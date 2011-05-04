@@ -17,6 +17,7 @@ import os.path
 NODE = "Node"
 NODEIFACE = "NodeInterface"
 TUNIFACE = "TunInterface"
+TAPIFACE = "TapInterface"
 APPLICATION = "Application"
 DEPENDENCY = "Dependency"
 NEPIDEPENDENCY = "NepiDependency"
@@ -95,6 +96,7 @@ def connect_tun_iface_node(testbed_instance, node_guid, iface_guid):
         raise RuntimeError, "Use of TUN interfaces requires emulation"
     iface.node = node
     node.required_vsys.update(('fd_tuntap', 'vif_up'))
+    node.required_packages.add('python-crypto')
 
 def connect_tun_iface_peer(proto, testbed_instance, iface_guid, peer_iface_guid):
     iface = testbed_instance._elements[iface_guid]
@@ -102,6 +104,7 @@ def connect_tun_iface_peer(proto, testbed_instance, iface_guid, peer_iface_guid)
     iface.peer_iface = peer_iface
     iface.peer_proto = \
     iface.tun_proto = proto
+    iface.tun_key = peer_iface.tun_key
 
 def crossconnect_tun_iface_peer_init(proto, testbed_instance, iface_guid, peer_iface_data):
     iface = testbed_instance._elements[iface_guid]
@@ -109,6 +112,7 @@ def crossconnect_tun_iface_peer_init(proto, testbed_instance, iface_guid, peer_i
     iface.peer_addr = peer_iface_data.get("tun_addr")
     iface.peer_proto = peer_iface_data.get("tun_proto")
     iface.peer_port = peer_iface_data.get("tun_port")
+    iface.tun_key = min(iface.tun_key, peer_iface_data.get("tun_key"))
     iface.tun_proto = proto
     
     preconfigure_tuniface(testbed_instance, iface_guid)
@@ -168,6 +172,11 @@ def create_nodeiface(testbed_instance, guid):
 def create_tuniface(testbed_instance, guid):
     parameters = testbed_instance._get_parameters(guid)
     element = testbed_instance._make_tun_iface(parameters)
+    testbed_instance.elements[guid] = element
+
+def create_tapiface(testbed_instance, guid):
+    parameters = testbed_instance._get_parameters(guid)
+    element = testbed_instance._make_tap_iface(parameters)
     testbed_instance.elements[guid] = element
 
 def create_application(testbed_instance, guid):
@@ -444,6 +453,12 @@ connections = [
         "can_cross": False
     }),
     dict({
+        "from": (TESTBED_ID, NODE, "devs"),
+        "to":   (TESTBED_ID, TAPIFACE, "node"),
+        "init_code": connect_tun_iface_node,
+        "can_cross": False
+    }),
+    dict({
         "from": (TESTBED_ID, NODEIFACE, "inet"),
         "to":   (TESTBED_ID, INTERNET, "devs"),
         "init_code": connect_node_iface_inet,
@@ -492,6 +507,18 @@ connections = [
         "can_cross": False
     }),
     dict({
+        "from": (TESTBED_ID, TAPIFACE, "tcp"),
+        "to":   (TESTBED_ID, TAPIFACE, "tcp"),
+        "init_code": functools.partial(connect_tun_iface_peer,"tcp"),
+        "can_cross": False
+    }),
+    dict({
+        "from": (TESTBED_ID, TAPIFACE, "udp"),
+        "to":   (TESTBED_ID, TAPIFACE, "udp"),
+        "init_code": functools.partial(connect_tun_iface_peer,"udp"),
+        "can_cross": False
+    }),
+    dict({
         "from": (TESTBED_ID, TUNIFACE, "tcp"),
         "to":   (None, None, "tcp"),
         "init_code": functools.partial(crossconnect_tun_iface_peer_init,"tcp"),
@@ -500,6 +527,20 @@ connections = [
     }),
     dict({
         "from": (TESTBED_ID, TUNIFACE, "udp"),
+        "to":   (None, None, "udp"),
+        "init_code": functools.partial(crossconnect_tun_iface_peer_init,"udp"),
+        "compl_code": functools.partial(crossconnect_tun_iface_peer_compl,"udp"),
+        "can_cross": True
+    }),
+    dict({
+        "from": (TESTBED_ID, TAPIFACE, "tcp"),
+        "to":   (None, None, "tcp"),
+        "init_code": functools.partial(crossconnect_tun_iface_peer_init,"tcp"),
+        "compl_code": functools.partial(crossconnect_tun_iface_peer_compl,"tcp"),
+        "can_cross": True
+    }),
+    dict({
+        "from": (TESTBED_ID, TAPIFACE, "udp"),
         "to":   (None, None, "udp"),
         "init_code": functools.partial(crossconnect_tun_iface_peer_init,"udp"),
         "compl_code": functools.partial(crossconnect_tun_iface_peer_compl,"udp"),
@@ -819,9 +860,9 @@ traces = dict({
               }),
     })
 
-create_order = [ INTERNET, NODE, NODEIFACE, TUNIFACE, NETPIPE, NEPIDEPENDENCY, NS3DEPENDENCY, DEPENDENCY, APPLICATION ]
+create_order = [ INTERNET, NODE, NODEIFACE, TAPIFACE, TUNIFACE, NETPIPE, NEPIDEPENDENCY, NS3DEPENDENCY, DEPENDENCY, APPLICATION ]
 
-configure_order = [ INTERNET, NODE, NODEIFACE, TUNIFACE, NETPIPE, NEPIDEPENDENCY, NS3DEPENDENCY, DEPENDENCY, APPLICATION ]
+configure_order = [ INTERNET, NODE, NODEIFACE, TAPIFACE, TUNIFACE, NETPIPE, NEPIDEPENDENCY, NS3DEPENDENCY, DEPENDENCY, APPLICATION ]
 
 factories_info = dict({
     NODE: dict({
@@ -858,9 +899,24 @@ factories_info = dict({
         }),
     TUNIFACE: dict({
             "allow_addresses": True,
-            "help": "Virtual TUN network interface",
+            "help": "Virtual TUN network interface (layer 3)",
             "category": "devices",
             "create_function": create_tuniface,
+            "preconfigure_function": preconfigure_tuniface,
+            "configure_function": postconfigure_tuniface,
+            "box_attributes": [
+                "up", "device_name", "mtu", "snat",
+                "txqueuelen",
+                "tun_proto", "tun_addr", "tun_port", "tun_key"
+            ],
+            "traces": ["packets"],
+            "connector_types": ["node","udp","tcp"]
+        }),
+    TAPIFACE: dict({
+            "allow_addresses": True,
+            "help": "Virtual TAP network interface (layer 2)",
+            "category": "devices",
+            "create_function": create_tapiface,
             "preconfigure_function": preconfigure_tuniface,
             "configure_function": postconfigure_tuniface,
             "box_attributes": [

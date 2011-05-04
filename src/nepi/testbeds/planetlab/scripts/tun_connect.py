@@ -71,6 +71,18 @@ parser.add_option(
     default = None,
     help = 
         "See mode. This specifies the interface's transmission queue length. " )
+parser.add_option(
+    "-u", "--udp", dest="udp", metavar="PORT", type="int",
+    default = None,
+    help = 
+        "Bind to the specified UDP port locally, and send UDP datagrams to the "
+        "remote endpoint, creating a tunnel through UDP rather than TCP." )
+parser.add_option(
+    "-k", "--key", dest="cipher_key", metavar="KEY",
+    default = None,
+    help = 
+        "Specify a symmetric encryption key with which to protect packets across "
+        "the tunnel. python-crypto must be installed on the system." )
 
 (options, remaining_args) = parser.parse_args(sys.argv[1:])
 
@@ -356,6 +368,27 @@ def piWrap(buf, ether_mode):
         +buf
     )
 
+def encrypt(packet, crypter):
+    # pad
+    padding = crypter.block_size - len(packet) % crypter.block_size
+    packet += chr(padding) * padding
+    
+    # encrypt
+    return crypter.encrypt(packet)
+
+def decrypt(packet, crypter):
+    # decrypt
+    packet = crypter.decrypt(packet)
+    
+    # un-pad
+    padding = ord(packet[-1])
+    if not (0 < padding <= crypter.block_size):
+        # wrong padding
+        raise RuntimeError, "Truncated packet"
+    packet = packet[:-padding]
+    
+    return packet
+
 abortme = False
 def tun_fwd(tun, remote):
     global abortme
@@ -364,6 +397,28 @@ def tun_fwd(tun, remote):
     # so we'll have to handle them
     with_pi = options.mode.startswith('pl-')
     ether_mode = tun_name.startswith('tap')
+    
+    crypto_mode = False
+    try:
+        if options.cipher_key:
+            import Crypto.Cipher.AES
+            import hashlib
+            
+            hashed_key = hashlib.sha256(options.cipher_key).digest()
+            crypter = Crypto.Cipher.AES.new(
+                hashed_key, 
+                Crypto.Cipher.AES.MODE_ECB)
+            crypto_mode = True
+    except:
+        import traceback
+        traceback.print_exc()
+        crypto_mode = False
+        crypter = None
+
+    if crypto_mode:
+        print >>sys.stderr, "Packets are transmitted in CIPHER"
+    else:
+        print >>sys.stderr, "Packets are transmitted in PLAINTEXT"
     
     # Limited frame parsing, to preserve packet boundaries.
     # Which is needed, since /dev/net/tun is unbuffered
@@ -384,7 +439,16 @@ def tun_fwd(tun, remote):
         # check to see if we can write
         if remote in wrdy and packetReady(fwbuf, ether_mode):
             packet, fwbuf = pullPacket(fwbuf, ether_mode)
-            os.write(remote.fileno(), packet)
+            try:
+                if crypto_mode:
+                    enpacket = encrypt(packet, crypter)
+                else:
+                    enpacket = packet
+                os.write(remote.fileno(), enpacket)
+            except:
+                if not options.udp:
+                    # in UDP mode, we ignore errors - packet loss man...
+                    raise
             print >>sys.stderr, '>', formatPacket(packet, ether_mode)
         if tun in wrdy and packetReady(bkbuf, ether_mode):
             packet, bkbuf = pullPacket(bkbuf, ether_mode)
@@ -401,7 +465,14 @@ def tun_fwd(tun, remote):
                 packet = piStrip(packet)
             fwbuf += packet
         if remote in rdrdy:
-            packet = os.read(remote.fileno(),2000) # remote.read blocks until it gets 2k!
+            try:
+                packet = os.read(remote.fileno(),2000) # remote.read blocks until it gets 2k!
+                if crypto_mode:
+                    packet = decrypt(packet, crypter)
+            except:
+                if not options.udp:
+                    # in UDP mode, we ignore errors - packet loss man...
+                    raise
             bkbuf += packet
 
 
@@ -455,18 +526,31 @@ except:
 
 
 try:
-    # connect to remote endpoint
-    if remaining_args and not remaining_args[0].startswith('-'):
-        print >>sys.stderr, "Connecting to: %s:%d" % (remaining_args[0],options.port)
-        rsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-        rsock.connect((remaining_args[0],options.port))
+    if options.udp:
+        # connect to remote endpoint
+        if remaining_args and not remaining_args[0].startswith('-'):
+            print >>sys.stderr, "Listening at: %s:%d" % (hostaddr,options.udp)
+            print >>sys.stderr, "Connecting to: %s:%d" % (remaining_args[0],options.port)
+            rsock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
+            rsock.bind((hostaddr,options.udp))
+            rsock.connect((remaining_args[0],options.port))
+        else:
+            print >>sys.stderr, "Error: need a remote endpoint in UDP mode"
+            raise AssertionError, "Error: need a remote endpoint in UDP mode"
+        remote = os.fdopen(rsock.fileno(), 'r+b', 0)
     else:
-        print >>sys.stderr, "Listening at: %s:%d" % (hostaddr,options.port)
-        lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-        lsock.bind((hostaddr,options.port))
-        lsock.listen(1)
-        rsock,raddr = lsock.accept()
-    remote = os.fdopen(rsock.fileno(), 'r+b', 0)
+        # connect to remote endpoint
+        if remaining_args and not remaining_args[0].startswith('-'):
+            print >>sys.stderr, "Connecting to: %s:%d" % (remaining_args[0],options.port)
+            rsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+            rsock.connect((remaining_args[0],options.port))
+        else:
+            print >>sys.stderr, "Listening at: %s:%d" % (hostaddr,options.port)
+            lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+            lsock.bind((hostaddr,options.port))
+            lsock.listen(1)
+            rsock,raddr = lsock.accept()
+        remote = os.fdopen(rsock.fileno(), 'r+b', 0)
 
     print >>sys.stderr, "Connected"
 
