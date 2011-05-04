@@ -234,47 +234,102 @@ def ipfmt(ip):
     ipbytes = map(ord,ip.decode("hex"))
     return '.'.join(map(str,ipbytes))
 
-def formatPacket(packet):
+tagtype = {
+    '0806' : 'arp ',
+    '0800' : 'ipv4 ',
+    '8870' : 'jumbo ',
+    '8863' : 'PPPoE discover ',
+    '8864' : 'PPPoE ',
+}
+def etherProto(packet):
     packet = packet.encode("hex")
-    return '-'.join( (
-        packet[0:1], #version
-        packet[1:2], #header length
-        packet[2:4], #diffserv/ECN
-        packet[4:8], #total length
-        packet[8:12], #ident
-        packet[12:16], #flags/fragment offs
-        packet[16:18], #ttl
-        packet[18:20], #ip-proto
-        packet[20:24], #checksum
-        ipfmt(packet[24:32]), # src-ip
-        ipfmt(packet[32:40]), # dst-ip
-        packet[40:48] if (int(packet[1]) > 5) else "", # options
-        packet[48:] if (int(packet[1]) > 5) else packet[40:], # payload
-    ) )
+    if len(packet) > 14:
+        if packet[12:14] == "\x81\x00":
+            # tagged
+            return packet[16:18]
+        else:
+            # untagged
+            return packet[12:14]
+    # default: ip
+    return "\x08\x00"
+def formatPacket(packet, ether_mode):
+    if ether_mode:
+        stripped_packet = etherStrip(packet)
+        if not stripped_packet:
+            packet = packet.encode("hex")
+            if len(packet) < 28:
+                return "malformed eth " + packet.encode("hex")
+            else:
+                if packet[24:28] == "8100":
+                    # tagged
+                    ethertype = tagtype.get(packet[32:36], 'eth')
+                    return ethertype + " " + ( '-'.join( (
+                        packet[0:12], # MAC dest
+                        packet[12:24], # MAC src
+                        packet[24:32], # VLAN tag
+                        packet[32:36], # Ethertype/len
+                        packet[36:], # Payload
+                    ) ) )
+                else:
+                    # untagged
+                    ethertype = tagtype.get(packet[24:28], 'eth')
+                    return ethertype + " " + ( '-'.join( (
+                        packet[0:12], # MAC dest
+                        packet[12:24], # MAC src
+                        packet[24:28], # Ethertype/len
+                        packet[28:], # Payload
+                    ) ) )
+        else:
+            packet = stripped_packet
+    packet = packet.encode("hex")
+    if len(packet) < 48:
+        return "malformed ip " + packet
+    else:
+        return "ip " + ( '-'.join( (
+            packet[0:1], #version
+            packet[1:2], #header length
+            packet[2:4], #diffserv/ECN
+            packet[4:8], #total length
+            packet[8:12], #ident
+            packet[12:16], #flags/fragment offs
+            packet[16:18], #ttl
+            packet[18:20], #ip-proto
+            packet[20:24], #checksum
+            ipfmt(packet[24:32]), # src-ip
+            ipfmt(packet[32:40]), # dst-ip
+            packet[40:48] if (int(packet[1],16) > 5) else "", # options
+            packet[48:] if (int(packet[1],16) > 5) else packet[40:], # payload
+        ) ) )
 
-def packetReady(buf):
+def packetReady(buf, ether_mode):
     if len(buf) < 4:
         return False
-    _,totallen = struct.unpack('HH',buf[:4])
-    totallen = socket.htons(totallen)
-    return len(buf) >= totallen
+    elif ether_mode:
+        return True
+    else:
+        _,totallen = struct.unpack('HH',buf[:4])
+        totallen = socket.htons(totallen)
+        return len(buf) >= totallen
 
-def pullPacket(buf):
-    _,totallen = struct.unpack('HH',buf[:4])
-    totallen = socket.htons(totallen)
-    return buf[:totallen], buf[totallen:]
+def pullPacket(buf, ether_mode):
+    if ether_mode:
+        return buf, ""
+    else:
+        _,totallen = struct.unpack('HH',buf[:4])
+        totallen = socket.htons(totallen)
+        return buf[:totallen], buf[totallen:]
 
 def etherStrip(buf):
     if len(buf) < 14:
-        return buf
+        return ""
     if buf[12:14] == '\x08\x10' and buf[16:18] == '\x08\x00':
         # tagged ethernet frame
-        return buf[18:]
+        return buf[18:-4]
     elif buf[12:14] == '\x08\x00':
         # untagged ethernet frame
-        return buf[14:]
+        return buf[14:-4]
     else:
-        return buf
+        return ""
 
 def etherWrap(packet):
     return (
@@ -290,9 +345,14 @@ def piStrip(buf):
     else:
         return buf[4:]
     
-def piWrap(buf):
+def piWrap(buf, ether_mode):
+    if ether_mode:
+        proto = etherProto(buf)
+    else:
+        proto = "\x08\x00"
     return (
-        "\x00\x00\x08\x00" # PI: 16 bits flags, 16 bits proto
+        "\x00\x00" # PI: 16 bits flags
+        +proto # 16 bits proto
         +buf
     )
 
@@ -311,9 +371,9 @@ def tun_fwd(tun, remote):
     bkbuf = ""
     while not abortme:
         wset = []
-        if packetReady(bkbuf):
+        if packetReady(bkbuf, ether_mode):
             wset.append(tun)
-        if packetReady(fwbuf):
+        if packetReady(fwbuf, ether_mode):
             wset.append(remote)
         rdrdy, wrdy, errs = select.select((tun,remote),wset,(tun,remote),1)
         
@@ -322,20 +382,15 @@ def tun_fwd(tun, remote):
             break
         
         # check to see if we can write
-        if remote in wrdy and packetReady(fwbuf):
-            packet, fwbuf = pullPacket(fwbuf)
+        if remote in wrdy and packetReady(fwbuf, ether_mode):
+            packet, fwbuf = pullPacket(fwbuf, ether_mode)
             os.write(remote.fileno(), packet)
-            print >>sys.stderr, '>', formatPacket(packet)
-            if ether_mode:
-                # strip ethernet crc
-                fwbuf = fwbuf[4:]
-        if tun in wrdy and packetReady(bkbuf):
-            packet, bkbuf = pullPacket(bkbuf)
-            formatted = formatPacket(packet)
-            if ether_mode:
-                packet = etherWrap(packet)
+            print >>sys.stderr, '>', formatPacket(packet, ether_mode)
+        if tun in wrdy and packetReady(bkbuf, ether_mode):
+            packet, bkbuf = pullPacket(bkbuf, ether_mode)
+            formatted = formatPacket(packet, ether_mode)
             if with_pi:
-                packet = piWrap(packet)
+                packet = piWrap(packet, ether_mode)
             os.write(tun.fileno(), packet)
             print >>sys.stderr, '<', formatted
         
@@ -345,8 +400,6 @@ def tun_fwd(tun, remote):
             if with_pi:
                 packet = piStrip(packet)
             fwbuf += packet
-            if ether_mode:
-                fwbuf = etherStrip(fwbuf)
         if remote in rdrdy:
             packet = os.read(remote.fileno(),2000) # remote.read blocks until it gets 2k!
             bkbuf += packet
