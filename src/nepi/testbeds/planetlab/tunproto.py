@@ -80,7 +80,22 @@ class TunProtoBase(object):
         if proc.wait():
             raise RuntimeError, "Failed upload TUN connect script %r: %s %s" % (source, out,err,)
 
-        cmd = "cd %s && gcc -shared tunalloc.c -o tunalloc.so" % (server.shell_escape(self.home_path),)
+        cmd = ( (
+            "cd %(home)s && gcc -shared tunalloc.c -o tunalloc.so"
+            + ( " && "
+                "wget -q -c -O python-passfd-src.tar.gz %(passfd_url)s && "
+                "mkdir -p python-passfd && "
+                "cd python-passfd && "
+                "tar xzf ../python-passfd-src.tar.gz --strip-components=1 && "
+                "python setup.py build && "
+                "python setup.py install --install-lib .. "
+                
+                if local.tun_proto == "fd" else ""
+            ) )
+        % {
+            'home' : server.shell_escape(self.home_path),
+            'passfd_url' : "http://yans.pl.sophia.inria.fr/code/hgwebdir.cgi/python-passfd/archive/2a6472c64c87.tar.gz",
+        } )
         (out,err),proc = server.popen_ssh_command(
             cmd,
             host = local.node.hostname,
@@ -122,11 +137,17 @@ class TunProtoBase(object):
             raise RuntimeError, "Misconfigured TUN: %s" % (local,)
         
         args = ["python", "tun_connect.py", 
-            "-m", str(self.mode),
-            "-p", str(local_port if listen else peer_port),
-            "-A", str(local_addr),
-            "-M", str(local_mask),
-            "-k", str(self.key)]
+            "-m", str(self.mode)]
+        
+        if check_proto == 'fd':
+            args.extend([
+                "--pass-fd", str(peer_addr)])
+        else:
+            args.extend([
+                "-p", str(local_port if listen else peer_port),
+                "-A", str(local_addr),
+                "-M", str(local_mask),
+                "-k", str(self.key)])
         
         if local_snat:
             args.append("-S")
@@ -319,6 +340,20 @@ class TunProtoUDP(TunProtoBase):
     def shutdown(self):
         self.kill()
 
+class TunProtoFD(TunProtoBase):
+    def __init__(self, local, peer, home_path, key, listening):
+        super(TunProtoFD, self).__init__(local, peer, home_path, key)
+        self.listening = listening
+    
+    def prepare(self):
+        pass
+    
+    def setup(self):
+        self.async_launch('fd', False)
+    
+    def shutdown(self):
+        self.kill()
+
 class TunProtoTCP(TunProtoBase):
     def __init__(self, local, peer, home_path, key, listening):
         super(TunProtoTCP, self).__init__(local, peer, home_path, key)
@@ -353,6 +388,11 @@ class TapProtoUDP(TunProtoUDP):
 class TapProtoTCP(TunProtoTCP):
     def __init__(self, local, peer, home_path, key, listening):
         super(TapProtoTCP, self).__init__(local, peer, home_path, key, listening)
+        self.mode = 'pl-tap'
+
+class TapProtoFD(TunProtoFD):
+    def __init__(self, local, peer, home_path, key, listening):
+        super(TapProtoUDP, self).__init__(local, peer, home_path, key, listening)
         self.mode = 'pl-tap'
 
 

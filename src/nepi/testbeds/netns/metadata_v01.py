@@ -29,7 +29,7 @@ def connect_fd(testbed_instance, tap_guid, cross_data):
     import passfd
     import socket
     tap = testbed_instance._elements[tap_guid]
-    address = cross_data["LinuxSocketAddress"]
+    address = cross_data["tun_addr"]
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
     sock.connect(address)
     passfd.sendfd(sock, tap.fd, '0')
@@ -182,10 +182,16 @@ connector_types = dict({
                 "max": 1, 
                 "min": 0
             }),
-    "fd": dict({
-                "help": "Connector to a network interface that can receive a file descriptor", 
-                "name": "fd",
-                "max": 1, 
+    "->fd": dict({
+                "help": "File descriptor receptor for devices with file descriptors",
+                "name": "->fd",
+                "max": 1,
+                "min": 0
+            }),
+    "fd->": dict({
+                "help": "File descriptor provider for devices with file descriptors",
+                "name": "fd->",
+                "max": 1,
                 "min": 0
             }),
     "switch": dict({
@@ -218,8 +224,8 @@ connections = [
         "can_cross": False
     }),
     dict({
-        "from": (TESTBED_ID, TAPIFACE, "fd"),
-        "to":   (NS3_TESTBED_ID, FDNETDEV, "fd"),
+        "from": (TESTBED_ID, TAPIFACE, "fd->"),
+        "to":   (None, None, "->fd"),
         "compl_code": connect_fd,
         "can_cross": True
     }),
@@ -360,7 +366,7 @@ factories_info = dict({
             "configure_function": configure_device,
             "box_attributes": ["lladdr", "up", "device_name", "mtu", 
                 "multicast", "broadcast", "arp"],
-            "connector_types": ["node", "fd"]
+            "connector_types": ["node", "fd->"]
         }),
     NODEIFACE: dict({
             "allow_addresses": True,

@@ -96,7 +96,7 @@ def connect_tun_iface_node(testbed_instance, node_guid, iface_guid):
         raise RuntimeError, "Use of TUN interfaces requires emulation"
     iface.node = node
     node.required_vsys.update(('fd_tuntap', 'vif_up'))
-    node.required_packages.add('python-crypto')
+    node.required_packages.update(('python', 'python-crypto', 'python-setuptools', 'gcc'))
 
 def connect_tun_iface_peer(proto, testbed_instance, iface_guid, peer_iface_guid):
     iface = testbed_instance._elements[iface_guid]
@@ -118,7 +118,17 @@ def crossconnect_tun_iface_peer_init(proto, testbed_instance, iface_guid, peer_i
     preconfigure_tuniface(testbed_instance, iface_guid)
 
 def crossconnect_tun_iface_peer_compl(proto, testbed_instance, iface_guid, peer_iface_data):
+    # refresh (refreshable) attributes for second-phase
+    iface = testbed_instance._elements[iface_guid]
+    iface.peer_addr = peer_iface_data.get("tun_addr")
+    iface.peer_proto = peer_iface_data.get("tun_proto")
+    iface.peer_port = peer_iface_data.get("tun_port")
+    
     postconfigure_tuniface(testbed_instance, iface_guid)
+
+def crossconnect_tun_iface_peer_both(proto, testbed_instance, iface_guid, peer_iface_data):
+    crossconnect_tun_iface_peer_init(proto, testbed_instance, iface_guid, peer_iface_data)
+    crossconnect_tun_iface_peer_compl(proto, testbed_instance, iface_guid, peer_iface_data)
 
 def connect_dep(testbed_instance, node_guid, app_guid):
     node = testbed_instance._elements[node_guid]
@@ -437,6 +447,12 @@ connector_types = dict({
                 "max": 1, 
                 "min": 0
             }),
+    "fd->": dict({
+                "help": "TUN device file descriptor provider", 
+                "name": "fd->",
+                "max": 1, 
+                "min": 0
+            }),
    })
 
 connections = [
@@ -533,6 +549,12 @@ connections = [
         "can_cross": True
     }),
     dict({
+        "from": (TESTBED_ID, TUNIFACE, "fd->"),
+        "to":   (None, None, "->fd"),
+        "compl_code": functools.partial(crossconnect_tun_iface_peer_both,"fd"),
+        "can_cross": True
+    }),
+    dict({
         "from": (TESTBED_ID, TAPIFACE, "tcp"),
         "to":   (None, None, "tcp"),
         "init_code": functools.partial(crossconnect_tun_iface_peer_init,"tcp"),
@@ -544,6 +566,12 @@ connections = [
         "to":   (None, None, "udp"),
         "init_code": functools.partial(crossconnect_tun_iface_peer_init,"udp"),
         "compl_code": functools.partial(crossconnect_tun_iface_peer_compl,"udp"),
+        "can_cross": True
+    }),
+    dict({
+        "from": (TESTBED_ID, TAPIFACE, "fd->"),
+        "to":   (None, None, "->fd"),
+        "compl_code": functools.partial(crossconnect_tun_iface_peer_both,"fd"),
         "can_cross": True
     }),
 ]
@@ -910,7 +938,7 @@ factories_info = dict({
                 "tun_proto", "tun_addr", "tun_port", "tun_key"
             ],
             "traces": ["packets"],
-            "connector_types": ["node","udp","tcp"]
+            "connector_types": ["node","udp","tcp","fd->"]
         }),
     TAPIFACE: dict({
             "allow_addresses": True,
@@ -925,7 +953,7 @@ factories_info = dict({
                 "tun_proto", "tun_addr", "tun_port"
             ],
             "traces": ["packets"],
-            "connector_types": ["node","udp","tcp"]
+            "connector_types": ["node","udp","tcp","fd->"]
         }),
     APPLICATION: dict({
             "help": "Generic executable command line application",
