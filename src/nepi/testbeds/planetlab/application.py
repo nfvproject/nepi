@@ -498,7 +498,15 @@ class NS3Dependency(Dependency):
         pybindgen_source_url = "http://pybindgen.googlecode.com/files/pybindgen-0.15.0.zip"
         pygccxml_source_url = "http://leaseweb.dl.sourceforge.net/project/pygccxml/pygccxml/pygccxml-1.0/pygccxml-1.0.0.zip"
         ns3_source_url = "http://yans.pl.sophia.inria.fr/code/hgwebdir.cgi/ns-3-dev/archive/tip.tar.gz"
-        self.build =("wget -q -c -O pybindgen-src.zip %(pybindgen_source_url)s && " # continue, to exploit the case when it has already been dl'ed
+        self.build =(
+            " ( "
+            "  cd .. && "
+            "  python -c 'import pygccxml, pybindgen' && "
+            "  test -f lib/_ns3.so && "
+            "  test -f lib/libns3.so "
+            " ) || ( "
+                # Not working, rebuild
+                     "wget -q -c -O pybindgen-src.zip %(pybindgen_source_url)s && " # continue, to exploit the case when it has already been dl'ed
                      "wget -q -c -O pygccxml-1.0.0.zip %(pygccxml_source_url)s && " 
                      "wget -q -c -O ns3-src.tar.gz %(ns3_source_url)s && "  
                      "unzip -n pybindgen-src.zip && " # Do not overwrite files, to exploit the case when it has already been built
@@ -525,6 +533,7 @@ class NS3Dependency(Dependency):
                      "./waf &&"
                      "./waf install && "
                      "./waf clean"
+             " )"
                      % dict(
                         pybindgen_source_url = server.shell_escape(pybindgen_source_url),
                         pygccxml_source_url = server.shell_escape(pygccxml_source_url),
@@ -533,8 +542,16 @@ class NS3Dependency(Dependency):
         
         # Just move ${BUILD}/target
         self.install = (
-            "( for i in ${BUILD}/target/* ; do rm -rf ${SOURCES}/${i##*/} ; done ) && " # mv doesn't like unclean targets
-            "mv -f ${BUILD}/target/* ${SOURCES}"
+            " ( "
+            "  cd .. && "
+            "  python -c 'import pygccxml, pybindgen' && "
+            "  test -f lib/_ns3.so && "
+            "  test -f lib/libns3.so "
+            " ) || ( "
+                # Not working, reinstall
+                    "( for i in ${BUILD}/target/* ; do rm -rf ${SOURCES}/${i##*/} ; done ) && " # mv doesn't like unclean targets
+                    "mv -f ${BUILD}/target/* ${SOURCES}"
+            " )"
         )
         
         # Set extra environment paths
