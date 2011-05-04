@@ -168,6 +168,12 @@ class TunIface(object):
         if not self.address or not self.netprefix or not self.netmask:
             raise RuntimeError, "Misconfigured %s iface - missing address" % (self._KIND,)
     
+    def _impl_instance(self, home_path, listening):
+        impl = self._PROTO_MAP[self.peer_proto](
+            self, self.peer_iface, home_path, self.tun_key, listening)
+        impl.port = self.tun_port
+        return impl
+    
     def prepare(self, home_path, listening):
         if not self.peer_iface and (self.peer_proto and (listening or (self.peer_addr and self.peer_port))):
             # Ad-hoc peer_iface
@@ -177,9 +183,7 @@ class TunIface(object):
                 self.peer_port)
         if self.peer_iface:
             if not self.peer_proto_impl:
-                self.peer_proto_impl = self._PROTO_MAP[self.peer_proto](
-                    self, self.peer_iface, home_path, self.tun_key, listening)
-                self.peer_proto_impl.port = self.tun_port
+                self.peer_proto_impl = self._impl_instance(home_path, listening)
             self.peer_proto_impl.prepare()
     
     def setup(self):

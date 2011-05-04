@@ -96,6 +96,12 @@ def connect_fd(testbed_instance, fdnd_guid, cross_data):
     # to see how the address should be decoded
     address = endpoint.replace(":", "").decode('hex')[2:]
     testbed_instance.set(fdnd_guid, "LinuxSocketAddress", address)
+    
+    # Set tun standard contract attributes
+    testbed_instance.set(fdnd_guid, "tun_addr", address)
+    testbed_instance.set(fdnd_guid, "tun_proto", "fd")
+    testbed_instance.set(fdnd_guid, "tun_port", 0)
+    testbed_instance.set(fdnd_guid, "tun_key", "\xff"*32) # unimportant, fds aren't encrypted
 
 ### Connector information ###
 
@@ -154,9 +160,15 @@ connector_types = dict({
                 "max": 1,
                 "min": 0
             }),
-    "fd": dict({
-                "help": "Connector to interconnect devices with file descriptors",
-                "name": "fd",
+    "->fd": dict({
+                "help": "File descriptor receptor for devices with file descriptors",
+                "name": "->fd",
+                "max": 1,
+                "min": 0
+            }),
+    "fd->": dict({
+                "help": "File descriptor provider for devices with file descriptors",
+                "name": "fd->",
                 "max": 1,
                 "min": 0
             }),
@@ -482,8 +494,8 @@ connections = [
         "can_cross": False
     }),
     dict({
-        "from": ( "ns3", "ns3::FileDescriptorNetDevice", "fd" ),
-        "to":   ( "netns", "TapNodeInterface", "fd" ),
+        "from": ( "ns3", "ns3::FileDescriptorNetDevice", "->fd" ),
+        "to":   ( None, None, "fd->" ),
         "init_code": connect_fd,
         "can_cross": True
     }),

@@ -12,6 +12,7 @@ import threading
 import subprocess
 import re
 import functools
+import time
 
 tun_name = 'tun0'
 tun_path = '/dev/net/tun'
@@ -33,6 +34,13 @@ parser.add_option(
     "-p", "--port", dest="port", metavar="PORT", type="int",
     default = 15000,
     help = "Peering TCP port to connect or listen to.")
+parser.add_option(
+    "--pass-fd", dest="pass_fd", metavar="UNIX_SOCKET",
+    default = None,
+    help = "Path to a unix-domain socket to pass the TUN file descriptor to. "
+           "If given, all other connectivity options are ignored, tun_connect will "
+           "simply wait to be killed after passing the file descriptor, and it will be "
+           "the receiver's responsability to handle the tunneling.")
 
 parser.add_option(
     "-m", "--mode", dest="mode", metavar="MODE",
@@ -526,7 +534,19 @@ except:
 
 
 try:
-    if options.udp:
+    if options.pass_fd:
+        # send FD to whoever wants it
+        import passfd
+        
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+        sock.connect(options.pass_fd)
+        passfd.sendfd(sock, tun.fileno(), '0')
+        
+        # just wait forever
+        def tun_fwd(tun, remote):
+            while True:
+                time.sleep(1)
+    elif options.udp:
         # connect to remote endpoint
         if remaining_args and not remaining_args[0].startswith('-'):
             print >>sys.stderr, "Listening at: %s:%d" % (hostaddr,options.udp)

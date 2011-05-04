@@ -625,10 +625,11 @@ factories_info = dict({
         "create_function": create_element,
         "configure_function": configure_device,
         "help": "Network interface associated to a file descriptor",
-        "connector_types": ["node", "fd"],
+        "connector_types": ["node", "->fd"],
         "allow_addresses": True,
         "box_attributes": ["Address", 
-            "LinuxSocketAddress"],
+            "LinuxSocketAddress",
+            "tun_proto", "tun_addr", "tun_port", "tun_key"],
         "traces": ["fdpcap"]
     }),
      "ns3::CsmaNetDevice": dict({
