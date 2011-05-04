@@ -11,7 +11,7 @@ import threading
 from nepi.util import server
 
 class TunProtoBase(object):
-    def __init__(self, local, peer, home_path):
+    def __init__(self, local, peer, home_path, key):
         # Weak references, since ifaces do have a reference to the
         # tunneling protocol implementation - we don't want strong
         # circular references.
@@ -20,6 +20,7 @@ class TunProtoBase(object):
         
         self.port = 15000
         self.mode = 'pl-tun'
+        self.key = key
         
         self.home_path = home_path
         
@@ -124,7 +125,8 @@ class TunProtoBase(object):
             "-m", str(self.mode),
             "-p", str(local_port if listen else peer_port),
             "-A", str(local_addr),
-            "-M", str(local_mask)]
+            "-M", str(local_mask),
+            "-k", str(self.key)]
         
         if local_snat:
             args.append("-S")
@@ -304,22 +306,22 @@ class TunProtoBase(object):
         
 
 class TunProtoUDP(TunProtoBase):
-    def __init__(self, local, peer, home_path, listening):
-        super(TunProtoTCP, self).__init__(local, peer, home_path)
+    def __init__(self, local, peer, home_path, key, listening):
+        super(TunProtoUDP, self).__init__(local, peer, home_path, key)
         self.listening = listening
     
     def prepare(self):
         pass
     
     def setup(self):
-        self.launch_async('udp', False, ("-U",))
+        self.async_launch('udp', False, ("-u",str(self.port)))
     
     def shutdown(self):
         self.kill()
 
 class TunProtoTCP(TunProtoBase):
-    def __init__(self, local, peer, home_path, listening):
-        super(TunProtoTCP, self).__init__(local, peer, home_path)
+    def __init__(self, local, peer, home_path, key, listening):
+        super(TunProtoTCP, self).__init__(local, peer, home_path, key)
         self.listening = listening
     
     def prepare(self):
@@ -343,9 +345,26 @@ class TunProtoTCP(TunProtoBase):
     def shutdown(self):
         self.kill()
 
-PROTO_MAP = {
+class TapProtoUDP(TunProtoUDP):
+    def __init__(self, local, peer, home_path, key, listening):
+        super(TapProtoUDP, self).__init__(local, peer, home_path, key, listening)
+        self.mode = 'pl-tap'
+
+class TapProtoTCP(TunProtoTCP):
+    def __init__(self, local, peer, home_path, key, listening):
+        super(TapProtoTCP, self).__init__(local, peer, home_path, key, listening)
+        self.mode = 'pl-tap'
+
+
+
+TUN_PROTO_MAP = {
     'tcp' : TunProtoTCP,
     'udp' : TunProtoUDP,
+}
+
+TAP_PROTO_MAP = {
+    'tcp' : TapProtoTCP,
+    'udp' : TapProtoUDP,
 }
 
 

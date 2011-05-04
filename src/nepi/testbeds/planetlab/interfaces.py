@@ -8,6 +8,7 @@ import plcapi
 import subprocess
 import os
 import os.path
+import random
 
 import tunproto
 
@@ -33,6 +34,15 @@ class NodeIface(object):
 
         # These get initialized when the iface is connected to the internet
         self.has_internet = False
+        
+        # Generate an initial random cryptographic key to use for tunnelling
+        # Upon connection, both endpoints will agree on a common one based on
+        # this one.
+        self.tun_key = ( ''.join(map(chr, [ 
+                    r.getrandbits(8) 
+                    for i in xrange(32) 
+                    for r in (random.SystemRandom(),) ])
+                ).encode("base64").strip() )        
 
     def __str__(self):
         return "%s<ip:%s/%s up mac:%s>" % (
@@ -90,6 +100,9 @@ class _CrossIface(object):
         self.tun_port = port
 
 class TunIface(object):
+    _PROTO_MAP = tunproto.TUN_PROTO_MAP
+    _KIND = 'TUN'
+
     def __init__(self, api=None):
         if not api:
             api = plcapi.PLCAPI()
@@ -119,6 +132,7 @@ class TunIface(object):
         # They're part of the TUN standard attribute set
         self.tun_port = None
         self.tun_addr = None
+        self.tun_key = None
         
         # These get initialized when the iface is connected to its peer
         self.peer_iface = None
@@ -138,9 +152,9 @@ class TunIface(object):
 
     def add_address(self, address, netprefix, broadcast):
         if (self.address or self.netprefix or self.netmask) is not None:
-            raise RuntimeError, "Cannot add more than one address to TUN interfaces"
+            raise RuntimeError, "Cannot add more than one address to %s interfaces" % (self._KIND,)
         if broadcast:
-            raise ValueError, "TUN interfaces cannot broadcast in PlanetLab"
+            raise ValueError, "%s interfaces cannot broadcast in PlanetLab" % (self._KIND,)
         
         self.address = address
         self.netprefix = netprefix
@@ -148,11 +162,11 @@ class TunIface(object):
     
     def validate(self):
         if not self.node:
-            raise RuntimeError, "Unconnected TUN iface - missing node"
-        if self.peer_iface and self.peer_proto not in tunproto.PROTO_MAP:
+            raise RuntimeError, "Unconnected %s iface - missing node" % (self._KIND,)
+        if self.peer_iface and self.peer_proto not in self._PROTO_MAP:
             raise RuntimeError, "Unsupported tunnelling protocol: %s" % (self.peer_proto,)
         if not self.address or not self.netprefix or not self.netmask:
-            raise RuntimeError, "Misconfigured TUN iface - missing address"
+            raise RuntimeError, "Misconfigured %s iface - missing address" % (self._KIND,)
     
     def prepare(self, home_path, listening):
         if not self.peer_iface and (self.peer_proto and (listening or (self.peer_addr and self.peer_port))):
@@ -163,8 +177,8 @@ class TunIface(object):
                 self.peer_port)
         if self.peer_iface:
             if not self.peer_proto_impl:
-                self.peer_proto_impl = tunproto.PROTO_MAP[self.peer_proto](
-                    self, self.peer_iface, home_path, listening)
+                self.peer_proto_impl = self._PROTO_MAP[self.peer_proto](
+                    self, self.peer_iface, home_path, self.tun_key, listening)
                 self.peer_proto_impl.port = self.tun_port
             self.peer_proto_impl.prepare()
     
@@ -182,6 +196,10 @@ class TunIface(object):
             return self.peer_proto_impl.sync_trace(local_dir, whichtrace)
         else:
             return None
+
+class TapIface(TunIface):
+    _PROTO_MAP = tunproto.TAP_PROTO_MAP
+    _KIND = 'TAP'
 
 # Yep, it does nothing - yet
 class Internet(object):

@@ -207,6 +207,9 @@ class TestbedController(testbed_impl.TestbedController):
     def _make_tun_iface(self, parameters):
         return self._make_generic(parameters, self._interfaces.TunIface)
 
+    def _make_tap_iface(self, parameters):
+        return self._make_generic(parameters, self._interfaces.TapIface)
+
     def _make_netpipe(self, parameters):
         return self._make_generic(parameters, self._interfaces.NetPipe)
 
