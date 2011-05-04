@@ -83,6 +83,12 @@ class NodeIface(object):
             raise RuntimeError, "All external interface devices must be connected to the Internet"
     
 
+class _CrossIface(object):
+    def __init__(self, proto, addr, port):
+        self.tun_proto = proto
+        self.tun_addr = addr
+        self.tun_port = port
+
 class TunIface(object):
     def __init__(self, api=None):
         if not api:
@@ -149,6 +155,12 @@ class TunIface(object):
             raise RuntimeError, "Misconfigured TUN iface - missing address"
     
     def prepare(self, home_path, listening):
+        if not self.peer_iface and (self.peer_proto and (listening or (self.peer_addr and self.peer_port))):
+            # Ad-hoc peer_iface
+            self.peer_iface = CrossIface(
+                self.peer_proto,
+                self.peer_addr,
+                self.peer_port)
         if self.peer_iface:
             if not self.peer_proto_impl:
                 self.peer_proto_impl = tunproto.PROTO_MAP[self.peer_proto](
@@ -157,7 +169,7 @@ class TunIface(object):
             self.peer_proto_impl.prepare()
     
     def setup(self):
-        if self.peer_iface:
+        if self.peer_proto_impl:
             self.peer_proto_impl.setup()
     
     def cleanup(self):

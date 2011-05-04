@@ -249,6 +249,31 @@ class Metadata(object):
     
     del DC
     
+    
+    STANDARD_ATTRIBUTE_BUNDLES = {
+            "tun_proto" : dict({
+                "name": "tun_proto", 
+                "help": "TUNneling protocol used",
+                "type": Attribute.STRING,
+                "flags": Attribute.Invisible | Attribute.ReadOnly,
+                "validation_function": validation.is_string,
+            }),
+            "tun_addr" : dict({
+                "name": "tun_addr", 
+                "help": "IP address of the tunnel endpoint",
+                "type": Attribute.STRING,
+                "flags": Attribute.Invisible | Attribute.ReadOnly,
+                "validation_function": validation.is_ip_address,
+            }),
+            "tun_port" : dict({
+                "name": "tun_port", 
+                "help": "IP port of the tunnel endpoint",
+                "type": Attribute.INTEGER,
+                "flags": Attribute.Invisible | Attribute.ReadOnly,
+                "validation_function": validation.is_integer,
+            }),
+    }
+    
 
     def __init__(self, testbed_id, version):
         self._version = version
@@ -372,7 +397,9 @@ class Metadata(object):
 
     def _add_attributes(self, factory, info, attr_key, box_attributes = False, attr_bundle = ()):
         if not attr_bundle and info and attr_key in info:
-            attr_bundle = [ (attr_id, self._metadata.attributes[attr_id])
+            definitions = self.STANDARD_ATTRIBUTE_BUNDLES.copy()
+            definitions.update(self._metadata.attributes)
+            attr_bundle = [ (attr_id, definitions[attr_id])
                             for attr_id in info[attr_key] ]
         for attr_id, attr_info in attr_bundle:
             name = attr_info["name"]

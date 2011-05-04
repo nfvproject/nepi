@@ -103,6 +103,19 @@ def connect_tun_iface_peer(proto, testbed_instance, iface_guid, peer_iface_guid)
     iface.peer_proto = \
     iface.tun_proto = proto
 
+def crossconnect_tun_iface_peer_init(proto, testbed_instance, iface_guid, peer_iface_data):
+    iface = testbed_instance._elements[iface_guid]
+    iface.peer_iface = None
+    iface.peer_addr = peer_iface_data.get("tun_addr")
+    iface.peer_proto = peer_iface_data.get("tun_proto")
+    iface.peer_port = peer_iface_data.get("tun_port")
+    iface.tun_proto = proto
+    
+    preconfigure_tuniface(testbed_instance, iface_guid)
+
+def crossconnect_tun_iface_peer_compl(proto, testbed_instance, iface_guid, peer_iface_data):
+    postconfigure_tuniface(testbed_instance, iface_guid)
+
 def connect_dep(testbed_instance, node_guid, app_guid):
     node = testbed_instance._elements[node_guid]
     app = testbed_instance._elements[app_guid]
@@ -268,8 +281,9 @@ def preconfigure_tuniface(testbed_instance, guid):
             break
 
     # Set standard TUN attributes
-    element.tun_addr = element.external_iface.address
-    element.tun_port = 15000 + int(guid)
+    if (not element.tun_addr or not element.tun_port) and element.external_iface:
+        element.tun_addr = element.external_iface.address
+        element.tun_port = 15000 + int(guid)
 
     # Set enabled traces
     traces = testbed_instance._get_traces(guid)
@@ -279,9 +293,23 @@ def preconfigure_tuniface(testbed_instance, guid):
     element.validate()
     
     # First-phase setup
-    element.prepare( 
-        'tun-%s' % (guid,),
-        id(element) < id(element.peer_iface) )
+    if element.peer_proto:
+        if element.peer_iface and isinstance(element.peer_iface, testbed_instance._interfaces.TunIface):
+            # intra tun
+            listening = id(element) < id(element.peer_iface)
+        else:
+            # cross tun
+            if not element.tun_addr or not element.tun_port:
+                listening = True
+            elif not element.peer_addr or not element.peer_port:
+                listening = True
+            else:
+                # both have addresses...
+                # ...the one with the lesser address listens
+                listening = element.tun_addr < element.peer_addr
+        element.prepare( 
+            'tun-%s' % (guid,),
+             listening)
 
 def postconfigure_tuniface(testbed_instance, guid):
     element = testbed_instance._elements[guid]
@@ -462,6 +490,20 @@ connections = [
         "to":   (TESTBED_ID, TUNIFACE, "udp"),
         "init_code": functools.partial(connect_tun_iface_peer,"udp"),
         "can_cross": False
+    }),
+    dict({
+        "from": (TESTBED_ID, TUNIFACE, "tcp"),
+        "to":   (None, None, "tcp"),
+        "init_code": functools.partial(crossconnect_tun_iface_peer_init,"tcp"),
+        "compl_code": functools.partial(crossconnect_tun_iface_peer_compl,"tcp"),
+        "can_cross": True
+    }),
+    dict({
+        "from": (TESTBED_ID, TUNIFACE, "udp"),
+        "to":   (None, None, "udp"),
+        "init_code": functools.partial(crossconnect_tun_iface_peer_init,"udp"),
+        "compl_code": functools.partial(crossconnect_tun_iface_peer_compl,"udp"),
+        "can_cross": True
     }),
 ]
 
@@ -823,7 +865,8 @@ factories_info = dict({
             "configure_function": postconfigure_tuniface,
             "box_attributes": [
                 "up", "device_name", "mtu", "snat",
-                "txqueuelen"
+                "txqueuelen",
+                "tun_proto", "tun_addr", "tun_port"
             ],
             "traces": ["packets"],
             "connector_types": ["node","udp","tcp"]

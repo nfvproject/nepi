@@ -726,7 +726,11 @@ class ExperimentController(object):
             cross_data[cross_testbed_guid] = dict()
             cross_testbed = self._testbeds[cross_testbed_guid]
             for cross_guid in guid_list:
-                elem_cross_data = dict()
+                elem_cross_data = dict(
+                    _guid = cross_guid,
+                    _testbed_guid = cross_testbed_guid,
+                    _testbed_id = cross_testbed.testbed_id,
+                    _testbed_version = cross_testbed.testbed_version)
                 cross_data[cross_testbed_guid][cross_guid] = elem_cross_data
                 attributes_list = cross_testbed.get_attribute_list(cross_guid)
                 for attr_name in attributes_list:
