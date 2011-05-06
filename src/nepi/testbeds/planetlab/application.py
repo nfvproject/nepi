@@ -529,7 +529,7 @@ class NS3Dependency(Dependency):
                      "mv -f ${BUILD}/target/lib/python*/site-packages/pybindgen ${BUILD}/target/. && "
                      "rm -rf ${BUILD}/target/lib && "
                      "cd ../ns3-src && "
-                     "./waf configure --prefix=${BUILD}/target -d release --disable-examples && "
+                     "./waf configure --prefix=${BUILD}/target -d release --disable-examples --high-precision-as-double && "
                      "./waf &&"
                      "./waf install && "
                      "./waf clean"

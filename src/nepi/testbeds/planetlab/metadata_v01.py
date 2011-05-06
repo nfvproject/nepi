@@ -287,7 +287,7 @@ def preconfigure_tuniface(testbed_instance, guid):
     element = testbed_instance._elements[guid]
     
     # Set custom addresses if any
-    if guid in testbed_instance._add_address:
+    if guid in testbed_instance._add_address and not (element.address or element.netmask or element.netprefix):
         addresses = testbed_instance._add_address[guid]
         for address in addresses:
             (address, netprefix, broadcast) = address
@@ -790,13 +790,6 @@ attributes = dict({
                 "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_string
             }),
-    ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP: dict({
-                "name": ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP,
-                "help": "Commands to set up the environment needed to run NEPI testbeds",
-                "type": Attribute.STRING,
-                "flags": Attribute.Invisible | Attribute.ReadOnly,
-                "validation_function": validation.is_string
-            }),
     
     "netpipe_mode": dict({      
                 "name": "mode",
@@ -973,7 +966,7 @@ factories_info = dict({
             "help": "Requirement for package or application to be installed on some node",
             "category": "applications",
             "create_function": create_dependency,
-            "configure_function": configure_dependency,
+            "preconfigure_function": configure_dependency,
             "box_attributes": ["depends", "build-depends", "build", "install",
                                "sources" ],
             "connector_types": ["node"],
@@ -983,7 +976,7 @@ factories_info = dict({
             "help": "Requirement for NEPI inside NEPI - required to run testbed instances inside a node",
             "category": "applications",
             "create_function": create_nepi_dependency,
-            "configure_function": configure_dependency,
+            "preconfigure_function": configure_dependency,
             "box_attributes": [ ],
             "connector_types": ["node"],
             "traces": ["buildlog"]
@@ -992,7 +985,7 @@ factories_info = dict({
             "help": "Requirement for NS3 inside NEPI - required to run NS3 testbed instances inside a node. It also needs NepiDependency.",
             "category": "applications",
             "create_function": create_ns3_dependency,
-            "configure_function": configure_dependency,
+            "preconfigure_function": configure_dependency,
             "box_attributes": [ ],
             "connector_types": ["node"],
             "traces": ["buildlog"]

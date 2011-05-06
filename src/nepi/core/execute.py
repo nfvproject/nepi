@@ -12,8 +12,9 @@ import threading
 import ConfigParser
 import os
 import collections
+import functools
 
-ATTRIBUTE_PATTERN_BASE = re.compile(r"\{#\[(?P<label>[-a-zA-Z0-9._]*)\](?P<expr>(?P<component>\.addr\[[0-9]+\]|\.route\[[0-9]+\]|\.trace\[[0-9]+\]|).\[(?P<attribute>[-a-zA-Z0-9._]*)\])#}")
+ATTRIBUTE_PATTERN_BASE = re.compile(r"\{#\[(?P<label>[-a-zA-Z0-9._]*)\](?P<expr>(?P<component>\.addr\[[0-9]+\]|\.route\[[0-9]+\]|\.trace\[[0-9]+\])?.\[(?P<attribute>[-a-zA-Z0-9._]*)\])#}")
 ATTRIBUTE_PATTERN_GUID_SUB = r"{#[%(guid)s]%(expr)s#}"
 COMPONENT_PATTERN = re.compile(r"(?P<kind>[a-z]*)\[(?P<index>.*)\]")
 
@@ -336,11 +337,24 @@ class ExperimentController(object):
 
     @staticmethod
     def _parallel(callables):
-        threads = [ threading.Thread(target=callable) for callable in callables ]
+        excs = []
+        def wrap(callable):
+            @functools.wraps(callable)
+            def wrapped(*p, **kw):
+                try:
+                    callable(*p, **kw)
+                except Exception,e:
+                    import traceback
+                    traceback.print_exc(file=sys.stderr)
+                    excs.append(e)
+            return wrapped
+        threads = [ threading.Thread(target=wrap(callable)) for callable in callables ]
         for thread in threads:
             thread.start()
         for thread in threads:
             thread.join()
+        for exc in excs:
+            raise exc
 
     def start(self):
         parser = XmlExperimentParser()
@@ -395,6 +409,8 @@ class ExperimentController(object):
             
         # final netref step, fail if anything's left unresolved
         self.do_netrefs(data, fail_if_undefined=True)
+        
+        self._program_testbed_cross_connections(data)
         
         # perform do_configure in parallel for al testbeds
         # (it's internal configuration for each)
@@ -530,13 +546,13 @@ class ExperimentController(object):
                 ref_guid = int(label[5:])
                 if ref_guid:
                     expr = match.group("expr")
-                    component = match.group("component")[1:] # skip the dot
+                    component = (match.group("component") or "")[1:] # skip the dot
                     attribute = match.group("attribute")
                     
                     # split compound components into component kind and index
                     # eg: 'addr[0]' -> ('addr', '0')
                     component, component_index = self._netref_component_split(component)
-                    
+
                     # find object and resolve expression
                     for ref_testbed in self._testbeds.itervalues():
                         if component not in self._NETREF_COMPONENT_GETTERS:
@@ -675,40 +691,56 @@ class ExperimentController(object):
     def _program_testbed_controllers(self, element_guids, data):
         for guid in element_guids:
             (testbed_guid, factory_id) = data.get_box_data(guid)
-            testbed = self._testbeds[testbed_guid]
-            testbed.defer_create(guid, factory_id)
-            for (name, value) in data.get_attribute_data(guid):
-                testbed.defer_create_set(guid, name, value)
+            testbed = self._testbeds.get(testbed_guid)
+            if testbed:
+                testbed.defer_create(guid, factory_id)
+                for (name, value) in data.get_attribute_data(guid):
+                    testbed.defer_create_set(guid, name, value)
 
         for guid in element_guids: 
             (testbed_guid, factory_id) = data.get_box_data(guid)
-            testbed = self._testbeds[testbed_guid]
-            for (connector_type_name, cross_guid, cross_connector_type_name) \
-                    in data.get_connection_data(guid):
-                (testbed_guid, factory_id) = data.get_box_data(guid)
-                (cross_testbed_guid, cross_factory_id) = data.get_box_data(
-                        cross_guid)
-                if testbed_guid == cross_testbed_guid:
-                    testbed.defer_connect(guid, connector_type_name, 
-                            cross_guid, cross_connector_type_name)
-                else: 
-                    cross_testbed = self._testbeds[cross_testbed_guid]
-                    cross_testbed_id = cross_testbed.testbed_id
-                    testbed.defer_cross_connect(guid, connector_type_name, cross_guid, 
-                            cross_testbed_guid, cross_testbed_id, cross_factory_id, 
-                            cross_connector_type_name)
-                    # save cross data for later
-                    self._add_crossdata(testbed_guid, guid, cross_testbed_guid,
+            testbed = self._testbeds.get(testbed_guid)
+            if testbed:
+                for (connector_type_name, cross_guid, cross_connector_type_name) \
+                        in data.get_connection_data(guid):
+                    (testbed_guid, factory_id) = data.get_box_data(guid)
+                    (cross_testbed_guid, cross_factory_id) = data.get_box_data(
                             cross_guid)
-            for trace_id in data.get_trace_data(guid):
-                testbed.defer_add_trace(guid, trace_id)
-            for (autoconf, address, netprefix, broadcast) in \
-                    data.get_address_data(guid):
-                if address != None:
-                    testbed.defer_add_address(guid, address, netprefix, 
-                            broadcast)
-            for (destination, netprefix, nexthop) in data.get_route_data(guid):
-                testbed.defer_add_route(guid, destination, netprefix, nexthop)
+                    if testbed_guid == cross_testbed_guid:
+                        testbed.defer_connect(guid, connector_type_name, 
+                                cross_guid, cross_connector_type_name)
+                for trace_id in data.get_trace_data(guid):
+                    testbed.defer_add_trace(guid, trace_id)
+                for (autoconf, address, netprefix, broadcast) in \
+                        data.get_address_data(guid):
+                    if address != None:
+                        testbed.defer_add_address(guid, address, netprefix, 
+                                broadcast)
+                for (destination, netprefix, nexthop) in data.get_route_data(guid):
+                    testbed.defer_add_route(guid, destination, netprefix, nexthop)
+    
+    def _program_testbed_cross_connections(self, data):
+        data_guids = data.guids
+
+        for guid in data_guids: 
+            if not data.is_testbed_data(guid):
+                (testbed_guid, factory_id) = data.get_box_data(guid)
+                testbed = self._testbeds.get(testbed_guid)
+                if testbed:
+                    for (connector_type_name, cross_guid, cross_connector_type_name) \
+                            in data.get_connection_data(guid):
+                        (testbed_guid, factory_id) = data.get_box_data(guid)
+                        (cross_testbed_guid, cross_factory_id) = data.get_box_data(
+                                cross_guid)
+                        if testbed_guid != cross_testbed_guid:
+                            cross_testbed = self._testbeds[cross_testbed_guid]
+                            cross_testbed_id = cross_testbed.testbed_id
+                            testbed.defer_cross_connect(guid, connector_type_name, cross_guid, 
+                                    cross_testbed_guid, cross_testbed_id, cross_factory_id, 
+                                    cross_connector_type_name)
+                            # save cross data for later
+                            self._add_crossdata(testbed_guid, guid, cross_testbed_guid,
+                                    cross_guid)
                 
     def _add_crossdata(self, testbed_guid, guid, cross_testbed_guid, cross_guid):
         if testbed_guid not in self._cross_data:
