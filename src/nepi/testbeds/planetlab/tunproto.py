@@ -7,6 +7,7 @@ import os.path
 import rspawn
 import subprocess
 import threading
+import base64
 
 from nepi.util import server
 
@@ -137,17 +138,25 @@ class TunProtoBase(object):
             raise RuntimeError, "Misconfigured TUN: %s" % (local,)
         
         args = ["python", "tun_connect.py", 
-            "-m", str(self.mode)]
+            "-m", str(self.mode),
+            "-A", str(local_addr),
+            "-M", str(local_mask)]
         
         if check_proto == 'fd':
+            passfd_arg = str(peer_addr)
+            if '\x00' in passfd_arg:
+                # cannot shell_encode null characters :(
+                passfd_arg = "base64:"+base64.b64encode('$HOME/'+passfd_arg)
+            else:
+                passfd_arg = '$HOME/'+server.shell_escape(passfd_arg)
             args.extend([
-                "--pass-fd", str(peer_addr)])
+                "--pass-fd", passfd_arg
+            ])
         else:
             args.extend([
                 "-p", str(local_port if listen else peer_port),
-                "-A", str(local_addr),
-                "-M", str(local_mask),
-                "-k", str(self.key)])
+                "-k", str(self.key)
+            ])
         
         if local_snat:
             args.append("-S")
@@ -155,7 +164,7 @@ class TunProtoBase(object):
             args.extend(("-Q",str(local_txq)))
         if extra_args:
             args.extend(map(str,extra_args))
-        if not listen:
+        if not listen and check_proto != 'fd':
             args.append(str(peer_addr))
         
         self._make_home()
@@ -392,7 +401,7 @@ class TapProtoTCP(TunProtoTCP):
 
 class TapProtoFD(TunProtoFD):
     def __init__(self, local, peer, home_path, key, listening):
-        super(TapProtoUDP, self).__init__(local, peer, home_path, key, listening)
+        super(TapProtoFD, self).__init__(local, peer, home_path, key, listening)
         self.mode = 'pl-tap'
 
 
@@ -400,11 +409,13 @@ class TapProtoFD(TunProtoFD):
 TUN_PROTO_MAP = {
     'tcp' : TunProtoTCP,
     'udp' : TunProtoUDP,
+    'fd'  : TunProtoFD,
 }
 
 TAP_PROTO_MAP = {
     'tcp' : TapProtoTCP,
     'udp' : TapProtoUDP,
+    'fd'  : TapProtoFD,
 }
 
 

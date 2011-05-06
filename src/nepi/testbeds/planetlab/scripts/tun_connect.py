@@ -3,6 +3,7 @@ import sys
 import socket
 import fcntl
 import os
+import os.path
 import select
 
 import struct
@@ -13,6 +14,7 @@ import subprocess
 import re
 import functools
 import time
+import base64
 
 tun_name = 'tun0'
 tun_path = '/dev/net/tun'
@@ -255,11 +257,12 @@ def ipfmt(ip):
     return '.'.join(map(str,ipbytes))
 
 tagtype = {
-    '0806' : 'arp ',
-    '0800' : 'ipv4 ',
-    '8870' : 'jumbo ',
-    '8863' : 'PPPoE discover ',
-    '8864' : 'PPPoE ',
+    '0806' : 'arp',
+    '0800' : 'ipv4',
+    '8870' : 'jumbo',
+    '8863' : 'PPPoE discover',
+    '8864' : 'PPPoE',
+    '86dd' : 'ipv6',
 }
 def etherProto(packet):
     packet = packet.encode("hex")
@@ -342,12 +345,12 @@ def pullPacket(buf, ether_mode):
 def etherStrip(buf):
     if len(buf) < 14:
         return ""
-    if buf[12:14] == '\x08\x10' and buf[16:18] == '\x08\x00':
+    if buf[12:14] == '\x08\x10' and buf[16:18] in '\x08\x00':
         # tagged ethernet frame
-        return buf[18:-4]
+        return buf[18:]
     elif buf[12:14] == '\x08\x00':
         # untagged ethernet frame
-        return buf[14:-4]
+        return buf[14:]
     else:
         return ""
 
@@ -535,6 +538,13 @@ except:
 
 try:
     if options.pass_fd:
+        if options.pass_fd.startswith("base64:"):
+            options.pass_fd = base64.b64decode(
+                options.pass_fd[len("base64:"):])
+            options.pass_fd = os.path.expandvars(options.pass_fd)
+        
+        print >>sys.stderr, "Sending FD to: %r" % (options.pass_fd,)
+        
         # send FD to whoever wants it
         import passfd
         
