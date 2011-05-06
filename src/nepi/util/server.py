@@ -4,6 +4,7 @@
 import base64
 import errno
 import os
+import os.path
 import resource
 import select
 import socket
@@ -42,7 +43,12 @@ def shell_escape(s):
         return s
     else:
         # unsafe string - escape
-        s = s.replace("'","\\'")
+        def escp(c):
+            if (32 <= ord(c) < 127 or c in ('\r','\n','\t')) and c not in ("'",):
+                return c
+            else:
+                return "'$'\\x%02x''" % (ord(c),)
+        s = ''.join(map(escp,s))
         return "'%s'" % (s,)
 
 class Server(object):
@@ -73,6 +79,11 @@ class Server(object):
     def daemonize(self):
         # pipes for process synchronization
         (r, w) = os.pipe()
+        
+        # build root folder
+        root = os.path.normpath(self._root_dir)
+        if not os.path.exists(root):
+            os.makedirs(root, 0755)
 
         pid1 = os.fork()
         if pid1 > 0:
@@ -278,11 +289,12 @@ class Forwarder(object):
 
 class Client(object):
     def __init__(self, root_dir = ".", host = None, port = None, user = None, 
-            agent = None):
+            agent = None, environment_setup = ""):
         self.root_dir = root_dir
         self.addr = (host, port)
         self.user = user
         self.agent = agent
+        self.environment_setup = environment_setup
         self._stopped = False
         self.connect()
     
@@ -301,8 +313,13 @@ class Client(object):
                 c.forward()" % (root_dir,)
         if host != None:
             self._process = popen_ssh_subprocess(python_code, host, port, 
-                    user, agent)
+                    user, agent,
+                    environment_setup = self.environment_setup)
             # popen_ssh_subprocess already waits for readiness
+            if self._process.poll():
+                err = proc.stderr.read()
+                raise RuntimeError("Client could not be reached: %s" % \
+                        err)
         else:
             self._process = subprocess.Popen(
                     ["python", "-c", python_code],
@@ -617,15 +634,16 @@ def popen_ssh_subprocess(python_code, host, port, user, agent,
         ident_key = None,
         server_key = None,
         tty = False,
-        environment_setup = ""):
+        environment_setup = "",
+        waitcommand = False):
+        cmd = ""
         if python_path:
             python_path.replace("'", r"'\''")
             cmd = """PYTHONPATH="$PYTHONPATH":'%s' """ % python_path
-        else:
-            cmd = ""
+            cmd += " ; "
         if environment_setup:
             cmd += environment_setup
-            cmd += " "
+            cmd += " ; "
         # Uncomment for debug (to run everything under strace)
         # We had to verify if strace works (cannot nest them)
         #cmd += "if strace echo >/dev/null 2>&1; then CMD='strace -ff -tt -s 200 -o strace.out'; else CMD=''; fi\n"
@@ -641,9 +659,13 @@ def popen_ssh_subprocess(python_code, host, port, user, agent,
         cmd += "cmd = base64.b64decode(cmd)\n"
         # Uncomment for debug
         #cmd += "os.write(2, \"Executing python code: %s\\n\" % cmd)\n"
-        cmd += "os.write(1, \"OK\\n\")\n" # send a sync message
-        cmd += "exec(cmd)\n'"
-
+        if not waitcommand:
+            cmd += "os.write(1, \"OK\\n\")\n" # send a sync message
+        cmd += "exec(cmd)\n"
+        if waitcommand:
+            cmd += "os.write(1, \"OK\\n\")\n" # send a sync message
+        cmd += "'"
+        
         tmp_known_hosts = None
         args = ['ssh',
                 # Don't bother with localhost. Makes test easier
@@ -675,6 +697,7 @@ def popen_ssh_subprocess(python_code, host, port, user, agent,
                 base64.b64encode(python_code) + "\n")
         msg = os.read(proc.stdout.fileno(), 3)
         if msg != "OK\n":
-            raise RuntimeError("Failed to start remote python interpreter")
+            raise RuntimeError, "Failed to start remote python interpreter: \nout:\n%s%s\nerr:\n%s" % (
+                msg, proc.stdout.read(), proc.stderr.read())
         return proc
  
