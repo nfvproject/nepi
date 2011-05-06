@@ -30,6 +30,12 @@ class TestbedController(testbed_impl.TestbedController):
         self._home_directory = self._attributes.\
             get_attribute_value("homeDirectory")
         self._ns3 = self._load_ns3_module()
+        
+        # create home...
+        home = os.path.normpath(self.home_directory)
+        if not os.path.exists(home):
+            os.makedirs(home, 0755)
+        
         super(TestbedController, self).do_setup()
 
     def start(self):
