@@ -103,7 +103,7 @@ testbed_messages = dict({
     ACTION: "%d|%s" % (ACTION, "%s|%d|%s"),
     STATUS: "%d|%s" % (STATUS, "%s"),
     GUIDS:  "%d" % GUIDS,
-    GET_ATTRIBUTE_LIST:  "%d" % GET_ATTRIBUTE_LIST,
+    GET_ATTRIBUTE_LIST:  "%d|%s" % (GET_ATTRIBUTE_LIST,"%d"),
     TESTBED_ID:  "%d" % TESTBED_ID,
     TESTBED_VERSION:  "%d" % TESTBED_VERSION,
    })
@@ -470,12 +470,10 @@ class TestbedControllerServer(server.Server):
         guid = int(params[1])
         connector_type_name = params[2]
         cross_guid = int(params[3])
-        connector_type_name = params[4]
-        cross_guid = int(params[5])
-        cross_testbed_guid = int(params[6])
-        cross_testbed_id = params[7]
-        cross_factory_id = params[8]
-        cross_connector_type_name = params[9]
+        cross_testbed_guid = int(params[4])
+        cross_testbed_id = params[5]
+        cross_factory_id = params[6]
+        cross_connector_type_name = params[7]
         self._testbed.defer_cross_connect(guid, connector_type_name, cross_guid, 
             cross_testbed_guid, cross_testbed_id, cross_factory_id, 
             cross_connector_type_name)
@@ -541,10 +539,10 @@ class TestbedControllerServer(server.Server):
         return "%d|%s" % (OK, "")
 
     def get(self, params):
-        guid = int(param[1])
+        guid = int(params[1])
         name = base64.b64decode(params[2])
-        value = self._testbed.get(guid, name, time)
         time = params[3]
+        value = self._testbed.get(guid, name, time)
         result = base64.b64encode(str(value))
         return "%d|%s" % (OK, result)
 
@@ -713,15 +711,16 @@ class TestbedControllerProxy(object):
                         testbed_id and testbed_version are required")
             # ssh
             if host != None:
-                python_code = "from nepi.util.proxy import \
-                        TesbedInstanceServer;\
-                        s = TestbedControllerServer('%s', %d, '%s', '%s');\
-                        s.run()" % (root_dir, log_level, testbed_id, 
+                python_code = "from nepi.util.proxy import "\
+                        "TestbedControllerServer;"\
+                        "s = TestbedControllerServer('%s', %d, '%s', '%s');"\
+                        "s.run()" % (root_dir, log_level, testbed_id, 
                                 testbed_version)
                 proc = server.popen_ssh_subprocess(python_code, host = host,
                     port = port, user = user, agent = agent,
                     ident_key = ident_key,
-                    environment_setup = environment_setup)
+                    environment_setup = environment_setup,
+                    waitcommand = True)
                 if proc.poll():
                     err = proc.stderr.read()
                     raise RuntimeError("Server could not be executed: %s" % \
@@ -734,7 +733,8 @@ class TestbedControllerProxy(object):
 
         # connect client to server
         self._client = server.Client(root_dir, host = host, port = port, 
-                user = user, agent = agent)
+                user = user, agent = agent, 
+                environment_setup = environment_setup)
 
     @property
     def guids(self):
@@ -759,7 +759,7 @@ class TestbedControllerProxy(object):
         text = base64.b64decode(result[1])
         if code == ERROR:
             raise RuntimeError(text)
-        return int(text)
+        return str(text)
 
     @property
     def testbed_version(self):
@@ -771,7 +771,7 @@ class TestbedControllerProxy(object):
         text = base64.b64decode(result[1])
         if code == ERROR:
             raise RuntimeError(text)
-        return int(text)
+        return str(text)
 
     def defer_configure(self, name, value):
         msg = testbed_messages[CONFIGURE]
@@ -1065,7 +1065,7 @@ class TestbedControllerProxy(object):
 
     def status(self, guid = None):
         msg = testbed_messages[STATUS]
-        msg = msg % str(guid)
+        msg = msg % (guid,)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
         result = reply.split("|")
@@ -1090,7 +1090,7 @@ class TestbedControllerProxy(object):
 
     def get_attribute_list(self, guid):
         msg = testbed_messages[GET_ATTRIBUTE_LIST]
-        msg = msg % (guid)
+        msg = msg % (guid,)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
         result = reply.split("|")
@@ -1131,7 +1131,8 @@ class ExperimentControllerProxy(object):
                 proc = server.popen_ssh_subprocess(python_code, host = host,
                     port = port, user = user, agent = agent,
                     ident_key = ident_key,
-                    environment_setup = environment_setup)
+                    environment_setup = environment_setup,
+                    waitcommand = True)
                 if proc.poll():
                     err = proc.stderr.read()
                     raise RuntimeError("Server could not be executed: %s" % \
@@ -1143,7 +1144,8 @@ class ExperimentControllerProxy(object):
 
         # connect client to server
         self._client = server.Client(root_dir, host = host, port = port, 
-                user = user, agent = agent)
+                user = user, agent = agent,
+                environment_setup = environment_setup)
 
     @property
     def experiment_xml(self):
