@@ -11,6 +11,7 @@ import time
 import unittest
 import re
 import test_util
+import sys
 
 class PlanetLabExecuteTestCase(unittest.TestCase):
     def setUp(self):
@@ -342,9 +343,11 @@ echo 'OKIDOKI'
         instance.defer_connect(3, "devs", 6, "node")
         instance.defer_connect(6, "inet", 5, "devs")
         instance.defer_create(7, TunClass)
+        instance.defer_add_trace(7, "packets")
         instance.defer_add_address(7, "192.168.2.2", 24, False)
         instance.defer_connect(2, "devs", 7, "node")
         instance.defer_create(8, TunClass)
+        instance.defer_add_trace(8, "packets")
         instance.defer_add_address(8, "192.168.2.3", 24, False)
         instance.defer_connect(3, "devs", 8, "node")
         instance.defer_connect(7, ConnectionProto, 8, ConnectionProto)
@@ -380,13 +383,18 @@ echo 'OKIDOKI'
             while instance.status(9) != STATUS_FINISHED:
                 time.sleep(0.5)
             ping_result = instance.trace(9, "stdout") or ""
+            packets1 = instance.trace(7, "packets") or ""
+            packets2 = instance.trace(8, "packets") or ""
             instance.stop()
         finally:
             instance.shutdown()
 
         # asserts at the end, to make sure there's proper cleanup
         self.assertTrue(re.match(comp_result, ping_result, re.MULTILINE),
-            "Unexpected trace:\n" + ping_result)
+            "Unexpected trace:\n%s\nPackets @ source:\n%s\nPackets @ target:\n%s" % (
+                ping_result,
+                packets1,
+                packets2))
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_tun_ping(self):
