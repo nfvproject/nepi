@@ -46,6 +46,11 @@ class TestbedController(execute.TestbedController):
         for factory in self._metadata.build_execute_factories():
             self._factories[factory.factory_id] = factory
         self._attributes = self._metadata.testbed_attributes()
+        self._root_directory = None
+    
+    @property
+    def root_directory(self):
+        return self._root_directory
 
     @property
     def guids(self):
@@ -180,6 +185,8 @@ class TestbedController(execute.TestbedController):
         self._add_route[guid].append((destination, netprefix, nexthop)) 
 
     def do_setup(self):
+        self._root_directory = self._attributes.\
+            get_attribute_value("rootDirectory")
         self._status = TESTBED_STATUS_SETUP
 
     def do_create(self):
