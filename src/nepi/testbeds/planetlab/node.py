@@ -72,17 +72,16 @@ class Node(object):
     @property
     def _nepi_testbed_environment_setup(self):
         command = cStringIO.StringIO()
-        command.write('PYTHONPATH=$PYTHONPATH:%s' % (
+        command.write('export PYTHONPATH=$PYTHONPATH:%s' % (
             ':'.join(["${HOME}/"+server.shell_escape(s) for s in self.pythonpath])
         ))
-        command.write(' PATH=$PATH:%s' % (
+        command.write(' ; export PATH=$PATH:%s' % (
             ':'.join(["${HOME}/"+server.shell_escape(s) for s in self.pythonpath])
         ))
-        if self.node.env:
-            for envkey, envvals in self.node.env.iteritems():
+        if self.env:
+            for envkey, envvals in self.env.iteritems():
                 for envval in envvals:
-                    command.write(' %s=%s' % (envkey, envval))
-        command.write(self.command)
+                    command.write(' ; export %s=%s' % (envkey, envval))
         return command.getvalue()
     
     def build_filters(self, target_filters, filter_map):

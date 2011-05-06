@@ -5,6 +5,7 @@ from constants import TESTBED_ID
 from nepi.core import metadata
 from nepi.core.attributes import Attribute
 from nepi.util import validation
+import os.path
 
 ### Connection functions ####
 
@@ -98,10 +99,11 @@ def connect_fd(testbed_instance, fdnd_guid, cross_data):
     testbed_instance.set(fdnd_guid, "LinuxSocketAddress", address)
     
     # Set tun standard contract attributes
-    testbed_instance.set(fdnd_guid, "tun_addr", address)
+    testbed_instance.set(fdnd_guid, "tun_addr", 
+        os.path.join( testbed_instance.root_directory, address ) )
     testbed_instance.set(fdnd_guid, "tun_proto", "fd")
     testbed_instance.set(fdnd_guid, "tun_port", 0)
-    testbed_instance.set(fdnd_guid, "tun_key", "\xff"*32) # unimportant, fds aren't encrypted
+    testbed_instance.set(fdnd_guid, "tun_key", "\xfa"*32) # unimportant, fds aren't encrypted
 
 ### Connector information ###
 

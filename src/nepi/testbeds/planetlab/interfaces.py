@@ -34,15 +34,6 @@ class NodeIface(object):
 
         # These get initialized when the iface is connected to the internet
         self.has_internet = False
-        
-        # Generate an initial random cryptographic key to use for tunnelling
-        # Upon connection, both endpoints will agree on a common one based on
-        # this one.
-        self.tun_key = ( ''.join(map(chr, [ 
-                    r.getrandbits(8) 
-                    for i in xrange(32) 
-                    for r in (random.SystemRandom(),) ])
-                ).encode("base64").strip() )        
 
     def __str__(self):
         return "%s<ip:%s/%s up mac:%s>" % (
@@ -132,7 +123,6 @@ class TunIface(object):
         # They're part of the TUN standard attribute set
         self.tun_port = None
         self.tun_addr = None
-        self.tun_key = None
         
         # These get initialized when the iface is connected to its peer
         self.peer_iface = None
@@ -141,6 +131,17 @@ class TunIface(object):
 
         # same as peer proto, but for execute-time standard attribute lookups
         self.tun_proto = None 
+        
+        
+        # Generate an initial random cryptographic key to use for tunnelling
+        # Upon connection, both endpoints will agree on a common one based on
+        # this one.
+        self.tun_key = ( ''.join(map(chr, [ 
+                    r.getrandbits(8) 
+                    for i in xrange(32) 
+                    for r in (random.SystemRandom(),) ])
+                ).encode("base64").strip() )        
+        
 
     def __str__(self):
         return "%s<ip:%s/%s %s%s>" % (
@@ -177,7 +178,7 @@ class TunIface(object):
     def prepare(self, home_path, listening):
         if not self.peer_iface and (self.peer_proto and (listening or (self.peer_addr and self.peer_port))):
             # Ad-hoc peer_iface
-            self.peer_iface = CrossIface(
+            self.peer_iface = _CrossIface(
                 self.peer_proto,
                 self.peer_addr,
                 self.peer_port)
