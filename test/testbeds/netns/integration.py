@@ -100,7 +100,7 @@ class NetnsIntegrationTestCase(unittest.TestCase):
         inst_root_dir = os.path.join(self.root_dir, "instance")
         os.mkdir(inst_root_dir)
         netns_desc.set_attribute_value(DC.ROOT_DIRECTORY, inst_root_dir)
-        netns_desc.set_attribute_value(DC.LOG_LDEVEL, DC.DEBUG_LEVEL)
+        netns_desc.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
 
         xml = exp_desc.to_xml()
 
