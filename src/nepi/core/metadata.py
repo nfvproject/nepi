@@ -255,7 +255,7 @@ class Metadata(object):
                 "name": "tun_proto", 
                 "help": "TUNneling protocol used",
                 "type": Attribute.STRING,
-                "flags": Attribute.Invisible | Attribute.ReadOnly,
+                "flags": Attribute.Invisible,
                 "validation_function": validation.is_string,
             }),
             "tun_key" : dict({
@@ -264,22 +264,29 @@ class Metadata(object):
                         "Endpoints must agree to use the minimum (in lexicographic order) "
                         "of both the remote and local sides.",
                 "type": Attribute.STRING,
-                "flags": Attribute.Invisible | Attribute.ReadOnly,
+                "flags": Attribute.Invisible,
                 "validation_function": validation.is_string,
             }),
             "tun_addr" : dict({
                 "name": "tun_addr", 
-                "help": "IP address of the tunnel endpoint",
+                "help": "Address (IP, unix socket, whatever) of the tunnel endpoint",
                 "type": Attribute.STRING,
-                "flags": Attribute.Invisible | Attribute.ReadOnly,
-                "validation_function": validation.is_ip_address,
+                "flags": Attribute.Invisible,
+                "validation_function": validation.is_string,
             }),
             "tun_port" : dict({
                 "name": "tun_port", 
                 "help": "IP port of the tunnel endpoint",
                 "type": Attribute.INTEGER,
-                "flags": Attribute.Invisible | Attribute.ReadOnly,
+                "flags": Attribute.Invisible,
                 "validation_function": validation.is_integer,
+            }),
+            ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP : dict({
+                "name": ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP,
+                "help": "Commands to set up the environment needed to run NEPI testbeds",
+                "type": Attribute.STRING,
+                "flags": Attribute.Invisible,
+                "validation_function": validation.is_string
             }),
     }
     
