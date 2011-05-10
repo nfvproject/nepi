@@ -98,9 +98,12 @@ def connect_fd(testbed_instance, fdnd_guid, cross_data):
     address = endpoint.replace(":", "").decode('hex')[2:]
     testbed_instance.set(fdnd_guid, "LinuxSocketAddress", address)
     
+    # If it's a non-abstract socket, add the path
+    if not address.startswith('\x00'):
+        address = os.path.join( testbed_instance.root_directory, address )
+    
     # Set tun standard contract attributes
-    testbed_instance.set(fdnd_guid, "tun_addr", 
-        os.path.join( testbed_instance.root_directory, address ) )
+    testbed_instance.set(fdnd_guid, "tun_addr", address )
     testbed_instance.set(fdnd_guid, "tun_proto", "fd")
     testbed_instance.set(fdnd_guid, "tun_port", 0)
     testbed_instance.set(fdnd_guid, "tun_key", "\xfa"*32) # unimportant, fds aren't encrypted
@@ -437,7 +440,19 @@ connections = [
     }),
     dict({
         "from": ( "ns3", "ns3::Node", "protos" ),
+        "to":   ( "ns3", "ns3::Icmpv6L4Protocol", "node" ),
+        "init_code": connect_node_other,
+        "can_cross": False
+    }),
+    dict({
+        "from": ( "ns3", "ns3::Node", "protos" ),
         "to":   ( "ns3", "ns3::Ipv4L3Protocol", "node" ),
+        "init_code": connect_node_other,
+        "can_cross": False
+    }),
+    dict({
+        "from": ( "ns3", "ns3::Node", "protos" ),
+        "to":   ( "ns3", "ns3::Ipv6L3Protocol", "node" ),
         "init_code": connect_node_other,
         "can_cross": False
     }),
