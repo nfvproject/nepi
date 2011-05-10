@@ -98,8 +98,8 @@ testbed_messages = dict({
     SET:    "%d|%s" % (SET, "%d|%s|%s|%d|%s"),
     EXPERIMENT_GET:    "%d|%s" % (EXPERIMENT_GET, "%d|%d|%s|%s"),
     EXPERIMENT_SET:    "%d|%s" % (EXPERIMENT_SET, "%d|%d|%s|%s|%d|%s"),
-    GET_ROUTE: "%d|%s" % (GET, "%d|%d|%s"),
-    GET_ADDRESS: "%d|%s" % (GET, "%d|%d|%s"),
+    GET_ROUTE: "%d|%s" % (GET_ROUTE, "%d|%d|%s"),
+    GET_ADDRESS: "%d|%s" % (GET_ADDRESS, "%d|%d|%s"),
     ACTION: "%d|%s" % (ACTION, "%s|%d|%s"),
     STATUS: "%d|%s" % (STATUS, "%s"),
     GUIDS:  "%d" % GUIDS,
@@ -559,7 +559,7 @@ class TestbedControllerServer(server.Server):
     def get_address(self, params):
         guid = int(params[1])
         index = int(params[2])
-        attribute = base64.b64decode(param[3])
+        attribute = base64.b64decode(params[3])
         value = self._testbed.get_address(guid, index, attribute)
         result = base64.b64encode(str(value))
         return "%d|%s" % (OK, result)
@@ -567,7 +567,7 @@ class TestbedControllerServer(server.Server):
     def get_route(self, params):
         guid = int(params[1])
         index = int(params[2])
-        attribute = base64.b64decode(param[3])
+        attribute = base64.b64decode(params[3])
         value = self._testbed.get_route(guid, index, attribute)
         result = base64.b64encode(str(value))
         return "%d|%s" % (OK, result)
@@ -741,6 +741,8 @@ class TestbedControllerProxy(object):
         msg = testbed_messages[GUIDS]
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -754,6 +756,8 @@ class TestbedControllerProxy(object):
         msg = testbed_messages[TESTBED_ID]
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -766,6 +770,8 @@ class TestbedControllerProxy(object):
         msg = testbed_messages[TESTBED_VERSION]
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -782,6 +788,8 @@ class TestbedControllerProxy(object):
         msg = msg % (name, value, type)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -793,6 +801,8 @@ class TestbedControllerProxy(object):
         msg = msg % (guid, factory_id)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -808,6 +818,8 @@ class TestbedControllerProxy(object):
         msg = msg % (guid, name, value, type)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -823,6 +835,8 @@ class TestbedControllerProxy(object):
         msg = msg % (guid, name, value, type)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -836,6 +850,8 @@ class TestbedControllerProxy(object):
             connector_type_name2)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -850,6 +866,8 @@ class TestbedControllerProxy(object):
             cross_testbed_id, cross_factory_id, cross_connector_type_name)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -861,6 +879,8 @@ class TestbedControllerProxy(object):
         msg = msg % (guid, trace_id)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -872,6 +892,8 @@ class TestbedControllerProxy(object):
         msg = msg % (guid, address, netprefix, broadcast)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -883,6 +905,8 @@ class TestbedControllerProxy(object):
         msg = msg % (guid, destination, netprefix, nexthop)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -893,6 +917,8 @@ class TestbedControllerProxy(object):
         msg = testbed_messages[DO_SETUP]
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -903,6 +929,8 @@ class TestbedControllerProxy(object):
         msg = testbed_messages[DO_CREATE]
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -913,6 +941,8 @@ class TestbedControllerProxy(object):
         msg = testbed_messages[DO_CONNECT_INIT]
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -923,6 +953,8 @@ class TestbedControllerProxy(object):
         msg = testbed_messages[DO_CONNECT_COMPL]
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -933,6 +965,8 @@ class TestbedControllerProxy(object):
         msg = testbed_messages[DO_CONFIGURE]
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -943,6 +977,8 @@ class TestbedControllerProxy(object):
         msg = testbed_messages[DO_PRECONFIGURE]
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -956,6 +992,8 @@ class TestbedControllerProxy(object):
         msg = msg % (cross_data)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -969,6 +1007,8 @@ class TestbedControllerProxy(object):
         msg = msg % (cross_data)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -979,6 +1019,8 @@ class TestbedControllerProxy(object):
         msg = testbed_messages[START]
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -989,6 +1031,8 @@ class TestbedControllerProxy(object):
         msg = testbed_messages[STOP]
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -1004,6 +1048,8 @@ class TestbedControllerProxy(object):
         msg = msg % (guid, name, value, type, time)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -1017,6 +1063,8 @@ class TestbedControllerProxy(object):
         msg = msg % (guid, name, time)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -1031,6 +1079,8 @@ class TestbedControllerProxy(object):
         msg = msg % (guid, index, attribute)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -1045,6 +1095,8 @@ class TestbedControllerProxy(object):
         msg = msg % (guid, index, attribute)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -1057,6 +1109,8 @@ class TestbedControllerProxy(object):
         msg = msg % (time, guid, action)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -1068,6 +1122,8 @@ class TestbedControllerProxy(object):
         msg = msg % (guid,)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -1081,6 +1137,8 @@ class TestbedControllerProxy(object):
         msg = msg % (guid, trace_id, attribute)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -1093,6 +1151,8 @@ class TestbedControllerProxy(object):
         msg = msg % (guid,)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -1105,6 +1165,8 @@ class TestbedControllerProxy(object):
         msg = testbed_messages[SHUTDOWN]
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -1152,6 +1214,8 @@ class ExperimentControllerProxy(object):
         msg = controller_messages[XML]
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -1165,6 +1229,8 @@ class ExperimentControllerProxy(object):
         msg = msg % (testbed_guid, guid, trace_id, attribute)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text =  base64.b64decode(result[1])
@@ -1176,6 +1242,8 @@ class ExperimentControllerProxy(object):
         msg = controller_messages[START]
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text =  base64.b64decode(result[1])
@@ -1186,6 +1254,8 @@ class ExperimentControllerProxy(object):
         msg = controller_messages[STOP]
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text =  base64.b64decode(result[1])
@@ -1196,6 +1266,8 @@ class ExperimentControllerProxy(object):
         msg = controller_messages[RECOVER]
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text =  base64.b64decode(result[1])
@@ -1207,6 +1279,8 @@ class ExperimentControllerProxy(object):
         msg = msg % guid
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -1223,6 +1297,8 @@ class ExperimentControllerProxy(object):
         msg = msg % (testbed_guid, guid, name, value, type, time)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -1236,6 +1312,8 @@ class ExperimentControllerProxy(object):
         msg = msg % (testbed_guid, guid, name, time)
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text = base64.b64decode(result[1])
@@ -1247,6 +1325,8 @@ class ExperimentControllerProxy(object):
         msg = controller_messages[SHUTDOWN]
         self._client.send_msg(msg)
         reply = self._client.read_reply()
+        if not reply:
+            raise RuntimeError, "Invalid reply: %r" % (reply,)
         result = reply.split("|")
         code = int(result[0])
         text =  base64.b64decode(result[1])
