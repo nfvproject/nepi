@@ -196,6 +196,10 @@ class TunIface(object):
             self.peer_proto_impl.shutdown()
             self.peer_proto_impl = None
 
+    def async_launch_wait(self):
+        if self.peer_proto_impl:
+            self.peer_proto_impl.async_launch_wait()
+
     def sync_trace(self, local_dir, whichtrace):
         if self.peer_proto_impl:
             return self.peer_proto_impl.sync_trace(local_dir, whichtrace)

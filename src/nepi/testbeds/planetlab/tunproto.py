@@ -379,7 +379,8 @@ class TunProtoTCP(TunProtoBase):
             if peer and peer.peer_proto_impl:
                 peer.peer_proto_impl.async_launch_wait()
             
-            self.launch('tcp', False)
+            if not self._started:
+                self.launch('tcp', False)
         else:
             # make sure WE are ready
             self.async_launch_wait()

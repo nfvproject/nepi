@@ -336,6 +336,12 @@ def postconfigure_tuniface(testbed_instance, guid):
     # Second-phase setup
     element.setup()
     
+def wait_tuniface(testbed_instance, guid):
+    element = testbed_instance._elements[guid]
+    
+    # Second-phase setup
+    element.async_launch_wait()
+    
 
 def configure_node(testbed_instance, guid):
     node = testbed_instance._elements[guid]
@@ -925,6 +931,7 @@ factories_info = dict({
             "create_function": create_tuniface,
             "preconfigure_function": preconfigure_tuniface,
             "configure_function": postconfigure_tuniface,
+            "start_function": wait_tuniface,
             "box_attributes": [
                 "up", "device_name", "mtu", "snat",
                 "txqueuelen",
@@ -940,6 +947,7 @@ factories_info = dict({
             "create_function": create_tapiface,
             "preconfigure_function": preconfigure_tuniface,
             "configure_function": postconfigure_tuniface,
+            "start_function": wait_tuniface,
             "box_attributes": [
                 "up", "device_name", "mtu", "snat",
                 "txqueuelen",

@@ -16,6 +16,9 @@ import functools
 import time
 import base64
 
+import time
+print >>sys.stderr, time.time()
+
 tun_name = 'tun0'
 tun_path = '/dev/net/tun'
 hostaddr = socket.gethostbyname(socket.gethostname())
@@ -553,6 +556,7 @@ try:
             sock.connect(options.pass_fd)
         except socket.error:
             # wait a while, retry
+            print >>sys.stderr, "Could not connect. Retrying in a sec..."
             time.sleep(1)
             sock.connect(options.pass_fd)
         passfd.sendfd(sock, tun.fileno(), '0')
@@ -562,6 +566,10 @@ try:
             while True:
                 time.sleep(1)
         remote = None
+        
+        import time
+        print >>sys.stderr, time.time()
+        
     elif options.udp:
         # connect to remote endpoint
         if remaining_args and not remaining_args[0].startswith('-'):
