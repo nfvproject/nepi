@@ -549,13 +549,19 @@ try:
         import passfd
         
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-        sock.connect(options.pass_fd)
+        try:
+            sock.connect(options.pass_fd)
+        except socket.error:
+            # wait a while, retry
+            time.sleep(1)
+            sock.connect(options.pass_fd)
         passfd.sendfd(sock, tun.fileno(), '0')
         
         # just wait forever
         def tun_fwd(tun, remote):
             while True:
                 time.sleep(1)
+        remote = None
     elif options.udp:
         # connect to remote endpoint
         if remaining_args and not remaining_args[0].startswith('-'):
