@@ -144,9 +144,9 @@ class TunProtoBase(object):
         
         if check_proto == 'fd':
             passfd_arg = str(peer_addr)
-            if '\x00' in passfd_arg:
+            if passfd_arg.startswith('\x00'):
                 # cannot shell_encode null characters :(
-                passfd_arg = "base64:"+base64.b64encode('$HOME/'+passfd_arg)
+                passfd_arg = "base64:"+base64.b64encode(passfd_arg)
             else:
                 passfd_arg = '$HOME/'+server.shell_escape(passfd_arg)
             args.extend([
