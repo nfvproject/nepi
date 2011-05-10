@@ -319,6 +319,7 @@ class ExperimentController(object):
         self._cross_data = dict()
         self._root_dir = root_dir
         self._netreffed_testbeds = set()
+        self._guids_in_testbed_cache = dict()
 
         self.persist_experiment_xml()
 
@@ -417,6 +418,11 @@ class ExperimentController(object):
         self._parallel([testbed.do_configure
                         for testbed in self._testbeds.itervalues()])
 
+        
+        #print >>sys.stderr, "DO IT"
+        #import time
+        #time.sleep(60)
+        
         # cross-connect (cannot be done in parallel)
         for guid, testbed in self._testbeds.iteritems():
             cross_data = self._get_cross_data(guid)
@@ -512,8 +518,16 @@ class ExperimentController(object):
         return testbed.get(guid, name, time)
 
     def shutdown(self):
-       for testbed in self._testbeds.values():
-           testbed.shutdown()
+        for testbed in self._testbeds.values():
+            testbed.shutdown()
+    
+    def _guids_in_testbed(self, testbed_guid):
+        if testbed_guid not in self._testbeds:
+            return set()
+        if testbed_guid not in self._guids_in_testbed_cache:
+            self._guids_in_testbed_cache[testbed_guid] = \
+                set(self._testbeds[testbed_guid].guids)
+        return self._guids_in_testbed_cache[testbed_guid]
 
     @staticmethod
     def _netref_component_split(component):
@@ -526,10 +540,10 @@ class ExperimentController(object):
     _NETREF_COMPONENT_GETTERS = {
         'addr':
             lambda testbed, guid, index, name: 
-                testbed.get_address(guid, index, name),
+                testbed.get_address(guid, int(index), name),
         'route' :
             lambda testbed, guid, index, name: 
-                testbed.get_route(guid, index, name),
+                testbed.get_route(guid, int(index), name),
         'trace' :
             lambda testbed, guid, index, name: 
                 testbed.trace(guid, index, name),
@@ -554,9 +568,11 @@ class ExperimentController(object):
                     component, component_index = self._netref_component_split(component)
 
                     # find object and resolve expression
-                    for ref_testbed in self._testbeds.itervalues():
+                    for ref_testbed_guid, ref_testbed in self._testbeds.iteritems():
                         if component not in self._NETREF_COMPONENT_GETTERS:
                             raise ValueError, "Malformed netref: %r - unknown component" % (expr,)
+                        elif ref_guid not in self._guids_in_testbed(ref_testbed_guid):
+                            pass
                         else:
                             ref_value = self._NETREF_COMPONENT_GETTERS[component](
                                 ref_testbed, ref_guid, component_index, attribute)
@@ -567,8 +583,9 @@ class ExperimentController(object):
     
     def do_netrefs(self, data, fail_if_undefined = False):
         # element netrefs
-        for (testbed_guid, guid), attrs in self._netrefs.iteritems():
+        for (testbed_guid, guid), attrs in self._netrefs.items():
             testbed = self._testbeds[testbed_guid]
+            allreplaced = True
             for name in attrs:
                 value = testbed.get(guid, name)
                 if isinstance(value, basestring):
@@ -577,11 +594,16 @@ class ExperimentController(object):
                         testbed.set(guid, name, ref_value)
                     elif fail_if_undefined:
                         raise ValueError, "Unresolvable netref in: %r" % (value,)
+                    else:
+                        allreplaced = False
+            if allreplaced:
+                del self._netrefs[(testbed_guid, guid)]
         
         # testbed netrefs
-        for testbed_guid, attrs in self._testbed_netrefs.iteritems():
+        for testbed_guid, attrs in self._testbed_netrefs.items():
             tb_data = dict(data.get_attribute_data(testbed_guid))
             if data:
+                allreplaced = True
                 for name in attrs:
                     value = tb_data.get(name)
                     if isinstance(value, basestring):
@@ -590,9 +612,11 @@ class ExperimentController(object):
                             data.set_attribute_data(testbed_guid, name, ref_value)
                         elif fail_if_undefined:
                             raise ValueError, "Unresolvable netref in: %r" % (value,)
+                        else:
+                            allreplaced = False
+                if allreplaced:
+                    del self._testbed_netrefs[testbed_guid]
         
-        self._netrefs.clear()
-        self._testbed_netrefs.clear()
 
     def _init_testbed_controllers(self, data, recover = False):
         blacklist_testbeds = set(self._testbeds)
