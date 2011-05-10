@@ -147,7 +147,7 @@ class TestbedController(testbed_impl.TestbedController):
                 return iface.broadcast
 
         # if all else fails, query box
-        return self.get_address(guid, index, attribute)
+        return super(TestbedController, self).get_address(guid, index, attribute)
 
     def action(self, time, guid, action):
         raise NotImplementedError
