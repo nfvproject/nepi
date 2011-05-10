@@ -173,7 +173,7 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
         comp_result = r"""PING .* \(.*\) \d*\(\d*\) bytes of data.
 
 --- .* ping statistics ---
-1 packets transmitted, 1 received, 0% packet loss, time \d*ms.*
+10 packets transmitted, 10 received, 0% packet loss, time \d*ms.*
 """
 
         xml = exp.to_xml()
