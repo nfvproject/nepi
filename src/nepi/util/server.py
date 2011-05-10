@@ -648,8 +648,7 @@ def popen_ssh_subprocess(python_code, host, port, user, agent,
         # We had to verify if strace works (cannot nest them)
         #cmd += "if strace echo >/dev/null 2>&1; then CMD='strace -ff -tt -s 200 -o strace.out'; else CMD=''; fi\n"
         #cmd += "$CMD "
-        #if self.mode == MODE_SSH:
-        #    cmd += "strace -f -tt -s 200 -o strace$$.out "
+        #cmd += "strace -f -tt -s 200 -o strace$$.out "
         cmd += "python -c '"
         cmd += "import base64, os\n"
         cmd += "cmd = \"\"\n"
