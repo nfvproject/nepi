@@ -72,7 +72,7 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
 
         ns3_provider = FactoriesProvider(ns3_testbed_id, ns3_testbed_version)
         ns3_desc = exp.add_testbed_description(ns3_provider)
-        ns3_desc.set_attribute_value("rootDirectory", "tb-ns3")
+        ns3_desc.set_attribute_value("rootDirectory", "tb-ns3-1")
         ns3_desc.set_attribute_value(DC.DEPLOYMENT_HOST, "{#[node1iface].addr[0].[Address]#}")
         ns3_desc.set_attribute_value(DC.DEPLOYMENT_USER, 
             pl.get_attribute_value("slice"))
@@ -130,7 +130,9 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
         # Create NS3 testbed running in node1
         ns3_provider = FactoriesProvider(ns3_testbed_id, ns3_testbed_version)
         ns3_desc = exp.add_testbed_description(ns3_provider)
-        ns3_desc.set_attribute_value("rootDirectory", "tb-ns3")
+        ns3_desc.set_attribute_value("rootDirectory", "tb-ns3-2")
+        ns3_desc.set_attribute_value("SimulatorImplementationType", "ns3::RealtimeSimulatorImpl")
+        ns3_desc.set_attribute_value("ChecksumEnabled", True)
         ns3_desc.set_attribute_value(DC.DEPLOYMENT_HOST, "{#[node1iface].addr[0].[Address]#}")
         ns3_desc.set_attribute_value(DC.DEPLOYMENT_USER, 
             pl.get_attribute_value("slice"))
@@ -138,9 +140,9 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
             pl.get_attribute_value("sliceSSHKey"))
         ns3_desc.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
         ns3_desc.set_attribute_value(DC.DEPLOYMENT_COMMUNICATION, DC.ACCESS_SSH)
-        ns3_desc.set_attribute_value(DC.DEPLOYMENT_ENVIRONMENT_SETUP, 
+        ns3_desc.set_attribute_value(DC.DEPLOYMENT_ENVIRONMENT_SETUP,
             "{#[node1].[%s]#}" % (ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP,))
-
+        ns3_desc.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
         
         # Create NS3 node that is responsive to pings, connected
         # to node1 through the Tap interface
@@ -152,6 +154,7 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
         ns1.connector("protos").connect(arp1.connector("node"))
         ns1.connector("protos").connect(icmp1.connector("node"))
         ns1if = ns3_desc.create("ns3::FileDescriptorNetDevice")
+        ns1if.enable_trace("FileDescriptorPcapTrace")
         ns1if.set_attribute_value("label", "ns1if")
         ns1.connector("devs").connect(ns1if.connector("node"))
         tap1.connector("fd->").connect(ns1if.connector("->fd"))
@@ -162,7 +165,7 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
 
         # Create PlanetLab ping application, pinging the NS3 node
         ping = pl.create("Application")
-        ping.set_attribute_value("command", "ping -qc1 {#[GUID-8].addr[0].[Address]#}")
+        ping.set_attribute_value("command", "ping -qc10 {#[ns1if].addr[0].[Address]#}")
         ping.enable_trace("stdout")
         ping.enable_trace("stderr")
         ping.connector("node").connect(node1.connector("apps"))
