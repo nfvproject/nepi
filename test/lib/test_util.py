@@ -44,7 +44,11 @@ def ns3_usable():
         found = imp.find_module('ns3')
         module = imp.load_module('ns3', *found)
     except ImportError:
-        return False
+        try:
+            found = imp.find_module('_ns3')
+            module = imp.load_module('_ns3', *found)
+        except ImportError:
+            return False
     finally:
         if ns3_bindings_path():
             del sys.path[0]
