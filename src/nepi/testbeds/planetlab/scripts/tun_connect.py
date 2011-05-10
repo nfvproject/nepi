@@ -16,9 +16,6 @@ import functools
 import time
 import base64
 
-import time
-print >>sys.stderr, time.time()
-
 tun_name = 'tun0'
 tun_path = '/dev/net/tun'
 hostaddr = socket.gethostbyname(socket.gethostname())
@@ -566,10 +563,6 @@ try:
             while True:
                 time.sleep(1)
         remote = None
-        
-        import time
-        print >>sys.stderr, time.time()
-        
     elif options.udp:
         # connect to remote endpoint
         if remaining_args and not remaining_args[0].startswith('-'):
