@@ -241,6 +241,32 @@ def configure_device(testbed_instance, guid):
         ipv4.SetMetric(ifindex, 1)
         ipv4.SetUp(ifindex)
 
+def _add_static_route(static_routing, 
+        address, netprefix, nexthop_address, ifindex):
+    if netprefix == 0:
+        # Default route: 0.0.0.0/0
+        static_routing.SetDefaultRoute(nexthop_address, ifindex) 
+    elif netprefix == 32:
+        # Host route: x.y.z.w/32
+        static_routing.AddHostRouteTo(address, nexthop_address, ifindex) 
+    else:
+        # Network route: x.y.z.w/n
+        mask = ns3.Ipv4Mask("/%d" % netprefix) 
+        static_routing.AddNetworkRouteTo(address, mask, nexthop_address, 
+                ifindex) 
+
+def _add_static_route_if(static_routing, address, netprefix, ifindex):
+    if netprefix == 0:
+        # Default route: 0.0.0.0/0
+        static_routing.SetDefaultRoute(ifindex) 
+    elif netprefix == 32:
+        # Host route: x.y.z.w/32
+        static_routing.AddHostRouteTo(address, ifindex) 
+    else:
+        # Network route: x.y.z.w/n
+        mask = ns3.Ipv4Mask("/%d" % netprefix) 
+        static_routing.AddNetworkRouteTo(address, mask, ifindex) 
+
 def configure_node(testbed_instance, guid):
     configure_traces(testbed_instance, guid)
 
@@ -257,7 +283,6 @@ def configure_node(testbed_instance, guid):
     for route in routes:
         (destination, netprefix, nexthop) = route
         address = ns3.Ipv4Address(destination)
-        mask = ns3.Ipv4Mask("/%d" % netprefix) 
         if nexthop:
             nexthop_address = ns3.Ipv4Address(nexthop)
             ifindex = -1
@@ -272,11 +297,13 @@ def configure_node(testbed_instance, guid):
                     ifindex = ipv4.GetInterfaceForPrefix(nexthop_address, ifmask)
                     if ifindex == ifidx:
                         break
-            static_routing.AddNetworkRouteTo(address, mask, nexthop_address, 
-                    ifindex) 
+            _add_static_route(static_routing, 
+                address, netprefix, nexthop_address, ifindex)
         else:
+            mask = ns3.Ipv4Mask("/%d" % netprefix) 
             ifindex = ipv4.GetInterfaceForPrefix(address, mask)
-            static_routing.AddNetworkRouteTo(address, mask, ifindex) 
+            _add_static_route_if(static_routing, 
+                address, netprefix, nexthop_address, ifindex)
 
 factories_info = dict({
     "ns3::Ping6": dict({
