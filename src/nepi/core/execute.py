@@ -3,7 +3,7 @@
 
 from nepi.core.attributes import Attribute, AttributesMap
 from nepi.core.connector import ConnectorTypeBase
-from nepi.util import proxy, validation
+from nepi.util import validation
 from nepi.util.constants import STATUS_FINISHED, TIME_NOW
 from nepi.util.parser._xml import XmlExperimentParser
 import sys
@@ -199,8 +199,11 @@ class TestbedController(object):
         """Instructs creation of a connection between the given connectors"""
         raise NotImplementedError
 
-    def defer_cross_connect(self, guid, connector_type_name, cross_guid, 
-            cross_testbed_id, cross_factory_id, cross_connector_type_name):
+    def defer_cross_connect(self, 
+            guid, connector_type_name,
+            cross_guid, cross_testbed_guid,
+            cross_testbed_id, cross_factory_id,
+            cross_connector_type_name):
         """
         Instructs creation of a connection between the given connectors 
         of different testbed instances
@@ -241,6 +244,14 @@ class TestbedController(object):
         """
         After do_connect all internal connections between testbed elements
         are completed
+        """
+        raise NotImplementedError
+
+    def do_preconfigure(self):
+        """
+        Done just before resolving netrefs, after connection, before cross connections,
+        useful for early stages of configuration, for setting up stuff that might be
+        required for netref resolution.
         """
         raise NotImplementedError
 
@@ -461,6 +472,10 @@ class ExperimentController(object):
             BOOLEAN : 'getboolean',
         }
         
+        # deferred import because proxy needs
+        # our class definitions to define proxies
+        import nepi.util.proxy as proxy
+        
         conf = ConfigParser.RawConfigParser()
         conf.read(os.path.join(self._root_dir, 'deployment_config.ini'))
         for testbed_guid in conf.sections():
@@ -680,6 +695,10 @@ class ExperimentController(object):
     def _create_testbed_controller(self, guid, data, element_guids, recover):
         (testbed_id, testbed_version) = data.get_testbed_data(guid)
         deployment_config = self._deployment_config.get(guid)
+        
+        # deferred import because proxy needs
+        # our class definitions to define proxies
+        import nepi.util.proxy as proxy
         
         if deployment_config is None:
             # need to create one
