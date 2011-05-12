@@ -736,7 +736,11 @@ class ExperimentController(object):
                 for (name, value) in data.get_attribute_data(guid):
                     # Try to resolve create-time netrefs, if possible
                     if isinstance(value, basestring) and ATTRIBUTE_PATTERN_BASE.search(value):
-                        nuvalue = self.resolve_netref_value(value)
+                        try:
+                            nuvalue = self.resolve_netref_value(value)
+                        except:
+                            # Any trouble means we're not in shape to resolve the netref yet
+                            nuvalue = None
                         if nuvalue is not None:
                             # Only if we succeed we remove the netref deferral entry
                             value = nuvalue
