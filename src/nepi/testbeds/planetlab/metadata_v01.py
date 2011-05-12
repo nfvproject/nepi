@@ -1040,6 +1040,22 @@ testbed_attributes = dict({
             "flags": Attribute.DesignOnly | Attribute.HasNoDefaultValue,
             "validation_function": validation.is_string
         }),
+        "plc_host": dict({
+            "name": "plcHost",
+            "help": "The PlanetLab PLC API host",
+            "type": Attribute.STRING,
+            "value": "www.planet-lab.eu",
+            "flags": Attribute.DesignOnly,
+            "validation_function": validation.is_string
+        }),
+        "plc_url": dict({
+            "name": "plcUrl",
+            "help": "The PlanetLab PLC API url pattern - %(hostname)s is replaced by plcHost.",
+            "type": Attribute.STRING,
+            "value": "https://%(hostname)s:443/PLCAPI/",
+            "flags": Attribute.DesignOnly,
+            "validation_function": validation.is_string
+        }),
         "slice_ssh_key": dict({
             "name": "sliceSSHKey",
             "help": "The controller-local path to the slice user's ssh private key. "
