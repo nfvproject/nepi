@@ -241,7 +241,7 @@ def configure_device(testbed_instance, guid):
         ipv4.SetMetric(ifindex, 1)
         ipv4.SetUp(ifindex)
 
-def _add_static_route(static_routing, 
+def _add_static_route(ns3, static_routing, 
         address, netprefix, nexthop_address, ifindex):
     if netprefix == 0:
         # Default route: 0.0.0.0/0
@@ -255,7 +255,7 @@ def _add_static_route(static_routing,
         static_routing.AddNetworkRouteTo(address, mask, nexthop_address, 
                 ifindex) 
 
-def _add_static_route_if(static_routing, address, netprefix, ifindex):
+def _add_static_route_if(ns3, static_routing, address, netprefix, ifindex):
     if netprefix == 0:
         # Default route: 0.0.0.0/0
         static_routing.SetDefaultRoute(ifindex) 
@@ -297,12 +297,12 @@ def configure_node(testbed_instance, guid):
                     ifindex = ipv4.GetInterfaceForPrefix(nexthop_address, ifmask)
                     if ifindex == ifidx:
                         break
-            _add_static_route(static_routing, 
+            _add_static_route(ns3, static_routing, 
                 address, netprefix, nexthop_address, ifindex)
         else:
             mask = ns3.Ipv4Mask("/%d" % netprefix) 
             ifindex = ipv4.GetInterfaceForPrefix(address, mask)
-            _add_static_route_if(static_routing, 
+            _add_static_route_if(ns3, static_routing, 
                 address, netprefix, nexthop_address, ifindex)
 
 factories_info = dict({
