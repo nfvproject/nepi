@@ -567,7 +567,7 @@ class ExperimentController(object):
                 testbed.get(guid, name),
     }
     
-    def resolve_netref_value(self, value):
+    def resolve_netref_value(self, value, failval = None):
         match = ATTRIBUTE_PATTERN_BASE.search(value)
         if match:
             label = match.group("label")
@@ -594,42 +594,39 @@ class ExperimentController(object):
                             if ref_value:
                                 return value.replace(match.group(), ref_value)
         # couldn't find value
-        return None
+        return failval
     
     def do_netrefs(self, data, fail_if_undefined = False):
         # element netrefs
         for (testbed_guid, guid), attrs in self._netrefs.items():
-            testbed = self._testbeds[testbed_guid]
-            allreplaced = True
-            for name in attrs:
-                value = testbed.get(guid, name)
-                if isinstance(value, basestring):
-                    ref_value = self.resolve_netref_value(value)
-                    if ref_value is not None:
-                        testbed.set(guid, name, ref_value)
-                    elif fail_if_undefined:
-                        raise ValueError, "Unresolvable netref in: %r" % (value,)
-                    else:
-                        allreplaced = False
-            if allreplaced:
-                del self._netrefs[(testbed_guid, guid)]
+            testbed = self._testbeds.get(testbed_guid)
+            if testbed is not None:
+                for name in set(attrs):
+                    value = testbed.get(guid, name)
+                    if isinstance(value, basestring):
+                        ref_value = self.resolve_netref_value(value)
+                        if ref_value is not None:
+                            testbed.set(guid, name, ref_value)
+                            attrs.remove(name)
+                        elif fail_if_undefined:
+                            raise ValueError, "Unresolvable netref in: %r=%r" % (name,value,)
+                if not attrs:
+                    del self._netrefs[(testbed_guid, guid)]
         
         # testbed netrefs
         for testbed_guid, attrs in self._testbed_netrefs.items():
             tb_data = dict(data.get_attribute_data(testbed_guid))
             if data:
-                allreplaced = True
-                for name in attrs:
+                for name in set(attrs):
                     value = tb_data.get(name)
                     if isinstance(value, basestring):
                         ref_value = self.resolve_netref_value(value)
                         if ref_value is not None:
                             data.set_attribute_data(testbed_guid, name, ref_value)
+                            attrs.remove(name)
                         elif fail_if_undefined:
                             raise ValueError, "Unresolvable netref in: %r" % (value,)
-                        else:
-                            allreplaced = False
-                if allreplaced:
+                if not attrs:
                     del self._testbed_netrefs[testbed_guid]
         
 
@@ -738,6 +735,12 @@ class ExperimentController(object):
             if testbed:
                 testbed.defer_create(guid, factory_id)
                 for (name, value) in data.get_attribute_data(guid):
+                    # Try to resolve create-time netrefs, if possible
+                    if isinstance(value, basestring) and ATTRIBUTE_PATTERN_BASE.search(value):
+                        value = self.resolve_netref_value(value, value)
+                        data.set_attribute_data(guid, name, value)
+                        if (testbed_guid, guid) in self._netrefs:
+                            self._netrefs[(testbed_guid, guid)].discard(name)
                     testbed.defer_create_set(guid, name, value)
 
         for guid in element_guids: 
