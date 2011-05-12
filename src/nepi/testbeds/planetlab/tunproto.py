@@ -82,7 +82,7 @@ class TunProtoBase(object):
             raise RuntimeError, "Failed upload TUN connect script %r: %s %s" % (source, out,err,)
 
         cmd = ( (
-            "cd %(home)s && gcc -shared tunalloc.c -o tunalloc.so"
+            "cd %(home)s && gcc -fPIC -shared tunalloc.c -o tunalloc.so"
             + ( " && "
                 "wget -q -c -O python-passfd-src.tar.gz %(passfd_url)s && "
                 "mkdir -p python-passfd && "
