@@ -31,7 +31,10 @@ class TestbedController(testbed_impl.TestbedController):
             if self.authUser:
                 self._plapi = plcapi.PLCAPI(
                     username = self.authUser,
-                    password = self.authString)
+                    password = self.authString,
+                    hostname = self.plcHost,
+                    urlpattern = self.plcUrl
+                    )
             else:
                 # anonymous access - may not be enough for much
                 self._plapi = plcapi.PLCAPI()
@@ -59,6 +62,10 @@ class TestbedController(testbed_impl.TestbedController):
             get_attribute_value("authPass")
         self.sliceSSHKey = self._attributes.\
             get_attribute_value("sliceSSHKey")
+        self.plcHost = self._attributes.\
+            get_attribute_value("plcHost")
+        self.plcUrl = self._attributes.\
+            get_attribute_value("plcUrl")
         super(TestbedController, self).do_setup()
 
     def do_preconfigure(self):
