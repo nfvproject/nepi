@@ -5,6 +5,7 @@ import fcntl
 import os
 import os.path
 import select
+import signal
 
 import struct
 import ctypes
@@ -537,6 +538,8 @@ except:
 
 
 try:
+    tcpdump = None
+    
     if options.pass_fd:
         if options.pass_fd.startswith("base64:"):
             options.pass_fd = base64.b64decode(
@@ -558,6 +561,21 @@ try:
             sock.connect(options.pass_fd)
         passfd.sendfd(sock, tun.fileno(), '0')
         
+        # Launch a tcpdump subprocess, to capture and dump packets,
+        # we will not be able to capture them ourselves.
+        # Make sure to catch sigterm and kill the tcpdump as well
+        tcpdump = subprocess.Popen(
+            ["tcpdump","-l","-n","-i",tun_name])
+        
+        def _finalize(sig,frame):
+            os.kill(tcpdump.pid, signal.SIGTERM)
+            tcpdump.wait()
+            if callable(_oldterm):
+                _oldterm(sig,frame)
+            else:
+                sys.exit(0)
+        _oldterm = signal.signal(signal.SIGTERM, _finalize)
+            
         # just wait forever
         def tun_fwd(tun, remote):
             while True:
@@ -592,6 +610,10 @@ try:
     print >>sys.stderr, "Connected"
 
     tun_fwd(tun, remote)
+
+    if tcpdump:
+        os.kill(tcpdump.pid, signal.SIGTERM)
+        proc.wait()
 finally:
     try:
         print >>sys.stderr, "Shutting down..."
