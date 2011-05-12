@@ -519,9 +519,8 @@ class ExperimentController(object):
 
     def is_finished(self, guid):
         for testbed in self._testbeds.values():
-            for guid_ in testbed.guids:
-                if guid_ == guid:
-                    return testbed.status(guid) == STATUS_FINISHED
+            if guid in testbed.guids:
+                return testbed.status(guid) == STATUS_FINISHED
         raise RuntimeError("No element exists with guid %d" % guid)    
 
     def set(self, testbed_guid, guid, name, value, time = TIME_NOW):
@@ -737,10 +736,13 @@ class ExperimentController(object):
                 for (name, value) in data.get_attribute_data(guid):
                     # Try to resolve create-time netrefs, if possible
                     if isinstance(value, basestring) and ATTRIBUTE_PATTERN_BASE.search(value):
-                        value = self.resolve_netref_value(value, value)
-                        data.set_attribute_data(guid, name, value)
-                        if (testbed_guid, guid) in self._netrefs:
-                            self._netrefs[(testbed_guid, guid)].discard(name)
+                        nuvalue = self.resolve_netref_value(value)
+                        if nuvalue is not None:
+                            # Only if we succeed we remove the netref deferral entry
+                            value = nuvalue
+                            data.set_attribute_data(guid, name, value)
+                            if (testbed_guid, guid) in self._netrefs:
+                                self._netrefs[(testbed_guid, guid)].discard(name)
                     testbed.defer_create_set(guid, name, value)
 
         for guid in element_guids: 
