@@ -89,6 +89,9 @@ class _CrossIface(object):
         self.tun_proto = proto
         self.tun_addr = addr
         self.tun_port = port
+        
+        # Cannot access cross peers
+        self.peer_proto_impl = None
 
 class TunIface(object):
     _PROTO_MAP = tunproto.TUN_PROTO_MAP
@@ -127,6 +130,8 @@ class TunIface(object):
         # These get initialized when the iface is connected to its peer
         self.peer_iface = None
         self.peer_proto = None
+        self.peer_addr = None
+        self.peer_port = None
         self.peer_proto_impl = None
 
         # same as peer proto, but for execute-time standard attribute lookups

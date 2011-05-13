@@ -15,6 +15,14 @@ import unittest
 import re
 
 class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
+    testbed_id = "planetlab"
+    testbed_version = "01"
+    slicename = "inria_nepi"
+    plchost = "nepiplc.pl.sophia.inria.fr"
+    
+    host1 = "nepi1.pl.sophia.inria.fr"
+    host2 = "nepi2.pl.sophia.inria.fr"
+
     def setUp(self):
         self.root_dir = tempfile.mkdtemp()
 
@@ -27,9 +35,10 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
             shutil.rmtree(self.root_dir)
 
     def make_experiment_desc(self):
-        testbed_id = "planetlab"
-        testbed_version = "01"
-        slicename = "inria_nepi12"
+        testbed_id = self.testbed_id
+        testbed_version = self.testbed_version
+        slicename = self.slicename
+        plchost = self.plchost
         pl_ssh_key = os.environ.get(
             "PL_SSH_KEY",
             "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'],) )
@@ -43,12 +52,13 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
         pl_desc.set_attribute_value("sliceSSHKey", pl_ssh_key)
         pl_desc.set_attribute_value("authUser", pl_user)
         pl_desc.set_attribute_value("authPass", pl_pwd)
+        pl_desc.set_attribute_value("plcHost", plchost)
         
         return pl_desc, exp_desc
     
     def make_pl_tapnode(self, pl):
         node1 = pl.create("Node")
-        node1.set_attribute_value("hostname", "onelab11.pl.sophia.inria.fr")
+        node1.set_attribute_value("hostname", self.host1)
         node1.set_attribute_value("label", "node1")
         node1.set_attribute_value("emulation", True) # require emulation
         iface1 = pl.create("NodeInterface")
@@ -112,7 +122,7 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
         pl, exp = self.make_experiment_desc()
         
         node1 = pl.create("Node")
-        node1.set_attribute_value("hostname", "onelab11.pl.sophia.inria.fr")
+        node1.set_attribute_value("hostname", self.host1)
         node1.set_attribute_value("label", "node1")
         iface1 = pl.create("NodeInterface")
         iface1.set_attribute_value("label", "node1iface")
@@ -213,13 +223,13 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
         tap1.set_attribute_value("snat", True)
         
         # Add second PL node (ping target)
-        node2 = pl.create("Node")
-        node2.set_attribute_value("hostname", "onelab10.pl.sophia.inria.fr")
-        node2.set_attribute_value("label", "node2")
-        iface2 = pl.create("NodeInterface")
-        iface2.set_attribute_value("label", "node2iface")
-        node2.connector("devs").connect(iface2.connector("node"))
-        iface2.connector("inet").connect(inet.connector("devs"))
+        #node2 = pl.create("Node")
+        #node2.set_attribute_value("hostname", self.host2)
+        #node2.set_attribute_value("label", "node2")
+        #iface2 = pl.create("NodeInterface")
+        #iface2.set_attribute_value("label", "node2iface")
+        #node2.connector("devs").connect(iface2.connector("node"))
+        #iface2.connector("inet").connect(inet.connector("devs"))
         
         # Create NS3 node that is responsive to pings, connected
         # to node1 through the Tap interface
@@ -248,7 +258,7 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
 
         # Create NS3 ping application, pinging the PL node
         ping = ns3_desc.create("ns3::V4Ping")
-        ping.set_attribute_value("Remote", "{#[node2iface].addr[0].[Address]#}")
+        ping.set_attribute_value("Remote", "209.85.146.147") #"{#[node2iface].addr[0].[Address]#}")
         ping.set_attribute_value("StartTime", "0s")
         ping.set_attribute_value("StopTime", "10s")
         ping.connector("node").connect(ns1.connector("apps"))

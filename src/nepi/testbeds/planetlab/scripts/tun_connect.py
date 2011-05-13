@@ -252,6 +252,16 @@ def pl_vif_start(tun_path, tun_name):
     if out.strip():
         print >>sys.stderr, out
 
+def pl_vif_stop(tun_path, tun_name):
+    stdin = open("/vsys/vif_down.in","w")
+    stdout = open("/vsys/vif_down.out","r")
+    stdin.write(tun_name+"\n")
+    stdin.close()
+    out = stdout.read()
+    stdout.close()
+    if out.strip():
+        print >>sys.stderr, out
+
 
 def ipfmt(ip):
     ipbytes = map(ord,ip.decode("hex"))
@@ -401,9 +411,8 @@ def decrypt(packet, crypter):
     
     return packet
 
-abortme = False
 def tun_fwd(tun, remote):
-    global abortme
+    global TERMINATE
     
     # in PL mode, we cannot strip PI structs
     # so we'll have to handle them
@@ -436,7 +445,7 @@ def tun_fwd(tun, remote):
     # Which is needed, since /dev/net/tun is unbuffered
     fwbuf = ""
     bkbuf = ""
-    while not abortme:
+    while not TERMINATE:
         wset = []
         if packetReady(bkbuf, ether_mode):
             wset.append(tun)
@@ -510,12 +519,12 @@ MODEINFO = {
                   tunopen=tunopen, tunclose=tunclose,
                   dealloc=nop,
                   start=pl_vif_start,
-                  stop=nop),
+                  stop=pl_vif_stop),
     'pl-tap'  : dict(alloc=functools.partial(pl_tuntap_alloc, "tap"),
                   tunopen=tunopen, tunclose=tunclose,
                   dealloc=nop,
                   start=pl_vif_start,
-                  stop=nop),
+                  stop=pl_vif_stop),
 }
     
 tun_path = options.tun_path
@@ -537,6 +546,13 @@ except:
     raise
 
 
+# Trak SIGTERM, and set global termination flag instead of dying
+TERMINATE = False
+def _finalize(sig,frame):
+    global TERMINATE
+    TERMINATE = True
+signal.signal(signal.SIGTERM, _finalize)
+
 try:
     tcpdump = None
     
@@ -552,12 +568,15 @@ try:
         import passfd
         
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-        try:
-            sock.connect(options.pass_fd)
-        except socket.error:
-            # wait a while, retry
-            print >>sys.stderr, "Could not connect. Retrying in a sec..."
-            time.sleep(1)
+        for i in xrange(30):
+            try:
+                sock.connect(options.pass_fd)
+                break
+            except socket.error:
+                # wait a while, retry
+                print >>sys.stderr, "Could not connect. Retrying in a sec..."
+                time.sleep(1)
+        else:
             sock.connect(options.pass_fd)
         passfd.sendfd(sock, tun.fileno(), '0')
         
@@ -567,18 +586,9 @@ try:
         tcpdump = subprocess.Popen(
             ["tcpdump","-l","-n","-i",tun_name])
         
-        def _finalize(sig,frame):
-            os.kill(tcpdump.pid, signal.SIGTERM)
-            tcpdump.wait()
-            if callable(_oldterm):
-                _oldterm(sig,frame)
-            else:
-                sys.exit(0)
-        _oldterm = signal.signal(signal.SIGTERM, _finalize)
-            
         # just wait forever
         def tun_fwd(tun, remote):
-            while True:
+            while not TERMINATE:
                 time.sleep(1)
         remote = None
     elif options.udp:
@@ -598,7 +608,16 @@ try:
         if remaining_args and not remaining_args[0].startswith('-'):
             print >>sys.stderr, "Connecting to: %s:%d" % (remaining_args[0],options.port)
             rsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-            rsock.connect((remaining_args[0],options.port))
+            for i in xrange(30):
+                try:
+                    rsock.connect((remaining_args[0],options.port))
+                    break
+                except socket.error:
+                    # wait a while, retry
+                    print >>sys.stderr, "Could not connect. Retrying in a sec..."
+                    time.sleep(1)
+            else:
+                rsock.connect((remaining_args[0],options.port))
         else:
             print >>sys.stderr, "Listening at: %s:%d" % (hostaddr,options.port)
             lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
@@ -613,7 +632,7 @@ try:
 
     if tcpdump:
         os.kill(tcpdump.pid, signal.SIGTERM)
-        proc.wait()
+        tcpdump.wait()
 finally:
     try:
         print >>sys.stderr, "Shutting down..."
@@ -623,18 +642,19 @@ finally:
     
     # tidy shutdown in every case - swallow exceptions
     try:
-        modeinfo['tunclose'](tun_path, tun_name, tun)
-    except:
-        pass
-        
-    try:
         modeinfo['stop'](tun_path, tun_name)
     except:
         pass
 
     try:
+        modeinfo['tunclose'](tun_path, tun_name, tun)
+    except:
+        pass
+        
+    try:
         modeinfo['dealloc'](tun_path, tun_name)
     except:
         pass
-
+    
+    print >>sys.stderr, "TERMINATED GRACEFULLY"
 

@@ -14,6 +14,14 @@ import unittest
 import re
 
 class PlanetLabIntegrationTestCase(unittest.TestCase):
+    testbed_id = "planetlab"
+    testbed_version = "01"
+    slicename = "inria_nepi"
+    plchost = "nepiplc.pl.sophia.inria.fr"
+    
+    host1 = "nepi1.pl.sophia.inria.fr"
+    host2 = "nepi2.pl.sophia.inria.fr"
+
     def setUp(self):
         self.root_dir = tempfile.mkdtemp()
 
@@ -26,9 +34,10 @@ class PlanetLabIntegrationTestCase(unittest.TestCase):
             shutil.rmtree(self.root_dir)
 
     def make_experiment_desc(self):
-        testbed_id = "planetlab"
-        testbed_version = "01"
-        slicename = "inria_nepi12"
+        testbed_id = self.testbed_id
+        testbed_version = self.testbed_version
+        slicename = self.slicename
+        plchost = self.plchost
         pl_ssh_key = os.environ.get(
             "PL_SSH_KEY",
             "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'],) )
@@ -42,6 +51,7 @@ class PlanetLabIntegrationTestCase(unittest.TestCase):
         pl_desc.set_attribute_value("sliceSSHKey", pl_ssh_key)
         pl_desc.set_attribute_value("authUser", pl_user)
         pl_desc.set_attribute_value("authPass", pl_pwd)
+        pl_desc.set_attribute_value("plcHost", plchost)
         
         return pl_desc, exp_desc
 
@@ -51,8 +61,8 @@ class PlanetLabIntegrationTestCase(unittest.TestCase):
         
         node1 = pl.create("Node")
         node2 = pl.create("Node")
-        node1.set_attribute_value("hostname", "onelab11.pl.sophia.inria.fr")
-        node2.set_attribute_value("hostname", "onelab10.pl.sophia.inria.fr")
+        node1.set_attribute_value("hostname", self.host1)
+        node2.set_attribute_value("hostname", self.host2)
         iface1 = pl.create("NodeInterface")
         iface2 = pl.create("NodeInterface")
         iface2.set_attribute_value("label", "node2iface")

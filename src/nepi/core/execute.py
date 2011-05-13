@@ -44,7 +44,7 @@ class ConnectorType(ConnectorTypeBase):
         self._to_connections[type_id] = (can_cross, init_code, compl_code)
 
     def can_connect(self, testbed_id, factory_id, name, count, 
-            must_cross = False):
+            must_cross):
         connector_type_id = self.make_connector_type_id(testbed_id, factory_id, name)
         for lookup_type_id in self._type_resolution_order(connector_type_id):
             if lookup_type_id in self._from_connections:
@@ -52,26 +52,28 @@ class ConnectorType(ConnectorTypeBase):
             elif lookup_type_id in self._to_connections:
                 (can_cross, init_code, compl_code) = self._to_connections[lookup_type_id]
             else:
-                # keey trying
+                # keep trying
                 continue
             return not must_cross or can_cross
         else:
             return False
 
-    def _connect_to_code(self, testbed_id, factory_id, name):
+    def _connect_to_code(self, testbed_id, factory_id, name,
+            must_cross):
         connector_type_id = self.make_connector_type_id(testbed_id, factory_id, name)
         for lookup_type_id in self._type_resolution_order(connector_type_id):
             if lookup_type_id in self._to_connections:
                 (can_cross, init_code, compl_code) = self._to_connections[lookup_type_id]
-                return (init_code, compl_code)
+                if not must_cross or can_cross:
+                    return (init_code, compl_code)
         else:
             return (False, False)
     
-    def connect_to_init_code(self, testbed_id, factory_id, name):
-        return self._connect_to_code(testbed_id, factory_id, name)[0]
+    def connect_to_init_code(self, testbed_id, factory_id, name, must_cross):
+        return self._connect_to_code(testbed_id, factory_id, name, must_cross)[0]
 
-    def connect_to_compl_code(self, testbed_id, factory_id, name):
-        return self._connect_to_code(testbed_id, factory_id, name)[1]
+    def connect_to_compl_code(self, testbed_id, factory_id, name, must_cross):
+        return self._connect_to_code(testbed_id, factory_id, name, must_cross)[1]
 
 class Factory(AttributesMap):
     def __init__(self, factory_id, create_function, start_function, 

@@ -14,6 +14,14 @@ import test_util
 import sys
 
 class PlanetLabExecuteTestCase(unittest.TestCase):
+    testbed_id = "planetlab"
+    testbed_version = "01"
+    slicename = "inria_nepi"
+    plchost = "nepiplc.pl.sophia.inria.fr"
+    
+    host1 = "nepi1.pl.sophia.inria.fr"
+    host2 = "nepi2.pl.sophia.inria.fr"
+
     def setUp(self):
         self.root_dir = tempfile.mkdtemp()
         
@@ -26,9 +34,12 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
             shutil.rmtree(self.root_dir)
 
     def make_instance(self):
-        testbed_version = "01"
+        testbed_id = self.testbed_id
+        testbed_version = self.testbed_version
+        slicename = self.slicename
+        plchost = self.plchost
+        
         instance = planetlab.TestbedController(testbed_version)
-        slicename = "inria_nepi12"
         pl_ssh_key = os.environ.get(
             "PL_SSH_KEY",
             "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'],) )
@@ -39,6 +50,7 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
         instance.defer_configure("sliceSSHKey", pl_ssh_key)
         instance.defer_configure("authUser", pl_user)
         instance.defer_configure("authPass", pl_pwd)
+        instance.defer_configure("plcHost", plchost)
         
         return instance
 
@@ -47,9 +59,9 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
         instance = self.make_instance()
         
         instance.defer_create(2, "Node")
-        instance.defer_create_set(2, "hostname", "onelab11.pl.sophia.inria.fr")
+        instance.defer_create_set(2, "hostname", self.host1)
         instance.defer_create(3, "Node")
-        instance.defer_create_set(3, "hostname", "onelab10.pl.sophia.inria.fr")
+        instance.defer_create_set(3, "hostname", self.host2)
         instance.defer_create(4, "NodeInterface")
         instance.defer_connect(2, "devs", 4, "node")
         instance.defer_create(5, "NodeInterface")
@@ -102,7 +114,7 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
         instance = self.make_instance()
         
         instance.defer_create(2, "Node")
-        instance.defer_create_set(2, "hostname", "onelab11.pl.sophia.inria.fr")
+        instance.defer_create_set(2, "hostname", self.host1)
         instance.defer_create(3, "NodeInterface")
         instance.defer_connect(2, "devs", 3, "node")
         instance.defer_create(4, "Internet")
@@ -140,7 +152,7 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
         instance = self.make_instance()
         
         instance.defer_create(2, "Node")
-        instance.defer_create_set(2, "hostname", "onelab11.pl.sophia.inria.fr")
+        instance.defer_create_set(2, "hostname", self.host1)
         instance.defer_create(3, "NodeInterface")
         instance.defer_connect(2, "devs", 3, "node")
         instance.defer_create(4, "Internet")
@@ -195,7 +207,7 @@ FIONREAD = 0x[0-9a-fA-F]{8}.*
         instance = self.make_instance()
         
         instance.defer_create(2, "Node")
-        instance.defer_create_set(2, "hostname", "onelab11.pl.sophia.inria.fr")
+        instance.defer_create_set(2, "hostname", self.host1)
         instance.defer_create_set(2, "emulation", True) # require emulation
         instance.defer_create(3, "NodeInterface")
         instance.defer_connect(2, "devs", 3, "node")
@@ -243,7 +255,7 @@ echo 'OKIDOKI'
         instance = self.make_instance()
         
         instance.defer_create(2, "Node")
-        instance.defer_create_set(2, "hostname", "onelab11.pl.sophia.inria.fr")
+        instance.defer_create_set(2, "hostname", self.host1)
         instance.defer_create_set(2, "emulation", True) # require emulation
         instance.defer_create(3, "NodeInterface")
         instance.defer_connect(2, "devs", 3, "node")
@@ -300,7 +312,7 @@ echo 'OKIDOKI'
         instance = self.make_instance()
         
         instance.defer_create(2, "Node")
-        instance.defer_create_set(2, "hostname", "onelab11.pl.sophia.inria.fr")
+        instance.defer_create_set(2, "hostname", self.host1)
         instance.defer_create(3, "NodeInterface")
         instance.defer_connect(2, "devs", 3, "node")
         instance.defer_create(4, "Internet")
@@ -330,10 +342,10 @@ echo 'OKIDOKI'
         instance = self.make_instance()
         
         instance.defer_create(2, "Node")
-        instance.defer_create_set(2, "hostname", "onelab11.pl.sophia.inria.fr")
+        instance.defer_create_set(2, "hostname", self.host1)
         instance.defer_create_set(2, "emulation", True) # require emulation
         instance.defer_create(3, "Node")
-        instance.defer_create_set(3, "hostname", "onelab10.pl.sophia.inria.fr")
+        instance.defer_create_set(3, "hostname", self.host2)
         instance.defer_create_set(3, "emulation", True) # require emulation
         instance.defer_create(4, "NodeInterface")
         instance.defer_connect(2, "devs", 4, "node")
@@ -417,7 +429,7 @@ echo 'OKIDOKI'
         instance = self.make_instance()
         
         instance.defer_create(2, "Node")
-        instance.defer_create_set(2, "hostname", "onelab11.pl.sophia.inria.fr")
+        instance.defer_create_set(2, "hostname", self.host1)
         instance.defer_create(3, "NodeInterface")
         instance.defer_connect(2, "devs", 3, "node")
         instance.defer_create(4, "Internet")
@@ -456,7 +468,7 @@ echo 'OKIDOKI'
         instance = self.make_instance()
         
         instance.defer_create(2, "Node")
-        instance.defer_create_set(2, "hostname", "onelab11.pl.sophia.inria.fr")
+        instance.defer_create_set(2, "hostname", self.host1)
         instance.defer_create(3, "NodeInterface")
         instance.defer_connect(2, "devs", 3, "node")
         instance.defer_create(4, "Internet")

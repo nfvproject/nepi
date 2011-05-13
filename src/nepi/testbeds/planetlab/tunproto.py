@@ -8,6 +8,7 @@ import rspawn
 import subprocess
 import threading
 import base64
+import time
 
 from nepi.util import server
 
@@ -192,24 +193,57 @@ class TunProtoBase(object):
         
         if proc.wait():
             raise RuntimeError, "Failed to set up TUN: %s %s" % (out,err,)
-
+        
         self._started = True
+    
+    def _launch_and_wait(self, *p, **kw):
+        local = self.local()
+        
+        self.launch(*p, **kw)
+        
+        # Wait for the process to be started
+        while self.status() == rspawn.NOT_STARTED:
+            time.sleep(1.0)
+        
+        # Wait for the connection to be established
+        if local.capture:
+            for spin in xrange(30):
+                if self.status() != rspawn.RUNNING:
+                    break
+                
+                (out,err),proc = server.popen_ssh_command(
+                    "cd %(home)s ; grep -c Connected capture" % dict(
+                        home = server.shell_escape(self.home_path)),
+                    host = local.node.hostname,
+                    port = None,
+                    user = local.node.slicename,
+                    agent = None,
+                    ident_key = local.node.ident_path,
+                    server_key = local.node.server_key
+                    )
+                
+                if proc.wait():
+                    break
+                
+                if out.strip() != '0':
+                    break
+                
+                time.sleep(1.0)
     
     def async_launch(self, check_proto, listen, extra_args=[]):
         if not self._launcher:
             self._launcher = threading.Thread(
-                target = self.launch,
+                target = self._launch_and_wait,
                 args = (check_proto, listen, extra_args))
             self._launcher.start()
     
     def async_launch_wait(self):
-        if not self._started:
-            if self._launcher:
-                self._launcher.join()
-                if not self._started:
-                    raise RuntimeError, "Failed to launch TUN forwarder"
-            else:
-                self.launch()
+        if self._launcher:
+            self._launcher.join()
+            if not self._started:
+                raise RuntimeError, "Failed to launch TUN forwarder"
+        elif not self._started:
+            self.launch()
 
     def checkpid(self):            
         local = self.local()
