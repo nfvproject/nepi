@@ -110,7 +110,7 @@ def crossconnect_tun_iface_peer_init(proto, testbed_instance, iface_guid, peer_i
     iface = testbed_instance._elements[iface_guid]
     iface.peer_iface = None
     iface.peer_addr = peer_iface_data.get("tun_addr")
-    iface.peer_proto = peer_iface_data.get("tun_proto")
+    iface.peer_proto = peer_iface_data.get("tun_proto") or proto
     iface.peer_port = peer_iface_data.get("tun_port")
     iface.tun_key = min(iface.tun_key, peer_iface_data.get("tun_key"))
     iface.tun_proto = proto
@@ -121,7 +121,7 @@ def crossconnect_tun_iface_peer_compl(proto, testbed_instance, iface_guid, peer_
     # refresh (refreshable) attributes for second-phase
     iface = testbed_instance._elements[iface_guid]
     iface.peer_addr = peer_iface_data.get("tun_addr")
-    iface.peer_proto = peer_iface_data.get("tun_proto")
+    iface.peer_proto = peer_iface_data.get("tun_proto") or proto
     iface.peer_port = peer_iface_data.get("tun_port")
     
     postconfigure_tuniface(testbed_instance, iface_guid)

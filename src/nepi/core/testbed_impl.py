@@ -14,6 +14,8 @@ from nepi.util.constants import STATUS_UNDETERMINED, TIME_NOW, \
     TESTBED_STATUS_STARTED, \
     TESTBED_STATUS_STOPPED
 
+import collections
+
 class TestbedController(execute.TestbedController):
     def __init__(self, testbed_id, testbed_version):
         super(TestbedController, self).__init__(testbed_id, testbed_version)
@@ -115,7 +117,7 @@ class TestbedController(execute.TestbedController):
         count = self._get_connection_count(guid1, connector_type_name1)
         connector_type = factory1.connector_type(connector_type_name1)
         connector_type.can_connect(self._testbed_id, factory_id2, 
-                connector_type_name2, count)
+                connector_type_name2, count, False)
         if not guid1 in self._connect:
             self._connect[guid1] = dict()
         if not connector_type_name1 in self._connect[guid1]:
@@ -136,7 +138,7 @@ class TestbedController(execute.TestbedController):
         count = self._get_connection_count(guid, connector_type_name)
         connector_type = factory.connector_type(connector_type_name)
         connector_type.can_connect(cross_testbed_id, cross_factory_id, 
-                cross_connector_type_name, count, must_cross = True)
+                cross_connector_type_name, count, True)
         if not guid in self._cross_connect:
             self._cross_connect[guid] = dict()
         if not connector_type_name in self._cross_connect[guid]:
@@ -222,11 +224,13 @@ class TestbedController(execute.TestbedController):
                     if init:
                         connect_code = connector_type1.connect_to_init_code(
                                 self._testbed_id, factory_id2, 
-                                connector_type_name2)
+                                connector_type_name2,
+                                False)
                     else:
                         connect_code = connector_type1.connect_to_compl_code(
                                 self._testbed_id, factory_id2, 
-                                connector_type_name2)
+                                connector_type_name2,
+                                False)
                     if connect_code:
                         connect_code(self, guid1, guid2)
 
@@ -285,11 +289,13 @@ class TestbedController(execute.TestbedController):
                 if init:
                     connect_code = connector_type.connect_to_init_code(
                         cross_testbed_id, cross_factory_id, 
-                        cross_connector_type_name)
+                        cross_connector_type_name,
+                        True)
                 else:
                     connect_code = connector_type.connect_to_compl_code(
                         cross_testbed_id, cross_factory_id, 
-                        cross_connector_type_name)
+                        cross_connector_type_name,
+                        True)
                 if connect_code:
                     elem_cross_data = cross_data[cross_testbed_guid][cross_guid]
                     connect_code(self, guid, elem_cross_data)       
@@ -403,11 +409,23 @@ class TestbedController(execute.TestbedController):
         return factory.box_attributes.attributes_list
 
     def start(self, time = TIME_NOW):
+        # Plan everything
+        #  - group by factory_id
+        #  - enqueue task callables
+        plan = collections.defaultdict(list)
+        
         for guid, factory_id in self._create.iteritems():
             factory = self._factories[factory_id]
             start_function = factory.start_function
             if start_function:
-                start_function(self, guid)
+                plan[factory_id].append((start_function, guid))
+
+        # Execute plan, following the factory_id order
+        for factory_id in self._metadata.start_order:
+            if factory_id in plan:
+                for start_function, guid in plan[factory_id]:
+                    start_function(self, guid)
+        
         self._status = TESTBED_STATUS_STARTED
 
     #action: NotImplementedError

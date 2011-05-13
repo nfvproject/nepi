@@ -85,6 +85,15 @@ class VersionedMetadataInfo(object):
         return self.configure_order
 
     @property
+    def start_order(self):
+        """ list of factory ids that indicates the order in which the elements
+        should be started.
+        
+        Default: same as configure_order
+        """
+        return self.configure_order
+
+    @property
     def factories_info(self):
         """ dictionary of dictionaries of factory specific information
             factory_id: dict({
@@ -308,6 +317,10 @@ class Metadata(object):
     @property
     def preconfigure_order(self):
         return self._metadata.preconfigure_order
+
+    @property
+    def start_order(self):
+        return self._metadata.start_order
 
     def testbed_attributes(self):
         attributes = AttributesMap()
