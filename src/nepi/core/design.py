@@ -40,7 +40,8 @@ class ConnectorType(ConnectorTypeBase):
         for lookup_type_id in self._type_resolution_order(connector_type_id):
             if lookup_type_id in self._allowed_connections:
                 can_cross = self._allowed_connections[lookup_type_id]
-                return can_cross or (testbed_guid1 == testbed_guid2)
+                if can_cross or (testbed_guid1 == testbed_guid2):
+                    return True
         else:
             return False
 
