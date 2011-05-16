@@ -1,4 +1,9 @@
 import os
+import sys
+import random
+import threading
+import socket
+import select
 
 class TunChannel(object):
     """
