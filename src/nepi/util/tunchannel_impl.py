@@ -45,6 +45,11 @@ class TunChannel(object):
     """
     
     def __init__(self):
+        # Some operational attributes
+        self.listen = False
+        self.ethernet_mode = True
+        self.with_pi = False
+        
         # These get initialized when the channel is configured
         # They're part of the TUN standard attribute set
         self.tun_port = None
@@ -63,7 +68,6 @@ class TunChannel(object):
         
         # some state
         self.prepared = False
-        self.listen = False
         self._terminate = [] # terminate signaller
         self._connected = threading.Event()
         self._forwarder_thread = None
@@ -137,6 +141,8 @@ class TunChannel(object):
         local_proto = self.tun_proto
         
         stderr = self.stderr
+        ether_mode = self.ethernet_mode
+        with_pi = self.with_pi
         
         if local_proto != peer_proto:
             raise RuntimeError, "Peering protocol mismatch: %s != %s" % (local_proto, peer_proto)
@@ -192,8 +198,8 @@ class TunChannel(object):
         del self
         
         tun_fwd(tun, remote,
-            with_pi = False, 
-            ether_mode = True, 
+            with_pi = with_pi, 
+            ether_mode = ether_mode, 
             cipher_key = cipher_key, 
             udp = udp, 
             TERMINATE = TERMINATE,
