@@ -8,12 +8,21 @@ from nepi.util import validation
 from nepi.util.constants import STATUS_NOT_STARTED, STATUS_RUNNING, \
         STATUS_FINISHED
 
+from nepi.util.tunchannel_impl import \
+    preconfigure_tunchannel, postconfigure_tunchannel, \
+    wait_tunchannel, create_tunchannel, \
+    crossconnect_tunchannel_peer_init, \
+    crossconnect_tunchannel_peer_compl
+
+import functools
+
 NODE = "Node"
 P2PIFACE = "P2PNodeInterface"
 TAPIFACE = "TapNodeInterface"
 NODEIFACE = "NodeInterface"
 SWITCH = "Switch"
 APPLICATION = "Application"
+TUNCHANNEL = "TunChannel"
 
 NS3_TESTBED_ID = "ns3"
 FDNETDEV = "ns3::FileDescriptorNetDevice"
@@ -34,6 +43,37 @@ def connect_fd(testbed_instance, tap_guid, cross_data):
     sock.connect(address)
     passfd.sendfd(sock, tap.fd, '0')
     # TODO: after succesful transfer, the tap device should close the fd
+
+def connect_tunchannel_tap(testbed_instance, chan_guid, tap_guid):
+    tap = testbed_instance._elements[tap_guid]
+    chan = testbed_instance._elements[chan_guid]
+
+    # Create a file object for the tap's interface device 
+    # and send it to the channel. It should comply with all the
+    # requirements for the channel's tun_socket.
+    import os
+    chan.tun_socket = os.fdopen(tap.fd)
+    
+    # Set the channel to ethernet mode (it's a tap)
+    chan.ethernet_mode = True
+    
+    # Check to see if the device uses PI headers
+    # It's normally so
+    with_pi = True
+    try:
+        import fcntl
+        import struct
+        TUNGETIFF = 0x800454d2
+        IFF_NO_PI = 0x00001000
+        flags = struct.unpack("I",
+            fcntl.ioctl(tap.fd, TUNGETIFF, struct.pack("I",0)) )
+        with_pi = (0 == (flags & IFF_NO_PI))
+    except:
+        # maybe the kernel doesn't support the IOCTL,
+        # in which case, we assume it uses PI headers (as is usual)
+        pass
+    chan.with_pi = with_pi
+
 
 ### Creation functions ###
 
@@ -154,6 +194,7 @@ def configure_node(testbed_instance, guid):
         (destination, netprefix, nexthop) = route
         element.add_route(prefix = destination, prefix_len = netprefix,
             nexthop = nexthop)
+    
 
 ### Factory information ###
 
@@ -199,7 +240,19 @@ connector_types = dict({
                 "name": "switch",
                 "max": 1, 
                 "min": 0
-            })
+            }),
+    "tcp": dict({
+                "help": "ip-ip tunneling over TCP link", 
+                "name": "tcp",
+                "max": 1, 
+                "min": 0
+            }),
+    "udp": dict({
+                "help": "ip-ip tunneling over UDP datagrams", 
+                "name": "udp",
+                "max": 1, 
+                "min": 0
+            }),
    })
 
 connections = [
@@ -239,7 +292,27 @@ connections = [
         "from": (TESTBED_ID, NODE, "apps"),
         "to":   (TESTBED_ID, APPLICATION, "node"),
         "can_cross": False
-    })
+    }),
+    dict({
+        "from": (TESTBED_ID, TUNCHANNEL, "->fd" ),
+        "to":   (TESTBED_ID, TAPIFACE, "fd->" ),
+        "init_code": connect_tunchannel_tap,
+        "can_cross": False
+    }),
+    dict({
+        "from": (TESTBED_ID, TUNCHANNEL, "tcp"),
+        "to":   (None, None, "tcp"),
+        "init_code": functools.partial(crossconnect_tunchannel_peer_init,"tcp"),
+        "compl_code": functools.partial(crossconnect_tunchannel_peer_compl,"tcp"),
+        "can_cross": True
+    }),
+    dict({
+        "from": (TESTBED_ID, TUNCHANNEL, "udp"),
+        "to":   (None, None, "udp"),
+        "init_code": functools.partial(crossconnect_tunchannel_peer_init,"udp"),
+        "compl_code": functools.partial(crossconnect_tunchannel_peer_compl,"udp"),
+        "can_cross": True
+    }),
 ]
 
 attributes = dict({
@@ -332,11 +405,13 @@ traces = dict({
         }) 
     })
 
-create_order = [ NODE, P2PIFACE, NODEIFACE, TAPIFACE, SWITCH,
+create_order = [ NODE, P2PIFACE, NODEIFACE, TAPIFACE, 
+        TUNCHANNEL, SWITCH,
         APPLICATION ]
 
-configure_order = [ P2PIFACE, NODEIFACE, TAPIFACE, SWITCH, NODE,
-        APPLICATION ]
+configure_order = [ P2PIFACE, NODEIFACE, TAPIFACE, 
+        TUNCHANNEL, SWITCH, 
+        NODE, APPLICATION ]
 
 factories_info = dict({
     NODE: dict({
@@ -401,6 +476,18 @@ factories_info = dict({
             "connector_types": ["node"],
             "traces": ["stdout", "stderr"]
         }),
+     TUNCHANNEL : dict({
+        "category": "Channel",
+        "create_function": create_tunchannel,
+        "preconfigure_function": preconfigure_tunchannel,
+        "configure_function": postconfigure_tunchannel,
+        "start_function": wait_tunchannel,
+        "help": "Channel to forward "+TAPIFACE+" data to "
+                "other TAP interfaces supporting the NEPI tunneling protocol.",
+        "connector_types": ["->fd", "udp", "tcp"],
+        "allow_addresses": False,
+        "box_attributes": ["tun_proto", "tun_addr", "tun_port", "tun_key"]
+    }),
 })
 
 testbed_attributes = dict({
