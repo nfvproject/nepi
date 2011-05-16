@@ -12,9 +12,9 @@ import random
 import socket
 import weakref
 
-from nepi.util.tunchannel import TunChannel
-
 class TestbedController(testbed_impl.TestbedController):
+    from nepi.util.tunchannel_impl import TunChannel
+    
     LOCAL_FACTORIES = {
         'ns3::Nepi::TunChannel' : TunChannel,
     }
@@ -26,9 +26,6 @@ class TestbedController(testbed_impl.TestbedController):
         self._traces = dict()
         self._simulator_thread = None
         self._condition = None
-        
-        # local factories
-        self.TunChannel = TunChannel
 
     @property
     def home_directory(self):

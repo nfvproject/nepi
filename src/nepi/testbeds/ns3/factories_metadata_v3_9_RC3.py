@@ -4,6 +4,11 @@
 from nepi.util.constants import AF_INET, STATUS_NOT_STARTED, STATUS_RUNNING, \
         STATUS_FINISHED, STATUS_UNDETERMINED
 
+from nepi.util.tunchannel_impl import \
+    preconfigure_tunchannel, postconfigure_tunchannel, \
+    wait_tunchannel, create_tunchannel
+
+
 def _get_ipv4_protocol_guid(testbed_instance, node_guid):
     # search for the Ipv4L3Protocol asociated with the device
     protos_guids = testbed_instance.get_connected(node_guid, "protos", "node")
@@ -159,14 +164,6 @@ def create_ipv4protocol(testbed_instance, guid):
     static_routing = testbed_instance.ns3.Ipv4StaticRouting()
     list_routing.AddRoutingProtocol(static_routing, 1)
 
-def create_tunchannel(testbed_instance, guid, devnull = []):
-    if not devnull:
-        # just so it's not open if not needed
-        devnull.append(open("/dev/null","w"))
-    element = testbed_instance.TunChannel()
-    element.stderr = devnull[0] # silence tracing
-    testbed_instance._elements[guid] = element
-
 
 ### Start/Stop functions ###
 
@@ -180,10 +177,6 @@ def stop_application(testbed_instance, guid):
     element = testbed_instance.elements[guid]
     now = testbed_instance.ns3.Simulator.Now()
     element.SetStopTime(now)
-
-def wait_tunchannel(testbed_instance, guid):
-    element = testbed_instance.elements[guid]
-    element.Wait()
 
 
 ### Status functions ###
@@ -254,43 +247,6 @@ def configure_device(testbed_instance, guid):
         ipv4.AddAddress(ifindex, inaddr)
         ipv4.SetMetric(ifindex, 1)
         ipv4.SetUp(ifindex)
-
-def preconfigure_tunchannel(testbed_instance, guid):
-    element = testbed_instance._elements[guid]
-    
-    # Find external interface, if any
-    import os
-    public_addr = os.popen(
-        "/sbin/ifconfig "
-        "| grep $(ip route | grep default | awk '{print $3}' "
-                "| awk -F. '{print $1\"[.]\"$2}') "
-        "| head -1 | awk '{print $2}' "
-        "| awk -F : '{print $2}'").read().rstrip()
-    element.tun_addr = public_addr
-
-    # Set standard TUN attributes
-    if not element.tun_port and element.tun_addr:
-        element.tun_port = 15000 + int(guid)
-
-    # First-phase setup
-    if element.peer_proto:
-        # cross tun
-        if not element.tun_addr or not element.tun_port:
-            listening = True
-        elif not element.peer_addr or not element.peer_port:
-            listening = True
-        else:
-            # both have addresses...
-            # ...the one with the lesser address listens
-            listening = element.tun_addr < element.peer_addr
-        element.listen = listening
-        element.Prepare()
-
-def postconfigure_tunchannel(testbed_instance, guid):
-    element = testbed_instance._elements[guid]
-    
-    # Second-phase setup
-    element.Setup()
     
 def _add_static_route(ns3, static_routing, 
         address, netprefix, nexthop_address, ifindex):
