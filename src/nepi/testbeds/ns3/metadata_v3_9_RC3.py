@@ -8,6 +8,11 @@ from nepi.util import validation
 import os.path
 import functools
 
+from nepi.util.tunchannel_impl import \
+    crossconnect_tunchannel_peer_init, \
+    crossconnect_tunchannel_peer_compl
+
+
 ### Connection functions ####
 
 def connect_node_device(testbed_instance, node_guid, device_guid):
@@ -137,28 +142,6 @@ def connect_tunchannel_fd(testbed_instance, tun_guid, fdnd_guid):
     # Send the other endpoint to the TUN channel
     tun.tun_socket = sock2
 
-def connect_tunchannel_peer_init(testbed_instance, tun_guid, cross_data):
-    tun = testbed_instance._elements[tun_guid]
-
-def crossconnect_tunchannel_peer_init(proto, testbed_instance, tun_guid, peer_data):
-    tun = testbed_instance._elements[tun_guid]
-    tun.peer_addr = peer_data.get("tun_addr")
-    tun.peer_proto = peer_data.get("tun_proto") or proto
-    tun.peer_port = peer_data.get("tun_port")
-    tun.tun_key = min(tun.tun_key, peer_data.get("tun_key"))
-    tun.tun_proto = proto
-    
-    preconfigure_tunchannel(testbed_instance, tun_guid)
-
-def crossconnect_tunchannel_peer_compl(proto, testbed_instance, tun_guid, peer_data):
-    # refresh (refreshable) attributes for second-phase
-    tun = testbed_instance._elements[tun_guid]
-    tun.peer_addr = peer_data.get("tun_addr")
-    tun.peer_proto = peer_data.get("tun_proto") or proto
-    tun.peer_port = peer_data.get("tun_port")
-    
-    postconfigure_tunchannel(testbed_instance, tun_guid)
-    
 
 ### Connector information ###
 
