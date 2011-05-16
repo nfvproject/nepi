@@ -7,6 +7,8 @@ from nepi.util.constants import TIME_NOW
 import os
 
 class TestbedController(testbed_impl.TestbedController):
+    from nepi.util.tunchannel_impl import TunChannel
+
     def __init__(self, testbed_version):
         super(TestbedController, self).__init__(TESTBED_ID, testbed_version)
         self._netns = None
@@ -54,7 +56,10 @@ class TestbedController(testbed_impl.TestbedController):
         for trace in self._traces.values():
             trace.close()
         for element in self._elements.values():
-            element.destroy()
+            if isinstance(element, self.TunChannel):
+                element.Cleanup()
+            else:
+                element.destroy()
 
     def trace_filename(self, guid, trace_id):
         # TODO: Need to be defined inside a home!!!! with and experiment id_code
