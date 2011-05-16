@@ -159,8 +159,12 @@ def create_ipv4protocol(testbed_instance, guid):
     static_routing = testbed_instance.ns3.Ipv4StaticRouting()
     list_routing.AddRoutingProtocol(static_routing, 1)
 
-def create_tunchannel(testbed_instance, guid):
+def create_tunchannel(testbed_instance, guid, devnull = []):
+    if not devnull:
+        # just so it's not open if not needed
+        devnull.append(open("/dev/null","w"))
     element = testbed_instance.TunChannel()
+    element.stderr = devnull[0] # silence tracing
     testbed_instance._elements[guid] = element
 
 
@@ -262,11 +266,10 @@ def preconfigure_tunchannel(testbed_instance, guid):
                 "| awk -F. '{print $1\"[.]\"$2}') "
         "| head -1 | awk '{print $2}' "
         "| awk -F : '{print $2}'").read().rstrip()
-    element.external_addr = public_addr
+    element.tun_addr = public_addr
 
     # Set standard TUN attributes
-    if (not element.tun_addr or not element.tun_port) and element.external_addr:
-        element.tun_addr = element.external_addr
+    if not element.tun_port and element.tun_addr:
         element.tun_port = 15000 + int(guid)
 
     # First-phase setup
