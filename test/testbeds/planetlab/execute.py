@@ -170,6 +170,7 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
         comp_result = \
 r""".*ETH_P_ALL = 0x[0-9a-fA-F]{8}
 ETH_P_IP = 0x[0-9a-fA-F]{8}
+TUNGETIFF = 0x[0-9a-fA-F]{8}
 TUNSETIFF = 0x[0-9a-fA-F]{8}
 IFF_NO_PI = 0x[0-9a-fA-F]{8}
 IFF_TAP = 0x[0-9a-fA-F]{8}

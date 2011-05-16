@@ -10,6 +10,7 @@ int main()
 {
 	printf("ETH_P_ALL = 0x%08x\n", ETH_P_ALL);
 	printf("ETH_P_IP = 0x%08x\n", ETH_P_IP);
+	printf("TUNGETIFF = 0x%08x\n", TUNGETIFF);
 	printf("TUNSETIFF = 0x%08x\n", TUNSETIFF);
 	printf("IFF_NO_PI = 0x%08x\n", IFF_NO_PI);
 	printf("IFF_TAP = 0x%08x\n", IFF_TAP);
