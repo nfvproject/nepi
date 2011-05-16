@@ -18,6 +18,8 @@ class TestbedController(testbed_impl.TestbedController):
     LOCAL_FACTORIES = {
         'ns3::Nepi::TunChannel' : TunChannel,
     }
+    
+    LOCAL_TYPES = tuple(LOCAL_FACTORIES.values())
 
     def __init__(self, testbed_version):
         super(TestbedController, self).__init__(TESTBED_ID, testbed_version)
@@ -114,6 +116,9 @@ class TestbedController(testbed_impl.TestbedController):
 
     def shutdown(self):
         for element in self._elements.values():
+            if isinstance(element, self.LOCAL_TYPES):
+                # graceful shutdown of locally-implemented objects
+                element.Cleanup()
             element = None
 
     def _simulator_run(self, condition):
