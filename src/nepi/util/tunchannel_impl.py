@@ -205,6 +205,12 @@ class TunChannel(object):
 
 
 def create_tunchannel(testbed_instance, guid, devnull = []):
+    """
+    TunChannel factory for metadata.
+    By default, silences traceing.
+    
+    You can override the created element's attributes if you will.
+    """
     if not devnull:
         # just so it's not open if not needed
         devnull.append(open("/dev/null","w"))
@@ -212,26 +218,16 @@ def create_tunchannel(testbed_instance, guid, devnull = []):
     element.stderr = devnull[0] # silence tracing
     testbed_instance._elements[guid] = element
 
-def crossconnect_tunchannel_peer_init(proto, testbed_instance, tun_guid, peer_data):
-    tun = testbed_instance._elements[tun_guid]
-    tun.peer_addr = peer_data.get("tun_addr")
-    tun.peer_proto = peer_data.get("tun_proto") or proto
-    tun.peer_port = peer_data.get("tun_port")
-    tun.tun_key = min(tun.tun_key, peer_data.get("tun_key"))
-    tun.tun_proto = proto
-    
-    preconfigure_tunchannel(testbed_instance, tun_guid)
-
-def crossconnect_tunchannel_peer_compl(proto, testbed_instance, tun_guid, peer_data):
-    # refresh (refreshable) attributes for second-phase
-    tun = testbed_instance._elements[tun_guid]
-    tun.peer_addr = peer_data.get("tun_addr")
-    tun.peer_proto = peer_data.get("tun_proto") or proto
-    tun.peer_port = peer_data.get("tun_port")
-    
-    postconfigure_tunchannel(testbed_instance, tun_guid)
-
 def preconfigure_tunchannel(testbed_instance, guid):
+    """
+    TunChannel preconfiguration.
+    
+    It initiates the forwarder thread for listening tcp channels.
+    
+    Takes the public address from the operating system, so it should be adequate
+    for most situations when the TunChannel forwarder thread runs in the same
+    process as the testbed controller.
+    """
     element = testbed_instance._elements[guid]
     
     # Find external interface, if any
@@ -262,13 +258,70 @@ def preconfigure_tunchannel(testbed_instance, guid):
         element.Prepare()
 
 def postconfigure_tunchannel(testbed_instance, guid):
+    """
+    TunChannel preconfiguration.
+    
+    Initiates the forwarder thread for connecting tcp channels or 
+    udp channels in general.
+    
+    Should be adequate for most implementations.
+    """
     element = testbed_instance._elements[guid]
     
     # Second-phase setup
     element.Setup()
+
+
+def crossconnect_tunchannel_peer_init(proto, testbed_instance, tun_guid, peer_data,
+        preconfigure_tunchannel = preconfigure_tunchannel):
+    """
+    Cross-connection initialization.
+    Should be adequate for most implementations.
+    
+    For use in metadata, bind the first "proto" argument with the connector type. Eg:
+    
+        conn_init = functools.partial(crossconnect_tunchannel_peer_init, "tcp")
+    
+    If you don't use the stock preconfigure function, specify your own as a keyword argument.
+    """
+    tun = testbed_instance._elements[tun_guid]
+    tun.peer_addr = peer_data.get("tun_addr")
+    tun.peer_proto = peer_data.get("tun_proto") or proto
+    tun.peer_port = peer_data.get("tun_port")
+    tun.tun_key = min(tun.tun_key, peer_data.get("tun_key"))
+    tun.tun_proto = proto
+    
+    preconfigure_tunchannel(testbed_instance, tun_guid)
+
+def crossconnect_tunchannel_peer_compl(proto, testbed_instance, tun_guid, peer_data,
+        postconfigure_tunchannel = postconfigure_tunchannel):
+    """
+    Cross-connection completion.
+    Should be adequeate for most implementations.
+    
+    For use in metadata, bind the first "proto" argument with the connector type. Eg:
+    
+        conn_init = functools.partial(crossconnect_tunchannel_peer_compl, "tcp")
+    
+    If you don't use the stock postconfigure function, specify your own as a keyword argument.
+    """
+    # refresh (refreshable) attributes for second-phase
+    tun = testbed_instance._elements[tun_guid]
+    tun.peer_addr = peer_data.get("tun_addr")
+    tun.peer_proto = peer_data.get("tun_proto") or proto
+    tun.peer_port = peer_data.get("tun_port")
+    
+    postconfigure_tunchannel(testbed_instance, tun_guid)
+
     
 
 def wait_tunchannel(testbed_instance, guid):
+    """
+    Wait for the channel forwarder to be up and running.
+    
+    Useful as a start function to assure proper startup synchronization,
+    be certain to start TunChannels before applications that might require them.
+    """
     element = testbed_instance.elements[guid]
     element.Wait()
 
