@@ -9,6 +9,7 @@ import subprocess
 import threading
 import base64
 import time
+import re
 
 from nepi.util import server
 
@@ -65,9 +66,11 @@ class TunProtoBase(object):
             raise RuntimeError, "Unconnected TUN - missing node"
         
         # Install the tun_connect script and tunalloc utility
+        from nepi.util import tunchannel
         sources = [
             os.path.join(os.path.dirname(__file__), 'scripts', 'tun_connect.py'),
             os.path.join(os.path.dirname(__file__), 'scripts', 'tunalloc.c'),
+            re.sub(r"([.]py)[co]$", r'\1', tunchannel.__file__, 1), # pyc/o files are version-specific
         ]
         dest = "%s@%s:%s" % (
             local.node.slicename, local.node.hostname, 
@@ -80,7 +83,7 @@ class TunProtoBase(object):
             )
     
         if proc.wait():
-            raise RuntimeError, "Failed upload TUN connect script %r: %s %s" % (source, out,err,)
+            raise RuntimeError, "Failed upload TUN connect script %r: %s %s" % (sources, out,err,)
 
         cmd = ( (
             "cd %(home)s && gcc -fPIC -shared tunalloc.c -o tunalloc.so"
