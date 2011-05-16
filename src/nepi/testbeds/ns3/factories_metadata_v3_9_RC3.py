@@ -159,6 +159,11 @@ def create_ipv4protocol(testbed_instance, guid):
     static_routing = testbed_instance.ns3.Ipv4StaticRouting()
     list_routing.AddRoutingProtocol(static_routing, 1)
 
+def create_tunchannel(testbed_instance, guid):
+    element = testbed_instance.TunChannel()
+    testbed_instance._elements[guid] = element
+
+
 ### Start/Stop functions ###
 
 def start_application(testbed_instance, guid):
@@ -171,6 +176,11 @@ def stop_application(testbed_instance, guid):
     element = testbed_instance.elements[guid]
     now = testbed_instance.ns3.Simulator.Now()
     element.SetStopTime(now)
+
+def wait_tunchannel(testbed_instance, guid):
+    element = testbed_instance.elements[guid]
+    element.Wait()
+
 
 ### Status functions ###
 
@@ -241,6 +251,44 @@ def configure_device(testbed_instance, guid):
         ipv4.SetMetric(ifindex, 1)
         ipv4.SetUp(ifindex)
 
+def preconfigure_tunchannel(testbed_instance, guid):
+    element = testbed_instance._elements[guid]
+    
+    # Find external interface, if any
+    import os
+    public_addr = os.popen(
+        "/sbin/ifconfig "
+        "| grep $(ip route | grep default | awk '{print $3}' "
+                "| awk -F. '{print $1\"[.]\"$2}') "
+        "| head -1 | awk '{print $2}' "
+        "| awk -F : '{print $2}'").read().rstrip()
+    element.external_addr = public_addr
+
+    # Set standard TUN attributes
+    if (not element.tun_addr or not element.tun_port) and element.external_addr:
+        element.tun_addr = element.external_addr
+        element.tun_port = 15000 + int(guid)
+
+    # First-phase setup
+    if element.peer_proto:
+        # cross tun
+        if not element.tun_addr or not element.tun_port:
+            listening = True
+        elif not element.peer_addr or not element.peer_port:
+            listening = True
+        else:
+            # both have addresses...
+            # ...the one with the lesser address listens
+            listening = element.tun_addr < element.peer_addr
+        element.listen = listening
+        element.Prepare()
+
+def postconfigure_tunchannel(testbed_instance, guid):
+    element = testbed_instance._elements[guid]
+    
+    # Second-phase setup
+    element.Setup()
+    
 def _add_static_route(ns3, static_routing, 
         address, netprefix, nexthop_address, ifindex):
     if netprefix == 0:
@@ -658,6 +706,18 @@ factories_info = dict({
             "LinuxSocketAddress",
             "tun_proto", "tun_addr", "tun_port", "tun_key"],
         "traces": ["fdpcap"]
+    }),
+     "ns3::Nepi::TunChannel": dict({
+        "category": "Channel",
+        "create_function": create_tunchannel,
+        "preconfigure_function": preconfigure_tunchannel,
+        "configure_function": postconfigure_tunchannel,
+        "start_function": wait_tunchannel,
+        "help": "Channel to forward FileDescriptorNetDevice data to "
+                "other TAP interfaces supporting the NEPI tunneling protocol.",
+        "connector_types": ["fd->", "udp", "tcp"],
+        "allow_addresses": False,
+        "box_attributes": ["tun_proto", "tun_addr", "tun_port", "tun_key"]
     }),
      "ns3::CsmaNetDevice": dict({
         "category": "Device",
