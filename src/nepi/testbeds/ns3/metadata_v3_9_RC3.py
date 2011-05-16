@@ -6,6 +6,7 @@ from nepi.core import metadata
 from nepi.core.attributes import Attribute
 from nepi.util import validation
 import os.path
+import functools
 
 ### Connection functions ####
 
@@ -107,6 +108,57 @@ def connect_fd(testbed_instance, fdnd_guid, cross_data):
     testbed_instance.set(fdnd_guid, "tun_proto", "fd")
     testbed_instance.set(fdnd_guid, "tun_port", 0)
     testbed_instance.set(fdnd_guid, "tun_key", "\xfa"*32) # unimportant, fds aren't encrypted
+
+def connect_tunchannel_fd(testbed_instance, tun_guid, fdnd_guid):
+    fdnd = testbed_instance._elements[fdnd_guid]
+    tun = testbed_instance._elements[tun_guid]
+
+    # XXX: check the method StringToBuffer of ns3::FileDescriptorNetDevice
+    # to see how the address should be decoded
+    endpoint = fdnd.GetEndpoint()
+    address = endpoint.replace(":", "").decode('hex')[2:]
+    testbed_instance.set(fdnd_guid, "LinuxSocketAddress", address)
+    
+    # Create socket pair to connect the FDND and the TunChannel with it
+    import socket
+    sock1, sock2 = socket.socketpair(
+        socket.AF_UNIX, socket.SOCK_SEQPACKET)
+
+    # Send one endpoint to the FDND
+    import passfd
+    import socket
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    sock.connect(address)
+    passfd.sendfd(sock, sock1.fileno(), '0')
+    
+    # Store a reference to the endpoint to keep the socket alive
+    fdnd._endpoint_socket = sock1
+    
+    # Send the other endpoint to the TUN channel
+    tun.tun_socket = sock2
+
+def connect_tunchannel_peer_init(testbed_instance, tun_guid, cross_data):
+    tun = testbed_instance._elements[tun_guid]
+
+def crossconnect_tunchannel_peer_init(proto, testbed_instance, tun_guid, peer_data):
+    tun = testbed_instance._elements[tun_guid]
+    tun.peer_addr = peer_data.get("tun_addr")
+    tun.peer_proto = peer_data.get("tun_proto") or proto
+    tun.peer_port = peer_data.get("tun_port")
+    tun.tun_key = min(tun.tun_key, peer_data.get("tun_key"))
+    tun.tun_proto = proto
+    
+    preconfigure_tunchannel(testbed_instance, tun_guid)
+
+def crossconnect_tunchannel_peer_compl(proto, testbed_instance, tun_guid, peer_data):
+    # refresh (refreshable) attributes for second-phase
+    tun = testbed_instance._elements[tun_guid]
+    tun.peer_addr = peer_data.get("tun_addr")
+    tun.peer_proto = peer_data.get("tun_proto") or proto
+    tun.peer_port = peer_data.get("tun_port")
+    
+    postconfigure_tunchannel(testbed_instance, tun_guid)
+    
 
 ### Connector information ###
 
@@ -229,6 +281,18 @@ connector_types = dict({
                 "help": "Connector to a mobility model for the node", 
                 "name": "mobility",
                 "max": 1,
+                "min": 0
+            }),
+    "tcp": dict({
+                "help": "ip-ip tunneling over TCP link", 
+                "name": "tcp",
+                "max": 1, 
+                "min": 0
+            }),
+    "udp": dict({
+                "help": "ip-ip tunneling over UDP datagrams", 
+                "name": "udp",
+                "max": 1, 
                 "min": 0
             }),
     })
@@ -516,6 +580,26 @@ connections = [
         "init_code": connect_fd,
         "can_cross": True
     }),
+    dict({
+        "from": ( "ns3", "ns3::Nepi::TunChannel", "fd->" ),
+        "to":   ( "ns3", "ns3::FileDescriptorNetDevice", "->fd" ),
+        "init_code": connect_tunchannel_fd,
+        "can_cross": False
+    }),
+    dict({
+        "from": ( "ns3", "ns3::Nepi::TunChannel", "tcp"),
+        "to":   (None, None, "tcp"),
+        "init_code": functools.partial(crossconnect_tunchannel_peer_init,"tcp"),
+        "compl_code": functools.partial(crossconnect_tunchannel_peer_compl,"tcp"),
+        "can_cross": True
+    }),
+    dict({
+        "from": ( "ns3", "ns3::Nepi::TunChannel", "udp"),
+        "to":   (None, None, "udp"),
+        "init_code": functools.partial(crossconnect_tunchannel_peer_init,"udp"),
+        "compl_code": functools.partial(crossconnect_tunchannel_peer_compl,"udp"),
+        "can_cross": True
+    }),
 ]
 
 traces = dict({
@@ -640,6 +724,7 @@ factories_order = ["ns3::BasicEnergySource",
     "ns3::OnOffApplication",
     "ns3::VirtualNetDevice",
     "ns3::FileDescriptorNetDevice",
+    "ns3::Nepi::TunChannel",
     "ns3::TapBridge",
     "ns3::BridgeChannel",
     "ns3::BridgeNetDevice",
