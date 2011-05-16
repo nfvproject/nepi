@@ -328,10 +328,10 @@ except:
 
 
 # Trak SIGTERM, and set global termination flag instead of dying
-TERMINATE = False
+TERMINATE = []
 def _finalize(sig,frame):
     global TERMINATE
-    TERMINATE = True
+    TERMINATE.append(None)
 signal.signal(signal.SIGTERM, _finalize)
 
 try:
