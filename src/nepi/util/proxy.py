@@ -596,9 +596,9 @@ class TestbedControllerServer(BaseServer):
 
     @Marshalling.handles(GET)
     @Marshalling.args(int, Marshalling.base64_data, str)
-    @Marshalling.retval()
+    @Marshalling.retval( Marshalling.pickled_data )
     def get(self, guid, name, time):
-        return str(self._testbed.get(guid, name, time))
+        return self._testbed.get(guid, name, time)
 
     @Marshalling.handles(SET)
     @Marshalling.args(int, Marshalling.base64_data, Marshalling.pickled_data, str)
@@ -667,9 +667,9 @@ class ExperimentControllerServer(BaseServer):
 
     @Marshalling.handles(EXPERIMENT_GET)
     @Marshalling.args(int, int, Marshalling.base64_data, str)
-    @Marshalling.retval()
+    @Marshalling.retval( Marshalling.pickled_data )
     def get(self, testbed_guid, guid, name, time):
-        return str(self._controller.get(testbed_guid, guid, name, time))
+        return self._controller.get(testbed_guid, guid, name, time)
 
     @Marshalling.handles(EXPERIMENT_SET)
     @Marshalling.args(int, int, Marshalling.base64_data, Marshalling.pickled_data, str)
