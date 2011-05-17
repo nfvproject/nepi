@@ -61,12 +61,13 @@ class TestbedController(testbed_impl.TestbedController):
         # TODO: take on account schedule time for the task
         factory_id = self._create[guid]
         factory = self._factories[factory_id]
-        if factory.box_attributes.is_attribute_design_only(name) or \
-                factory.box_attributes.is_attribute_invisible(name):
+        if factory.box_attributes.is_attribute_design_only(name):
             return
         element = self._elements[guid]
         if factory_id in self.LOCAL_FACTORIES:
             setattr(element, name, value)
+        elif factory.box_attributes.is_attribute_invisible(name):
+            return
         else:
             ns3_value = self._to_ns3_value(guid, name, value) 
             element.SetAttribute(name, ns3_value)
@@ -76,11 +77,15 @@ class TestbedController(testbed_impl.TestbedController):
         # TODO: take on account schedule time for the task
         factory_id = self._create[guid]
         factory = self._factories[factory_id]
+        element = self._elements[guid]
+        if factory_id in self.LOCAL_FACTORIES:
+            if hasattr(element, name):
+                return getattr(element, name)
+            else:
+                return value
         if factory.box_attributes.is_attribute_design_only(name) or \
                 factory.box_attributes.is_attribute_invisible(name):
             return value
-        if factory_id in self.LOCAL_FACTORIES:
-            return getattr(element, name)
         TypeId = self.ns3.TypeId()
         typeid = TypeId.LookupByName(factory_id)
         info = TypeId.AttributeInfo()
@@ -89,7 +94,6 @@ class TestbedController(testbed_impl.TestbedController):
                 (name, guid))
         checker = info.checker
         ns3_value = checker.Create() 
-        element = self._elements[guid]
         element.GetAttribute(name, ns3_value)
         value = ns3_value.SerializeToString(checker)
         attr_type = factory.box_attributes.get_attribute_type(name)
