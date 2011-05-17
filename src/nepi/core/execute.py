@@ -357,10 +357,10 @@ class ExperimentController(object):
             def wrapped(*p, **kw):
                 try:
                     callable(*p, **kw)
-                except Exception,e:
+                except:
                     import traceback
                     traceback.print_exc(file=sys.stderr)
-                    excs.append(e)
+                    excs.append(sys.exc_info())
             return wrapped
         threads = [ threading.Thread(target=wrap(callable)) for callable in callables ]
         for thread in threads:
@@ -368,7 +368,8 @@ class ExperimentController(object):
         for thread in threads:
             thread.join()
         for exc in excs:
-            raise exc
+            eTyp, eVal, eLoc = exc
+            raise eTyp, eVal, eLoc
 
     def start(self):
         parser = XmlExperimentParser()
