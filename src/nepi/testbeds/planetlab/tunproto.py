@@ -135,10 +135,10 @@ class TunProtoBase(object):
         if check_proto != peer_proto:
             raise RuntimeError, "Peering protocol mismatch: %s != %s" % (check_proto, peer_proto)
         
-        if not listen and (not peer_port or not peer_addr):
+        if not listen and ((peer_proto != 'fd' and not peer_port) or not peer_addr):
             raise RuntimeError, "Misconfigured peer: %s" % (peer,)
         
-        if listen and (not local_port or not local_addr or not local_mask):
+        if listen and ((peer_proto != 'fd' and not local_port) or not local_addr or not local_mask):
             raise RuntimeError, "Misconfigured TUN: %s" % (local,)
         
         args = ["python", "tun_connect.py", 

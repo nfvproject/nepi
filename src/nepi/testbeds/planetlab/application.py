@@ -498,21 +498,25 @@ class NS3Dependency(Dependency):
         pybindgen_source_url = "http://pybindgen.googlecode.com/files/pybindgen-0.15.0.zip"
         pygccxml_source_url = "http://leaseweb.dl.sourceforge.net/project/pygccxml/pygccxml/pygccxml-1.0/pygccxml-1.0.0.zip"
         ns3_source_url = "http://yans.pl.sophia.inria.fr/code/hgwebdir.cgi/ns-3-dev/archive/tip.tar.gz"
+        passfd_source_url = "http://yans.pl.sophia.inria.fr/code/hgwebdir.cgi/python-passfd/archive/tip.tar.gz"
         self.build =(
             " ( "
             "  cd .. && "
-            "  python -c 'import pygccxml, pybindgen' && "
+            "  python -c 'import pygccxml, pybindgen, passfd' && "
             "  test -f lib/_ns3.so && "
             "  test -f lib/libns3.so "
             " ) || ( "
                 # Not working, rebuild
                      "wget -q -c -O pybindgen-src.zip %(pybindgen_source_url)s && " # continue, to exploit the case when it has already been dl'ed
                      "wget -q -c -O pygccxml-1.0.0.zip %(pygccxml_source_url)s && " 
+                     "wget -q -c -O passfd-src.tar.gz %(passfd_source_url)s && "
                      "wget -q -c -O ns3-src.tar.gz %(ns3_source_url)s && "  
                      "unzip -n pybindgen-src.zip && " # Do not overwrite files, to exploit the case when it has already been built
                      "unzip -n pygccxml-1.0.0.zip && "
                      "mkdir -p ns3-src && "
+                     "mkdir -p passfd-src && "
                      "tar xzf ns3-src.tar.gz --strip-components=1 -C ns3-src && "
+                     "tar xzf passfd-src.tar.gz --strip-components=1 -C passfd-src && "
                      "rm -rf target && "    # mv doesn't like unclean targets
                      "mkdir -p target && "
                      "cd pygccxml-1.0.0 && "
@@ -528,6 +532,10 @@ class NS3Dependency(Dependency):
                      "./waf clean && "
                      "mv -f ${BUILD}/target/lib/python*/site-packages/pybindgen ${BUILD}/target/. && "
                      "rm -rf ${BUILD}/target/lib && "
+                     "cd ../passfd-src && "
+                     "python setup.py build && "
+                     "python setup.py install --install-lib ${BUILD}/target && "
+                     "python setup.py clean && "
                      "cd ../ns3-src && "
                      "./waf configure --prefix=${BUILD}/target -d release --disable-examples --high-precision-as-double && "
                      "./waf &&"
@@ -538,13 +546,14 @@ class NS3Dependency(Dependency):
                         pybindgen_source_url = server.shell_escape(pybindgen_source_url),
                         pygccxml_source_url = server.shell_escape(pygccxml_source_url),
                         ns3_source_url = server.shell_escape(ns3_source_url),
+                        passfd_source_url = server.shell_escape(passfd_source_url),
                      ))
         
         # Just move ${BUILD}/target
         self.install = (
             " ( "
             "  cd .. && "
-            "  python -c 'import pygccxml, pybindgen' && "
+            "  python -c 'import pygccxml, pybindgen, passfd' && "
             "  test -f lib/_ns3.so && "
             "  test -f lib/libns3.so "
             " ) || ( "

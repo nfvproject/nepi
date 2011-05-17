@@ -92,6 +92,14 @@ class _CrossIface(object):
         
         # Cannot access cross peers
         self.peer_proto_impl = None
+    
+    def __str__(self):
+        return "%s%r" % (
+            self.__class__.__name__,
+            ( self.tun_proto,
+              self.tun_addr,
+              self.tun_port ) 
+        )
 
 class TunIface(object):
     _PROTO_MAP = tunproto.TUN_PROTO_MAP
