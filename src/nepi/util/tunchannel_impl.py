@@ -4,6 +4,9 @@ import random
 import threading
 import socket
 import select
+import weakref
+
+from tunchannel import tun_fwd
 
 class TunChannel(object):
     """
@@ -36,6 +39,8 @@ class TunChannel(object):
         
         ethernet_mode: set if the incoming packet stream is
             composed of ethernet frames (as opposed of IP packets).
+        
+        udp: set to use UDP datagrams instead of TCP connections.
         
         tun_socket: a socket or file object that can be read
             from and written to. Packets will be read when available,
@@ -74,6 +79,7 @@ class TunChannel(object):
         # some state
         self.prepared = False
         self._terminate = [] # terminate signaller
+        self._exc = [] # exception store, to relay exceptions from the forwarder thread
         self._connected = threading.Event()
         self._forwarder_thread = None
         
@@ -91,21 +97,25 @@ class TunChannel(object):
         
 
     def __str__(self):
-        return "%s<ip:%s/%s %s%s>" % (
+        return "%s<%s %s:%s %s %s:%s>" % (
             self.__class__.__name__,
-            self.address, self.netprefix,
-            " up" if self.up else " down",
-            " snat" if self.snat else "",
+            self.tun_proto, 
+            self.tun_addr, self.tun_port,
+            self.peer_proto, 
+            self.peer_addr, self.peer_port,
         )
 
     def Prepare(self):
-        if not self.udp and self.listen and not self._forwarder_thread:
-            if self.listen or (self.peer_addr and self.peer_port and self.peer_proto):
-                self._launch()
+        if self.tun_proto:
+            udp = self.tun_proto == "udp"
+            if not udp and self.listen and not self._forwarder_thread:
+                if self.listen or (self.peer_addr and self.peer_port and self.peer_proto):
+                    self._launch()
     
     def Setup(self):
-        if not self._forwarder_thread:
-            self._launch()
+        if self.tun_proto:
+            if not self._forwarder_thread:
+                self._launch()
     
     def Cleanup(self):
         if self._forwarder_thread:
@@ -114,6 +124,10 @@ class TunChannel(object):
     def Wait(self):
         if self._forwarder_thread:
             self._connected.wait()
+            for exc in self._exc:
+                # Relay exception
+                eTyp, eVal, eLoc = exc
+                raise eTyp, eVal, eLoc
 
     def Kill(self):    
         if self._forwarder_thread:
@@ -126,12 +140,23 @@ class TunChannel(object):
         # to self, so that we don't create any strong cycles
         # and automatic refcounting works as expected
         self._forwarder_thread = threading.Thread(
-            self._forwarder,
+            target = self._forwarder,
             args = (weakref.ref(self),) )
         self._forwarder_thread.start()
-    
+
     @staticmethod
     def _forwarder(weak_self):
+        try:
+            weak_self().__forwarder(weak_self)
+        except:
+            self = weak_self()
+            
+            # store exception and wake up anyone waiting
+            self._exc.append(sys.exc_info())
+            self._connected.set()
+    
+    @staticmethod
+    def __forwarder(weak_self):
         # grab strong reference
         self = weak_self()
         if not self:
@@ -170,10 +195,9 @@ class TunChannel(object):
         
         if udp:
             # listen on udp port
-            if remaining_args and not remaining_args[0].startswith('-'):
-                rsock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
-                rsock.bind((local_addr,local_port))
-                rsock.connect((peer_addr,peer_port))
+            rsock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
+            rsock.bind((local_addr,local_port))
+            rsock.connect((peer_addr,peer_port))
             remote = os.fdopen(rsock.fileno(), 'r+b', 0)
         elif listen:
             # accept tcp connections

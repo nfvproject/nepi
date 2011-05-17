@@ -951,7 +951,7 @@ factories_info = dict({
             "box_attributes": [
                 "up", "device_name", "mtu", "snat",
                 "txqueuelen",
-                "tun_proto", "tun_addr", "tun_port"
+                "tun_proto", "tun_addr", "tun_port", "tun_key"
             ],
             "traces": ["packets"],
             "connector_types": ["node","udp","tcp","fd->"]

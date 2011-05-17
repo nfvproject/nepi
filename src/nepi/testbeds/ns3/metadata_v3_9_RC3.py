@@ -141,6 +141,11 @@ def connect_tunchannel_fd(testbed_instance, tun_guid, fdnd_guid):
     
     # Send the other endpoint to the TUN channel
     tun.tun_socket = sock2
+    
+    # With this kind of tun_socket, NS3 will expect a PI header
+    # (sockets don't support the TUNGETIFF ioctl, so it will assume
+    # the default presence of PI headers)
+    tun.with_pi = True
 
 
 ### Connector information ###
