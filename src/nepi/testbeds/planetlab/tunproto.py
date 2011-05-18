@@ -84,6 +84,9 @@ class TunProtoBase(object):
     
         if proc.wait():
             raise RuntimeError, "Failed upload TUN connect script %r: %s %s" % (sources, out,err,)
+        
+        # Make sure all dependencies are satisfied
+        local.node.wait_dependencies()
 
         cmd = ( (
             "cd %(home)s && gcc -fPIC -shared tunalloc.c -o tunalloc.so"
