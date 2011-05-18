@@ -218,6 +218,7 @@ class ExperimentParser(object):
                 g_info.height, g_info.label)
 
     def factory_attributes_to_data(self, data, guid, factory_attributes):
+        factory_attributes = factory_attributes or dict()
         for name, value in factory_attributes.iteritems():
             data.add_factory_attribute_data(guid, name, value)
 
