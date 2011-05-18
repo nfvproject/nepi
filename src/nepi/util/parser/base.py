@@ -274,6 +274,7 @@ class ExperimentParser(object):
         provider = FactoriesProvider(testbed_id, testbed_version)
         experiment_description.add_testbed_description(provider)
         testbed_description = experiment_description.testbed_description(guid)
+        self.graphical_info_from_data(testbed_description, data)
         self.attributes_from_data(testbed_description, data)
 
     def box_from_data(self, experiment_description, guid, data):
