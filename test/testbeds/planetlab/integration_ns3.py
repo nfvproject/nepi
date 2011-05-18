@@ -223,13 +223,13 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
         tap1.set_attribute_value("snat", True)
         
         # Add second PL node (ping target)
-        #node2 = pl.create("Node")
-        #node2.set_attribute_value("hostname", self.host2)
-        #node2.set_attribute_value("label", "node2")
-        #iface2 = pl.create("NodeInterface")
-        #iface2.set_attribute_value("label", "node2iface")
-        #node2.connector("devs").connect(iface2.connector("node"))
-        #iface2.connector("inet").connect(inet.connector("devs"))
+        node2 = pl.create("Node")
+        node2.set_attribute_value("hostname", self.host2)
+        node2.set_attribute_value("label", "node2")
+        iface2 = pl.create("NodeInterface")
+        iface2.set_attribute_value("label", "node2iface")
+        node2.connector("devs").connect(iface2.connector("node"))
+        iface2.connector("inet").connect(inet.connector("devs"))
         
         # Create NS3 node that is responsive to pings, connected
         # to node1 through the Tap interface
@@ -258,7 +258,7 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
 
         # Create NS3 ping application, pinging the PL node
         ping = ns3_desc.create("ns3::V4Ping")
-        ping.set_attribute_value("Remote", "209.85.146.147") #"{#[node2iface].addr[0].[Address]#}")
+        ping.set_attribute_value("Remote", "{#[node2iface].addr[0].[Address]#}")
         ping.set_attribute_value("StartTime", "0s")
         ping.set_attribute_value("StopTime", "10s")
         ping.connector("node").connect(ns1.connector("apps"))
