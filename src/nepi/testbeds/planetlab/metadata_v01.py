@@ -711,6 +711,14 @@ attributes = dict({
                 "value": False,
                 "validation_function": validation.is_bool
             }),
+    "pointopoint":  dict({
+                "name": "pointopoint", 
+                "help": "If the interface is a P2P link, the remote endpoint's IP "
+                        "should be set on this attribute.",
+                "type": Attribute.STRING,
+                "flags": Attribute.DesignOnly,
+                "validation_function": validation.is_string
+            }),
     "txqueuelen":  dict({
                 "name": "mask", 
                 "help": "Transmission queue length (in packets)",
@@ -933,7 +941,7 @@ factories_info = dict({
             "configure_function": postconfigure_tuniface,
             "start_function": wait_tuniface,
             "box_attributes": [
-                "up", "device_name", "mtu", "snat",
+                "up", "device_name", "mtu", "snat", "pointopoint",
                 "txqueuelen",
                 "tun_proto", "tun_addr", "tun_port", "tun_key"
             ],
@@ -949,7 +957,7 @@ factories_info = dict({
             "configure_function": postconfigure_tuniface,
             "start_function": wait_tuniface,
             "box_attributes": [
-                "up", "device_name", "mtu", "snat",
+                "up", "device_name", "mtu", "snat", "pointopoint",
                 "txqueuelen",
                 "tun_proto", "tun_addr", "tun_port", "tun_key"
             ],

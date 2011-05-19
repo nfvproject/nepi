@@ -246,6 +246,8 @@ def pl_vif_start(tun_path, tun_name):
     stdin.write(str(options.vif_mask)+"\n")
     if options.vif_snat:
         stdin.write("snat=1\n")
+    if options.vif_pointopoint:
+        stdin.write("pointopoint=%s\n" % (options.vif_pointopoint,))
     if options.vif_txqueuelen is not None:
         stdin.write("txqueuelen=%d\n" % (options.vif_txqueuelen,))
     stdin.close()
