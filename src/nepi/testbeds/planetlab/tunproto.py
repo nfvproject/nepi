@@ -134,6 +134,10 @@ class TunProtoBase(object):
         local_mask = local.netprefix
         local_snat = local.snat
         local_txq  = local.txqueuelen
+        local_p2p  = local.pointopoint
+        
+        if not local_p2p and hasattr(peer, 'address'):
+            local_p2p = peer.address
         
         if check_proto != peer_proto:
             raise RuntimeError, "Peering protocol mismatch: %s != %s" % (check_proto, peer_proto)
@@ -167,6 +171,8 @@ class TunProtoBase(object):
         
         if local_snat:
             args.append("-S")
+        if local_p2p:
+            args.extend(("-P",str(local_p2p)))
         if local_txq:
             args.extend(("-Q",str(local_txq)))
         if extra_args:

@@ -120,6 +120,7 @@ class TunIface(object):
         self.mtu = None
         self.snat = False
         self.txqueuelen = None
+        self.pointopoint = None
         
         # Enabled traces
         self.capture = False
