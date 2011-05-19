@@ -53,6 +53,9 @@ class Connector(object):
         self._connector_type = connector_type
         self._connections = list()
 
+    def __str__(self):
+        return "Connector(%s, %s)" % (self.box, self.connector_type)
+
     @property
     def box(self):
         return self._box
@@ -80,7 +83,7 @@ class Connector(object):
 
     def connect(self, connector):
         if not self.can_connect(connector) or not connector.can_connect(self):
-            raise RuntimeError("Could not connect.")
+            raise RuntimeError("Could not connect. %s to %s" % (self, connector))
         self._connections.append(connector)
         connector._connections.append(self)
 
@@ -201,6 +204,9 @@ class Box(AttributesMap):
         for attr in factory.attributes:
             if attr.modified:
                 self._factory_attributes[attr.name] = attr.value
+
+    def __str__(self):
+        return "Box(%s, %s, %s)" % (self.guid, self.factory_id, self.testbed_guid)
 
     @property
     def guid(self):

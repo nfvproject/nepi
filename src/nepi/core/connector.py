@@ -28,6 +28,9 @@ class ConnectorTypeBase(object):
         # min -- minimum amount of connections required by this type of connector
         self._min = min
 
+    def __str__(self):
+        return "ConnectorType%r" % (self._connector_type_id,)
+
     @property
     def connector_type_id(self):
         return self._connector_type_id
