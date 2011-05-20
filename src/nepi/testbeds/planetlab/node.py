@@ -307,3 +307,46 @@ class Node(object):
             return False
     
 
+    def configure_routes(self, routes, devs):
+        """
+        Add the specified routes to the node's routing table
+        """
+        rules = []
+        
+        for route in routes:
+            for dev in devs:
+                if dev.routes_here(route):
+                    # Schedule rule
+                    dest, prefix, nexthop = route
+                    rules.append(
+                        "add %s%s gw %s %s" % (
+                            dest,
+                            (("/%d" % (prefix,)) if prefix and prefix != 32 else ""),
+                            nexthop,
+                            dev.if_name,
+                        )
+                    )
+                    
+                    # Stop checking
+                    break
+            else:
+                raise RuntimeError, "Route %s cannot be bound to any virtual interface " \
+                    "- PL can only handle rules over virtual interfaces. Candidates are: %s" % (route,devs)
+        
+        (out,err),proc = server.popen_ssh_command(
+            "( sudo -S bash -c 'cat /vsys/vroute.out >&2' & ) ; sudo -S bash -c 'cat > /vsys/vroute.in'" % dict(
+                home = server.shell_escape(self.home_path)),
+            host = self.hostname,
+            port = None,
+            user = self.slicename,
+            agent = None,
+            ident_key = self.ident_path,
+            server_key = self.server_key,
+            stdin = '\n'.join(rules)
+            )
+        
+        if proc.wait() or err:
+            raise RuntimeError, "Could not set routes: %s%s" % (out,err)
+        
+        
+

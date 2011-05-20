@@ -182,11 +182,29 @@ def create_nodeiface(testbed_instance, guid):
 def create_tuniface(testbed_instance, guid):
     parameters = testbed_instance._get_parameters(guid)
     element = testbed_instance._make_tun_iface(parameters)
+    
+    # Set custom addresses, if there are any already
+    # Setting this early helps set up P2P links
+    if guid in testbed_instance._add_address and not (element.address or element.netmask or element.netprefix):
+        addresses = testbed_instance._add_address[guid]
+        for address in addresses:
+            (address, netprefix, broadcast) = address
+            element.add_address(address, netprefix, broadcast)
+    
     testbed_instance.elements[guid] = element
 
 def create_tapiface(testbed_instance, guid):
     parameters = testbed_instance._get_parameters(guid)
     element = testbed_instance._make_tap_iface(parameters)
+    
+    # Set custom addresses, if there are any already
+    # Setting this early helps set up P2P links
+    if guid in testbed_instance._add_address and not (element.address or element.netmask or element.netprefix):
+        addresses = testbed_instance._add_address[guid]
+        for address in addresses:
+            (address, netprefix, broadcast) = address
+            element.add_address(address, netprefix, broadcast)
+    
     testbed_instance.elements[guid] = element
 
 def create_application(testbed_instance, guid):
@@ -286,7 +304,7 @@ def configure_nodeiface(testbed_instance, guid):
 def preconfigure_tuniface(testbed_instance, guid):
     element = testbed_instance._elements[guid]
     
-    # Set custom addresses if any
+    # Set custom addresses if any, and if not set already
     if guid in testbed_instance._add_address and not (element.address or element.netmask or element.netprefix):
         addresses = testbed_instance._add_address[guid]
         for address in addresses:
@@ -363,6 +381,18 @@ def configure_node(testbed_instance, guid):
     # this will be done in parallel in all nodes
     # this call only spawns the process
     node.install_dependencies()
+
+def configure_node_routes(testbed_instance, guid):
+    node = testbed_instance._elements[guid]
+    routes = testbed_instance._add_route.get(guid)
+    
+    if routes:
+        devs = [ dev
+            for dev_guid in testbed_instance.get_connected(guid, "devs", "node")
+            for dev in ( testbed_instance._elements.get(dev_guid) ,)
+            if dev and isinstance(dev, testbed_instance._interfaces.TunIface) ]
+        
+        node.configure_routes(routes, devs)
 
 def configure_application(testbed_instance, guid):
     app = testbed_instance._elements[guid]
@@ -899,13 +929,17 @@ create_order = [ INTERNET, NODE, NODEIFACE, TAPIFACE, TUNIFACE, NETPIPE, NEPIDEP
 
 configure_order = [ INTERNET, NODE, NODEIFACE, TAPIFACE, TUNIFACE, NETPIPE, NEPIDEPENDENCY, NS3DEPENDENCY, DEPENDENCY, APPLICATION ]
 
+# Start node after ifaces, because the node needs the ifaces in order to set up routes
+start_order = [ INTERNET, NODEIFACE, TAPIFACE, TUNIFACE, NODE, NETPIPE, NEPIDEPENDENCY, NS3DEPENDENCY, DEPENDENCY, APPLICATION ]
+
 factories_info = dict({
     NODE: dict({
-            "allow_routes": False,
+            "allow_routes": True,
             "help": "Virtualized Node (V-Server style)",
             "category": "topology",
             "create_function": create_node,
             "preconfigure_function": configure_node,
+            "start_function": configure_node_routes,
             "box_attributes": [
                 "forward_X11",
                 "hostname",
@@ -1101,6 +1135,10 @@ class VersionedMetadataInfo(metadata.VersionedMetadataInfo):
     @property
     def configure_order(self):
         return configure_order
+
+    @property
+    def start_order(self):
+        return start_order
 
     @property
     def factories_info(self):
