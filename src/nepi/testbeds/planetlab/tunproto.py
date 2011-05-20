@@ -31,6 +31,7 @@ class TunProtoBase(object):
         self._started = False
         self._pid = None
         self._ppid = None
+        self._if_name = None
 
     def _make_home(self):
         local = self.local()
@@ -138,7 +139,7 @@ class TunProtoBase(object):
         
         if not local_p2p and hasattr(peer, 'address'):
             local_p2p = peer.address
-        
+
         if check_proto != peer_proto:
             raise RuntimeError, "Peering protocol mismatch: %s != %s" % (check_proto, peer_proto)
         
@@ -241,6 +242,34 @@ class TunProtoBase(object):
                     break
                 
                 time.sleep(1.0)
+    
+    @property
+    def if_name(self):
+        if not self._if_name:
+            # Inspect the trace to check the assigned iface
+            local = self.local()
+            if local and local.capture:
+                for spin in xrange(30):
+                    (out,err),proc = server.popen_ssh_command(
+                        "cd %(home)s ; grep 'Using tun:' capture | head -1" % dict(
+                            home = server.shell_escape(self.home_path)),
+                        host = local.node.hostname,
+                        port = None,
+                        user = local.node.slicename,
+                        agent = None,
+                        ident_key = local.node.ident_path,
+                        server_key = local.node.server_key
+                        )
+                    
+                    if proc.wait():
+                        return
+                    
+                    out = out.strip()
+                    
+                    match = re.match(r"Using +tun: +([-a-zA-Z0-9]*) +.*",out)
+                    if match:
+                        self._if_name = match.group(1)
+        return self._if_name
     
     def async_launch(self, check_proto, listen, extra_args=[]):
         if not self._launcher:

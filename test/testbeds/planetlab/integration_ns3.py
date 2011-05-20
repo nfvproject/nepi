@@ -22,6 +22,8 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
     
     host1 = "nepi1.pl.sophia.inria.fr"
     host2 = "nepi2.pl.sophia.inria.fr"
+    host3 = "nepi3.pl.sophia.inria.fr"
+    host4 = "nepi5.pl.sophia.inria.fr"
 
     def setUp(self):
         self.root_dir = tempfile.mkdtemp()
@@ -56,25 +58,42 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
         
         return pl_desc, exp_desc
     
-    def make_pl_tapnode(self, pl):
+    def make_pl_tapnode(self, pl, ip = "192.168.2.2", inet = None, label = "node1", hostname = None):
+        if not isinstance(ip, list):
+            ips = [ip]
+        else:
+            ips = ip
         node1 = pl.create("Node")
-        node1.set_attribute_value("hostname", self.host1)
-        node1.set_attribute_value("label", "node1")
+        node1.set_attribute_value("hostname", hostname or self.host1)
+        node1.set_attribute_value("label", label)
         node1.set_attribute_value("emulation", True) # require emulation
         iface1 = pl.create("NodeInterface")
-        iface1.set_attribute_value("label", "node1iface")
-        tap1 = pl.create("TapInterface")
-        tap1.enable_trace("packets") # for error output
-        tap1.set_attribute_value("label", "node1tap")
-        inet = pl.create("Internet")
+        iface1.set_attribute_value("label", label+"iface")
+        tap1 = []
+        tap1ip = []
+        for i,ip in enumerate(ips):
+            _tap1 = pl.create("TapInterface")
+            _tap1.enable_trace("packets") # for error output
+            _tap1.set_attribute_value("label", label+"tap"+(str(i+1) if i else ""))
+        
+            _tap1ip = _tap1.add_address()
+            _tap1ip.set_attribute_value("Address", ip)
+            _tap1ip.set_attribute_value("NetPrefix", 24)
+            _tap1ip.set_attribute_value("Broadcast", False)
+        
+            node1.connector("devs").connect(_tap1.connector("node"))
+            
+            tap1.append(_tap1)
+            tap1ip.append(_tap1ip)
+            
+        inet = inet or pl.create("Internet")
         node1.connector("devs").connect(iface1.connector("node"))
-        node1.connector("devs").connect(tap1.connector("node"))
         iface1.connector("inet").connect(inet.connector("devs"))
         
-        tap1ip = tap1.add_address()
-        tap1ip.set_attribute_value("Address", "192.168.2.2")
-        tap1ip.set_attribute_value("NetPrefix", 24)
-        tap1ip.set_attribute_value("Broadcast", False)
+        if len(tap1) == 1:
+            tap1 = tap1[0]
+        if len(tap1ip) == 1:
+            tap1ip = tap1ip[0]
         
         return node1, iface1, tap1, tap1ip, inet
     
@@ -115,7 +134,7 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
         "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     @test_util.skipUnless(os.environ.get('NEPI_FULL_TESTS','').lower() in ('1','yes','true','on'),
         "Test is expensive, requires NEPI_FULL_TESTS=yes")
-    def test_ns3_in_pl(self):
+    def _test_ns3_in_pl(self):
         ns3_testbed_id = "ns3"
         ns3_testbed_version = "3_9_RC3"
         
@@ -145,7 +164,7 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
         "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     @test_util.skipUnless(os.environ.get('NEPI_FULL_TESTS','').lower() in ('1','yes','true','on'),
         "Test is expensive, requires NEPI_FULL_TESTS=yes")
-    def test_ns3_in_pl_crossconnect(self):
+    def _test_ns3_in_pl_crossconnect(self):
         pl, exp = self.make_experiment_desc()
         
         # Create PL node, ifaces, assign addresses
@@ -210,7 +229,7 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
         "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     @test_util.skipUnless(os.environ.get('NEPI_FULL_TESTS','').lower() in ('1','yes','true','on'),
         "Test is expensive, requires NEPI_FULL_TESTS=yes")
-    def test_ns3_in_pl_snat(self):
+    def _test_ns3_in_pl_snat(self):
         pl, exp = self.make_experiment_desc()
         
         # Create PL node, ifaces, assign addresses
@@ -295,6 +314,131 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
         self.assertTrue(sent == replied and sent > 5,
             "Unexpected trace:\n%s\n" % (
                 tap_trace,) )
+
+    def _test_ns3_in_pl_p2p(self, proto):
+        pl, exp = self.make_experiment_desc()
+        
+        # Create PL node, ifaces, assign addresses
+        node1, iface1, (tap0,tap1), (tap0ip,tap1ip), inet = self.make_pl_tapnode(pl, 
+            label="node1", hostname = self.host1,
+            ip=["192.168.2.2","192.168.2.5"])
+        node2, iface2, (tap2,tap3), (tap2ip,tap3ip), inet = self.make_pl_tapnode(pl, inet=inet, 
+            label="node2", hostname = self.host2,
+            ip=["192.168.2.6","192.168.2.9"])
+        node3, iface3, tap4, tap4ip, inet = self.make_pl_tapnode(pl, inet=inet, 
+            label="node3", hostname = self.host3,
+            ip="192.168.2.10")
+        
+        # Add NS3 support in node1
+        ns3_desc = self.make_ns_in_pl(pl, exp, node1, iface1, "tb-ns3-4-%s" % (proto,))
+        
+        # Configure P2P links
+        tap0.set_attribute_value("pointopoint", "192.168.2.1") # cross-p2p is not automatic
+        tap1.connector(proto).connect(tap2.connector(proto))
+        tap3.connector(proto).connect(tap4.connector(proto))
+        
+        # Configure routes
+        r = node1.add_route()
+        r.set_attribute_value("Destination", "192.168.2.8")
+        r.set_attribute_value("NetPrefix", 29)
+        r.set_attribute_value("NextHop", "192.168.2.6")
+
+        r = node2.add_route()
+        r.set_attribute_value("Destination", "192.168.2.0")
+        r.set_attribute_value("NetPrefix", 29)
+        r.set_attribute_value("NextHop", "192.168.2.5")
+
+        r = node3.add_route()
+        r.set_attribute_value("Destination", "192.168.2.0")
+        r.set_attribute_value("NetPrefix", 29)
+        r.set_attribute_value("NextHop", "192.168.2.9")
+        
+        # Create NS3 node that is responsive to pings, connected
+        # to node1 through the Tap interface
+        ns1 = ns3_desc.create("ns3::Node")
+        ipv41 = ns3_desc.create("ns3::Ipv4L3Protocol")
+        arp1  = ns3_desc.create("ns3::ArpL3Protocol")
+        icmp1 = ns3_desc.create("ns3::Icmpv4L4Protocol")
+        ns1.connector("protos").connect(ipv41.connector("node"))
+        ns1.connector("protos").connect(arp1.connector("node"))
+        ns1.connector("protos").connect(icmp1.connector("node"))
+        ns1if = ns3_desc.create("ns3::FileDescriptorNetDevice")
+        ns1if.enable_trace("FileDescriptorPcapTrace")
+        ns1if.set_attribute_value("label", "ns1if")
+        ns1.connector("devs").connect(ns1if.connector("node"))
+        tap0.connector("fd->").connect(ns1if.connector("->fd"))
+        ip1 = ns1if.add_address()
+        ip1.set_attribute_value("Address", "192.168.2.1")
+        ip1.set_attribute_value("NetPrefix", 30)
+        ip1.set_attribute_value("Broadcast", False)
+        
+        # Add default route to the PL node
+        r1 = ns1.add_route()
+        r1.set_attribute_value("Destination", "0.0.0.0")
+        r1.set_attribute_value("NetPrefix", 0)
+        r1.set_attribute_value("NextHop", "192.168.2.2")
+
+        # Create NS3 ping application, pinging the PL node
+        ping = ns3_desc.create("ns3::V4Ping")
+        ping.set_attribute_value("Remote", "{#[node3tap].addr[0].[Address]#}")
+        ping.set_attribute_value("StartTime", "0s")
+        ping.set_attribute_value("StopTime", "10s")
+        ping.connector("node").connect(ns1.connector("apps"))
+
+        xml = exp.to_xml()
+
+        try:
+            controller = ExperimentController(xml, self.root_dir)
+            controller.start()
+
+            while not controller.is_finished(ping.guid):
+                time.sleep(0.5)
+
+            tap_trace = []
+            for i,tap in enumerate([ tap0, tap1, tap2, tap3, tap4 ]):
+                tap_trace.append("\nTrace for tap%d:\n" % i)
+                tap_trace.append(controller.trace(pl.guid, tap.guid, "packets"))
+            tap_trace = "".join(tap_trace)
+            tap0_trace = controller.trace(pl.guid, tap0.guid, "packets")
+
+        finally:
+            controller.stop()
+            controller.shutdown()
+        
+        # asserts at the end, to make sure there's proper cleanup
+        sent = 0
+        replied = 0
+        for seq in xrange(10):
+            re_send = r""".*
+[0-9.:]* IP 192.168.2.1 > (\d*\.){3}\d*: ICMP echo request, id 0, seq %(seq)d, length \d*
+.*""" % dict(seq=seq)
+
+            re_reply = r""".*
+[0-9.:]* IP 192.168.2.1 > (\d*\.){3}\d*: ICMP echo request, id 0, seq %(seq)d, length \d*.*
+[0-9.:]* IP (\d*\.){3}\d* > 192.168.2.1: ICMP echo reply, id 0, seq %(seq)d, length \d*
+.*""" % dict(seq=seq)
+
+            sent += bool(re.match(re_send, tap0_trace, re.MULTILINE|re.DOTALL))
+            replied += bool(re.match(re_reply, tap0_trace, re.MULTILINE|re.DOTALL))
+
+        self.assertTrue(replied >= sent/2 and sent > 5,
+            "Unexpected trace:\n%s\n" % (
+                tap_trace,) )
+
+
+    @test_util.skipUnless(test_util.pl_auth() is not None, 
+        "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    @test_util.skipUnless(os.environ.get('NEPI_FULL_TESTS','').lower() in ('1','yes','true','on'),
+        "Test is expensive, requires NEPI_FULL_TESTS=yes")
+    def test_ns3_in_pl_p2p_udp(self):
+        self._test_ns3_in_pl_p2p("udp")
+
+    @test_util.skipUnless(test_util.pl_auth() is not None, 
+        "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    @test_util.skipUnless(os.environ.get('NEPI_FULL_TESTS','').lower() in ('1','yes','true','on'),
+        "Test is expensive, requires NEPI_FULL_TESTS=yes")
+    def test_ns3_in_pl_p2p_tcp(self):
+        self._test_ns3_in_pl_p2p("tcp")
 
 if __name__ == '__main__':
     unittest.main()

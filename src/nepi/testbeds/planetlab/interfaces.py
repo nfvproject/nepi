@@ -9,6 +9,7 @@ import subprocess
 import os
 import os.path
 import random
+import ipaddr
 
 import tunproto
 
@@ -164,7 +165,39 @@ class TunIface(object):
             " up" if self.up else " down",
             " snat" if self.snat else "",
         )
+    
+    @property
+    def if_name(self):
+        if self.peer_proto_impl:
+            return self.peer_proto_impl.if_name
 
+    def routes_here(self, route):
+        """
+        Returns True if the route should be attached to this interface
+        (ie, it references a gateway in this interface's network segment)
+        """
+        if self.address and self.netprefix:
+            addr, prefix = self.address, self.netprefix
+            if self.pointopoint:
+                prefix = 32
+                
+            dest, destprefix, nexthop = route
+            
+            myNet = ipaddr.IPNetwork("%s/%d" % (addr, prefix))
+            gwIp = ipaddr.IPNetwork(nexthop)
+            
+            tgtIp = ipaddr.IPNetwork(dest 
+                + (("/%d" % destprefix) if destprefix else "") )
+            
+            if gwIp in myNet or tgtIp in myNet:
+                return True
+            
+            if self.pointopoint:
+                peerIp = ipaddr.IPNetwork(self.pointopoint)
+                
+                if gwIp == peerIp:
+                    return True
+    
     def add_address(self, address, netprefix, broadcast):
         if (self.address or self.netprefix or self.netmask) is not None:
             raise RuntimeError, "Cannot add more than one address to %s interfaces" % (self._KIND,)
