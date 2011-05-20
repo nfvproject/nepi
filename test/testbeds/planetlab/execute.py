@@ -97,6 +97,7 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
 
             instance.do_configure()
             
+            instance.do_prestart()
             instance.start()
             while instance.status(7) != STATUS_FINISHED:
                 time.sleep(0.5)
@@ -134,6 +135,7 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
             instance.do_preconfigure()
             instance.do_configure()
             
+            instance.do_prestart()
             instance.start()
             while instance.status(5) != STATUS_FINISHED:
                 time.sleep(0.5)
@@ -191,6 +193,7 @@ FIONREAD = 0x[0-9a-fA-F]{8}.*
             instance.do_preconfigure()
             instance.do_configure()
             
+            instance.do_prestart()
             instance.start()
             while instance.status(10) != STATUS_FINISHED:
                 time.sleep(0.5)
@@ -239,6 +242,7 @@ echo 'OKIDOKI'
             instance.do_preconfigure()
             instance.do_configure()
             
+            instance.do_prestart()
             instance.start()
             while instance.status(6) != STATUS_FINISHED:
                 time.sleep(0.5)
@@ -287,6 +291,7 @@ echo 'OKIDOKI'
             instance.do_preconfigure()
             instance.do_configure()
             
+            instance.do_prestart()
             instance.start()
             while instance.status(8) != STATUS_FINISHED:
                 time.sleep(0.5)
@@ -392,6 +397,7 @@ echo 'OKIDOKI'
             
             instance.do_configure()
             
+            instance.do_prestart()
             instance.start()
             while instance.status(9) != STATUS_FINISHED:
                 time.sleep(0.5)
@@ -450,6 +456,7 @@ echo 'OKIDOKI'
             instance.do_preconfigure()
             instance.do_configure()
             
+            instance.do_prestart()
             instance.start()
             while instance.status(12) != STATUS_FINISHED:
                 time.sleep(0.5)
@@ -491,6 +498,7 @@ echo 'OKIDOKI'
             instance.do_preconfigure()
             instance.do_configure()
             
+            instance.do_prestart()
             instance.start()
             while instance.status(12) != STATUS_FINISHED:
                 time.sleep(0.5)

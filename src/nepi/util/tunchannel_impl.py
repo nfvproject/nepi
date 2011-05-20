@@ -5,6 +5,7 @@ import threading
 import socket
 import select
 import weakref
+import time
 
 from tunchannel import tun_fwd
 
@@ -196,13 +197,29 @@ class TunChannel(object):
         if udp:
             # listen on udp port
             rsock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
-            rsock.bind((local_addr,local_port))
+            for i in xrange(30):
+                try:
+                    rsock.bind((local_addr,local_port))
+                    break
+                except socket.error:
+                    # wait a while, retry
+                    time.sleep(1)
+            else:
+                rsock.bind((local_addr,local_port))
             rsock.connect((peer_addr,peer_port))
             remote = os.fdopen(rsock.fileno(), 'r+b', 0)
         elif listen:
             # accept tcp connections
             lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-            lsock.bind((local_addr,local_port))
+            for i in xrange(30):
+                try:
+                    lsock.bind((local_addr,local_port))
+                    break
+                except socket.error:
+                    # wait a while, retry
+                    time.sleep(1)
+            else:
+                lsock.bind((local_addr,local_port))
             lsock.listen(1)
             rsock,raddr = lsock.accept()
             remote = os.fdopen(rsock.fileno(), 'r+b', 0)

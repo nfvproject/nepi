@@ -929,7 +929,7 @@ create_order = [ INTERNET, NODE, NODEIFACE, TAPIFACE, TUNIFACE, NETPIPE, NEPIDEP
 
 configure_order = [ INTERNET, NODE, NODEIFACE, TAPIFACE, TUNIFACE, NETPIPE, NEPIDEPENDENCY, NS3DEPENDENCY, DEPENDENCY, APPLICATION ]
 
-# Start node after ifaces, because the node needs the ifaces in order to set up routes
+# Start (and prestart) node after ifaces, because the node needs the ifaces in order to set up routes
 start_order = [ INTERNET, NODEIFACE, TAPIFACE, TUNIFACE, NODE, NETPIPE, NEPIDEPENDENCY, NS3DEPENDENCY, DEPENDENCY, APPLICATION ]
 
 factories_info = dict({
@@ -939,7 +939,7 @@ factories_info = dict({
             "category": "topology",
             "create_function": create_node,
             "preconfigure_function": configure_node,
-            "start_function": configure_node_routes,
+            "prestart_function": configure_node_routes,
             "box_attributes": [
                 "forward_X11",
                 "hostname",
@@ -973,7 +973,7 @@ factories_info = dict({
             "create_function": create_tuniface,
             "preconfigure_function": preconfigure_tuniface,
             "configure_function": postconfigure_tuniface,
-            "start_function": wait_tuniface,
+            "prestart_function": wait_tuniface,
             "box_attributes": [
                 "up", "device_name", "mtu", "snat", "pointopoint",
                 "txqueuelen",
@@ -989,7 +989,7 @@ factories_info = dict({
             "create_function": create_tapiface,
             "preconfigure_function": preconfigure_tuniface,
             "configure_function": postconfigure_tuniface,
-            "start_function": wait_tuniface,
+            "prestart_function": wait_tuniface,
             "box_attributes": [
                 "up", "device_name", "mtu", "snat", "pointopoint",
                 "txqueuelen",
@@ -1135,6 +1135,10 @@ class VersionedMetadataInfo(metadata.VersionedMetadataInfo):
     @property
     def configure_order(self):
         return configure_order
+
+    @property
+    def prestart_order(self):
+        return start_order
 
     @property
     def start_order(self):

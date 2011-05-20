@@ -79,6 +79,7 @@ class Factory(AttributesMap):
     def __init__(self, factory_id, create_function, start_function, 
             stop_function, status_function, 
             configure_function, preconfigure_function,
+            prestart_function,
             allow_addresses = False, has_addresses = False,
             allow_routes = False, has_routes = False):
         super(Factory, self).__init__()
@@ -93,6 +94,7 @@ class Factory(AttributesMap):
         self._status_function = status_function
         self._configure_function = configure_function
         self._preconfigure_function = preconfigure_function
+        self._prestart_function = prestart_function
         self._connector_types = dict()
         self._traces = list()
         self._box_attributes = AttributesMap()
@@ -124,6 +126,10 @@ class Factory(AttributesMap):
     @property
     def create_function(self):
         return self._create_function
+
+    @property
+    def prestart_function(self):
+        return self._prestart_function
 
     @property
     def start_function(self):
@@ -259,6 +265,10 @@ class TestbedController(object):
 
     def do_configure(self):
         """After do_configure elements are configured"""
+        raise NotImplementedError
+
+    def do_prestart(self):
+        """Before do_start elements are prestart-configured"""
         raise NotImplementedError
 
     def do_cross_connect_init(self, cross_data):
@@ -445,6 +455,10 @@ class ExperimentController(object):
             cross_data = self._get_cross_data(guid)
             testbed.do_cross_connect_compl(cross_data)
        
+        # Last chance to configure (parallel on all testbeds)
+        self._parallel([testbed.do_prestart
+                        for testbed in self._testbeds.itervalues()])
+                        
         # start experiment (parallel start on all testbeds)
         self._parallel([testbed.start
                         for testbed in self._testbeds.itervalues()])

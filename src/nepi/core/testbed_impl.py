@@ -192,23 +192,15 @@ class TestbedController(execute.TestbedController):
         self._status = TESTBED_STATUS_SETUP
 
     def do_create(self):
-        guids = dict()
-        # order guids (elements) according to factory_id
-        for guid, factory_id in self._create.iteritems():
-            if not factory_id in guids:
-               guids[factory_id] = list()
-            guids[factory_id].append(guid)
-        # create elements following the factory_id order
-        for factory_id in self._metadata.create_order:
-            # omit the factories that have no element to create
-            if factory_id not in guids:
-                continue
-            factory = self._factories[factory_id]
-            for guid in guids[factory_id]:
-                factory.create_function(self, guid)
-                parameters = self._get_parameters(guid)
-                for name, value in parameters.iteritems():
-                    self.set(guid, name, value)
+        def set_params(self, guid):
+            parameters = self._get_parameters(guid)
+            for name, value in parameters.iteritems():
+                self.set(guid, name, value)
+            
+        self._do_in_factory_order(
+            'create_function',
+            self._metadata.create_order,
+            postaction = set_params )
         self._status = TESTBED_STATUS_CREATED
 
     def _do_connect(self, init = True):
@@ -241,42 +233,39 @@ class TestbedController(execute.TestbedController):
         self._do_connect(init = False)
         self._status = TESTBED_STATUS_CONNECTED
 
-    def do_preconfigure(self):
-        guids = dict()
+    def _do_in_factory_order(self, action, order, postaction = None):
+        guids = collections.defaultdict(list)
         # order guids (elements) according to factory_id
         for guid, factory_id in self._create.iteritems():
-            if not factory_id in guids:
-               guids[factory_id] = list()
             guids[factory_id].append(guid)
         # configure elements following the factory_id order
-        for factory_id in self._metadata.preconfigure_order:
+        for factory_id in order:
             # omit the factories that have no element to create
             if factory_id not in guids:
                 continue
             factory = self._factories[factory_id]
-            if not factory.preconfigure_function:
+            if not getattr(factory, action):
                 continue
             for guid in guids[factory_id]:
-                factory.preconfigure_function(self, guid)
+                getattr(factory, action)(self, guid)
+                if postaction:
+                    postaction(self, guid)
+
+    def do_preconfigure(self):
+        self._do_in_factory_order(
+            'preconfigure_function',
+            self._metadata.preconfigure_order )
 
     def do_configure(self):
-        guids = dict()
-        # order guids (elements) according to factory_id
-        for guid, factory_id in self._create.iteritems():
-            if not factory_id in guids:
-               guids[factory_id] = list()
-            guids[factory_id].append(guid)
-        # configure elements following the factory_id order
-        for factory_id in self._metadata.configure_order:
-            # omit the factories that have no element to create
-            if factory_id not in guids:
-                continue
-            factory = self._factories[factory_id]
-            if not factory.configure_function:
-                continue
-            for guid in guids[factory_id]:
-                factory.configure_function(self, guid)
+        self._do_in_factory_order(
+            'configure_function',
+            self._metadata.configure_order )
         self._status = TESTBED_STATUS_CONFIGURED
+
+    def do_prestart(self):
+        self._do_in_factory_order(
+            'prestart_function',
+            self._metadata.prestart_order )
 
     def _do_cross_connect(self, cross_data, init = True):
         for guid, cross_connections in self._cross_connect.iteritems():
@@ -409,33 +398,17 @@ class TestbedController(execute.TestbedController):
         return factory.box_attributes.attributes_list
 
     def start(self, time = TIME_NOW):
-        # Plan everything
-        #  - group by factory_id
-        #  - enqueue task callables
-        plan = collections.defaultdict(list)
-        
-        for guid, factory_id in self._create.iteritems():
-            factory = self._factories[factory_id]
-            start_function = factory.start_function
-            if start_function:
-                plan[factory_id].append((start_function, guid))
-
-        # Execute plan, following the factory_id order
-        for factory_id in self._metadata.start_order:
-            if factory_id in plan:
-                for start_function, guid in plan[factory_id]:
-                    start_function(self, guid)
-        
+        self._do_in_factory_order(
+            'start_function',
+            self._metadata.start_order )
         self._status = TESTBED_STATUS_STARTED
 
     #action: NotImplementedError
 
     def stop(self, time = TIME_NOW):
-        for guid, factory_id in self._create.iteritems():
-            factory = self._factories[factory_id]
-            stop_function = factory.stop_function
-            if stop_function:
-                stop_function(self, guid)
+        self._do_in_factory_order(
+            'stop_function',
+            reversed(self._metadata.start_order) )
         self._status = TESTBED_STATUS_STOPPED
 
     def status(self, guid = None):
