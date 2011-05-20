@@ -176,6 +176,8 @@ class TunProtoBase(object):
             args.extend(("-P",str(local_p2p)))
         if local_txq:
             args.extend(("-Q",str(local_txq)))
+        if not local_cap:
+            args.append("-N")
         if extra_args:
             args.extend(map(str,extra_args))
         if not listen and check_proto != 'fd':
@@ -192,7 +194,7 @@ class TunProtoBase(object):
             pidfile = './pid',
             home = self.home_path,
             stdin = '/dev/null',
-            stdout = 'capture' if local_cap else '/dev/null',
+            stdout = 'capture',
             stderr = rspawn.STDOUT,
             sudo = True,
             
@@ -219,36 +221,35 @@ class TunProtoBase(object):
             time.sleep(1.0)
         
         # Wait for the connection to be established
-        if local.capture:
-            for spin in xrange(30):
-                if self.status() != rspawn.RUNNING:
-                    break
-                
-                (out,err),proc = server.popen_ssh_command(
-                    "cd %(home)s ; grep -c Connected capture" % dict(
-                        home = server.shell_escape(self.home_path)),
-                    host = local.node.hostname,
-                    port = None,
-                    user = local.node.slicename,
-                    agent = None,
-                    ident_key = local.node.ident_path,
-                    server_key = local.node.server_key
-                    )
-                
-                if proc.wait():
-                    break
-                
-                if out.strip() != '0':
-                    break
-                
-                time.sleep(1.0)
+        for spin in xrange(30):
+            if self.status() != rspawn.RUNNING:
+                break
+            
+            (out,err),proc = server.popen_ssh_command(
+                "cd %(home)s ; grep -c Connected capture" % dict(
+                    home = server.shell_escape(self.home_path)),
+                host = local.node.hostname,
+                port = None,
+                user = local.node.slicename,
+                agent = None,
+                ident_key = local.node.ident_path,
+                server_key = local.node.server_key
+                )
+            
+            if proc.wait():
+                break
+            
+            if out.strip() != '0':
+                break
+            
+            time.sleep(1.0)
     
     @property
     def if_name(self):
         if not self._if_name:
             # Inspect the trace to check the assigned iface
             local = self.local()
-            if local and local.capture:
+            if local:
                 for spin in xrange(30):
                     (out,err),proc = server.popen_ssh_command(
                         "cd %(home)s ; grep 'Using tun:' capture | head -1" % dict(

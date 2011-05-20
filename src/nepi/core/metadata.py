@@ -85,6 +85,15 @@ class VersionedMetadataInfo(object):
         return self.configure_order
 
     @property
+    def prestart_order(self):
+        """ list of factory ids that indicates the order in which the elements
+        should be prestart-configured.
+        
+        Default: same as configure_order
+        """
+        return self.configure_order
+
+    @property
     def start_order(self):
         """ list of factory ids that indicates the order in which the elements
         should be started.
@@ -111,6 +120,13 @@ class VersionedMetadataInfo(object):
                     (just after connections are made, 
                     just before netrefs are resolved)
                 "configure_function": function for element configuration,
+                "prestart_function": function for pre-start
+                    element configuration (just before starting applications),
+                    useful for synchronization of background setup tasks or
+                    lazy instantiation or configuration of attributes
+                    that require connection/cross-connection state before
+                    being created.
+                    After this point, all applications should be able to run.
                 "factory_attributes": list of references to attribute_ids,
                 "box_attributes": list of regerences to attribute_ids,
                 "traces": list of references to trace_id
@@ -319,6 +335,10 @@ class Metadata(object):
         return self._metadata.preconfigure_order
 
     @property
+    def prestart_order(self):
+        return self._metadata.prestart_order
+
+    @property
     def start_order(self):
         return self._metadata.start_order
 
@@ -383,6 +403,7 @@ class Metadata(object):
             status_function = info.get("status_function")
             configure_function = info.get("configure_function")
             preconfigure_function = info.get("preconfigure_function")
+            prestart_function = info.get("prestart_function")
             allow_addresses = info.get("allow_addresses", False)
             allow_routes = info.get("allow_routes", False)
             has_addresses = info.get("has_addresses", False)
@@ -390,6 +411,7 @@ class Metadata(object):
             factory = Factory(factory_id, create_function, start_function,
                     stop_function, status_function, 
                     configure_function, preconfigure_function,
+                    prestart_function,
                     allow_addresses, has_addresses,
                     allow_routes, has_routes)
                     

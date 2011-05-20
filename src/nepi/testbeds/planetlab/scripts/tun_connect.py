@@ -96,6 +96,12 @@ parser.add_option(
     help = 
         "Specify a symmetric encryption key with which to protect packets across "
         "the tunnel. python-crypto must be installed on the system." )
+parser.add_option(
+    "-N", "--no-capture", dest="no_capture", 
+    action = "store_true",
+    default = False,
+    help = "If specified, packets won't be logged to standard error "
+           "(default is to log them to standard error). " )
 
 (options, remaining_args) = parser.parse_args(sys.argv[1:])
 
@@ -277,7 +283,10 @@ def tun_fwd(tun, remote):
         ether_mode = tun_name.startswith('tap'),
         cipher_key = options.cipher_key,
         udp = options.udp,
-        TERMINATE = TERMINATE)
+        TERMINATE = TERMINATE,
+        stderr = open("/dev/null","w") if options.no_capture 
+                 else sys.stderr 
+    )
 
 
 
@@ -380,7 +389,16 @@ try:
             print >>sys.stderr, "Listening at: %s:%d" % (hostaddr,options.udp)
             print >>sys.stderr, "Connecting to: %s:%d" % (remaining_args[0],options.port)
             rsock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
-            rsock.bind((hostaddr,options.udp))
+            for i in xrange(30):
+                try:
+                    rsock.bind((hostaddr,options.udp))
+                    break
+                except socket.error:
+                    # wait a while, retry
+                    print >>sys.stderr, "Could not bind. Retrying in a sec..."
+                    time.sleep(1)
+            else:
+                rsock.bind((hostaddr,options.udp))
             rsock.connect((remaining_args[0],options.port))
         else:
             print >>sys.stderr, "Error: need a remote endpoint in UDP mode"
@@ -404,7 +422,16 @@ try:
         else:
             print >>sys.stderr, "Listening at: %s:%d" % (hostaddr,options.port)
             lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-            lsock.bind((hostaddr,options.port))
+            for i in xrange(30):
+                try:
+                    lsock.bind((hostaddr,options.port))
+                    break
+                except socket.error:
+                    # wait a while, retry
+                    print >>sys.stderr, "Could not bind. Retrying in a sec..."
+                    time.sleep(1)
+            else:
+                lsock.bind((hostaddr,options.port))
             lsock.listen(1)
             rsock,raddr = lsock.accept()
         remote = os.fdopen(rsock.fileno(), 'r+b', 0)

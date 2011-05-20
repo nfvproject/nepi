@@ -134,7 +134,7 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
         "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     @test_util.skipUnless(os.environ.get('NEPI_FULL_TESTS','').lower() in ('1','yes','true','on'),
         "Test is expensive, requires NEPI_FULL_TESTS=yes")
-    def _test_ns3_in_pl(self):
+    def test_ns3_in_pl(self):
         ns3_testbed_id = "ns3"
         ns3_testbed_version = "3_9_RC3"
         
@@ -164,7 +164,7 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
         "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     @test_util.skipUnless(os.environ.get('NEPI_FULL_TESTS','').lower() in ('1','yes','true','on'),
         "Test is expensive, requires NEPI_FULL_TESTS=yes")
-    def _test_ns3_in_pl_crossconnect(self):
+    def test_ns3_in_pl_crossconnect(self):
         pl, exp = self.make_experiment_desc()
         
         # Create PL node, ifaces, assign addresses
@@ -229,7 +229,7 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
         "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     @test_util.skipUnless(os.environ.get('NEPI_FULL_TESTS','').lower() in ('1','yes','true','on'),
         "Test is expensive, requires NEPI_FULL_TESTS=yes")
-    def _test_ns3_in_pl_snat(self):
+    def test_ns3_in_pl_snat(self):
         pl, exp = self.make_experiment_desc()
         
         # Create PL node, ifaces, assign addresses

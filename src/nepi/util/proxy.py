@@ -55,6 +55,7 @@ TESTBED_ID  = 35
 TESTBED_VERSION  = 36
 EXPERIMENT_SET = 37
 EXPERIMENT_GET = 38
+DO_PRESTART = 39
 
 instruction_text = dict({
     OK:     "OK",
@@ -581,6 +582,12 @@ class TestbedControllerServer(BaseServer):
     @Marshalling.retvoid
     def do_preconfigure(self):
         self._testbed.do_preconfigure()
+
+    @Marshalling.handles(DO_PRESTART)
+    @Marshalling.args()
+    @Marshalling.retvoid
+    def do_prestart(self):
+        self._testbed.do_prestart()
 
     @Marshalling.handles(DO_CROSS_CONNECT_INIT)
     @Marshalling.args( Marshalling.Decoders.pickled_data )
