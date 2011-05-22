@@ -3,11 +3,42 @@
 
 from nepi.util.constants import AF_INET, STATUS_NOT_STARTED, STATUS_RUNNING, \
         STATUS_FINISHED, STATUS_UNDETERMINED
-
 from nepi.util.tunchannel_impl import \
     preconfigure_tunchannel, postconfigure_tunchannel, \
     wait_tunchannel, create_tunchannel
 
+wifi_standards = dict({
+    "WIFI_PHY_STANDARD_holland": 5,
+    "WIFI_PHY_STANDARD_80211p_SCH": 7,
+    "WIFI_PHY_STANDARD_80211_5Mhz": 4,
+    "WIFI_PHY_UNKNOWN": 8,
+    "WIFI_PHY_STANDARD_80211_10Mhz": 3,
+    "WIFI_PHY_STANDARD_80211g": 2,
+    "WIFI_PHY_STANDARD_80211p_CCH": 6,
+    "WIFI_PHY_STANDARD_80211a": 0,
+    "WIFI_PHY_STANDARD_80211b": 1
+})
+
+l4_protocols = dict({
+    "Icmpv4L4Protocol": 1,
+    "UdpL4Protocol": 17,
+    "TcpL4Protocol": 6,
+})
+
+service_flow_direction = dict({
+    "SF_DIRECTION_UP": 1,
+    "SF_DIRECTION_DOWN": 0,
+})
+
+service_flow_scheduling_type = dict ({
+    "SF_TYPE_NONE": 0,
+    "SF_TYPE_UNDEF": 1, 
+    "SF_TYPE_BE": 2,
+    "SF_TYPE_NRTPS": 3,
+    "SF_TYPE_RTPS": 4,
+    "SF_TYPE_UGS": 6, 
+    "SF_TYPE_ALL": 255
+})
 
 def _get_ipv4_protocol_guid(testbed_instance, node_guid):
     # search for the Ipv4L3Protocol asociated with the device
@@ -108,28 +139,40 @@ def yanswifipcap_trace(testbed_instance, guid, trace_id):
     helper = testbed_instance.ns3.YansWifiPhyHelper()
     helper.EnablePcap(filepath, element, explicitFilename = True)
 
+def wimaxascii_trace(testbed_instance, guid, trace_id):
+    node_guid = _get_node_guid(testbed_instance, guid)
+    interface_number = _get_dev_number(testbed_instance, guid)
+    element = testbed_instance._elements[guid]
+    filename = "trace-wimax-node-%d-dev-%d.tr" % (node_guid, interface_number)
+    testbed_instance.follow_trace(guid, trace_id, filename)
+    filepath = testbed_instance.trace_filename(guid, trace_id)
+    helper = testbed_instance.ns3.WimaxHelper()
+    asciiHelper = testbed_instance.ns3.AsciiTraceHelper()
+    stream = asciiHelper.CreateFileStream (filepath)
+    helper.EnableAscii(stream, element)
+
+def wimaxpcap_trace(testbed_instance, guid, trace_id):
+    node_guid = _get_node_guid(testbed_instance, guid)
+    interface_number = _get_dev_number(testbed_instance, guid)
+    element = testbed_instance._elements[guid]
+    filename = "trace-wimax-node-%d-dev-%d.pcap" % (node_guid, interface_number)
+    testbed_instance.follow_trace(guid, trace_id, filename)
+    filepath = testbed_instance.trace_filename(guid, trace_id)
+    helper = testbed_instance.ns3.WimaxHelper()
+    helper.EnablePcap(filepath, element, explicitFilename = True)
+
 trace_functions = dict({
     "P2PPcapTrace": p2ppcap_trace,
     "P2PAsciiTrace": p2pascii_trace,
     "CsmaPcapTrace": csmapcap_trace,
     "CsmaPcapPromiscTrace": csmapcap_promisc_trace,
     "FileDescriptorPcapTrace": fdpcap_trace,
-    "YansWifiPhyPcapTrace": yanswifipcap_trace
+    "YansWifiPhyPcapTrace": yanswifipcap_trace,
+    "WimaxPcapTrace": wimaxpcap_trace,
+    "WimaxAsciiTrace": wimaxascii_trace,
     })
 
 ### Creation functions ###
-
-wifi_standards = dict({
-    "WIFI_PHY_STANDARD_holland": 5,
-    "WIFI_PHY_STANDARD_80211p_SCH": 7,
-    "WIFI_PHY_STANDARD_80211_5Mhz": 4,
-    "WIFI_PHY_UNKNOWN": 8,
-    "WIFI_PHY_STANDARD_80211_10Mhz": 3,
-    "WIFI_PHY_STANDARD_80211g": 2,
-    "WIFI_PHY_STANDARD_80211p_CCH": 6,
-    "WIFI_PHY_STANDARD_80211a": 0,
-    "WIFI_PHY_STANDARD_80211b": 1
-})
 
 def create_element(testbed_instance, guid):
     element_factory = testbed_instance.ns3.ObjectFactory()
@@ -164,6 +207,143 @@ def create_ipv4protocol(testbed_instance, guid):
     static_routing = testbed_instance.ns3.Ipv4StaticRouting()
     list_routing.AddRoutingProtocol(static_routing, 1)
 
+def create_element_no_constructor(testbed_instance, guid):
+    """ Create function for ns3 classes for which 
+        TypeId.HasConstructor == False"""
+    factory_id = testbed_instance._create[guid]
+    factory_name = factory_id.replace("ns3::", "")
+    constructor = getattr(testbed_instance.ns3, factory_name)
+    element = constructor()
+    testbed_instance._elements[guid] = element
+
+def create_base_station(testbed_instance, guid):
+    node_guid = _get_node_guid(testbed_instance, guid)
+    node = testbed_instance._elements[node_guid]
+    phy_guids = testbed_instance.get_connected(guid, "phy", "dev")
+    if len(phy_guids) == 0:
+        raise RuntimeError("No PHY was found for station %d" % guid)
+    phy = testbed_instance._elements[phy_guids[0]]
+    uplnk_guids = testbed_instance.get_connected(guid, "uplnk", "dev")
+    if len(uplnk_guids) == 0:
+        raise RuntimeError("No uplink scheduler was found for station %d" % guid)
+    uplnk = testbed_instance._elements[uplnk_guids[0]]
+    dwnlnk_guids = testbed_instance.get_connected(guid, "dwnlnk", "dev")
+    if len(dwnlnk_guids) == 0:
+        raise RuntimeError("No downlink scheduler was found for station %d" % guid)
+    dwnlnk = testbed_instance._elements[dwnlnk_guids[0]]
+    element = testbed_instance.ns3.BaseStationNetDevice(node, phy, uplnk, dwnlnk)
+    testbed_instance._elements[guid] = element
+
+def create_subscriber_station(testbed_instance, guid):
+    node_guid = _get_node_guid(testbed_instance, guid)
+    node = testbed_instance._elements[node_guid]
+    phy_guids = testbed_instance.get_connected(guid, "phy", "dev")
+    if len(phy_guids) == 0:
+        raise RuntimeError("No PHY was found for station %d" % guid)
+    phy = testbed_instance._elements[phy_guids[0]]
+    element = testbed_instance.ns3.SubscriberStationNetDevice(node, phy)
+    element.SetModulationType(testbed_instance.ns3.WimaxPhy.MODULATION_TYPE_QAM16_12)
+    testbed_instance._elements[guid] = element
+
+def create_wimax_channel(testbed_instance, guid):
+    element = testbed_instance.ns3.SimpleOfdmWimaxChannel(testbed_instance.ns3.SimpleOfdmWimaxChannel.COST231_PROPAGATION)
+    testbed_instance._elements[guid] = element
+
+def create_wimax_phy(testbed_instance, guid):
+    element = testbed_instance.ns3.SimpleOfdmWimaxPhy()
+    testbed_instance._elements[guid] = element
+
+def create_service_flow(testbed_instance, guid):
+    parameters = testbed_instance._get_parameters(guid)
+    direction = None
+    if "Direction" in parameters:
+        direction = parameters["Direction"]
+    if direction == None:
+        raise RuntimeError("No SchedulingType was found for service flow %d" % guid)
+    sched = None
+    if "SchedulingType" in parameters:
+        sched = parameters["SchedulingType"]
+    if sched == None:
+        raise RuntimeError("No SchedulingType was found for service flow %d" % guid)
+    ServiceFlow = testbed_instance.ns3.ServiceFlow
+    direction = service_flow_direction[direction]
+    sched = service_flow_scheduling_type[sched]
+    element = ServiceFlow(direction)
+    element.SetCsSpecification(ServiceFlow.IPV4)
+    element.SetServiceSchedulingType(sched) 
+    element.SetMaxSustainedTrafficRate(100)
+    element.SetMinReservedTrafficRate(1000000)
+    element.SetMinTolerableTrafficRate(1000000)
+    element.SetMaximumLatency(100)
+    element.SetMaxTrafficBurst(2000)
+    element.SetTrafficPriority(1)
+    element.SetUnsolicitedGrantInterval(1)
+    element.SetMaxSustainedTrafficRate(70)
+    element.SetToleratedJitter(10)
+    element.SetSduSize(49)
+    element.SetRequestTransmissionPolicy(0)
+    testbed_instance._elements[guid] = element
+
+def create_ipcs_classifier_record(testbed_instance, guid):
+    parameters = testbed_instance._get_parameters(guid)
+    src_address = None
+    if "SrcAddress" in parameters:
+        src_address = parameters["SrcAddress"]
+    if src_address == None:
+        raise RuntimeError("No SrcAddress was found for classifier %d" % guid)
+    src_address = testbed_instance.ns3.Ipv4Address(src_address)
+    src_mask= None
+    if "SrcMask" in parameters:
+        src_mask = parameters["SrcMask"]
+    if src_mask == None:
+        raise RuntimeError("No SrcMask was found for classifier %d" % guid)
+    src_mask = testbed_instance.ns3.Ipv4Mask(src_mask)
+    dst_address = None
+    if "DstAddress" in parameters:
+        dst_address = parameters["DstAddress"]
+    if dst_address == None:
+        raise RuntimeError("No Dstddress was found for classifier %d" % guid)
+    dst_address = testbed_instance.ns3.Ipv4Address(dst_address)
+    dst_mask= None
+    if "DstMask" in parameters:
+        dst_mask = parameters["DstMask"]
+    if dst_mask == None:
+        raise RuntimeError("No DstMask was found for classifier %d" % guid)
+    dst_mask = testbed_instance.ns3.Ipv4Mask(dst_mask)
+    src_port_low = None
+    if "SrcPortLow" in parameters:
+        src_port_low = parameters["SrcPortLow"]
+    if src_port_low == None:
+        raise RuntimeError("No SrcPortLow was found for classifier %d" % guid)
+    src_port_high= None
+    if "SrcPortHigh" in parameters:
+        src_port_high = parameters["SrcPortHigh"]
+    if src_port_high == None:
+        raise RuntimeError("No SrcPortHigh was found for classifier %d" % guid)
+    dst_port_low = None
+    if "DstPortLow" in parameters:
+        dst_port_low = parameters["DstPortLow"]
+    if dst_port_low == None:
+        raise RuntimeError("No DstPortLow was found for classifier %d" % guid)
+    dst_port_high = None
+    if "DstPortHigh" in parameters:
+        dst_port_high = parameters["DstPortHigh"]
+    if dst_port_high == None:
+        raise RuntimeError("No DstPortHigh was found for classifier %d" % guid)
+    protocol = None
+    if "Protocol" in parameters:
+        protocol = parameters["Protocol"]
+    if protocol == None or protocol not in l4_protocols:
+        raise RuntimeError("No Protocol was found for classifier %d" % guid)
+    priority = None
+    if "Priority" in parameters:
+        priority = parameters["Priority"]
+    if priority == None:
+        raise RuntimeError("No Priority was found for classifier %d" % guid)
+    element = testbed_instance.ns3.IpcsClassifierRecord(src_address, src_mask,
+        dst_address, dst_mask, src_port_low, src_port_high, dst_port_low, 
+        dst_port_high, l4_protocols[protocol], priority)
+    testbed_instance._elements[guid] = element
 
 ### Start/Stop functions ###
 
@@ -177,7 +357,6 @@ def stop_application(testbed_instance, guid):
     element = testbed_instance.elements[guid]
     now = testbed_instance.ns3.Simulator.Now()
     element.SetStopTime(now)
-
 
 ### Status functions ###
 
@@ -247,7 +426,7 @@ def configure_device(testbed_instance, guid):
         ipv4.AddAddress(ifindex, inaddr)
         ipv4.SetMetric(ifindex, 1)
         ipv4.SetUp(ifindex)
-    
+
 def _add_static_route(ns3, static_routing, 
         address, netprefix, nexthop_address, ifindex):
     if netprefix == 0:
@@ -311,6 +490,174 @@ def configure_node(testbed_instance, guid):
             ifindex = ipv4.GetInterfaceForPrefix(address, mask)
             _add_static_route_if(ns3, static_routing, 
                 address, netprefix, nexthop_address, ifindex)
+
+def configure_station(testbed_instance, guid):
+    configure_device(testbed_instance, guid)
+    element = testbed_instance._elements[guid]
+    element.Start()
+
+###  Factories  ###
+
+factories_order = ["ns3::BasicEnergySource",
+    "ns3::WifiRadioEnergyModel",
+    "ns3::BSSchedulerRtps",
+    "ns3::BSSchedulerSimple",
+    "ns3::UdpTraceClient",
+    "ns3::UdpServer",
+    "ns3::UdpClient",
+    "ns3::FlowMonitor",
+    "ns3::Radvd",
+    "ns3::Ping6",
+    "ns3::flame::FlameProtocol",
+    "ns3::flame::FlameRtable",
+    "ns3::dot11s::AirtimeLinkMetricCalculator",
+    "ns3::dot11s::HwmpProtocol",
+    "ns3::dot11s::HwmpRtable",
+    "ns3::dot11s::PeerManagementProtocol",
+    "ns3::dot11s::PeerLink",
+    "ns3::MeshWifiInterfaceMac",
+    "ns3::MeshPointDevice",
+    "ns3::UanMacRcGw",
+    "ns3::UanMacRc",
+    "ns3::UanPhyCalcSinrDual",
+    "ns3::UanPhyPerGenDefault",
+    "ns3::UanPhyDual",
+    "ns3::UanPropModelThorp",
+    "ns3::UanMacCw",
+    "ns3::UanNoiseModelDefault",
+    "ns3::UanMacAloha",
+    "ns3::UanPropModelIdeal",
+    "ns3::UanTransducerHd",
+    "ns3::UanPhyCalcSinrDefault",
+    "ns3::UanPhyGen",
+    "ns3::UanPhyCalcSinrFhFsk",
+    "ns3::UanPhyPerUmodem",
+    "ns3::UanChannel",
+    "ns3::V4Ping",
+    "ns3::AthstatsWifiTraceSink",
+    "ns3::FlameStack",
+    "ns3::Dot11sStack",
+    "ns3::NonCommunicatingNetDevice",
+    "ns3::HalfDuplexIdealPhy",
+    "ns3::AlohaNoackNetDevice",
+    "ns3::SpectrumAnalyzer",
+    "ns3::WaveformGenerator",
+    "ns3::MultiModelSpectrumChannel",
+    "ns3::SingleModelSpectrumChannel",
+    "ns3::MsduStandardAggregator",
+    "ns3::EdcaTxopN",
+    "ns3::QstaWifiMac",
+    "ns3::QapWifiMac",
+    "ns3::QadhocWifiMac",
+    "ns3::MinstrelWifiManager",
+    "ns3::CaraWifiManager",
+    "ns3::AarfcdWifiManager",
+    "ns3::OnoeWifiManager",
+    "ns3::AmrrWifiManager",
+    "ns3::ConstantRateWifiManager",
+    "ns3::IdealWifiManager",
+    "ns3::AarfWifiManager",
+    "ns3::ArfWifiManager",
+    "ns3::WifiNetDevice",
+    "ns3::NqstaWifiMac",
+    "ns3::NqapWifiMac",
+    "ns3::AdhocWifiMac",
+    "ns3::DcaTxop",
+    "ns3::WifiMacQueue",
+    "ns3::YansWifiChannel",
+    "ns3::YansWifiPhy",
+    "ns3::NistErrorRateModel",
+    "ns3::YansErrorRateModel",
+    "ns3::WaypointMobilityModel",
+    "ns3::ConstantAccelerationMobilityModel",
+    "ns3::RandomDirection2dMobilityModel",
+    "ns3::RandomWalk2dMobilityModel",
+    "ns3::SteadyStateRandomWaypointMobilityModel",
+    "ns3::RandomWaypointMobilityModel",
+    "ns3::GaussMarkovMobilityModel",
+    "ns3::ConstantVelocityMobilityModel",
+    "ns3::ConstantPositionMobilityModel",
+    "ns3::ListPositionAllocator",
+    "ns3::GridPositionAllocator",
+    "ns3::RandomRectanglePositionAllocator",
+    "ns3::RandomBoxPositionAllocator",
+    "ns3::RandomDiscPositionAllocator",
+    "ns3::UniformDiscPositionAllocator",
+    "ns3::HierarchicalMobilityModel",
+    "ns3::aodv::RoutingProtocol",
+    "ns3::UdpEchoServer",
+    "ns3::UdpEchoClient",
+    "ns3::PacketSink",
+    "ns3::OnOffApplication",
+    "ns3::VirtualNetDevice",
+    "ns3::FileDescriptorNetDevice",
+    "ns3::Nepi::TunChannel",
+    "ns3::TapBridge",
+    "ns3::BridgeChannel",
+    "ns3::BridgeNetDevice",
+    "ns3::EmuNetDevice",
+    "ns3::CsmaChannel",
+    "ns3::CsmaNetDevice",
+    "ns3::PointToPointRemoteChannel",
+    "ns3::PointToPointChannel",
+    "ns3::PointToPointNetDevice",
+    "ns3::NscTcpL4Protocol",
+    "ns3::Icmpv6L4Protocol",
+    "ns3::Ipv6OptionPad1",
+    "ns3::Ipv6OptionPadn",
+    "ns3::Ipv6OptionJumbogram",
+    "ns3::Ipv6OptionRouterAlert",
+    "ns3::Ipv6ExtensionHopByHop",
+    "ns3::Ipv6ExtensionDestination",
+    "ns3::Ipv6ExtensionFragment",
+    "ns3::Ipv6ExtensionRouting",
+    "ns3::Ipv6ExtensionLooseRouting",
+    "ns3::Ipv6ExtensionESP",
+    "ns3::Ipv6ExtensionAH",
+    "ns3::Ipv6L3Protocol",
+    "ns3::LoopbackNetDevice",
+    "ns3::Icmpv4L4Protocol",
+    "ns3::RttMeanDeviation",
+    "ns3::ArpL3Protocol",
+    "ns3::TcpL4Protocol",
+    "ns3::UdpL4Protocol",
+    "ns3::Ipv4L3Protocol",
+    "ns3::SimpleNetDevice",
+    "ns3::SimpleChannel",
+    "ns3::PacketSocket",
+    "ns3::DropTailQueue",
+    "ns3::Node",
+    "ns3::FriisSpectrumPropagationLossModel",
+    "ns3::Cost231PropagationLossModel",
+    "ns3::JakesPropagationLossModel",
+    "ns3::RandomPropagationLossModel",
+    "ns3::FriisPropagationLossModel",
+    "ns3::TwoRayGroundPropagationLossModel",
+    "ns3::LogDistancePropagationLossModel",
+    "ns3::ThreeLogDistancePropagationLossModel",
+    "ns3::NakagamiPropagationLossModel",
+    "ns3::FixedRssLossModel",
+    "ns3::MatrixPropagationLossModel",
+    "ns3::RangePropagationLossModel",
+    "ns3::RandomPropagationDelayModel",
+    "ns3::ConstantSpeedPropagationDelayModel",
+    "ns3::RateErrorModel",
+    "ns3::ListErrorModel",
+    "ns3::ReceiveListErrorModel",
+    "ns3::PacketBurst",
+    "ns3::EnergySourceContainer",
+    "ns3::BSSchedulerRtps",
+    "ns3::BSSchedulerSimple",
+    "ns3::SimpleOfdmWimaxChannel",
+    "ns3::SimpleOfdmWimaxPhy",
+    "ns3::UplinkSchedulerMBQoS",
+    "ns3::UplinkSchedulerRtps",
+    "ns3::UplinkSchedulerSimple",
+    "ns3::IpcsClassifierRecord",
+    "ns3::ServiceFlow",
+    "ns3::BaseStationNetDevice",
+    "ns3::SubscriberStationNetDevice",
+ ]
 
 factories_info = dict({
     "ns3::Ping6": dict({
@@ -957,7 +1304,7 @@ factories_info = dict({
            "Y"],
     }),
      "ns3::NqapWifiMac": dict({
-        "category": "",
+        "category": "Mac",
         "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
@@ -1058,10 +1405,10 @@ factories_info = dict({
     }),
      "ns3::BaseStationNetDevice": dict({
         "category": "Device",
-        "create_function": create_element,
-        "configure_function": configure_device,
-        "help": "",
-        "connector_types": [],
+        "create_function": create_base_station,
+        "configure_function": configure_station,
+        "help": "Base station for wireless mobile network",
+        "connector_types": ["node", "chan", "phy", "uplnk", "dwnlnk"],
         "allow_addresses": True,
         "box_attributes": ["InitialRangInterval",
             "DcdInterval",
@@ -1073,13 +1420,14 @@ factories_info = dict({
             "Mtu",
             "RTG",
             "TTG"],
+        "traces": ["wimaxpcap", "wimaxascii"],
     }),
      "ns3::UdpServer": dict({
         "category": "Application",
         "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
-        "connector_types": [],
+        "connector_types": ["node"],
         "stop_function": stop_application,
         "start_function": start_application,
         "status_function": status_application,
@@ -1142,7 +1490,7 @@ factories_info = dict({
             "RxQueueSize"],
     }),
      "ns3::Ipv6ExtensionLooseRouting": dict({
-        "category": "",
+        "category": "Routing",
         "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
@@ -1161,7 +1509,7 @@ factories_info = dict({
             "Velocity"],
     }),
      "ns3::RangePropagationLossModel": dict({
-        "category": "",
+        "category": "Loss",
         "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
@@ -1186,7 +1534,7 @@ factories_info = dict({
         "box_attributes": ["DefaultLoss"],
     }),
      "ns3::WifiNetDevice": dict({
-        "category": "Device",
+        "category": "Wifi",
         "create_function": create_element,
         "configure_function": configure_device,
         "help": "",
@@ -1195,7 +1543,7 @@ factories_info = dict({
         "box_attributes": ["Mtu"],
     }),
      "ns3::CsmaChannel": dict({
-        "category": "Channel",
+        "category": "Topology",
         "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
@@ -1215,7 +1563,7 @@ factories_info = dict({
            "ExpirationTime"],
     }),
      "ns3::Ipv6ExtensionRouting": dict({
-        "category": "",
+        "category": "Routing",
         "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
@@ -1265,7 +1613,7 @@ factories_info = dict({
         "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
-        "connector_types": [],
+        "connector_types": ["node"],
         "stop_function": stop_application,
         "start_function": start_application,
         "status_function": status_application,
@@ -1286,7 +1634,7 @@ factories_info = dict({
         "box_attributes": ["Delay"],
     }),
      "ns3::Ipv6StaticRouting": dict({
-        "category": "",
+        "category": "Routing",
         "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
@@ -1294,7 +1642,7 @@ factories_info = dict({
         "box_attributes": [],
     }),
      "ns3::DropTailQueue": dict({
-        "category": "Device",
+        "category": "Queue",
         "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
@@ -1320,7 +1668,7 @@ factories_info = dict({
         "box_attributes": ["Rss"],
     }),
      "ns3::EnergySourceContainer": dict({
-        "category": "",
+        "category": "Energy",
         "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
@@ -1361,7 +1709,7 @@ factories_info = dict({
             "EnableBeaconCollisionAvoidance"],
     }),
      "ns3::MeshPointDevice": dict({
-        "category": "Device",
+        "category": "Topology",
         "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
@@ -1370,7 +1718,7 @@ factories_info = dict({
         "box_attributes": ["Mtu"],
     }),
      "ns3::BasicEnergySource": dict({
-        "category": "",
+        "category": "Energy",
         "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
@@ -1416,7 +1764,7 @@ factories_info = dict({
         "box_attributes": [],
     }),
      "ns3::WifiMacQueue": dict({
-        "category": "",
+        "category": "Queue",
         "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
@@ -1445,7 +1793,7 @@ factories_info = dict({
             "IsEnabled"],
     }),
      "ns3::MeshWifiInterfaceMac": dict({
-        "category": "",
+        "category": "Mac",
         "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
@@ -1508,7 +1856,7 @@ factories_info = dict({
         "traces": ["yanswifipcap"]
     }),
      "ns3::WifiRadioEnergyModel": dict({
-        "category": "",
+        "category": "Energy",
         "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
@@ -2013,10 +2361,10 @@ factories_info = dict({
     }),
      "ns3::SubscriberStationNetDevice": dict({
         "category": "Device",
-        "create_function": create_element,
-        "configure_function": configure_element,
-        "help": "",
-        "connector_types": [],
+        "create_function": create_subscriber_station,
+        "configure_function": configure_station,
+        "help": "Subscriber station for mobile wireless network",
+        "connector_types": ["node", "chan", "phy", "sflows"],
         "allow_addresses": True,
         "box_attributes": ["LostDlMapInterval",
             "LostUlMapInterval",
@@ -2033,8 +2381,9 @@ factories_info = dict({
             "Mtu",
             "RTG",
             "TTG"],
+        "traces": ["wimaxpcap", "wimaxascii"],
     }),
-     "ns3::flame::FlameRtable": dict({
+    "ns3::flame::FlameRtable": dict({
         "category": "",
         "create_function": create_element,
         "configure_function": configure_element,
@@ -2042,4 +2391,79 @@ factories_info = dict({
         "connector_types": [],
         "box_attributes": ["Lifetime"],
     }),
+    "ns3::BSSchedulerRtps": dict({
+        "category": "Service Flow",
+        "create_function": create_element,
+        "configure_function": configure_element,
+        "help": "Simple downlink scheduler for rtPS flows",
+        "connector_types": ["dev"],
+        "box_attributes": [],
+    }),
+    "ns3::BSSchedulerSimple": dict({
+        "category": "Service Flow",
+        "create_function": create_element,
+        "configure_function": configure_element,
+        "help": "simple downlink scheduler for service flows",
+        "connector_types": ["dev"],
+        "box_attributes": [],
+    }),
+    "ns3::SimpleOfdmWimaxChannel": dict({
+        "category": "Channel",
+        "create_function": create_wimax_channel,
+        "configure_function": configure_element,
+        "help": "Wimax channel",
+        "connector_types": ["devs"],
+        "box_attributes": [],
+    }),
+    "ns3::SimpleOfdmWimaxPhy": dict({
+        "category": "Phy",
+        "create_function": create_wimax_phy,
+        "configure_function": configure_element,
+        "help": "Wimax Phy",
+        "connector_types": ["dev"],
+        "box_attributes": [],
+    }),
+    "ns3::UplinkSchedulerSimple": dict({
+        "category": "Service Flow",
+        "create_function": create_element_no_constructor,
+        "configure_function": configure_element,
+        "help": "Simple uplink scheduler for service flows",
+        "connector_types": ["dev"],
+        "box_attributes": [],
+    }),
+    "ns3::UplinkSchedulerRtps": dict({
+        "category": "Service Flow",
+        "create_function": create_element_no_constructor,
+        "configure_function": configure_element,
+        "help": "Simple uplink scheduler for rtPS flows",
+        "connector_types": ["dev"],
+        "box_attributes": [],
+    }),
+    "ns3::IpcsClassifierRecord": dict({
+        "category": "Service Flow",
+        "create_function": create_ipcs_classifier_record,
+        "configure_function": configure_element,
+        "help": "Classifier record for service flow",
+        "connector_types": ["sflow"],
+        "box_attributes": ["ClassifierSrcAddress", 
+            "ClassifierSrcMask", 
+            "ClassifierDstAddress",
+            "ClassifierDstMask",
+            "ClassifierSrcPortLow",
+            "ClassifierSrcPortHigh",
+            "ClassifierDstPortLow",
+            "ClassifierDstPortHigh",
+            "ClassifierProtocol",
+            "ClassifierPriority"],
+    }),   
+    "ns3::ServiceFlow": dict({
+        "category": "Service Flow",
+        "create_function": create_service_flow,
+        "configure_function": configure_element,
+        "help": "Service flow for QoS",
+        "connector_types": ["classif", "dev"],
+        "box_attributes": ["ServiceFlowDirection", 
+            "ServiceFlowSchedulingType"],
+    }),   
 })
+        
