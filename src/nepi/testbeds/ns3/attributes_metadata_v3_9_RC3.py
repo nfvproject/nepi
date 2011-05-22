@@ -1,10 +1,29 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from factories_metadata_v3_9_RC3 import wifi_standards
+from factories_metadata_v3_9_RC3 import wifi_standards, l4_protocols, \
+    service_flow_direction, service_flow_scheduling_type
 import validation as ns3_validation
 from nepi.core.attributes import Attribute
 from nepi.util import validation
+
+testbed_attributes = dict({
+     "simu_impl_type": dict({
+            "name": "SimulatorImplementationType",
+            "help": "The object class to use as the simulator implementation",
+            "type": Attribute.STRING,
+            "flags": Attribute.DesignOnly,
+            "validation_function": validation.is_string
+        }),
+      "checksum": dict({
+            "name": "ChecksumEnabled",
+            "help": "A global switch to enable all checksums for all protocols",
+            "type": Attribute.BOOL,
+            "value": False,
+            "flags": Attribute.DesignOnly,
+            "validation_function": validation.is_bool
+        }),
+})
 
 attributes = dict({
     "SleepCurrentA": dict({
@@ -2401,5 +2420,104 @@ attributes = dict({
         "flags": Attribute.Invisible,
         "type": Attribute.STRING,
         "help": "Socket address assigned to the Linux socket created to recive file descriptor"
+    }),
+    "ClassifierSrcAddress": dict({
+        "name": "SrcAddress",
+        "validation_function": validation.is_string, # TODO:! Address + Netref
+        "value": "",
+        "flags": Attribute.DesignOnly,
+        "type": Attribute.STRING,
+        "help": "The source ip address for the IpcsClassifierRecord"
+    }),
+    "ClassifierSrcMask": dict({
+        "name": "SrcMask",
+        "validation_function": validation.is_string, # TODO:! NetworkMask
+        "value": "",
+        "flags": Attribute.DesignOnly,
+        "type": Attribute.STRING,
+        "help": "The mask to apply on the source ip address for the IpcsClassifierRecord"
+    }),
+    "ClassifierDstAddress": dict({
+        "name": "DstAddress",
+        "validation_function": validation.is_string, # TODO:! Address + Netref
+        "value": "",
+        "flags": Attribute.DesignOnly,
+        "type": Attribute.STRING,
+        "help": "The destination ip address for the IpcsClassifierRecord"
+    }),
+    "ClassifierDstMask": dict({
+        "name": "DstMask",
+        "validation_function": validation.is_string, # TODO:! NetworkMask
+        "value": "",
+        "flags": Attribute.DesignOnly,
+        "type": Attribute.STRING,
+        "help": "The mask to apply on the destination ip address for the IpcsClassifierRecord"
+    }),
+    "ClassifierSrcPortLow": dict({
+        "name": "SrcPortLow",
+        "validation_function": validation.is_integer,
+        "value": 0,
+        "flags": Attribute.DesignOnly,
+        "type": Attribute.INTEGER,
+        "help": "The lower boundary of the source port range for the IpcsClassifierRecord"
+    }),
+    "ClassifierSrcPortHigh": dict({
+        "name": "SrcPortHigh",
+        "validation_function": validation.is_integer,
+        "value": 65000,
+        "flags": Attribute.DesignOnly,
+        "type": Attribute.INTEGER,
+        "help": "The higher boundary of the source port range for the IpcsClassifierRecord"
+    }),
+    "ClassifierDstPortLow": dict({
+        "name": "DstPortLow",
+        "validation_function": validation.is_integer,
+        "value": 0,
+        "flags": Attribute.DesignOnly,
+        "type": Attribute.INTEGER,
+        "help": "The lower boundary of the destination port range for the IpcsClassifierRecord"
+    }),
+    "ClassifierDstPortHigh": dict({
+        "name": "DstPortHigh",
+        "validation_function": validation.is_integer,
+        "value": 65000,
+        "flags": Attribute.DesignOnly,
+        "type": Attribute.INTEGER,
+        "help": "The higher boundary of the destination port range for the IpcsClassifierRecord"
+    }),
+    "ClassifierProtocol": dict({
+        "name": "Protocol",
+        "validation_function": validation.is_string,
+        "value": "UdpL4Protocol",
+        "allowed": l4_protocols.keys(),
+        "flags": Attribute.DesignOnly,
+        "type": Attribute.ENUM,
+        "help": "The L4 protocol for the IpcsClassifierRecord"
+    }),
+    "ClassifierPriority": dict({
+        "name": "Priority",
+        "validation_function": validation.is_integer,
+        "value": 1,
+        "flags": Attribute.DesignOnly,
+        "type": Attribute.INTEGER,
+        "help": "The priority of the IpcsClassifierRecord"
+    }),
+    "ServiceFlowDirection": dict({
+        "name": "Direction",
+        "validation_function": validation.is_string,
+        "value": "SF_DIRECTION_UP",
+        "allowed": service_flow_direction.keys(),
+        "flags": Attribute.DesignOnly,
+        "type": Attribute.ENUM,
+        "help": "Service flow direction as described by the IEEE-802.16 standard"
+    }),
+    "ServiceFlowSchedulingType": dict({
+        "name": "SchedulingType",
+        "validation_function": validation.is_string,
+        "value": "SF_TYPE_RTPS",
+        "allowed": service_flow_scheduling_type.keys(),
+        "flags": Attribute.DesignOnly,
+        "type": Attribute.ENUM,
+        "help": "Service flow scheduling type",
     }),
 })
