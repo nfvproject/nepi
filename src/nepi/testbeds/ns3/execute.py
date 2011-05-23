@@ -187,6 +187,7 @@ class TestbedController(testbed_impl.TestbedController):
         simu_impl_type = self._attributes.get_attribute_value(
                 "SimulatorImplementationType")
         checksum = self._attributes.get_attribute_value("ChecksumEnabled")
+        stop_time = self._attributes.get_attribute_value("StopTime")
 
         bindings = os.environ["NEPI_NS3BINDINGS"] \
                 if "NEPI_NS3BINDINGS" in os.environ else None
@@ -221,6 +222,9 @@ class TestbedController(testbed_impl.TestbedController):
         if checksum:
             value = mod.BooleanValue(checksum)
             mod.GlobalValue.Bind ("ChecksumEnabled", value)
+        if stop_time:
+            value = mod.Time(stop_time)
+            mod.Simulator.Stop (value)
         return mod
 
     def _get_construct_parameters(self, guid):

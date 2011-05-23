@@ -8,14 +8,14 @@ from nepi.core.attributes import Attribute
 from nepi.util import validation
 
 testbed_attributes = dict({
-     "simu_impl_type": dict({
+    "simu_impl_type": dict({
             "name": "SimulatorImplementationType",
             "help": "The object class to use as the simulator implementation",
             "type": Attribute.STRING,
             "flags": Attribute.DesignOnly,
             "validation_function": validation.is_string
         }),
-      "checksum": dict({
+    "checksum": dict({
             "name": "ChecksumEnabled",
             "help": "A global switch to enable all checksums for all protocols",
             "type": Attribute.BOOL,
@@ -23,6 +23,13 @@ testbed_attributes = dict({
             "flags": Attribute.DesignOnly,
             "validation_function": validation.is_bool
         }),
+    "simu_stop": dict({
+        "name": "StopTime",
+        "validation_function": validation.is_time,
+        "value": None,
+        "type": Attribute.STRING,
+        "help": "Stop time for the simulation"
+    }),
 })
 
 attributes = dict({
