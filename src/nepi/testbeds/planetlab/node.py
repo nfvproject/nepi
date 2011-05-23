@@ -334,7 +334,7 @@ class Node(object):
                     "- PL can only handle rules over virtual interfaces. Candidates are: %s" % (route,devs)
         
         (out,err),proc = server.popen_ssh_command(
-            "( sudo -S bash -c 'cat /vsys/vroute.out >&2' & ) ; sudo -S bash -c 'cat > /vsys/vroute.in'" % dict(
+            "( sudo -S bash -c 'cat /vsys/vroute.out >&2' & ) ; sudo -S bash -c 'cat > /vsys/vroute.in' ; sleep 0.1" % dict(
                 home = server.shell_escape(self.home_path)),
             host = self.hostname,
             port = None,
@@ -346,7 +346,7 @@ class Node(object):
             )
         
         if proc.wait() or err:
-            raise RuntimeError, "Could not set routes: %s%s" % (out,err)
+            raise RuntimeError, "Could not set routes (%s) errors: %s%s" % (rules,out,err)
         
         
 
