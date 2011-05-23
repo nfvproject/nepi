@@ -662,6 +662,12 @@ class ExperimentControllerServer(BaseServer):
         self._controller = ExperimentController(self._experiment_xml, 
             root_dir = self._root_dir)
 
+    @Marshalling.handles(GUIDS)
+    @Marshalling.args()
+    @Marshalling.retval( Marshalling.pickled_data )
+    def guids(self):
+        return self._controller.guids
+
     @Marshalling.handles(XML)
     @Marshalling.args()
     @Marshalling.retval()
@@ -669,10 +675,10 @@ class ExperimentControllerServer(BaseServer):
         return self._controller.experiment_xml
         
     @Marshalling.handles(TRACE)
-    @Marshalling.args(int, int, str, Marshalling.base64_data)
+    @Marshalling.args(int, str, Marshalling.base64_data)
     @Marshalling.retval()
-    def trace(self, testbed_guid, guid, trace_id, attribute):
-        return str(self._controller.trace(testbed_guid, guid, trace_id, attribute))
+    def trace(self, guid, trace_id, attribute):
+        return str(self._controller.trace(guid, trace_id, attribute))
 
     @Marshalling.handles(FINISHED)
     @Marshalling.args(int)
@@ -681,22 +687,22 @@ class ExperimentControllerServer(BaseServer):
         return self._controller.is_finished(guid)
 
     @Marshalling.handles(EXPERIMENT_GET)
-    @Marshalling.args(int, int, Marshalling.base64_data, str)
+    @Marshalling.args(int, Marshalling.base64_data, str)
     @Marshalling.retval( Marshalling.pickled_data )
-    def get(self, testbed_guid, guid, name, time):
-        return self._controller.get(testbed_guid, guid, name, time)
+    def get(self, guid, name, time):
+        return self._controller.get(guid, name, time)
 
     @Marshalling.handles(EXPERIMENT_SET)
-    @Marshalling.args(int, int, Marshalling.base64_data, Marshalling.pickled_data, str)
+    @Marshalling.args(int, Marshalling.base64_data, Marshalling.pickled_data, str)
     @Marshalling.retvoid
-    def set(self, testbed_guid, guid, name, value, time):
-        self._controller.set(testbed_guid, guid, name, value, time)
+    def set(self, guid, name, value, time):
+        self._controller.set(guid, name, value, time)
 
     @Marshalling.handles(GET_TAGS)
-    @Marshalling.args(int, int)
+    @Marshalling.args(int)
     @Marshalling.retval( Marshalling.pickled_data )
-    def get_tags(self, testbed_guid, guid):
-        return self._controller.get_tags(testbed_guid, guid)
+    def get_tags(self, guid):
+        return self._controller.get_tags(guid)
 
     @Marshalling.handles(START)
     @Marshalling.args()

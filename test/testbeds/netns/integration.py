@@ -54,7 +54,7 @@ class NetnsIntegrationTestCase(unittest.TestCase):
         controller.start()
         while not controller.is_finished(app.guid):
             time.sleep(0.5)
-        ping_result = controller.trace(netns_desc.guid, app.guid, "stdout")
+        ping_result = controller.trace(app.guid, "stdout")
         comp_result = """PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
 
 --- 10.0.0.2 ping statistics ---
@@ -113,7 +113,7 @@ class NetnsIntegrationTestCase(unittest.TestCase):
         controller.start()
         while not controller.is_finished(app.guid):
             time.sleep(0.5)
-        ping_result = controller.trace(netns_desc.guid, app.guid, "stdout")
+        ping_result = controller.trace(app.guid, "stdout")
         comp_result = """PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
 
 --- 10.0.0.2 ping statistics ---
@@ -176,7 +176,7 @@ class NetnsIntegrationTestCase(unittest.TestCase):
         controller.start()
         while not controller.is_finished(app.guid):
             time.sleep(0.5)
-        ping_result = controller.trace(netns_desc.guid, app.guid, "stdout")
+        ping_result = controller.trace(app.guid, "stdout")
         comp_result = """PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
 
 --- 10.0.0.2 ping statistics ---

@@ -602,15 +602,4 @@ class ExperimentDescription(object):
         for testbed_description in self.testbed_descriptions:
             testbed_description.destroy()
 
-# TODO: When the experiment xml is passed to the controller to execute it
-# NetReferences in the xml need to be solved
-#
-#targets = re.findall(r"%target:(.*?)%", command)
-#for target in targets:
-#   try:
-#      (family, address, port) = resolve_netref(target, AF_INET, 
-#          self.server.experiment )
-#      command = command.replace("%%target:%s%%" % target, address.address)
-#   except:
-#       continue
 

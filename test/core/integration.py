@@ -78,8 +78,8 @@ class ExecuteTestCase(unittest.TestCase):
         controller = proxy.create_controller(xml, access_config)
 
         controller.start()
-        cross1 = controller.get(desc1.guid, iface12.guid, "cross")
-        cross2 = controller.get(desc2.guid, iface21.guid, "cross")
+        cross1 = controller.get(iface12.guid, "cross")
+        cross2 = controller.get(iface21.guid, "cross")
         self.assertTrue(cross1 == cross2 == True)
         controller.stop()
         controller.shutdown()
@@ -93,14 +93,14 @@ class ExecuteTestCase(unittest.TestCase):
         controller.start()
         while not controller.is_finished(app.guid):
             time.sleep(0.5)
-        fake_result = controller.trace(desc.guid, app.guid, "fake")
+        fake_result = controller.trace(app.guid, "fake")
         comp_result = """PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
 
 --- 10.0.0.2 ping statistics ---
 1 packets transmitted, 1 received, 0% packet loss, time 0ms
 """
         self.assertTrue(fake_result.startswith(comp_result))
-        self.assertEquals(controller.get_tags(desc.guid, node1.guid), [tags.MOBILE])
+        self.assertEquals(controller.get_tags(node1.guid), [tags.MOBILE])
 
         controller.stop()
         controller.shutdown()
@@ -116,14 +116,14 @@ class ExecuteTestCase(unittest.TestCase):
         controller.start()
         while not controller.is_finished(app.guid):
             time.sleep(0.5)
-        fake_result = controller.trace(desc.guid, app.guid, "fake")
+        fake_result = controller.trace(app.guid, "fake")
         comp_result = """PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
 
 --- 10.0.0.2 ping statistics ---
 1 packets transmitted, 1 received, 0% packet loss, time 0ms
 """
         self.assertTrue(fake_result.startswith(comp_result))
-        self.assertEquals(controller.get_tags(desc.guid, node1.guid), [tags.MOBILE])
+        self.assertEquals(controller.get_tags(node1.guid), [tags.MOBILE])
 
         controller.stop()
         controller.shutdown()
@@ -141,14 +141,14 @@ class ExecuteTestCase(unittest.TestCase):
         controller.start()
         while not controller.is_finished(app.guid):
             time.sleep(0.5)
-        fake_result = controller.trace(desc.guid, app.guid, "fake")
+        fake_result = controller.trace(app.guid, "fake")
         comp_result = """PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
 
 --- 10.0.0.2 ping statistics ---
 1 packets transmitted, 1 received, 0% packet loss, time 0ms
 """
         self.assertTrue(fake_result.startswith(comp_result))
-        self.assertEquals(controller.get_tags(desc.guid, node1.guid), [tags.MOBILE])
+        self.assertEquals(controller.get_tags(node1.guid), [tags.MOBILE])
 
         controller.stop()
         controller.shutdown()
@@ -171,14 +171,14 @@ class ExecuteTestCase(unittest.TestCase):
         controller.start()
         while not controller.is_finished(app.guid):
             time.sleep(0.5)
-        fake_result = controller.trace(desc.guid, app.guid, "fake")
+        fake_result = controller.trace(app.guid, "fake")
         comp_result = """PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
 
 --- 10.0.0.2 ping statistics ---
 1 packets transmitted, 1 received, 0% packet loss, time 0ms
 """
         self.assertTrue(fake_result.startswith(comp_result))
-        self.assertEquals(controller.get_tags(desc.guid, node1.guid), [tags.MOBILE])
+        self.assertEquals(controller.get_tags(node1.guid), [tags.MOBILE])
 
         controller.stop()
         controller.shutdown()
@@ -201,14 +201,14 @@ class ExecuteTestCase(unittest.TestCase):
         controller.start()
         while not controller.is_finished(app.guid):
             time.sleep(0.5)
-        fake_result = controller.trace(desc.guid, app.guid, "fake")
+        fake_result = controller.trace(app.guid, "fake")
         comp_result = """PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
 
 --- 10.0.0.2 ping statistics ---
 1 packets transmitted, 1 received, 0% packet loss, time 0ms
 """
         self.assertTrue(fake_result.startswith(comp_result))
-        self.assertEquals(controller.get_tags(desc.guid, node1.guid), [tags.MOBILE])
+        self.assertEquals(controller.get_tags(node1.guid), [tags.MOBILE])
 
         # controller dies
         del controller
@@ -219,7 +219,7 @@ class ExecuteTestCase(unittest.TestCase):
         
         # test recovery
         self.assertTrue(controller.is_finished(app.guid))
-        fake_result = controller.trace(desc.guid, app.guid, "fake")
+        fake_result = controller.trace(app.guid, "fake")
         self.assertTrue(fake_result.startswith(comp_result))
         
         controller.stop()
@@ -239,7 +239,7 @@ class ExecuteTestCase(unittest.TestCase):
         controller.start()
         while not controller.is_finished(app.guid):
             time.sleep(0.5)
-        fake_result = controller.trace(desc.guid, app.guid, "fake")
+        fake_result = controller.trace(app.guid, "fake")
         comp_result = """PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
 
 --- 10.0.0.2 ping statistics ---
@@ -274,7 +274,7 @@ class ExecuteTestCase(unittest.TestCase):
         controller.start()
         while not controller.is_finished(app.guid):
             time.sleep(0.5)
-        fake_result = controller.trace(desc.guid, app.guid, "fake")
+        fake_result = controller.trace(app.guid, "fake")
         comp_result = """PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
 
 --- 10.0.0.2 ping statistics ---
@@ -318,7 +318,7 @@ class ExecuteTestCase(unittest.TestCase):
         controller.start()
         while not controller.is_finished(app.guid):
             time.sleep(0.5)
-        fake_result = controller.trace(desc.guid, app.guid, "fake")
+        fake_result = controller.trace(app.guid, "fake")
         comp_result = """PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
 
 --- 10.0.0.2 ping statistics ---
