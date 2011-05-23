@@ -362,14 +362,26 @@ class ExperimentController(object):
     def experiment_xml(self):
         return self._experiment_xml
 
+    @property
+    def guids(self):
+        guids = list()
+        for testbed_guid in self._testbeds.keys():
+            _guids = self._guids_in_testbed(testbed_guid)
+            if _guids:
+                guids.extend(_guids)
+        return guids
+
     def persist_experiment_xml(self):
         xml_path = os.path.join(self._root_dir, "experiment.xml")
         f = open(xml_path, "w")
         f.write(self._experiment_xml)
         f.close()
 
-    def trace(self, testbed_guid, guid, trace_id, attribute='value'):
-        return self._testbeds[testbed_guid].trace(guid, trace_id, attribute)
+    def trace(self, guid, trace_id, attribute='value'):
+        testbed = self._testbed_for_guid(guid)
+        if testbed != None:
+            return testbed.trace(guid, trace_id, attribute)
+        raise RuntimeError("No element exists with guid %d" % guid)    
 
     @staticmethod
     def _parallel(callables):
@@ -470,7 +482,10 @@ class ExperimentController(object):
         # Last chance to configure (parallel on all testbeds)
         self._parallel([testbed.do_prestart
                         for testbed in self._testbeds.itervalues()])
-                        
+
+        # After this point no new elements will be craeted. Cleaning cache for safety.
+        self._guids_in_testbed_cache = dict()
+
         # start experiment (parallel start on all testbeds)
         self._parallel([testbed.start
                         for testbed in self._testbeds.itervalues()])
@@ -547,27 +562,39 @@ class ExperimentController(object):
         self._init_testbed_controllers(recover = True)
 
     def is_finished(self, guid):
-        for testbed in self._testbeds.values():
-            if guid in testbed.guids:
-                return testbed.status(guid) == STATUS_FINISHED
+        testbed = self._testbed_for_guid(guid)
+        if testbed != None:
+            return testbed.status(guid) == STATUS_FINISHED
         raise RuntimeError("No element exists with guid %d" % guid)    
 
-    def set(self, testbed_guid, guid, name, value, time = TIME_NOW):
-        testbed = self._testbeds[testbed_guid]
-        testbed.set(guid, name, value, time)
+    def set(self, guid, name, value, time = TIME_NOW):
+        testbed = self._testbed_for_guid(guid)
+        if testbed != None:
+            testbed.set(guid, name, value, time)
+        raise RuntimeError("No element exists with guid %d" % guid)    
 
-    def get(self, testbed_guid, guid, name, time = TIME_NOW):
-        testbed = self._testbeds[testbed_guid]
-        return testbed.get(guid, name, time)
+    def get(self, guid, name, time = TIME_NOW):
+        testbed = self._testbed_for_guid(guid)
+        if testbed != None:
+            return testbed.get(guid, name, time)
+        raise RuntimeError("No element exists with guid %d" % guid)    
 
-    def get_tags(self, testbed_guid, guid):
-        testbed = self._testbeds[testbed_guid]
-        return testbed.get_tags(guid)
+    def get_tags(self, guid):
+        testbed = self._testbed_for_guid(guid)
+        if testbed != None:
+            return testbed.get_tags(guid)
+        raise RuntimeError("No element exists with guid %d" % guid)    
 
     def shutdown(self):
         for testbed in self._testbeds.values():
             testbed.shutdown()
-    
+
+    def _testbed_for_guid(self, guid):
+        for testbed_guid in self._testbeds.keys():
+            if guid in self._guids_in_testbed(testbed_guid):
+                return self._testbeds[testbed_guid]
+        return None
+
     def _guids_in_testbed(self, testbed_guid):
         if testbed_guid not in self._testbeds:
             return set()

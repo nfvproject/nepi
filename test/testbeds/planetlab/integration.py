@@ -82,7 +82,7 @@ class PlanetLabIntegrationTestCase(unittest.TestCase):
         controller.start()
         while not controller.is_finished(app.guid):
             time.sleep(0.5)
-        ping_result = controller.trace(pl.guid, app.guid, "stdout")
+        ping_result = controller.trace(app.guid, "stdout")
         comp_result = r"""PING .* \(.*\) \d*\(\d*\) bytes of data.
 
 --- .* ping statistics ---
