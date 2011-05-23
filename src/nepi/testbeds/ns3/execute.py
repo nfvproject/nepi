@@ -124,6 +124,8 @@ class TestbedController(testbed_impl.TestbedController):
                 # graceful shutdown of locally-implemented objects
                 element.Cleanup()
             element = None
+        sys.stdout.flush()
+        sys.stderr.flush()
 
     def _simulator_run(self, condition):
         # Run simulation
