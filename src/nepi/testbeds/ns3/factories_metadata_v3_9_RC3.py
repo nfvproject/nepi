@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from nepi.util import tags
 from nepi.util.constants import AF_INET, STATUS_NOT_STARTED, STATUS_RUNNING, \
         STATUS_FINISHED, STATUS_UNDETERMINED
 from nepi.util.tunchannel_impl import \
@@ -716,6 +717,7 @@ factories_info = dict({
             "Rho",
             "X",
             "Y"],
+        "tags": [tags.MOBILE],
     }),
      "ns3::Node": dict({
         "category": "Topology",
@@ -738,6 +740,7 @@ factories_info = dict({
             "DeltaX",
             "DeltaY",
             "LayoutType"],
+        "tags": [tags.MOBILE],
     }),
      "ns3::TapBridge": dict({
         "category": "Device",
@@ -776,6 +779,7 @@ factories_info = dict({
         "connector_types": ["node"],
         "box_attributes": ["Position",
            "Velocity"],
+        "tags": [tags.MOBILE],
     }),
      "ns3::V4Ping": dict({
         "category": "Application",
@@ -912,6 +916,7 @@ factories_info = dict({
         "connector_types": ["node"],
         "box_attributes": ["Position",
             "Velocity"],
+        "tags": [tags.MOBILE],
     }),
      "ns3::GaussMarkovMobilityModel": dict({
         "category": "Mobility",
@@ -930,6 +935,7 @@ factories_info = dict({
             "NormalPitch",
             "Position",
             "Velocity"],
+        "tags": [tags.MOBILE],
     }),
      "ns3::dot11s::HwmpProtocol": dict({
         "category": "Protocol",
@@ -1021,6 +1027,7 @@ factories_info = dict({
         "box_attributes": ["WaypointsLeft",
             "Position",
             "Velocity"],
+        "tags": [tags.MOBILE],
     }),
      "ns3::FileDescriptorNetDevice": dict({
         "category": "Device",
@@ -1132,6 +1139,7 @@ factories_info = dict({
         "box_attributes": ["rho",
             "X",
             "Y"],
+        "tags": [tags.MOBILE],
     }),
      "ns3::RandomBoxPositionAllocator": dict({
         "category": "Mobility",
@@ -1142,6 +1150,7 @@ factories_info = dict({
         "box_attributes": ["X",
             "Y",
             "Z"],
+        "tags": [tags.MOBILE],
     }),
      "ns3::Ipv6ExtensionDestination": dict({
         "category": "",
@@ -1323,6 +1332,7 @@ factories_info = dict({
         "connector_types": [],
         "box_attributes": ["X",
            "Y"],
+        "tags": [tags.MOBILE],
     }),
      "ns3::NqapWifiMac": dict({
         "category": "Mac",
@@ -1351,6 +1361,7 @@ factories_info = dict({
         "connector_types": ["node"],
         "box_attributes": ["Position",
             "Velocity"],
+        "tags": [tags.MOBILE],
     }),
      "ns3::ThreeLogDistancePropagationLossModel": dict({
         "category": "Loss",
@@ -1423,6 +1434,7 @@ factories_info = dict({
             "MaxY",
             "Position",
             "Velocity"],
+        "tags": [tags.MOBILE],
     }),
      "ns3::BaseStationNetDevice": dict({
         "category": "Device",
@@ -1528,6 +1540,7 @@ factories_info = dict({
             "Pause",
             "Position",
             "Velocity"],
+        "tags": [tags.MOBILE],
     }),
      "ns3::RangePropagationLossModel": dict({
         "category": "Loss",
@@ -1679,6 +1692,7 @@ factories_info = dict({
         "connector_types": ["node"],
         "box_attributes": ["Position",
             "Velocity"],
+        "tags": [tags.MOBILE],
     }),
      "ns3::FixedRssLossModel": dict({
         "category": "Loss",
@@ -1710,6 +1724,7 @@ factories_info = dict({
             "Speed",
             "Position",
             "Velocity"],
+        "tags": [tags.MOBILE],
     }),
      "ns3::ListPositionAllocator": dict({
         "category": "",
@@ -2206,6 +2221,7 @@ factories_info = dict({
             "Pause",
             "Position",
             "Velocity"],
+        "tags": [tags.MOBILE],
     }),
      "ns3::UanMacAloha": dict({
         "category": "",

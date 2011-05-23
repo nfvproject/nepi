@@ -97,6 +97,7 @@ class Factory(AttributesMap):
         self._prestart_function = prestart_function
         self._connector_types = dict()
         self._traces = list()
+        self._tags = list()
         self._box_attributes = AttributesMap()
 
     @property
@@ -155,6 +156,10 @@ class Factory(AttributesMap):
     def traces(self):
         return self._traces
 
+    @property
+    def tags(self):
+        return self._tags
+
     def connector_type(self, name):
         return self._connector_types[name]
 
@@ -163,6 +168,9 @@ class Factory(AttributesMap):
 
     def add_trace(self, trace_id):
         self._traces.append(trace_id)
+
+    def add_tag(self, tag_id):
+        self._tags.append(tag_id)
 
     def add_box_attribute(self, name, help, type, value = None, range = None,
         allowed = None, flags = Attribute.NoFlags, validation_function = None,
@@ -319,6 +327,9 @@ class TestbedController(object):
         raise NotImplementedError
 
     def get_attribute_list(self, guid):
+        raise NotImplementedError
+
+    def get_tags(self, guid):
         raise NotImplementedError
 
     def action(self, time, guid, action):
@@ -548,6 +559,10 @@ class ExperimentController(object):
     def get(self, testbed_guid, guid, name, time = TIME_NOW):
         testbed = self._testbeds[testbed_guid]
         return testbed.get(guid, name, time)
+
+    def get_tags(self, testbed_guid, guid):
+        testbed = self._testbeds[testbed_guid]
+        return testbed.get_tags(guid)
 
     def shutdown(self):
         for testbed in self._testbeds.values():

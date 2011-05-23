@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from nepi.core.design import ExperimentDescription, FactoriesProvider
+from nepi.util import tags
 import mock.metadata_v01 
 import sys
 import unittest
@@ -29,6 +30,8 @@ class DesignTestCase(unittest.TestCase):
         app = desc.create("Application")
         app.connector("node").connect(node1.connector("apps"))
         app.enable_trace("fake")
+
+        self.assertEquals(node1.tags, [tags.MOBILE])
 
         xml = exp_desc.to_xml()
         exp_desc2 = ExperimentDescription()

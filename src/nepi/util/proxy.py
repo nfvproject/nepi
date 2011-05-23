@@ -56,6 +56,7 @@ TESTBED_VERSION  = 36
 EXPERIMENT_SET = 37
 EXPERIMENT_GET = 38
 DO_PRESTART = 39
+GET_TAGS = 40
 
 instruction_text = dict({
     OK:     "OK",
@@ -96,6 +97,7 @@ instruction_text = dict({
     TESTBED_VERSION: "TESTBED_VERSION",
     EXPERIMENT_SET: "EXPERIMENT_SET",
     EXPERIMENT_GET: "EXPERIMENT_GET",
+    GET_TAGS: "GET_TAGS",
     })
 
 def log_msg(server, params):
@@ -643,6 +645,12 @@ class TestbedControllerServer(BaseServer):
     def get_attribute_list(self, guid):
         return self._testbed.get_attribute_list(guid)
 
+    @Marshalling.handles(GET_TAGS)
+    @Marshalling.args(int)
+    @Marshalling.retval( Marshalling.pickled_data )
+    def get_tags(self, guid):
+        return self._testbed.get_tags(guid)
+
 class ExperimentControllerServer(BaseServer):
     def __init__(self, root_dir, log_level, experiment_xml):
         super(ExperimentControllerServer, self).__init__(root_dir, log_level)
@@ -683,6 +691,12 @@ class ExperimentControllerServer(BaseServer):
     @Marshalling.retvoid
     def set(self, testbed_guid, guid, name, value, time):
         self._controller.set(testbed_guid, guid, name, value, time)
+
+    @Marshalling.handles(GET_TAGS)
+    @Marshalling.args(int, int)
+    @Marshalling.retval( Marshalling.pickled_data )
+    def get_tags(self, testbed_guid, guid):
+        return self._controller.get_tags(testbed_guid, guid)
 
     @Marshalling.handles(START)
     @Marshalling.args()

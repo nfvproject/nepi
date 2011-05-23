@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from nepi.util import tags
 from nepi.util.constants import STATUS_FINISHED
 import mock
 import mock.metadata_v01 
@@ -49,6 +50,8 @@ class ExecuteTestCase(unittest.TestCase):
 """
         
         self.assertTrue(app_result.startswith(comp_result))
+        self.assertEquals(instance.get_tags(4), [tags.MOBILE])
+
         instance.stop()
         instance.shutdown()
 

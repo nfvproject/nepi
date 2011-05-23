@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 from nepi.core.design import ExperimentDescription, FactoriesProvider
+from nepi.util import proxy, tags
 from nepi.util.constants import STATUS_FINISHED, DeploymentConfiguration as DC
-from nepi.util import proxy
 import mock
 import mock.metadata_v01
 import mock2
@@ -100,6 +100,8 @@ class ExecuteTestCase(unittest.TestCase):
 1 packets transmitted, 1 received, 0% packet loss, time 0ms
 """
         self.assertTrue(fake_result.startswith(comp_result))
+        self.assertEquals(controller.get_tags(desc.guid, node1.guid), [tags.MOBILE])
+
         controller.stop()
         controller.shutdown()
 
@@ -121,6 +123,8 @@ class ExecuteTestCase(unittest.TestCase):
 1 packets transmitted, 1 received, 0% packet loss, time 0ms
 """
         self.assertTrue(fake_result.startswith(comp_result))
+        self.assertEquals(controller.get_tags(desc.guid, node1.guid), [tags.MOBILE])
+
         controller.stop()
         controller.shutdown()
 
@@ -144,6 +148,8 @@ class ExecuteTestCase(unittest.TestCase):
 1 packets transmitted, 1 received, 0% packet loss, time 0ms
 """
         self.assertTrue(fake_result.startswith(comp_result))
+        self.assertEquals(controller.get_tags(desc.guid, node1.guid), [tags.MOBILE])
+
         controller.stop()
         controller.shutdown()
 
@@ -172,6 +178,8 @@ class ExecuteTestCase(unittest.TestCase):
 1 packets transmitted, 1 received, 0% packet loss, time 0ms
 """
         self.assertTrue(fake_result.startswith(comp_result))
+        self.assertEquals(controller.get_tags(desc.guid, node1.guid), [tags.MOBILE])
+
         controller.stop()
         controller.shutdown()
 
@@ -200,7 +208,8 @@ class ExecuteTestCase(unittest.TestCase):
 1 packets transmitted, 1 received, 0% packet loss, time 0ms
 """
         self.assertTrue(fake_result.startswith(comp_result))
-        
+        self.assertEquals(controller.get_tags(desc.guid, node1.guid), [tags.MOBILE])
+
         # controller dies
         del controller
         

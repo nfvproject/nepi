@@ -4,7 +4,7 @@
 from constants import TESTBED_ID
 from nepi.core import metadata
 from nepi.core.attributes import Attribute
-from nepi.util import validation
+from nepi.util import validation, tags
 from nepi.util.constants import STATUS_FINISHED
 
 NODE = "Node"
@@ -134,7 +134,8 @@ factories_info = dict({
             "stop_function": None,
             "status_function": None,
             "box_attributes": ["fake","test"],
-            "connector_types": ["devs", "apps"]
+            "connector_types": ["devs", "apps"],
+            "tags": [tags.MOBILE]
        }),
     IFACE: dict({
             "help": "Fake iface",

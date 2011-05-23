@@ -184,6 +184,8 @@ class Box(AttributesMap):
         self._container = container
         # traces -- list of available traces for the box
         self._traces = dict()
+        # tags -- list of tags for the box
+        self._tags = list()
         # connectors -- list of available connectors for the box
         self._connectors = dict()
         # factory_attributes -- factory attributes for box construction
@@ -197,6 +199,8 @@ class Box(AttributesMap):
         for trace in factory.traces:
             tr = Trace(trace.trace_id, trace.help, trace.enabled)
             self._traces[trace.trace_id] = tr
+        for tag_id in factory.tags:
+            self._tags.append(tag_id)
         for attr in factory.box_attributes.attributes:
             self.add_attribute(attr.name, attr.help, attr.type, attr.value, 
                     attr.range, attr.allowed, attr.flags, 
@@ -239,6 +243,10 @@ class Box(AttributesMap):
     @property
     def factory_attributes(self):
         return self._factory_attributes
+
+    @property
+    def tags(self):
+        return self._tags
 
     @property
     def addresses(self):
@@ -374,6 +382,7 @@ class Factory(AttributesMap):
         self._category = category
         self._connector_types = list()
         self._traces = list()
+        self._tags = list()
         self._box_attributes = AttributesMap()
         
         if not self._has_addresses and not self._has_routes:
@@ -442,6 +451,10 @@ class Factory(AttributesMap):
         return self._traces
 
     @property
+    def tags(self):
+        return self._tags
+    
+    @property
     def box_attributes(self):
         return self._box_attributes
 
@@ -451,6 +464,9 @@ class Factory(AttributesMap):
     def add_trace(self, trace_id, help, enabled = False):
         trace = Trace(trace_id, help, enabled)
         self._traces.append(trace)
+
+    def add_tag(self, tag_id):
+        self._tags.append(tag_id)
 
     def add_box_attribute(self, name, help, type, value = None, range = None,
         allowed = None, flags = Attribute.NoFlags, validation_function = None,

@@ -134,6 +134,7 @@ class VersionedMetadataInfo(object):
                 "factory_attributes": list of references to attribute_ids,
                 "box_attributes": list of regerences to attribute_ids,
                 "traces": list of references to trace_id
+                "tags": list of references to tag_id
                 "connector_types": list of references to connector_types
            })
         """
@@ -406,6 +407,7 @@ class Metadata(object):
             self._add_attributes(factory, info, "box_attributes", True)
             
             self._add_design_traces(factory, info)
+            self._add_tags(factory, info)
             self._add_design_connector_types(factory, info)
             factories.append(factory)
         return factories
@@ -441,6 +443,7 @@ class Metadata(object):
             self._add_attributes(factory, info, "box_attributes", True)
             
             self._add_execute_traces(factory, info)
+            self._add_tags(factory, info)
             self._add_execute_connector_types(factory, info)
             factories.append(factory)
         return factories
@@ -503,6 +506,11 @@ class Metadata(object):
                 trace_info = self._metadata.traces[trace]
                 trace_id = trace_info["name"]
                 factory.add_trace(trace_id)
+
+    def _add_tags(self, factory, info):
+        if "tags" in info:
+            for tag_id in info["tags"]:
+                factory.add_tag(tag_id)
 
     def _add_design_connector_types(self, factory, info):
         from nepi.core.design import ConnectorType
