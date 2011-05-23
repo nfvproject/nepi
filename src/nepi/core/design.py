@@ -200,7 +200,7 @@ class Box(AttributesMap):
         for attr in factory.box_attributes.attributes:
             self.add_attribute(attr.name, attr.help, attr.type, attr.value, 
                     attr.range, attr.allowed, attr.flags, 
-                    attr.validation_function)
+                    attr.validation_function, attr.category)
         for attr in factory.attributes:
             if attr.modified:
                 self._factory_attributes[attr.name] = attr.value
@@ -326,7 +326,7 @@ class UserRoutableMixin(RoutableMixin):
         return route
 
     def delete_route(self, route):
-        self._route.remove(route)
+        self._routes.remove(route)
         del route
 
     def destroy(self):
@@ -453,9 +453,10 @@ class Factory(AttributesMap):
         self._traces.append(trace)
 
     def add_box_attribute(self, name, help, type, value = None, range = None,
-        allowed = None, flags = Attribute.NoFlags, validation_function = None):
+        allowed = None, flags = Attribute.NoFlags, validation_function = None,
+        category = None):
         self._box_attributes.add_attribute(name, help, type, value, range,
-                allowed, flags, validation_function)
+                allowed, flags, validation_function, category)
 
     def create(self, guid, testbed_description):
         return self._factory(guid, self, testbed_description.guid)
@@ -509,7 +510,7 @@ class TestbedDescription(AttributesMap):
         for attr in metadata.testbed_attributes().attributes:
             self.add_attribute(attr.name, attr.help, attr.type, attr.value, 
                     attr.range, attr.allowed, attr.flags, 
-                    attr.validation_function)
+                    attr.validation_function, attr.category)
 
     @property
     def guid(self):

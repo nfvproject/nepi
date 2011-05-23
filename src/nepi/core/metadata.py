@@ -7,6 +7,9 @@ import getpass
 from nepi.util import validation
 from nepi.util.constants import ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP, DeploymentConfiguration
 
+# Attribute categories
+CATEGORY_DEPLOYMENT = "Deployment"
+
 class VersionedMetadataInfo(object):
     @property
     def connector_types(self):
@@ -47,6 +50,7 @@ class VersionedMetadataInfo(object):
                 "allowed": array of posible values,
                 "flags": attributes flags,
                 "validation_function": validation function for the attribute
+                "category": category for the attribute
             })
         """
         raise NotImplementedError
@@ -147,6 +151,7 @@ class VersionedMetadataInfo(object):
                 "allowed": array of posible values,
                 "flags": attributes flags,
                 "validation_function": validation function for the attribute
+                "category": category for the attribute
              })
             ]
         """
@@ -174,7 +179,7 @@ class Metadata(object):
             help = "Path to the directory where traces and other files will be stored",
             type = Attribute.STRING,
             value = "",
-            flags = Attribute.DesignOnly,
+            flags = Attribute.DesignOnly
         )),
     )
     
@@ -186,6 +191,7 @@ class Metadata(object):
                 help = "Shell commands to run before spawning TestbedController processes",
                 type = Attribute.STRING,
                 flags = Attribute.DesignOnly,
+                category = CATEGORY_DEPLOYMENT,
         )),
         (DC.DEPLOYMENT_MODE, dict(name = DC.DEPLOYMENT_MODE,
                 help = "Instance execution mode",
@@ -196,7 +202,8 @@ class Metadata(object):
                     DC.MODE_SINGLE_PROCESS
                 ],
                 flags = Attribute.DesignOnly,
-                validation_function = validation.is_enum
+                validation_function = validation.is_enum,
+                category = CATEGORY_DEPLOYMENT,
         )),
         (DC.DEPLOYMENT_COMMUNICATION, dict(name = DC.DEPLOYMENT_COMMUNICATION,
                 help = "Instance communication mode",
@@ -207,48 +214,55 @@ class Metadata(object):
                     DC.ACCESS_SSH
                 ],
                 flags = Attribute.DesignOnly,
-                validation_function = validation.is_enum
+                validation_function = validation.is_enum,
+                category = CATEGORY_DEPLOYMENT,
         )),
         (DC.DEPLOYMENT_HOST, dict(name = DC.DEPLOYMENT_HOST,
                 help = "Host where the testbed will be executed",
                 type = Attribute.STRING,
                 value = "localhost",
                 flags = Attribute.DesignOnly,
-                validation_function = validation.is_string
+                validation_function = validation.is_string,
+                category = CATEGORY_DEPLOYMENT,
         )),
         (DC.DEPLOYMENT_USER, dict(name = DC.DEPLOYMENT_USER,
                 help = "User on the Host to execute the testbed",
                 type = Attribute.STRING,
                 value = getpass.getuser(),
                 flags = Attribute.DesignOnly,
-                validation_function = validation.is_string
+                validation_function = validation.is_string,
+                category = CATEGORY_DEPLOYMENT,
         )),
         (DC.DEPLOYMENT_KEY, dict(name = DC.DEPLOYMENT_KEY,
                 help = "Path to SSH key to use for connecting",
                 type = Attribute.STRING,
                 flags = Attribute.DesignOnly,
-                validation_function = validation.is_string
+                validation_function = validation.is_string,
+                category = CATEGORY_DEPLOYMENT,
         )),
         (DC.DEPLOYMENT_PORT, dict(name = DC.DEPLOYMENT_PORT,
                 help = "Port on the Host",
                 type = Attribute.INTEGER,
                 value = 22,
                 flags = Attribute.DesignOnly,
-                validation_function = validation.is_integer
+                validation_function = validation.is_integer,
+                category = CATEGORY_DEPLOYMENT,
         )),
         (DC.ROOT_DIRECTORY, dict(name = DC.ROOT_DIRECTORY,
                 help = "Root directory for storing process files",
                 type = Attribute.STRING,
                 value = ".",
                 flags = Attribute.DesignOnly,
-                validation_function = validation.is_string # TODO: validation.is_path
+                validation_function = validation.is_string, # TODO: validation.is_path
+                category = CATEGORY_DEPLOYMENT,
         )),
         (DC.USE_AGENT, dict(name = DC.USE_AGENT,
                 help = "Use -A option for forwarding of the authentication agent, if ssh access is used", 
                 type = Attribute.BOOL,
                 value = False,
                 flags = Attribute.DesignOnly,
-                validation_function = validation.is_bool
+                validation_function = validation.is_bool,
+                category = CATEGORY_DEPLOYMENT,
         )),
         (DC.LOG_LEVEL, dict(name = DC.LOG_LEVEL,
                 help = "Log level for instance",
@@ -259,14 +273,16 @@ class Metadata(object):
                     DC.DEBUG_LEVEL
                 ],
                 flags = Attribute.DesignOnly,
-                validation_function = validation.is_enum
+                validation_function = validation.is_enum,
+                category = CATEGORY_DEPLOYMENT,
         )),
         (DC.RECOVER, dict(name = DC.RECOVER,
                 help = "Do not intantiate testbeds, rather, reconnect to already-running instances. Used to recover from a dead controller.", 
                 type = Attribute.BOOL,
                 value = False,
                 flags = Attribute.DesignOnly,
-                validation_function = validation.is_bool
+                validation_function = validation.is_bool,
+                category = CATEGORY_DEPLOYMENT,
         )),
     )
     
@@ -360,8 +376,9 @@ class Metadata(object):
             flags =  attr_info["flags"] if "flags" in attr_info \
                     else Attribute.NoFlags
             validation_function = attr_info["validation_function"]
+            category = attr_info["category"] if "category" in attr_info else None
             attributes.add_attribute(name, help, type, value, 
-                    range, allowed, flags, validation_function)
+                    range, allowed, flags, validation_function, category)
         
         return attributes
 
@@ -464,12 +481,13 @@ class Metadata(object):
                     and attr_info["flags"] != None \
                     else Attribute.NoFlags
             validation_function = attr_info["validation_function"]
+            category = attr_info["category"] if "category" in attr_info else None
             if box_attributes:
                 factory.add_box_attribute(name, help, type, value, range, 
-                        allowed, flags, validation_function)
+                        allowed, flags, validation_function, category)
             else:
                 factory.add_attribute(name, help, type, value, range, 
-                        allowed, flags, validation_function)
+                        allowed, flags, validation_function, category)
 
     def _add_design_traces(self, factory, info):
         if "traces" in info:
