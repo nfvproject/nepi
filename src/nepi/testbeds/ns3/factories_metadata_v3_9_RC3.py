@@ -475,20 +475,40 @@ def configure_node(testbed_instance, guid):
             ifindex = -1
             # TODO: HACKISH way of getting the ifindex... improve this
             nifaces = ipv4.GetNInterfaces()
-            for ifidx in range(nifaces):
+            for ifidx in xrange(nifaces):
                 iface = ipv4.GetInterface(ifidx)
                 naddress = iface.GetNAddresses()
-                for addridx in range(naddress):
+                for addridx in xrange(naddress):
                     ifaddr = iface.GetAddress(addridx)
                     ifmask = ifaddr.GetMask()
                     ifindex = ipv4.GetInterfaceForPrefix(nexthop_address, ifmask)
                     if ifindex == ifidx:
                         break
+            if ifindex < 0:
+                # Check previous ptp routes
+                for chaindest, chainprefix, chainhop in routes:
+                    if chaindest == nexthop and chainprefix == 32:
+                        chainhop_address = ns3.Ipv4Address(chainhop)
+                        for ifidx in xrange(nifaces):
+                            iface = ipv4.GetInterface(ifidx)
+                            naddress = iface.GetNAddresses()
+                            for addridx in xrange(naddress):
+                                ifaddr = iface.GetAddress(addridx)
+                                ifmask = ifaddr.GetMask()
+                                ifindex = ipv4.GetInterfaceForPrefix(chainhop_address, ifmask)
+                                if ifindex == ifidx:
+                                    break
+            if ifindex < 0:
+                raise RuntimeError, "Cannot associate interface for routing entry:" \
+                    "%s/%s -> %s. At node %s" % (destination, netprefix, nexthop, guid)
             _add_static_route(ns3, static_routing, 
                 address, netprefix, nexthop_address, ifindex)
         else:
             mask = ns3.Ipv4Mask("/%d" % netprefix) 
             ifindex = ipv4.GetInterfaceForPrefix(address, mask)
+            if ifindex < 0:
+                raise RuntimeError, "Cannot associate interface for routing entry:" \
+                    "%s/%s -> %s. At node %s" % (destination, netprefix, nexthop, guid)
             _add_static_route_if(ns3, static_routing, 
                 address, netprefix, nexthop_address, ifindex)
 
