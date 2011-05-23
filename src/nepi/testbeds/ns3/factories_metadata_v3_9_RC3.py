@@ -147,8 +147,10 @@ def wimaxascii_trace(testbed_instance, guid, trace_id):
     testbed_instance.follow_trace(guid, trace_id, filename)
     filepath = testbed_instance.trace_filename(guid, trace_id)
     helper = testbed_instance.ns3.WimaxHelper()
+    asciiHelper = testbed_instance.ns3.AsciiTraceHelper()
     stream = asciiHelper.CreateFileStream (filepath)
     helper.EnableAscii(stream, element)
+    #helper.EnableLogComponents()
 
 def wimaxpcap_trace(testbed_instance, guid, trace_id):
     node_guid = _get_node_guid(testbed_instance, guid)
