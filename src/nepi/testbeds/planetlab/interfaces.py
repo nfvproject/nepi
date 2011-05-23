@@ -42,6 +42,8 @@ class NodeIface(object):
             self.address, self.netmask,
             self.lladdr,
         )
+    
+    __repr__ = __str__
 
     def add_address(self, address, netprefix, broadcast):
         raise RuntimeError, "Cannot add explicit addresses to public interface"
@@ -101,6 +103,8 @@ class _CrossIface(object):
               self.tun_addr,
               self.tun_port ) 
         )
+    
+    __repr__ = __str__
 
 class TunIface(object):
     _PROTO_MAP = tunproto.TUN_PROTO_MAP
@@ -159,12 +163,15 @@ class TunIface(object):
         
 
     def __str__(self):
-        return "%s<ip:%s/%s %s%s>" % (
+        return "%s<ip:%s/%s %s%s%s>" % (
             self.__class__.__name__,
             self.address, self.netprefix,
             " up" if self.up else " down",
             " snat" if self.snat else "",
+            (" p2p %s" % (self.pointopoint,)) if self.pointopoint else "",
         )
+    
+    __repr__ = __str__
     
     @property
     def if_name(self):
@@ -186,17 +193,15 @@ class TunIface(object):
             myNet = ipaddr.IPNetwork("%s/%d" % (addr, prefix))
             gwIp = ipaddr.IPNetwork(nexthop)
             
-            tgtIp = ipaddr.IPNetwork(dest 
-                + (("/%d" % destprefix) if destprefix else "") )
-            
-            if gwIp in myNet or tgtIp in myNet:
-                return True
-            
             if self.pointopoint:
                 peerIp = ipaddr.IPNetwork(self.pointopoint)
                 
                 if gwIp == peerIp:
                     return True
+            else:
+                if gwIp in myNet:
+                    return True
+        return False
     
     def add_address(self, address, netprefix, broadcast):
         if (self.address or self.netprefix or self.netmask) is not None:
