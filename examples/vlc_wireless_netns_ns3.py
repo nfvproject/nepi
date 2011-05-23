@@ -201,8 +201,8 @@ class VlcWirelessNetnsNs3Example(object):
         #xterm2.connector("node").connect(node4.connector("apps"))
 
         ## testbed_interconnection
-        fdnd1.connector("fd").connect(tap1.connector("fd"))
-        fdnd2.connector("fd").connect(tap2.connector("fd"))
+        fdnd1.connector("->fd").connect(tap1.connector("fd->"))
+        fdnd2.connector("->fd").connect(tap2.connector("fd->"))
       
         self.add_route(node4, "10.0.0.0", 24, "10.0.2.1")
         self.add_route(node4, "10.0.1.0", 24, "10.0.2.1")

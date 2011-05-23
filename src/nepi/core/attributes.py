@@ -39,7 +39,8 @@ class Attribute(object):
     HasNoDefaultValue = 0x08
 
     def __init__(self, name, help, type, value = None, range = None,
-        allowed = None, flags = NoFlags, validation_function = None):
+        allowed = None, flags = NoFlags, validation_function = None, 
+        category = None):
         if not type in Attribute.types:
             raise AttributeError("invalid type %s " % type)
         self._name = name
@@ -53,6 +54,7 @@ class Attribute(object):
         self._allowed = allowed
         self._validation_function = validation_function
         self._modified = False
+        self._category = category
 
     @property
     def name(self):
@@ -90,6 +92,10 @@ class Attribute(object):
     @property
     def modified(self):
         return self._modified
+
+    @property
+    def category(self):
+        return self._category
 
     @property
     def range(self):
@@ -167,6 +173,9 @@ class AttributesMap(object):
     def get_attribute_allowed(self, name):
         return self._attributes[name].allowed
 
+    def get_attribute_category(self, name):
+        return self._attributes[name].category
+
     def is_attribute_read_only(self, name):
         return self._attributes[name].read_only
 
@@ -186,11 +195,12 @@ class AttributesMap(object):
         return self._attributes[name].is_valid_value(value)
 
     def add_attribute(self, name, help, type, value = None, range = None,
-        allowed = None, flags = Attribute.NoFlags, validation_function = None):
+        allowed = None, flags = Attribute.NoFlags, validation_function = None,
+        category = None):
         if name in self._attributes:
             raise AttributeError("Attribute %s already exists" % name)
         attribute = Attribute(name, help, type, value, range, allowed, flags,
-                validation_function)
+                validation_function, category)
         self._attributes[name] = attribute
 
     def del_attribute(self, name):

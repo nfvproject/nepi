@@ -165,9 +165,10 @@ class Factory(AttributesMap):
         self._traces.append(trace_id)
 
     def add_box_attribute(self, name, help, type, value = None, range = None,
-        allowed = None, flags = Attribute.NoFlags, validation_function = None):
+        allowed = None, flags = Attribute.NoFlags, validation_function = None,
+        category = None):
         self._box_attributes.add_attribute(name, help, type, value, range, 
-                allowed, flags, validation_function)
+                allowed, flags, validation_function, category)
 
 class TestbedController(object):
     def __init__(self, testbed_id, testbed_version):
