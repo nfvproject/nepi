@@ -14,7 +14,6 @@ import time
 class Roads09Example(object):
     def __init__(self):
         self.root_dir = tempfile.mkdtemp()
-        print self.root_dir
 
     def add_ns3_node(self, ns3_desc):
         node = ns3_desc.create("ns3::Node")
@@ -84,6 +83,7 @@ class Roads09Example(object):
         ns3_provider = FactoriesProvider(testbed_id, testbed_version)
         ns3_desc = exp_desc.add_testbed_description(ns3_provider)
         ns3_desc.set_attribute_value("homeDirectory", self.root_dir)
+        ns3_desc.set_attribute_value("StopTime", "8.1s")
 
         node1 = self.add_ns3_node(ns3_desc)
         node2 = self.add_ns3_node(ns3_desc)
@@ -108,7 +108,7 @@ class Roads09Example(object):
 
         udp_server = ns3_desc.create("ns3::UdpServer")
         udp_server.set_attribute_value("Port", 100)
-        udp_server.set_attribute_value("StartTime", "1s")
+        udp_server.set_attribute_value("StartTime", "6s")
         udp_server.set_attribute_value("StopTime", "8s")
         udp_server.connector("node").connect(node1.connector("apps"))
 
@@ -118,7 +118,7 @@ class Roads09Example(object):
         udp_client.set_attribute_value("MaxPackets", 1200)
         udp_client.set_attribute_value("Interval", "0.5s")
         udp_client.set_attribute_value("PacketSize", 1024)
-        udp_client.set_attribute_value("StartTime", "1s")
+        udp_client.set_attribute_value("StartTime", "6s")
         udp_client.set_attribute_value("StopTime", "8s")
         udp_client.connector("node").connect(node2.connector("apps"))
 
@@ -132,7 +132,8 @@ class Roads09Example(object):
         controller.shutdown()
 
     def clean(self):
-        shutil.rmtree(self.root_dir)
+        #shutil.rmtree(self.root_dir)
+        pass
 
 if __name__ == '__main__':
     example = Roads09Example()
