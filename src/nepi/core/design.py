@@ -115,7 +115,7 @@ class Trace(AttributesMap):
         super(Trace, self).__init__()
         self._trace_id = trace_id
         self._help = help       
-        self.enabled = enabled
+        self._enabled = enabled
     
     @property
     def trace_id(self):
@@ -124,6 +124,16 @@ class Trace(AttributesMap):
     @property
     def help(self):
         return self._help
+
+    @property
+    def enabled(self):
+        return self._enabled
+
+    def enable(self):
+        self._enabled = True
+
+    def disable(self):
+        self._enabled = False
 
 class Address(AttributesMap):
     def __init__(self):
@@ -237,7 +247,7 @@ class Box(AttributesMap):
         return self._traces.values()
 
     @property
-    def traces_name(self):
+    def trace_names(self):
         return self._traces.keys()
 
     @property
@@ -260,10 +270,13 @@ class Box(AttributesMap):
         return self._traces[trace_id].help
 
     def enable_trace(self, trace_id):
-        self._traces[trace_id].enabled = True
+        self._traces[trace_id].enable()
 
     def disable_trace(self, trace_id):
-        self._traces[trace_id].enabled = False
+        self._traces[trace_id].disable()
+
+    def is_trace_enabled(self, trace_id):
+        return self._traces[trace_id].enabled
 
     def connector(self, name):
         return self._connectors[name]

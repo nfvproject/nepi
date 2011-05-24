@@ -161,7 +161,7 @@ class VlcWirelessNetnsNs3Example(object):
         # create vlc server
         # DEBUG!! target = "{#[vlc_client].addr[0].[Address]#}"
         target = "10.0.2.2" 
-        command = "vlc -I dummy -vvv %s --sout '#rtp{dst=%s,port=5004,mux=ts}' vlc:quit" \
+        command = "vlc -I dummy -vvv %s --sout '#rtp{dst=%s,port=5004,mux=ts}' vlc://quit" \
                 % (self.movie, target)
         vlc_server = netns_desc1.create("Application")
         vlc_server.set_attribute_value("command", command)
@@ -190,9 +190,6 @@ class VlcWirelessNetnsNs3Example(object):
         vlc_client.set_attribute_value("command", command)
         vlc_client.set_attribute_value("user", self.user)
         vlc_client.connector("node").connect(node4.connector("apps"))
-        #vlc_trace = vlc_server.get_trace("StderrTrace")
-        #vlc_trace.get_attribute("Filename").value = "vlc_server.err"
-        #vlc_trace.enable()        
 
         #command = "xterm"
         #xterm2 = netns_desc2.create("Application")
