@@ -131,9 +131,9 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
         while not controller.is_finished(ping.guid):
             time.sleep(0.5)
           
-        ping_result = controller.trace(pl.guid, ping.guid, "stdout")
-        tap_trace = controller.trace(pl.guid, tap1.guid, "packets")
-        tap2_trace = controller.trace(pl2.guid, tap2.guid, "packets")
+        ping_result = controller.trace(ping.guid, "stdout")
+        tap_trace = controller.trace(tap1.guid, "packets")
+        tap2_trace = controller.trace(tap2.guid, "packets")
 
         controller.stop()
         controller.shutdown()
