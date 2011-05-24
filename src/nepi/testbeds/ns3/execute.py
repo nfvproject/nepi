@@ -140,13 +140,15 @@ class TestbedController(testbed_impl.TestbedController):
         """Schedules event on running experiment"""
         def execute_event(condition, has_event_occurred, func, *args):
             # exec func
-            func(*args)
-            # flag event occured
-            has_event_occurred[0] = True
-            # notify condition indicating attribute was set
-            condition.acquire()
-            condition.notifyAll()
-            condition.release()
+            try:
+                func(*args)
+            finally:
+                # flag event occured
+                has_event_occurred[0] = True
+                # notify condition indicating attribute was set
+                condition.acquire()
+                condition.notifyAll()
+                condition.release()
 
         # contextId is defined as general context
         contextId = long(0xffffffff)
@@ -163,9 +165,6 @@ class TestbedController(testbed_impl.TestbedController):
             while not has_event_occurred[0] and not self.ns3.Simulator.IsFinished():
                 condition.wait()
                 condition.release()
-                if not has_event_occurred[0]:
-                    raise RuntimeError('Event could not be scheduled : %s %s ' \
-                    % (repr(func), repr(args)))
 
     def _set_attribute(self, name, ns3_value, element):
         if self.status() == TESTBED_STATUS_STARTED:
