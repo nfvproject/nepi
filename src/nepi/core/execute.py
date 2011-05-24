@@ -580,7 +580,8 @@ class ExperimentController(object):
         testbed = self._testbed_for_guid(guid)
         if testbed != None:
             testbed.set(guid, name, value, time)
-        raise RuntimeError("No element exists with guid %d" % guid)    
+        else:
+            raise RuntimeError("No element exists with guid %d" % guid)    
 
     def get(self, guid, name, time = TIME_NOW):
         testbed = self._testbed_for_guid(guid)

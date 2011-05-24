@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from constants import TESTBED_ID
 from nepi.core import testbed_impl
 from nepi.core.attributes import Attribute
-from nepi.util.constants import TIME_NOW
+from constants import TESTBED_ID
+from nepi.util.constants import TIME_NOW, \
+    TESTBED_STATUS_STARTED
 import os
 import sys
 import threading
@@ -69,8 +70,8 @@ class TestbedController(testbed_impl.TestbedController):
         elif factory.box_attributes.is_attribute_invisible(name):
             return
         else:
-            ns3_value = self._to_ns3_value(guid, name, value) 
-            element.SetAttribute(name, ns3_value)
+            ns3_value = self._to_ns3_value(guid, name, value)
+            self._set_attribute(name, ns3_value, element)
 
     def get(self, guid, name, time = TIME_NOW):
         value = super(TestbedController, self).get(guid, name, time)
@@ -94,7 +95,7 @@ class TestbedController(testbed_impl.TestbedController):
                 (name, guid))
         checker = info.checker
         ns3_value = checker.Create() 
-        element.GetAttribute(name, ns3_value)
+        self._get_attribute(name, ns3_value, element)
         value = ns3_value.SerializeToString(checker)
         attr_type = factory.box_attributes.get_attribute_type(name)
         if attr_type == Attribute.INTEGER:
@@ -165,6 +166,28 @@ class TestbedController(testbed_impl.TestbedController):
                 if not has_event_occurred[0]:
                     raise RuntimeError('Event could not be scheduled : %s %s ' \
                     % (repr(func), repr(args)))
+
+    def _set_attribute(self, name, ns3_value, element):
+        if self.status() == TESTBED_STATUS_STARTED:
+            # schedule the event in the Simulator
+            self._schedule_event(self._condition, self._set_ns3_attribute, 
+                    name, ns3_value, element)
+        else:
+            self._set_ns3_attribute(name, ns3_value, element)
+
+    def _get_attribute(self, name, ns3_value, element):
+        if self.status() == TESTBED_STATUS_STARTED:
+            # schedule the event in the Simulator
+            self._schedule_event(self._condition, self._get_ns3_attribute, 
+                    name, ns3_value, element)
+        else:
+            self._get_ns3_attribute(name, ns3_value, element)
+
+    def _set_ns3_attribute(self, name, ns3_value, element):
+        element.SetAttribute(name, ns3_value)
+
+    def _get_ns3_attribute(self, name, ns3_value, element):
+        element.GetAttribute(name, ns3_value)
 
     def _to_ns3_value(self, guid, name, value):
         factory_id = self._create[guid]
