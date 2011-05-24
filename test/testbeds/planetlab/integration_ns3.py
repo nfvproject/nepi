@@ -213,8 +213,8 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
         while not controller.is_finished(ping.guid):
             time.sleep(0.5)
           
-        ping_result = controller.trace(pl.guid, ping.guid, "stdout")
-        tap_trace = controller.trace(pl.guid, tap1.guid, "packets")
+        ping_result = controller.trace(ping.guid, "stdout")
+        tap_trace = controller.trace(tap1.guid, "packets")
 
         controller.stop()
         controller.shutdown()
@@ -290,7 +290,7 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
         while not controller.is_finished(ping.guid):
             time.sleep(0.5)
           
-        tap_trace = controller.trace(pl.guid, tap1.guid, "packets")
+        tap_trace = controller.trace(tap1.guid, "packets")
 
         controller.stop()
         controller.shutdown()
@@ -397,9 +397,9 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
             tap_trace = []
             for i,tap in enumerate([ tap0, tap1, tap2, tap3, tap4 ]):
                 tap_trace.append("\nTrace for tap%d:\n" % i)
-                tap_trace.append(controller.trace(pl.guid, tap.guid, "packets"))
+                tap_trace.append(controller.trace(tap.guid, "packets"))
             tap_trace = "".join(tap_trace)
-            tap0_trace = controller.trace(pl.guid, tap0.guid, "packets")
+            tap0_trace = controller.trace(tap0.guid, "packets")
 
         finally:
             controller.stop()
