@@ -587,6 +587,14 @@ class ExperimentDescription(object):
             if box: return box
         return None
 
+    def get_element(self, guid):
+        if guid in self._testbed_descriptions:
+            return self._testbed_descriptions[guid]
+        for testbed_description in self._testbed_descriptions.values():
+            box = testbed_description.box(guid)
+            if box: return box
+        return None
+
     def add_testbed_description(self, provider):
         testbed_description = TestbedDescription(self._guid_generator, 
                 provider)
