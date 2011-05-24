@@ -329,7 +329,7 @@ class TestbedController(object):
     def get_attribute_list(self, guid):
         raise NotImplementedError
 
-    def get_tags(self, guid):
+    def get_factory_id(self, guid):
         raise NotImplementedError
 
     def action(self, time, guid, action):
@@ -420,7 +420,7 @@ class ExperimentController(object):
             self._parallel([testbed.do_setup 
                             for guid,testbed in self._testbeds.iteritems()
                             if guid in allowed_guids])
-            
+       
             # perform create-connect in parallel, wait
             # (internal connections only)
             self._parallel([testbed.do_create
@@ -438,9 +438,10 @@ class ExperimentController(object):
             self._parallel([testbed.do_preconfigure
                             for guid,testbed in self._testbeds.iteritems()
                             if guid in allowed_guids])
-            
+            self._clear_caches()
+
         steps_to_configure(self, self._testbeds)
-        
+
         if self._netreffed_testbeds:
             # initally resolve netrefs
             self.do_netrefs(data, fail_if_undefined=False)
@@ -466,7 +467,8 @@ class ExperimentController(object):
         self._parallel([testbed.do_configure
                         for testbed in self._testbeds.itervalues()])
 
-        
+        self._clear_caches()
+
         #print >>sys.stderr, "DO IT"
         #import time
         #time.sleep(60)
@@ -479,16 +481,23 @@ class ExperimentController(object):
             cross_data = self._get_cross_data(guid)
             testbed.do_cross_connect_compl(cross_data)
        
+        self._clear_caches()
+
         # Last chance to configure (parallel on all testbeds)
         self._parallel([testbed.do_prestart
                         for testbed in self._testbeds.itervalues()])
 
-        # After this point no new elements will be craeted. Cleaning cache for safety.
-        self._guids_in_testbed_cache = dict()
+        self._clear_caches()
 
         # start experiment (parallel start on all testbeds)
         self._parallel([testbed.start
                         for testbed in self._testbeds.itervalues()])
+
+        self._clear_caches()
+
+    def _clear_caches(self):
+        # Cleaning cache for safety.
+        self._guids_in_testbed_cache = dict()
 
     def _persist_testbed_proxies(self):
         TRANSIENT = ('Recover',)
@@ -579,10 +588,22 @@ class ExperimentController(object):
             return testbed.get(guid, name, time)
         raise RuntimeError("No element exists with guid %d" % guid)    
 
-    def get_tags(self, guid):
+    def get_factory_id(self, guid):
         testbed = self._testbed_for_guid(guid)
         if testbed != None:
-            return testbed.get_tags(guid)
+            return testbed.get_factory_id(guid)
+        raise RuntimeError("No element exists with guid %d" % guid)    
+
+    def get_testbed_id(self, guid):
+        testbed = self._testbed_for_guid(guid)
+        if testbed != None:
+            return testbed.testbed_id
+        raise RuntimeError("No element exists with guid %d" % guid)    
+
+    def get_testbed_version(self, guid):
+        testbed = self._testbed_for_guid(guid)
+        if testbed != None:
+            return testbed.testbed_version
         raise RuntimeError("No element exists with guid %d" % guid)    
 
     def shutdown(self):

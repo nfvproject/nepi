@@ -53,10 +53,10 @@ DO_CONNECT_COMPL    = 33
 DO_CROSS_CONNECT_COMPL  = 34
 TESTBED_ID  = 35
 TESTBED_VERSION  = 36
-EXPERIMENT_SET = 37
-EXPERIMENT_GET = 38
-DO_PRESTART = 39
-GET_TAGS = 40
+DO_PRESTART = 37
+GET_FACTORY_ID = 38
+GET_TESTBED_ID = 39
+GET_TESTBED_VERSION = 40
 
 instruction_text = dict({
     OK:     "OK",
@@ -90,14 +90,14 @@ instruction_text = dict({
     GET_ROUTE: "GET_ROUTE",
     GET_ADDRESS: "GET_ADDRESS",
     GET_ATTRIBUTE_LIST: "GET_ATTRIBUTE_LIST",
+    GET_FACTORY_ID: "GET_FACTORY_ID",
+    GET_TESTBED_ID: "GET_TESTBED_ID",
+    GET_TESTBED_VERSION: "GET_TESTBED_VERSION",
     ACTION: "ACTION",
     STATUS: "STATUS",
     GUIDS:  "GUIDS",
     TESTBED_ID: "TESTBED_ID",
     TESTBED_VERSION: "TESTBED_VERSION",
-    EXPERIMENT_SET: "EXPERIMENT_SET",
-    EXPERIMENT_GET: "EXPERIMENT_GET",
-    GET_TAGS: "GET_TAGS",
     })
 
 def log_msg(server, params):
@@ -645,11 +645,11 @@ class TestbedControllerServer(BaseServer):
     def get_attribute_list(self, guid):
         return self._testbed.get_attribute_list(guid)
 
-    @Marshalling.handles(GET_TAGS)
+    @Marshalling.handles(GET_FACTORY_ID)
     @Marshalling.args(int)
-    @Marshalling.retval( Marshalling.pickled_data )
-    def get_tags(self, guid):
-        return self._testbed.get_tags(guid)
+    @Marshalling.retval()
+    def get_factory_id(self, guid):
+        return self._testbed.get_factory_id(guid)
 
 class ExperimentControllerServer(BaseServer):
     def __init__(self, root_dir, log_level, experiment_xml):
@@ -686,23 +686,17 @@ class ExperimentControllerServer(BaseServer):
     def is_finished(self, guid):
         return self._controller.is_finished(guid)
 
-    @Marshalling.handles(EXPERIMENT_GET)
+    @Marshalling.handles(GET)
     @Marshalling.args(int, Marshalling.base64_data, str)
     @Marshalling.retval( Marshalling.pickled_data )
     def get(self, guid, name, time):
         return self._controller.get(guid, name, time)
 
-    @Marshalling.handles(EXPERIMENT_SET)
+    @Marshalling.handles(SET)
     @Marshalling.args(int, Marshalling.base64_data, Marshalling.pickled_data, str)
     @Marshalling.retvoid
     def set(self, guid, name, value, time):
         self._controller.set(guid, name, value, time)
-
-    @Marshalling.handles(GET_TAGS)
-    @Marshalling.args(int)
-    @Marshalling.retval( Marshalling.pickled_data )
-    def get_tags(self, guid):
-        return self._controller.get_tags(guid)
 
     @Marshalling.handles(START)
     @Marshalling.args()
@@ -727,6 +721,24 @@ class ExperimentControllerServer(BaseServer):
     @Marshalling.retvoid
     def shutdown(self):
         self._controller.shutdown()
+
+    @Marshalling.handles(GET_TESTBED_ID)
+    @Marshalling.args(int)
+    @Marshalling.retval()
+    def get_testbed_id(self, guid):
+        return self._controller.get_testbed_id(guid)
+
+    @Marshalling.handles(GET_FACTORY_ID)
+    @Marshalling.args(int)
+    @Marshalling.retval()
+    def get_factory_id(self, guid):
+        return self._controller.get_factory_id(guid)
+
+    @Marshalling.handles(GET_TESTBED_VERSION)
+    @Marshalling.args(int)
+    @Marshalling.retval()
+    def get_testbed_version(self, guid):
+        return self._controller.get_testbed_version(guid)
 
 class BaseProxy(object):
     _ServerClass = None

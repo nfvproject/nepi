@@ -50,7 +50,6 @@ class ExecuteTestCase(unittest.TestCase):
 """
         
         self.assertTrue(app_result.startswith(comp_result))
-        self.assertEquals(instance.get_tags(4), [tags.MOBILE])
 
         instance.stop()
         instance.shutdown()

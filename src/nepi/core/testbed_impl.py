@@ -392,14 +392,14 @@ class TestbedController(execute.TestbedController):
         
         return addresses[index][attribute_index]
 
-    def get_tags(self, guid):
-        factory = self._get_factory(guid)
-        return factory.tags
-
     def get_attribute_list(self, guid):
         factory = self._get_factory(guid)
         attribute_list = list()
         return factory.box_attributes.attributes_list
+
+    def get_factory_id(self, guid):
+        factory = self._get_factory(guid)
+        return factory.factory_id
 
     def start(self, time = TIME_NOW):
         self._do_in_factory_order(

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from nepi.core.design import ExperimentDescription, FactoriesProvider
-from nepi.util import proxy, tags
+from nepi.util import proxy
 from nepi.util.constants import STATUS_FINISHED, DeploymentConfiguration as DC
 import mock
 import mock.metadata_v01
@@ -100,7 +100,10 @@ class ExecuteTestCase(unittest.TestCase):
 1 packets transmitted, 1 received, 0% packet loss, time 0ms
 """
         self.assertTrue(fake_result.startswith(comp_result))
-        self.assertEquals(controller.get_tags(node1.guid), [tags.MOBILE])
+
+        self.assertEquals(controller.get_testbed_id(node1.guid), "mock")
+        self.assertEquals(controller.get_testbed_version(node1.guid), "01")
+        self.assertEquals(controller.get_factory_id(node1.guid), "Node")
 
         controller.stop()
         controller.shutdown()
@@ -123,7 +126,10 @@ class ExecuteTestCase(unittest.TestCase):
 1 packets transmitted, 1 received, 0% packet loss, time 0ms
 """
         self.assertTrue(fake_result.startswith(comp_result))
-        self.assertEquals(controller.get_tags(node1.guid), [tags.MOBILE])
+
+        self.assertEquals(controller.get_testbed_id(node1.guid), "mock")
+        self.assertEquals(controller.get_testbed_version(node1.guid), "01")
+        self.assertEquals(controller.get_factory_id(node1.guid), "Node")
 
         controller.stop()
         controller.shutdown()
@@ -148,7 +154,10 @@ class ExecuteTestCase(unittest.TestCase):
 1 packets transmitted, 1 received, 0% packet loss, time 0ms
 """
         self.assertTrue(fake_result.startswith(comp_result))
-        self.assertEquals(controller.get_tags(node1.guid), [tags.MOBILE])
+
+        self.assertEquals(controller.get_testbed_id(node1.guid), "mock")
+        self.assertEquals(controller.get_testbed_version(node1.guid), "01")
+        self.assertEquals(controller.get_factory_id(node1.guid), "Node")
 
         controller.stop()
         controller.shutdown()
@@ -178,7 +187,10 @@ class ExecuteTestCase(unittest.TestCase):
 1 packets transmitted, 1 received, 0% packet loss, time 0ms
 """
         self.assertTrue(fake_result.startswith(comp_result))
-        self.assertEquals(controller.get_tags(node1.guid), [tags.MOBILE])
+
+        self.assertEquals(controller.get_testbed_id(node1.guid), "mock")
+        self.assertEquals(controller.get_testbed_version(node1.guid), "01")
+        self.assertEquals(controller.get_factory_id(node1.guid), "Node")
 
         controller.stop()
         controller.shutdown()
@@ -208,7 +220,10 @@ class ExecuteTestCase(unittest.TestCase):
 1 packets transmitted, 1 received, 0% packet loss, time 0ms
 """
         self.assertTrue(fake_result.startswith(comp_result))
-        self.assertEquals(controller.get_tags(node1.guid), [tags.MOBILE])
+
+        self.assertEquals(controller.get_testbed_id(node1.guid), "mock")
+        self.assertEquals(controller.get_testbed_version(node1.guid), "01")
+        self.assertEquals(controller.get_factory_id(node1.guid), "Node")
 
         # controller dies
         del controller
