@@ -13,8 +13,6 @@ from nepi.util.guid import GuidGenerator
 from nepi.util.graphical_info import GraphicalInfo
 from nepi.util.parser._xml import XmlExperimentParser
 import sys
-    
-
 
 class ConnectorType(ConnectorTypeBase):
     def __init__(self, testbed_id, factory_id, name, help, max = -1, min = 0):
@@ -201,7 +199,7 @@ class Box(AttributesMap):
         # factory_attributes -- factory attributes for box construction
         self._factory_attributes = dict()
         # graphical_info -- GUI position information
-        self.graphical_info = GraphicalInfo(str(self._guid))
+        self.graphical_info = GraphicalInfo()
 
         for connector_type in factory.connector_types:
             connector = Connector(self, connector_type)
@@ -527,13 +525,13 @@ class FactoriesProvider(object):
         del self._factories[factory_id]
 
 class TestbedDescription(AttributesMap):
-    def __init__(self, guid_generator, provider):
+    def __init__(self, guid_generator, provider, guid = None):
         super(TestbedDescription, self).__init__()
         self._guid_generator = guid_generator
-        self._guid = guid_generator.next()
+        self._guid = guid_generator.next(guid)
         self._provider = provider
         self._boxes = dict()
-        self.graphical_info = GraphicalInfo(str(self._guid))
+        self.graphical_info = GraphicalInfo()
 
         metadata = Metadata(provider.testbed_id, provider.testbed_version)
         for attr in metadata.testbed_attributes().attributes:
@@ -556,8 +554,8 @@ class TestbedDescription(AttributesMap):
     def box(self, guid):
         return self._boxes[guid] if guid in self._boxes else None
 
-    def create(self, factory_id):
-        guid = self._guid_generator.next()
+    def create(self, factory_id, guid = None):
+        guid = self._guid_generator.next(guid)
         factory = self._provider.factory(factory_id)
         box = factory.create(guid, self)
         self._boxes[guid] = box
@@ -574,8 +572,8 @@ class TestbedDescription(AttributesMap):
         self._boxes = None
 
 class ExperimentDescription(object):
-    def __init__(self, guid = 0):
-        self._guid_generator = GuidGenerator(guid)
+    def __init__(self):
+        self._guid_generator = GuidGenerator()
         self._testbed_descriptions = dict()
 
     @property
@@ -608,16 +606,17 @@ class ExperimentDescription(object):
             if box: return box
         return None
 
-    def add_testbed_description(self, provider):
+    def add_testbed_description(self, provider, guid = None):
         testbed_description = TestbedDescription(self._guid_generator, 
-                provider)
+                provider, guid)
         guid = testbed_description.guid
         self._testbed_descriptions[guid] = testbed_description
         return testbed_description
 
-    def remove_testbed_description(self, testbed_description):
-        guid = testbed_description.guid
+    def remove_testbed_description(self, guid):
+        testbed_description = self._testbed_descriptions[guid]
         del self._testbed_descriptions[guid]
+        testbed_description.destroy()
 
     def destroy(self):
         for testbed_description in self.testbed_descriptions:

@@ -63,12 +63,11 @@ class XmlExperimentParser(ExperimentParser):
     def graphical_info_data_to_xml(self, doc, parent_tag, guid, data):
         graphical_info_tag = doc.createElement("graphical_info") 
         parent_tag.appendChild(graphical_info_tag)
-        (x, y, width, height, label) = data.get_graphical_info_data(guid)
+        (x, y, width, height) = data.get_graphical_info_data(guid)
         graphical_info_tag.setAttribute("x", str(x))
         graphical_info_tag.setAttribute("y", str(y))
         graphical_info_tag.setAttribute("width", str(width))
         graphical_info_tag.setAttribute("height", str(height))
-        graphical_info_tag.setAttribute("label", str(label))
 
     def factory_attributes_data_to_xml(self, doc, parent_tag, guid, data):
         factory_attributes_tag = doc.createElement("factory_attributes")
@@ -197,8 +196,7 @@ class XmlExperimentParser(ExperimentParser):
             y = float(graphical_info_tag.getAttribute("y"))
             width = float(graphical_info_tag.getAttribute("width"))
             height = float(graphical_info_tag.getAttribute("height"))
-            label = str(graphical_info_tag.getAttribute("label"))
-            data.add_graphical_info_data(guid, x, y, width, height, label)
+            data.add_graphical_info_data(guid, x, y, width, height)
 
     def factory_attributes_data_from_xml(self, tag, guid, data):
         factory_attributes_tag_list = tag.getElementsByTagName(
