@@ -163,6 +163,17 @@ def wimaxpcap_trace(testbed_instance, guid, trace_id):
     helper = testbed_instance.ns3.WimaxHelper()
     helper.EnablePcap(filepath, element, explicitFilename = True)
 
+def rtt_trace(testbed_instance, guid, trace_id):
+    element = testbed_instance._elements[guid]
+    helper = testbed_instance.ns3.PlotHelper()
+    prefix = "trace-app-%d" % (guid, )
+    filename = helper.GetFilenameFromSource(prefix, element, trace_id)
+    testbed_instance.follow_trace(guid, trace_id, filename)
+    filepath = testbed_instance.trace_filename(guid, trace_id)
+    prefix = filepath[:filepath.find(prefix)+len(prefix)]
+    helper.EnableTrace(element, trace_id, prefix, "T")
+
+
 trace_functions = dict({
     "P2PPcapTrace": p2ppcap_trace,
     "P2PAsciiTrace": p2pascii_trace,
@@ -172,6 +183,7 @@ trace_functions = dict({
     "YansWifiPhyPcapTrace": yanswifipcap_trace,
     "WimaxPcapTrace": wimaxpcap_trace,
     "WimaxAsciiTrace": wimaxascii_trace,
+    "Rtt": rtt_trace,
     })
 
 ### Creation functions ###
@@ -796,6 +808,7 @@ factories_info = dict({
             "Size",
             "StartTime",
             "StopTime"],
+        "traces": ["rtt"],
     }),
      "ns3::dot11s::PeerLink": dict({
         "category": "",
