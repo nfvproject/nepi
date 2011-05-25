@@ -34,4 +34,8 @@ traces = dict({
                 "name": "WimaxAsciiTrace",
                 "help": "Ascii trace from a wimax network station"
               }),
+    "rtt": dict({
+                "name": "Rtt",
+                "help": "Gnuplot-able trace of round trip times"
+    })
 })
