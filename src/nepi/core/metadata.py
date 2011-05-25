@@ -182,6 +182,13 @@ class Metadata(object):
             value = "",
             flags = Attribute.DesignOnly
         )),
+        ("label", dict(
+            name = "label",
+            validation_function = validation.is_string,
+            type = Attribute.STRING,
+            flags = Attribute.DesignOnly,
+            help = "A unique identifier for referring to this testbed",
+        )),
     )
     
     DEPLOYMENT_ATTRIBUTES = (
