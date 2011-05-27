@@ -172,6 +172,11 @@ def create_node(testbed_instance, guid):
         for guid in dev_guids )
     element.min_num_external_ifaces = num_open_ifaces
     
+    # require vroute vsys if we have routes to set up
+    routes = testbed_instance._add_route.get(guid)
+    if routes:
+        element.required_vsys.add("vroute")
+    
     testbed_instance.elements[guid] = element
 
 def create_nodeiface(testbed_instance, guid):
