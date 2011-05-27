@@ -165,7 +165,8 @@ def alloc(requests, logstream = None, nonseparable = False, saveinteresting = No
             
             # Do backtracking on those whose cardinality leaves a choice
             # Force a pick when it does not
-            if order and Gavail[order[0]] <= 1:
+            if order and (Gavail[order[0]] <= 1
+                          or classify.classCardinality(order[0]) <= 1):
                 order = order[:1]
             
             for c in order:
@@ -415,7 +416,7 @@ if __name__ == '__main__':
         except:
             print "ABORTING TEST"
         
-        print "Success rates:"
+        print "\nSuccess rates:"
         print "  Mostly possible: %d/%d (%.2f%%)" % (suc_mostlypossible, mostlypossible, 100.0 * suc_mostlypossible / max(1,mostlypossible))
         print "  Mostly impossible: %d/%d (%.2f%%)" % (suc_mostlyimpossible, mostlyimpossible, 100.0 * suc_mostlyimpossible / max(1,mostlyimpossible))
         print "  Huge: %d/%d (%.2f%%)" % (suc_huge, huge, 100.0 * suc_huge / max(1,huge))
