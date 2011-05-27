@@ -24,12 +24,12 @@ class Node(object):
         #   There are replacements that are applied with string formatting,
         #   so '%' has to be escaped as '%%'.
         'architecture' : ('arch','value'),
-        'operating_system' : ('fcdistro','value'),
+        'operatingSystem' : ('fcdistro','value'),
         'pl_distro' : ('pldistro','value'),
-        'min_reliability' : ('reliability%(timeframe)s', ']value'),
-        'max_reliability' : ('reliability%(timeframe)s', '[value'),
-        'min_bandwidth' : ('bw%(timeframe)s', ']value'),
-        'max_bandwidth' : ('bw%(timeframe)s', '[value'),
+        'minReliability' : ('reliability%(timeframe)s', ']value'),
+        'maxReliability' : ('reliability%(timeframe)s', '[value'),
+        'minBandwidth' : ('bw%(timeframe)s', ']value'),
+        'maxBandwidth' : ('bw%(timeframe)s', '[value'),
     }    
     
     DEPENDS_PIDFILE = '/tmp/nepi-depends.pid'
@@ -43,14 +43,14 @@ class Node(object):
         # Attributes
         self.hostname = None
         self.architecture = None
-        self.operating_system = None
+        self.operatingSystem = None
         self.pl_distro = None
         self.site = None
         self.emulation = None
-        self.min_reliability = None
-        self.max_reliability = None
-        self.min_bandwidth = None
-        self.max_bandwidth = None
+        self.minReliability = None
+        self.maxReliability = None
+        self.minBandwidth = None
+        self.maxBandwidth = None
         self.min_num_external_ifaces = None
         self.max_num_external_ifaces = None
         self.timeframe = 'm'
@@ -106,6 +106,7 @@ class Node(object):
         
         # get initial candidates (no tag filters)
         basefilters = self.build_filters({}, self.BASEFILTERS)
+        rootfilters = basefilters.copy()
         if filter_slice_id:
             basefilters['|slice_ids'] = (filter_slice_id,)
         
@@ -128,7 +129,7 @@ class Node(object):
             
             # don't bother if there's no filter defined
             if attr in applicable:
-                tagfilter = basefilters.copy()
+                tagfilter = rootfilters.copy()
                 tagfilter['tagname'] = tagname % replacements
                 tagfilter[expr % replacements] = getattr(self,attr)
                 tagfilter['node_id'] = list(candidates)
@@ -183,6 +184,42 @@ class Node(object):
             candidates = set(filter(predicate, candidates))
             
         return candidates
+    
+    def make_filter_description(self):
+        """
+        Makes a human-readable description of filtering conditions
+        for find_candidates.
+        """
+        
+        # get initial candidates (no tag filters)
+        filters = self.build_filters({}, self.BASEFILTERS)
+        
+        # keyword-only "pseudofilters"
+        if self.site:
+            filters['peer'] = self.site
+            
+        # filter by tag, one tag at a time
+        applicable = self.applicable_filters
+        for tagfilter in self.TAGFILTERS.iteritems():
+            attr, (tagname, expr) = tagfilter
+            
+            # don't bother if there's no filter defined
+            if attr in applicable:
+                filters[attr] = getattr(self,attr)
+        
+        # filter by vsys tags - special case since it doesn't follow
+        # the usual semantics
+        if self.required_vsys:
+            filters['vsys'] = ','.join(list(self.required_vsys))
+        
+        # filter by iface count
+        if self.min_num_external_ifaces is not None or self.max_num_external_ifaces is not None:
+            filters['num_ifaces'] = '-'.join([
+                str(self.min_num_external_ifaces or '0'),
+                str(self.max_num_external_ifaces or 'inf')
+            ])
+            
+        return '; '.join(map('%s: %s'.__mod__,filters.iteritems()))
 
     def assign_node_id(self, node_id):
         self._node_id = node_id

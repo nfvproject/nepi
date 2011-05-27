@@ -166,7 +166,7 @@ def create_node(testbed_instance, guid):
     
     # add constraint on number of (real) interfaces
     # by counting connected devices
-    dev_guids = testbed_instance.get_connected(guid, "node", "devs")
+    dev_guids = testbed_instance.get_connected(guid, "devs", "node")
     num_open_ifaces = sum( # count True values
         NODEIFACE == testbed_instance._get_factory_id(guid)
         for guid in dev_guids )
