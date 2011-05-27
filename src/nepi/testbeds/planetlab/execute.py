@@ -104,7 +104,8 @@ class TestbedController(testbed_impl.TestbedController):
                         node.assign_node_id(node_id)
                         to_provision.add(node_id)
                     elif not candidates:
-                        raise RuntimeError, "Cannot assign resources for node %s, no candidates" % (guid,)
+                        raise RuntimeError, "Cannot assign resources for node %s, no candidates sith %s" % (guid,
+                            node.make_filter_description())
         
         # Now do the backtracking search for a suitable solution
         # First with existing slice nodes
