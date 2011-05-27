@@ -6,6 +6,7 @@ from nepi.core import testbed_impl
 from nepi.util.constants import TIME_NOW
 import os
 import time
+import resourcealloc
 
 class TestbedController(testbed_impl.TestbedController):
     def __init__(self, testbed_version):
@@ -80,12 +81,11 @@ class TestbedController(testbed_impl.TestbedController):
         super(TestbedController, self).do_preconfigure()
 
     def do_resource_discovery(self):
-        # Do what?
-
-        # Provisional algo:
+        to_provision = self._to_provision = set()
+        
+        # Initial algo:
         #   look for perfectly defined nodes
         #   (ie: those with only one candidate)
-        to_provision = self._to_provision = set()
         for guid, node in self._elements.iteritems():
             if isinstance(node, self._node.Node) and node._node_id is None:
                 # Try existing nodes first
@@ -98,13 +98,43 @@ class TestbedController(testbed_impl.TestbedController):
                     # Try again including unassigned nodes
                     candidates = node.find_candidates()
                     if len(candidates) > 1:
-                        raise RuntimeError, "Cannot assign resources for node %s, too many candidates" % (guid,)
+                        continue
                     if len(candidates) == 1:
                         node_id = iter(candidates).next()
                         node.assign_node_id(node_id)
                         to_provision.add(node_id)
                     elif not candidates:
                         raise RuntimeError, "Cannot assign resources for node %s, no candidates" % (guid,)
+        
+        # Now do the backtracking search for a suitable solution
+        # First with existing slice nodes
+        reqs = []
+        nodes = []
+        for guid, node in self._elements.iteritems():
+            if isinstance(node, self._node.Node) and node._node_id is None:
+                # Try existing nodes first
+                # If we have only one candidate, simply use it
+                candidates = node.find_candidates(
+                    filter_slice_id = self.slice_id)
+                reqs.append(candidates)
+                nodes.append(node)
+        
+        if nodes and reqs:
+            try:
+                solution = resourcealloc.alloc(reqs)
+            except resourcealloc.ResourceAllocationError:
+                # Failed, try again with all nodes
+                reqs = []
+                for node in nodes:
+                    candidates = node.find_candidates()
+                    reqs.append(candidates)
+                
+                solution = resourcealloc.alloc(reqs)
+                to_provision.update(solution)
+            
+            # Do assign nodes
+            for node, node_id in zip(nodes, solution):
+                node.assign_node_id(node_id)
 
     def do_provisioning(self):
         if self._to_provision:

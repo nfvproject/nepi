@@ -9,6 +9,7 @@ import time
 import os
 import collections
 import cStringIO
+import resourcealloc
 
 from nepi.util import server
 
@@ -107,6 +108,10 @@ class Node(object):
         basefilters = self.build_filters({}, self.BASEFILTERS)
         if filter_slice_id:
             basefilters['|slice_ids'] = (filter_slice_id,)
+        
+        # only pick healthy nodes
+        basefilters['run_level'] = 'boot'
+        basefilters['boot_state'] = 'boot'
         
         # keyword-only "pseudofilters"
         extra = {}
