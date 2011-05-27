@@ -117,7 +117,7 @@ class Attribute(object):
             self._value = value
             self._modified = True
         else:
-            raise RuntimeError("Invalid value %s for attribute %s" %
+            raise ValueError("Invalid value %s for attribute %s" %
                     (str(value), self.name))
 
     value = property(get_value, set_value)
