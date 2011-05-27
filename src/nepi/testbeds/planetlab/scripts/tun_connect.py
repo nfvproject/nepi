@@ -1,0 +1,470 @@
+import sys
+
+import socket
+import fcntl
+import os
+import os.path
+import select
+import signal
+
+import struct
+import ctypes
+import optparse
+import threading
+import subprocess
+import re
+import functools
+import time
+import base64
+
+import tunchannel
+
+tun_name = 'tun0'
+tun_path = '/dev/net/tun'
+hostaddr = socket.gethostbyname(socket.gethostname())
+
+usage = "usage: %prog [options] <remote-endpoint>"
+
+parser = optparse.OptionParser(usage=usage)
+
+parser.add_option(
+    "-i", "--iface", dest="tun_name", metavar="DEVICE",
+    default = "tun0",
+    help = "TUN/TAP interface to tap into")
+parser.add_option(
+    "-d", "--tun-path", dest="tun_path", metavar="PATH",
+    default = "/dev/net/tun",
+    help = "TUN/TAP device file path or file descriptor number")
+parser.add_option(
+    "-p", "--port", dest="port", metavar="PORT", type="int",
+    default = 15000,
+    help = "Peering TCP port to connect or listen to.")
+parser.add_option(
+    "--pass-fd", dest="pass_fd", metavar="UNIX_SOCKET",
+    default = None,
+    help = "Path to a unix-domain socket to pass the TUN file descriptor to. "
+           "If given, all other connectivity options are ignored, tun_connect will "
+           "simply wait to be killed after passing the file descriptor, and it will be "
+           "the receiver's responsability to handle the tunneling.")
+
+parser.add_option(
+    "-m", "--mode", dest="mode", metavar="MODE",
+    default = "none",
+    help = 
+        "Set mode. One of none, tun, tap, pl-tun, pl-tap. In any mode except none, a TUN/TAP will be created "
+        "by using the proper interface (tunctl for tun/tap, /vsys/fd_tuntap.control for pl-tun/pl-tap), "
+        "and it will be brought up (with ifconfig for tun/tap, with /vsys/vif_up for pl-tun/pl-tap). You have "
+        "to specify an VIF_ADDRESS and VIF_MASK in any case (except for none).")
+parser.add_option(
+    "-A", "--vif-address", dest="vif_addr", metavar="VIF_ADDRESS",
+    default = None,
+    help = 
+        "See mode. This specifies the VIF_ADDRESS, "
+        "the IP address of the virtual interface.")
+parser.add_option(
+    "-M", "--vif-mask", dest="vif_mask", type="int", metavar="VIF_MASK", 
+    default = None,
+    help = 
+        "See mode. This specifies the VIF_MASK, "
+        "a number indicating the network type (ie: 24 for a C-class network).")
+parser.add_option(
+    "-S", "--vif-snat", dest="vif_snat", 
+    action = "store_true",
+    default = False,
+    help = "See mode. This specifies whether SNAT will be enabled for the virtual interface. " )
+parser.add_option(
+    "-P", "--vif-pointopoint", dest="vif_pointopoint",  metavar="DST_ADDR",
+    default = None,
+    help = 
+        "See mode. This specifies the remote endpoint's virtual address, "
+        "for point-to-point routing configuration. "
+        "Not supported by PlanetLab" )
+parser.add_option(
+    "-Q", "--vif-txqueuelen", dest="vif_txqueuelen", metavar="SIZE", type="int",
+    default = None,
+    help = 
+        "See mode. This specifies the interface's transmission queue length. " )
+parser.add_option(
+    "-u", "--udp", dest="udp", metavar="PORT", type="int",
+    default = None,
+    help = 
+        "Bind to the specified UDP port locally, and send UDP datagrams to the "
+        "remote endpoint, creating a tunnel through UDP rather than TCP." )
+parser.add_option(
+    "-k", "--key", dest="cipher_key", metavar="KEY",
+    default = None,
+    help = 
+        "Specify a symmetric encryption key with which to protect packets across "
+        "the tunnel. python-crypto must be installed on the system." )
+parser.add_option(
+    "-N", "--no-capture", dest="no_capture", 
+    action = "store_true",
+    default = False,
+    help = "If specified, packets won't be logged to standard error "
+           "(default is to log them to standard error). " )
+
+(options, remaining_args) = parser.parse_args(sys.argv[1:])
+
+
+ETH_P_ALL = 0x00000003
+ETH_P_IP = 0x00000800
+TUNSETIFF = 0x400454ca
+IFF_NO_PI = 0x00001000
+IFF_TAP = 0x00000002
+IFF_TUN = 0x00000001
+IFF_VNET_HDR = 0x00004000
+TUN_PKT_STRIP = 0x00000001
+IFHWADDRLEN = 0x00000006
+IFNAMSIZ = 0x00000010
+IFREQ_SZ = 0x00000028
+FIONREAD = 0x0000541b
+
+def ifnam(x):
+    return x+'\x00'*(IFNAMSIZ-len(x))
+
+def ifreq(iface, flags):
+    # ifreq contains:
+    #   char[IFNAMSIZ] : interface name
+    #   short : flags
+    #   <padding>
+    ifreq = ifnam(iface)+struct.pack("H",flags);
+    ifreq += '\x00' * (len(ifreq)-IFREQ_SZ)
+    return ifreq
+
+def tunopen(tun_path, tun_name):
+    if tun_path.isdigit():
+        # open TUN fd
+        print >>sys.stderr, "Using tun:", tun_name, "fd", tun_path
+        tun = os.fdopen(int(tun_path), 'r+b', 0)
+    else:
+        # open TUN path
+        print >>sys.stderr, "Using tun:", tun_name, "at", tun_path
+        tun = open(tun_path, 'r+b', 0)
+
+        # bind file descriptor to the interface
+        fcntl.ioctl(tun.fileno(), TUNSETIFF, ifreq(tun_name, IFF_NO_PI|IFF_TUN))
+    
+    return tun
+
+def tunclose(tun_path, tun_name, tun):
+    if tun_path.isdigit():
+        # close TUN fd
+        os.close(int(tun_path))
+        tun.close()
+    else:
+        # close TUN object
+        tun.close()
+
+def tuntap_alloc(kind, tun_path, tun_name):
+    args = ["tunctl"]
+    if kind == "tun":
+        args.append("-n")
+    if tun_name:
+        args.append("-t")
+        args.append(tun_name)
+    proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+    out,err = proc.communicate()
+    if proc.wait():
+        raise RuntimeError, "Could not allocate %s device" % (kind,)
+        
+    match = re.search(r"Set '(?P<dev>(?:tun|tap)[0-9]*)' persistent and owned by .*", out, re.I)
+    if not match:
+        raise RuntimeError, "Could not allocate %s device - tunctl said: %s" % (kind, out)
+    
+    tun_name = match.group("dev")
+    print >>sys.stderr, "Allocated %s device: %s" % (kind, tun_name)
+    
+    return tun_path, tun_name
+
+def tuntap_dealloc(tun_path, tun_name):
+    args = ["tunctl", "-d", tun_name]
+    proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+    out,err = proc.communicate()
+    if proc.wait():
+        print >> sys.stderr, "WARNING: error deallocating %s device" % (tun_name,)
+
+def nmask_to_dot_notation(mask):
+    mask = hex(((1 << mask) - 1) << (32 - mask)) # 24 -> 0xFFFFFF00
+    mask = mask[2:] # strip 0x
+    mask = mask.decode("hex") # to bytes
+    mask = '.'.join(map(str,map(ord,mask))) # to 255.255.255.0
+    return mask
+
+def vif_start(tun_path, tun_name):
+    args = ["ifconfig", tun_name, options.vif_addr, 
+            "netmask", nmask_to_dot_notation(options.vif_mask),
+            "-arp" ]
+    if options.vif_pointopoint:
+        args.extend(["pointopoint",options.vif_pointopoint])
+    if options.vif_txqueuelen is not None:
+        args.extend(["txqueuelen",str(options.vif_txqueuelen)])
+    args.append("up")
+    proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+    out,err = proc.communicate()
+    if proc.wait():
+        raise RuntimeError, "Error starting virtual interface"
+    
+    if options.vif_snat:
+        # set up SNAT using iptables
+        # TODO: stop vif on error. 
+        #   Not so necessary since deallocating the tun/tap device
+        #   will forcibly stop it, but it would be tidier
+        args = [ "iptables", "-t", "nat", "-A", "POSTROUTING", 
+                 "-s", "%s/%d" % (options.vif_addr, options.vif_mask),
+                 "-j", "SNAT",
+                 "--to-source", hostaddr, "--random" ]
+        proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+        out,err = proc.communicate()
+        if proc.wait():
+            raise RuntimeError, "Error setting up SNAT"
+
+def vif_stop(tun_path, tun_name):
+    if options.vif_snat:
+        # set up SNAT using iptables
+        args = [ "iptables", "-t", "nat", "-D", "POSTROUTING", 
+                 "-s", "%s/%d" % (options.vif_addr, options.vif_mask),
+                 "-j", "SNAT",
+                 "--to-source", hostaddr, "--random" ]
+        proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+        out,err = proc.communicate()
+    
+    args = ["ifconfig", tun_name, "down"]
+    proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+    out,err = proc.communicate()
+    if proc.wait():
+        print >>sys.stderr, "WARNING: error stopping virtual interface"
+    
+    
+def pl_tuntap_alloc(kind, tun_path, tun_name):
+    tunalloc_so = ctypes.cdll.LoadLibrary("./tunalloc.so")
+    c_tun_name = ctypes.c_char_p("\x00"*IFNAMSIZ) # the string will be mutated!
+    kind = {"tun":IFF_TUN,
+            "tap":IFF_TAP}[kind]
+    fd = tunalloc_so.tun_alloc(kind, c_tun_name)
+    name = c_tun_name.value
+    return str(fd), name
+
+def pl_vif_start(tun_path, tun_name):
+    stdin = open("/vsys/vif_up.in","w")
+    stdout = open("/vsys/vif_up.out","r")
+    stdin.write(tun_name+"\n")
+    stdin.write(options.vif_addr+"\n")
+    stdin.write(str(options.vif_mask)+"\n")
+    if options.vif_snat:
+        stdin.write("snat=1\n")
+    if options.vif_pointopoint:
+        stdin.write("pointopoint=%s\n" % (options.vif_pointopoint,))
+    if options.vif_txqueuelen is not None:
+        stdin.write("txqueuelen=%d\n" % (options.vif_txqueuelen,))
+    stdin.close()
+    out = stdout.read()
+    stdout.close()
+    if out.strip():
+        print >>sys.stderr, out
+
+def pl_vif_stop(tun_path, tun_name):
+    stdin = open("/vsys/vif_down.in","w")
+    stdout = open("/vsys/vif_down.out","r")
+    stdin.write(tun_name+"\n")
+    stdin.close()
+    out = stdout.read()
+    stdout.close()
+    if out.strip():
+        print >>sys.stderr, out
+
+
+def tun_fwd(tun, remote):
+    global TERMINATE
+    
+    # in PL mode, we cannot strip PI structs
+    # so we'll have to handle them
+    tunchannel.tun_fwd(tun, remote,
+        with_pi = options.mode.startswith('pl-'),
+        ether_mode = tun_name.startswith('tap'),
+        cipher_key = options.cipher_key,
+        udp = options.udp,
+        TERMINATE = TERMINATE,
+        stderr = open("/dev/null","w") if options.no_capture 
+                 else sys.stderr 
+    )
+
+
+
+nop = lambda tun_path, tun_name : (tun_path, tun_name)
+MODEINFO = {
+    'none' : dict(alloc=nop,
+                  tunopen=tunopen, tunclose=tunclose,
+                  dealloc=nop,
+                  start=nop,
+                  stop=nop),
+    'tun'  : dict(alloc=functools.partial(tuntap_alloc, "tun"),
+                  tunopen=tunopen, tunclose=tunclose,
+                  dealloc=tuntap_dealloc,
+                  start=vif_start,
+                  stop=vif_stop),
+    'tap'  : dict(alloc=functools.partial(tuntap_alloc, "tap"),
+                  tunopen=tunopen, tunclose=tunclose,
+                  dealloc=tuntap_dealloc,
+                  start=vif_start,
+                  stop=vif_stop),
+    'pl-tun'  : dict(alloc=functools.partial(pl_tuntap_alloc, "tun"),
+                  tunopen=tunopen, tunclose=tunclose,
+                  dealloc=nop,
+                  start=pl_vif_start,
+                  stop=pl_vif_stop),
+    'pl-tap'  : dict(alloc=functools.partial(pl_tuntap_alloc, "tap"),
+                  tunopen=tunopen, tunclose=tunclose,
+                  dealloc=nop,
+                  start=pl_vif_start,
+                  stop=pl_vif_stop),
+}
+    
+tun_path = options.tun_path
+tun_name = options.tun_name
+
+modeinfo = MODEINFO[options.mode]
+
+# be careful to roll back stuff on exceptions
+tun_path, tun_name = modeinfo['alloc'](tun_path, tun_name)
+try:
+    modeinfo['start'](tun_path, tun_name)
+    try:
+        tun = modeinfo['tunopen'](tun_path, tun_name)
+    except:
+        modeinfo['stop'](tun_path, tun_name)
+        raise
+except:
+    modeinfo['dealloc'](tun_path, tun_name)
+    raise
+
+
+# Trak SIGTERM, and set global termination flag instead of dying
+TERMINATE = []
+def _finalize(sig,frame):
+    global TERMINATE
+    TERMINATE.append(None)
+signal.signal(signal.SIGTERM, _finalize)
+
+try:
+    tcpdump = None
+    
+    if options.pass_fd:
+        if options.pass_fd.startswith("base64:"):
+            options.pass_fd = base64.b64decode(
+                options.pass_fd[len("base64:"):])
+            options.pass_fd = os.path.expandvars(options.pass_fd)
+        
+        print >>sys.stderr, "Sending FD to: %r" % (options.pass_fd,)
+        
+        # send FD to whoever wants it
+        import passfd
+        
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+        for i in xrange(30):
+            try:
+                sock.connect(options.pass_fd)
+                break
+            except socket.error:
+                # wait a while, retry
+                print >>sys.stderr, "Could not connect. Retrying in a sec..."
+                time.sleep(1)
+        else:
+            sock.connect(options.pass_fd)
+        passfd.sendfd(sock, tun.fileno(), '0')
+        
+        # Launch a tcpdump subprocess, to capture and dump packets,
+        # we will not be able to capture them ourselves.
+        # Make sure to catch sigterm and kill the tcpdump as well
+        tcpdump = subprocess.Popen(
+            ["tcpdump","-l","-n","-i",tun_name])
+        
+        # just wait forever
+        def tun_fwd(tun, remote):
+            while not TERMINATE:
+                time.sleep(1)
+        remote = None
+    elif options.udp:
+        # connect to remote endpoint
+        if remaining_args and not remaining_args[0].startswith('-'):
+            print >>sys.stderr, "Listening at: %s:%d" % (hostaddr,options.udp)
+            print >>sys.stderr, "Connecting to: %s:%d" % (remaining_args[0],options.port)
+            rsock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
+            for i in xrange(30):
+                try:
+                    rsock.bind((hostaddr,options.udp))
+                    break
+                except socket.error:
+                    # wait a while, retry
+                    print >>sys.stderr, "Could not bind. Retrying in a sec..."
+                    time.sleep(1)
+            else:
+                rsock.bind((hostaddr,options.udp))
+            rsock.connect((remaining_args[0],options.port))
+        else:
+            print >>sys.stderr, "Error: need a remote endpoint in UDP mode"
+            raise AssertionError, "Error: need a remote endpoint in UDP mode"
+        remote = os.fdopen(rsock.fileno(), 'r+b', 0)
+    else:
+        # connect to remote endpoint
+        if remaining_args and not remaining_args[0].startswith('-'):
+            print >>sys.stderr, "Connecting to: %s:%d" % (remaining_args[0],options.port)
+            rsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+            for i in xrange(30):
+                try:
+                    rsock.connect((remaining_args[0],options.port))
+                    break
+                except socket.error:
+                    # wait a while, retry
+                    print >>sys.stderr, "Could not connect. Retrying in a sec..."
+                    time.sleep(1)
+            else:
+                rsock.connect((remaining_args[0],options.port))
+        else:
+            print >>sys.stderr, "Listening at: %s:%d" % (hostaddr,options.port)
+            lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+            for i in xrange(30):
+                try:
+                    lsock.bind((hostaddr,options.port))
+                    break
+                except socket.error:
+                    # wait a while, retry
+                    print >>sys.stderr, "Could not bind. Retrying in a sec..."
+                    time.sleep(1)
+            else:
+                lsock.bind((hostaddr,options.port))
+            lsock.listen(1)
+            rsock,raddr = lsock.accept()
+        remote = os.fdopen(rsock.fileno(), 'r+b', 0)
+
+    print >>sys.stderr, "Connected"
+
+    tun_fwd(tun, remote)
+
+    if tcpdump:
+        os.kill(tcpdump.pid, signal.SIGTERM)
+        tcpdump.wait()
+finally:
+    try:
+        print >>sys.stderr, "Shutting down..."
+    except:
+        # In case sys.stderr is broken
+        pass
+    
+    # tidy shutdown in every case - swallow exceptions
+    try:
+        modeinfo['stop'](tun_path, tun_name)
+    except:
+        pass
+
+    try:
+        modeinfo['tunclose'](tun_path, tun_name, tun)
+    except:
+        pass
+        
+    try:
+        modeinfo['dealloc'](tun_path, tun_name)
+    except:
+        pass
+    
+    print >>sys.stderr, "TERMINATED GRACEFULLY"
+
