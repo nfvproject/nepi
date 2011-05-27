@@ -608,8 +608,14 @@ class ExperimentController(object):
         raise RuntimeError("No element exists with guid %d" % guid)    
 
     def shutdown(self):
+        exceptions = list()
         for testbed in self._testbeds.values():
-            testbed.shutdown()
+            try:
+                testbed.shutdown()
+            except:
+                exceptions.append(sys.exc_info())
+        for exc_info in exceptions:
+            raise exc_info[0], exc_info[1], exc_info[2]
 
     def _testbed_for_guid(self, guid):
         for testbed_guid in self._testbeds.keys():

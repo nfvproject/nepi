@@ -4,9 +4,9 @@ from distutils.core import setup, Extension, Command
 
 setup(
         name        = "nepi",
-        version     = "0.1",
+        version     = "0.2",
         description = "High-level abstraction for running network experiments",
-        author      = "Alina Quereilhac, Martín Ferrari and Claudio Freire",
+        author      = "Mathieu Lacage, Alina Quereilhac, Martín Ferrari and Claudio Freire",
         url         = "http://yans.pl.sophia.inria.fr/code/hgwebdir.cgi/nepi/",
         license     = "GPLv2",
         platforms   = "Linux",

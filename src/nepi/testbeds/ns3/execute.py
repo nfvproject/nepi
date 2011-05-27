@@ -55,7 +55,15 @@ class TestbedController(testbed_impl.TestbedController):
         self._condition = threading.Condition()
         self._simulator_thread = threading.Thread(target = self._simulator_run,
                 args = [self._condition])
+        self._simulator_thread.isDaemon()
         self._simulator_thread.start()
+
+    def stop(self, time = TIME_NOW):
+        super(TestbedController, self).stop(time)
+        # BUG!!!!
+        # TODO!! This is not working!!!
+        self.ns3.Simulator.Stop()
+        #self._stop_simulation(time)
 
     def set(self, guid, name, value, time = TIME_NOW):
         super(TestbedController, self).set(guid, name, value, time)
@@ -120,11 +128,22 @@ class TestbedController(testbed_impl.TestbedController):
         self._traces[guid][trace_id] = filename
 
     def shutdown(self):
-        for element in self._elements.values():
+        for element in self._elements.itervalues():
             if isinstance(element, self.LOCAL_TYPES):
                 # graceful shutdown of locally-implemented objects
                 element.Cleanup()
-            element = None
+        self._elements.clear()
+        if self.ns3:
+            self.ns3.Simulator.Stop()
+            # BUG!!!!
+            # TODO!! This is not working!!! NEVER STOPS THE SIMULATION!!!
+            #self._stop_simulation("0s")
+            #if self._simulator_thread:
+            #    print "Joining thread"
+            #    self._simulator_thread.join()
+            #print "destroying"
+            self.ns3.Simulator.Destroy()
+        self._ns3 = None
         sys.stdout.flush()
         sys.stderr.flush()
 
@@ -187,6 +206,22 @@ class TestbedController(testbed_impl.TestbedController):
 
     def _get_ns3_attribute(self, name, ns3_value, element):
         element.GetAttribute(name, ns3_value)
+
+    def _stop_simulation(self, time):
+        if self.status() == TESTBED_STATUS_STARTED:
+            # schedule the event in the Simulator
+            self._schedule_event(self._condition, self._stop_ns3_simulation, 
+                    time)
+        else:
+            self._stop_ns3_simulation(time)
+
+    def _stop_simulation(self, time = TIME_NOW):
+        if not self.ns3:
+            return
+        if time == TIME_NOW:
+            self.ns3.Simulator.Stop()
+        else:
+            self.ns3.Simulator.Stop(self.ns3.Time(time))
 
     def _to_ns3_value(self, guid, name, value):
         factory_id = self._create[guid]
