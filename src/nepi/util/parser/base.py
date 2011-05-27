@@ -207,8 +207,10 @@ class ExperimentParser(object):
                 self.attributes_to_data(data, box.guid, box.attributes)
                 self.traces_to_data(data, box.guid, box.traces)
                 self.connections_to_data(data, box.guid, box.connectors)
-                self.addresses_to_data(data, box.guid, box.addresses)
-                self.routes_to_data(data, box.guid, box.routes)
+                if hasattr(box, "addresses"):
+                    self.addresses_to_data(data, box.guid, box.addresses)
+                if hasattr(box, "routes"):
+                    self.routes_to_data(data, box.guid, box.routes)
         return data
 
     def graphical_info_to_data(self, data, guid, g_info):

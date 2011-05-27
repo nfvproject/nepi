@@ -256,14 +256,6 @@ class Box(AttributesMap):
     def tags(self):
         return self._tags
 
-    @property
-    def addresses(self):
-        return []
-
-    @property
-    def routes(self):
-        return []
-
     def trace_help(self, trace_id):
         return self._traces[trace_id].help
 
