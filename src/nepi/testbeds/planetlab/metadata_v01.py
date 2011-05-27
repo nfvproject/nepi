@@ -43,13 +43,13 @@ def is_addrlist(attribute, value):
         if '/' in component:
             addr, mask = component.split('/',1)
         else:
-            addr, mask = component, 32
+            addr, mask = component, '32'
         
         if mask is not None and not (mask and mask.isdigit()):
             # No empty or nonnumeric masks
             return False
         
-        if not validation.is_ip4_address(attribute, value):
+        if not validation.is_ip4_address(attribute, addr):
             # Address part must be ipv4
             return False
         
