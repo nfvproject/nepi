@@ -119,7 +119,7 @@ class VlcWirelessNetnsNs3Example(object):
         exp_desc = ExperimentDescription()
 
         ## NS3 Testbed instance description ##
-        testbed_version = "3_9_RC3"
+        testbed_version = "3_9"
         testbed_id = "ns3"
         ns3_provider = FactoriesProvider(testbed_id, testbed_version)
         ns3_desc = exp_desc.add_testbed_description(ns3_provider)
