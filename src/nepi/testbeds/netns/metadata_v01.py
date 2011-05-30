@@ -143,8 +143,10 @@ def create_application(testbed_instance, guid):
 def start_application(testbed_instance, guid):
     parameters = testbed_instance._get_parameters(guid)
     traces = testbed_instance._get_traces(guid)
-    user = parameters["user"]
     command = parameters["command"]
+    user = None
+    if "user" in parameters:
+        user = parameters["user"]
     stdout = stderr = None
     if "stdout" in traces:
         filename = testbed_instance.trace_filename(guid, "stdout")
