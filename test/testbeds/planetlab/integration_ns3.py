@@ -99,7 +99,7 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
     
     def make_ns_in_pl(self, pl, exp, node1, iface1, root):
         ns3_testbed_id = "ns3"
-        ns3_testbed_version = "3_9_RC3"
+        ns3_testbed_version = "3_9"
         
         # Add NS3 support in node1
         plnepi = pl.create("NepiDependency")
@@ -136,7 +136,7 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
         "Test is expensive, requires NEPI_FULL_TESTS=yes")
     def test_ns3_in_pl(self):
         ns3_testbed_id = "ns3"
-        ns3_testbed_version = "3_9_RC3"
+        ns3_testbed_version = "3_9"
         
         pl, exp = self.make_experiment_desc()
         
