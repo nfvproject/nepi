@@ -425,6 +425,11 @@ class TunProtoUDP(TunProtoBase):
     def shutdown(self):
         self.kill()
 
+    def launch(self, check_proto='udp', listen=False, extra_args=None):
+        if extra_args is None:
+            extra_args = ("-u",str(self.port))
+        super(TunProtoUDP, self).launch(check_proto, listen, extra_args)
+
 class TunProtoFD(TunProtoBase):
     def __init__(self, local, peer, home_path, key, listening):
         super(TunProtoFD, self).__init__(local, peer, home_path, key)
@@ -438,6 +443,9 @@ class TunProtoFD(TunProtoBase):
     
     def shutdown(self):
         self.kill()
+
+    def launch(self, check_proto='fd', listen=False, extra_args=[]):
+        super(TunProtoFD, self).launch(check_proto, listen, extra_args)
 
 class TunProtoTCP(TunProtoBase):
     def __init__(self, local, peer, home_path, key, listening):
@@ -465,6 +473,11 @@ class TunProtoTCP(TunProtoBase):
     
     def shutdown(self):
         self.kill()
+
+    def launch(self, check_proto='tcp', listen=None, extra_args=[]):
+        if listen is None:
+            listen = self.listening
+        super(TunProtoTCP, self).launch(check_proto, listen, extra_args)
 
 class TapProtoUDP(TunProtoUDP):
     def __init__(self, local, peer, home_path, key, listening):
