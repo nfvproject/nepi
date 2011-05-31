@@ -55,13 +55,12 @@ class TestbedController(testbed_impl.TestbedController):
         self._condition = threading.Condition()
         self._simulator_thread = threading.Thread(target = self._simulator_run,
                 args = [self._condition])
-        self._simulator_thread.isDaemon()
+        self._simulator_thread.setDaemon(True)
         self._simulator_thread.start()
 
     def stop(self, time = TIME_NOW):
         super(TestbedController, self).stop(time)
-        # BUG!!!!
-        # TODO!! This is not working!!!
+        # BUG!!!! RealtimeSimulatorImpl never stops simulation with Stop()!!!
         self.ns3.Simulator.Stop()
         #self._stop_simulation(time)
 
@@ -135,13 +134,13 @@ class TestbedController(testbed_impl.TestbedController):
         self._elements.clear()
         if self.ns3:
             self.ns3.Simulator.Stop()
-            # BUG!!!!
-            # TODO!! This is not working!!! NEVER STOPS THE SIMULATION!!!
-            #self._stop_simulation("0s")
-            #if self._simulator_thread:
+            ##################################################
+            # BUG!!!! RealtimeSimulatorImpl never stops simulation with Stop()!!!
+            # self._stop_simulation("0s")
+            # if self._simulator_thread:
             #    print "Joining thread"
             #    self._simulator_thread.join()
-            #print "destroying"
+            #################################################
             self.ns3.Simulator.Destroy()
         self._ns3 = None
         sys.stdout.flush()

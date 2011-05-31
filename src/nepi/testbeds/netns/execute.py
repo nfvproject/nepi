@@ -55,11 +55,14 @@ class TestbedController(testbed_impl.TestbedController):
     def shutdown(self):
         for trace in self._traces.values():
             trace.close()
-        for element in self._elements.values():
+        for guid, element in self._elements.iteritems():
             if isinstance(element, self.TunChannel):
                 element.Cleanup()
             else:
-                element.destroy()
+                factory_id = self._create[guid]
+                if factory_id == "Node":
+                    element.destroy()
+        self._elements.clear()
 
     def trace_filename(self, guid, trace_id):
         # TODO: Need to be defined inside a home!!!! with and experiment id_code
