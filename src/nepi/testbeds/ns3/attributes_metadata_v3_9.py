@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from factories_metadata_v3_9_RC3 import wifi_standards, l4_protocols, \
+from factories_metadata_v3_9 import wifi_standards, l4_protocols, \
     service_flow_direction, service_flow_scheduling_type
 import validation as ns3_validation
 from nepi.core.attributes import Attribute

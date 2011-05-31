@@ -78,7 +78,7 @@ class Roads09Example(object):
     def run(self):
         exp_desc = ExperimentDescription()
 
-        testbed_version = "3_9_RC3"
+        testbed_version = "3_9"
         testbed_id = "ns3"
         ns3_provider = FactoriesProvider(testbed_id, testbed_version)
         ns3_desc = exp_desc.add_testbed_description(ns3_provider)
