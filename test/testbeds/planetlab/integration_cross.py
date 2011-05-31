@@ -105,7 +105,7 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
 
     def make_ns_in_pl(self, pl, exp, node1, iface1, root):
         ns3_testbed_id = "ns3"
-        ns3_testbed_version = "3_9_RC3"
+        ns3_testbed_version = "3_9"
         
         # Add NS3 support in node1
         plnepi = pl.create("NepiDependency")

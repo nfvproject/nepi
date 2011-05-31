@@ -17,7 +17,7 @@ class Ns3ExecuteTestCase(unittest.TestCase):
     @test_util.skipUnless(test_util.ns3_usable(), 
            "Test requires working ns-3 bindings")
     def test_run_ping_if(self):
-        testbed_version = "3_9_RC3"
+        testbed_version = "3_9"
         instance = ns3.TestbedController(testbed_version)
         instance.defer_configure("homeDirectory", self.root_dir)
         instance.defer_create(2, "ns3::Node")
