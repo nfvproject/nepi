@@ -191,12 +191,18 @@ class TestbedController(testbed_impl.TestbedController):
         raise NotImplementedError
 
     def shutdown(self):
-        for trace in self._traces.values():
+        for trace in self._traces.itervalues():
             trace.close()
-        for element in self._elements.values():
+        for element in self._elements.itervalues():
             # invoke cleanup hooks
             if hasattr(element, 'cleanup'):
                 element.cleanup()
+        for element in self._elements.itervalues():
+            # invoke destroy hooks
+            if hasattr(element, 'destroy'):
+                element.destroy()
+        self._elements.clear()
+        self._traces.clear()
 
     def trace(self, guid, trace_id, attribute='value'):
         app = self._elements[guid]

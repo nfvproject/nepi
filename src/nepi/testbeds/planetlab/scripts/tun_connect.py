@@ -360,14 +360,16 @@ try:
         import passfd
         
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+        retrydelay = 1.0
         for i in xrange(30):
             try:
                 sock.connect(options.pass_fd)
                 break
             except socket.error:
                 # wait a while, retry
-                print >>sys.stderr, "Could not connect. Retrying in a sec..."
-                time.sleep(1)
+                print >>sys.stderr, "%s: Could not connect. Retrying in a sec..." % (time.strftime('%c'),)
+                time.sleep(min(30.0,retrydelay))
+                retrydelay *= 1.1
         else:
             sock.connect(options.pass_fd)
         passfd.sendfd(sock, tun.fileno(), '0')
@@ -389,14 +391,16 @@ try:
             print >>sys.stderr, "Listening at: %s:%d" % (hostaddr,options.udp)
             print >>sys.stderr, "Connecting to: %s:%d" % (remaining_args[0],options.port)
             rsock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
+            retrydelay = 1.0
             for i in xrange(30):
                 try:
                     rsock.bind((hostaddr,options.udp))
                     break
                 except socket.error:
                     # wait a while, retry
-                    print >>sys.stderr, "Could not bind. Retrying in a sec..."
-                    time.sleep(1)
+                    print >>sys.stderr, "%s: Could not bind. Retrying in a sec..." % (time.strftime('%c'),)
+                    time.sleep(min(30.0,retrydelay))
+                    retrydelay *= 1.1
             else:
                 rsock.bind((hostaddr,options.udp))
             rsock.connect((remaining_args[0],options.port))
@@ -409,27 +413,31 @@ try:
         if remaining_args and not remaining_args[0].startswith('-'):
             print >>sys.stderr, "Connecting to: %s:%d" % (remaining_args[0],options.port)
             rsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+            retrydelay = 1.0
             for i in xrange(30):
                 try:
                     rsock.connect((remaining_args[0],options.port))
                     break
                 except socket.error:
                     # wait a while, retry
-                    print >>sys.stderr, "Could not connect. Retrying in a sec..."
-                    time.sleep(1)
+                    print >>sys.stderr, "%s: Could not connect. Retrying in a sec..." % (time.strftime('%c'),)
+                    time.sleep(min(30.0,retrydelay))
+                    retrydelay *= 1.1
             else:
                 rsock.connect((remaining_args[0],options.port))
         else:
             print >>sys.stderr, "Listening at: %s:%d" % (hostaddr,options.port)
             lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+            retrydelay = 1.0
             for i in xrange(30):
                 try:
                     lsock.bind((hostaddr,options.port))
                     break
                 except socket.error:
                     # wait a while, retry
-                    print >>sys.stderr, "Could not bind. Retrying in a sec..."
-                    time.sleep(1)
+                    print >>sys.stderr, "%s: Could not bind. Retrying in a sec..." % (time.strftime('%c'),)
+                    time.sleep(min(30.0,retrydelay))
+                    retrydelay *= 1.1
             else:
                 lsock.bind((hostaddr,options.port))
             lsock.listen(1)

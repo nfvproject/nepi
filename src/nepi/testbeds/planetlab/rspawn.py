@@ -180,7 +180,8 @@ def remote_status(pid, ppid,
 
 def remote_kill(pid, ppid, sudo = False,
         host = None, port = None, user = None, agent = None, 
-        ident_key = None, server_key = None):
+        ident_key = None, server_key = None,
+        nowait = False):
     """
     Kill a process spawned with remote_spawn.
     
@@ -198,21 +199,25 @@ def remote_kill(pid, ppid, sudo = False,
         
         Nothing, should have killed the process
     """
-
-    (out,err),proc = server.popen_ssh_command(
-        """
+    
+    cmd = """
 %(sudo)s kill %(pid)d
-for x in 1 2 3 4 5 6 7 8 9 0 ; do 
-    sleep 0.1 
+for x in 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 ; do 
+    sleep 0.2 
     if [ `ps --ppid %(ppid)d -o pid | grep -c %(pid)d` == '0' ]; then
         break
     fi
-    sleep 0.9
+    sleep 1.8
 done
 if [ `ps --ppid %(ppid)d -o pid | grep -c %(pid)d` != '0' ]; then
     %(sudo)s kill -9 %(pid)d
 fi
-""" % {
+"""
+    if nowait:
+        cmd = "{ %s } >/dev/null 2>/dev/null </dev/null &" % (cmd,)
+
+    (out,err),proc = server.popen_ssh_command(
+        cmd % {
             'ppid' : ppid,
             'pid' : pid,
             'sudo' : 'sudo -S' if sudo else ''
