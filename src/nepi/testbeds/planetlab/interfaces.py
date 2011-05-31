@@ -246,6 +246,10 @@ class TunIface(object):
     def cleanup(self):
         if self.peer_proto_impl:
             self.peer_proto_impl.shutdown()
+
+    def destroy(self):
+        if self.peer_proto_impl:
+            self.peer_proto_impl.destroy()
             self.peer_proto_impl = None
 
     def async_launch_wait(self):

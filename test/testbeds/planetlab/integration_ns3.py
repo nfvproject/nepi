@@ -154,11 +154,13 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
 
         xml = exp.to_xml()
 
-        controller = ExperimentController(xml, self.root_dir)
-        controller.start()
-        # just test that it starts...
-        controller.stop()
-        controller.shutdown()
+        try:
+            controller = ExperimentController(xml, self.root_dir)
+            controller.start()
+            # just test that it starts...
+        finally:
+            controller.stop()
+            controller.shutdown()
 
     @test_util.skipUnless(test_util.pl_auth() is not None, 
         "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
@@ -207,17 +209,19 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
 
         xml = exp.to_xml()
 
-        controller = ExperimentController(xml, self.root_dir)
-        controller.start()
+        try:
+            controller = ExperimentController(xml, self.root_dir)
+            controller.start()
 
-        while not controller.is_finished(ping.guid):
-            time.sleep(0.5)
-          
-        ping_result = controller.trace(ping.guid, "stdout")
-        tap_trace = controller.trace(tap1.guid, "packets")
+            while not controller.is_finished(ping.guid):
+                time.sleep(0.5)
+              
+            ping_result = controller.trace(ping.guid, "stdout")
+            tap_trace = controller.trace(tap1.guid, "packets")
 
-        controller.stop()
-        controller.shutdown()
+        finally:
+            controller.stop()
+            controller.shutdown()
 
         # asserts at the end, to make sure there's proper cleanup
         self.assertTrue(re.match(comp_result, ping_result, re.MULTILINE),
@@ -284,16 +288,18 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
 
         xml = exp.to_xml()
 
-        controller = ExperimentController(xml, self.root_dir)
-        controller.start()
+        try:
+            controller = ExperimentController(xml, self.root_dir)
+            controller.start()
 
-        while not controller.is_finished(ping.guid):
-            time.sleep(0.5)
-          
-        tap_trace = controller.trace(tap1.guid, "packets")
+            while not controller.is_finished(ping.guid):
+                time.sleep(0.5)
+              
+            tap_trace = controller.trace(tap1.guid, "packets")
 
-        controller.stop()
-        controller.shutdown()
+        finally:
+            controller.stop()
+            controller.shutdown()
         
         # asserts at the end, to make sure there's proper cleanup
         sent = 0

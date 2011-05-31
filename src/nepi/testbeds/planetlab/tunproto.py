@@ -29,6 +29,7 @@ class TunProtoBase(object):
         
         self._launcher = None
         self._started = False
+        self._starting = False
         self._pid = None
         self._ppid = None
         self._if_name = None
@@ -43,7 +44,11 @@ class TunProtoBase(object):
         
         # Make sure all the paths are created where 
         # they have to be created for deployment
-        cmd = "mkdir -p %s" % (server.shell_escape(self.home_path),)
+        # Also remove pidfile, if there is one.
+        # Old pidfiles from previous runs can be troublesome.
+        cmd = "mkdir -p %(home)s ; rm -f %(home)s/pid" % {
+            'home' : server.shell_escape(self.home_path)
+        }
         (out,err),proc = server.popen_ssh_command(
             cmd,
             host = local.node.hostname,
@@ -119,6 +124,11 @@ class TunProtoBase(object):
             raise RuntimeError, "Failed to set up TUN forwarder: %s %s" % (out,err,)
         
     def launch(self, check_proto, listen, extra_args=[]):
+        if self._starting:
+            raise AssertionError, "Double start"
+        
+        self._starting = True
+        
         peer = self.peer()
         local = self.local()
         
@@ -348,8 +358,18 @@ class TunProtoBase(object):
                 agent = None,
                 ident_key = local.node.ident_path,
                 server_key = local.node.server_key,
-                sudo = True
+                sudo = True,
+                nowait = True
                 )
+    
+    def waitkill(self):
+        interval = 1.0
+        for i in xrange(30):
+            status = self.status()
+            if status != rspawn.RUNNING:
+                break
+            time.sleep(interval)
+            interval = min(30.0, interval * 1.1)
         
     def sync_trace(self, local_dir, whichtrace):
         if whichtrace != 'packets':
@@ -409,6 +429,12 @@ class TunProtoBase(object):
         Cleanup
         """
         raise NotImplementedError
+    
+    def destroy(self):
+        """
+        Second-phase cleanup
+        """
+        pass
         
 
 class TunProtoUDP(TunProtoBase):
@@ -424,6 +450,9 @@ class TunProtoUDP(TunProtoBase):
     
     def shutdown(self):
         self.kill()
+
+    def destroy(self):
+        self.waitkill()
 
     def launch(self, check_proto='udp', listen=False, extra_args=None):
         if extra_args is None:
@@ -443,6 +472,9 @@ class TunProtoFD(TunProtoBase):
     
     def shutdown(self):
         self.kill()
+
+    def destroy(self):
+        self.waitkill()
 
     def launch(self, check_proto='fd', listen=False, extra_args=[]):
         super(TunProtoFD, self).launch(check_proto, listen, extra_args)
@@ -464,15 +496,15 @@ class TunProtoTCP(TunProtoBase):
                 peer.peer_proto_impl.async_launch_wait()
             
             if not self._started:
-                self.launch('tcp', False)
-        else:
-            # make sure WE are ready
-            self.async_launch_wait()
+                self.async_launch('tcp', False)
         
         self.checkpid()
     
     def shutdown(self):
         self.kill()
+
+    def destroy(self):
+        self.waitkill()
 
     def launch(self, check_proto='tcp', listen=None, extra_args=[]):
         if listen is None:

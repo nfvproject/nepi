@@ -4,6 +4,7 @@ import os
 import struct
 import socket
 import threading
+import errno
 
 def ipfmt(ip):
     ipbytes = map(ord,ip.decode("hex"))
@@ -187,7 +188,13 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
             wset.append(tun)
         if packetReady(fwbuf, ether_mode):
             wset.append(remote)
-        rdrdy, wrdy, errs = select.select((tun,remote),wset,(tun,remote),1)
+        
+        try:
+            rdrdy, wrdy, errs = select.select((tun,remote),wset,(tun,remote),1)
+        except select.error, e:
+            if e.args[0] == errno.EINTR:
+                # just retry
+                continue
         
         # check for errors
         if errs:
