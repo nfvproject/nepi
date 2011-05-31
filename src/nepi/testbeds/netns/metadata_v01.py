@@ -75,7 +75,6 @@ def connect_tunchannel_tap(testbed_instance, chan_guid, tap_guid):
         pass
     chan.with_pi = with_pi
 
-
 ### Creation functions ###
 
 def create_node(testbed_instance, guid):
@@ -197,7 +196,6 @@ def configure_node(testbed_instance, guid):
         (destination, netprefix, nexthop) = route
         element.add_route(prefix = destination, prefix_len = netprefix,
             nexthop = nexthop)
-    
 
 ### Factory information ###
 

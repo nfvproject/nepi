@@ -152,7 +152,7 @@ class VlcWirelessNetnsNs3Example(object):
         netns_provider = FactoriesProvider(testbed_id, testbed_version)
         netns_desc1 = exp_desc.add_testbed_description(netns_provider)
         netns_desc1.set_attribute_value("homeDirectory", self.root_dir)
-        #netns_desc1.set_attribute_value("enableDebug", True
+        #netns_desc1.set_attribute_value("enableDebug", True)
         # create node 3
         node3 = netns_desc1.create("Node")
         node3.set_attribute_value("forward_X11", True)
@@ -161,7 +161,7 @@ class VlcWirelessNetnsNs3Example(object):
         # create vlc server
         # DEBUG!! target = "{#[vlc_client].addr[0].[Address]#}"
         target = "10.0.2.2" 
-        command = "vlc -I dummy -vvv %s --sout '#rtp{dst=%s,port=5004,mux=ts}' vlc://quit" \
+        command = "vlc -I dummy %s --sout '#rtp{dst=%s,port=5004,mux=ts}' vlc://quit" \
                 % (self.movie, target)
         vlc_server = netns_desc1.create("Application")
         vlc_server.set_attribute_value("command", command)
@@ -212,7 +212,8 @@ class VlcWirelessNetnsNs3Example(object):
         xml = exp_desc.to_xml()
         controller = ExperimentController(xml, self.root_dir)
         controller.start()
-        while not controller.is_finished(vlc_server.guid):
+        while not controller.is_finished(vlc_server.guid) and \
+                not controller.is_finished(vlc_client.guid):
             time.sleep(0.5)
         controller.stop()
         controller.shutdown()
