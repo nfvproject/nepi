@@ -165,7 +165,48 @@ class NetnsExecuteTestCase(unittest.TestCase):
         self.assertTrue(ping_result.startswith(comp_result))
         instance.stop()
         instance.shutdown()
-        
+
+    @test_util.skipUnless(os.getuid() == 0, "Test requires root privileges")
+    def test_node_pcap_trace(self):
+        user = getpass.getuser()
+        testbed_version = "01"
+        instance = netns.TestbedController(testbed_version)
+        instance.defer_configure("homeDirectory", self.root_dir)
+        instance.defer_create(2, "Node")
+        instance.defer_add_trace(2, "pcap")
+        instance.defer_create(3, "Node")
+        instance.defer_create(4, "P2PNodeInterface")
+        instance.defer_create_set(4, "up", True)
+        instance.defer_connect(2, "devs", 4, "node")
+        instance.defer_add_address(4, "10.0.0.1", 24, None)
+        instance.defer_create(5, "P2PNodeInterface")
+        instance.defer_create_set(5, "up", True)
+        instance.defer_connect(3, "devs", 5, "node")
+        instance.defer_add_address(5, "10.0.0.2", 24, None)
+        instance.defer_connect(4, "p2p", 5, "p2p")
+        instance.defer_create(6, "Application")
+        instance.defer_add_trace(6, "stdout")
+        instance.defer_create_set(6, "command", "ping -qc5 10.0.0.2")
+        instance.defer_create_set(6, "user", user)
+        instance.defer_connect(6, "node", 2, "apps")
+
+        time.sleep(5)
+        instance.do_setup()
+        instance.do_create()
+        instance.do_connect_init()
+        instance.do_connect_compl()
+        instance.do_preconfigure()
+        instance.do_configure()
+        instance.do_prestart()
+        instance.start()
+        while instance.status(6) != STATUS_FINISHED:
+            time.sleep(0.5)
+        time.sleep(5)
+        pcap_result = instance.trace(2, "pcap")
+        self.assertEquals(len(pcap_result), 1024)
+        instance.stop()
+        instance.shutdown()
+
     def tearDown(self):
         try:
             shutil.rmtree(self.root_dir)

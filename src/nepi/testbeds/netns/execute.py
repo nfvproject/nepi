@@ -57,8 +57,10 @@ class TestbedController(testbed_impl.TestbedController):
         raise NotImplementedError
 
     def shutdown(self):
-        for trace in self._traces.values():
-            trace.close()
+        for guid, traces in self._traces.iteritems():
+            for trace_id, (trace, filename) in traces.iteritems():
+                if hasattr(trace, "close"):
+                    trace.close()
         for guid, element in self._elements.iteritems():
             if isinstance(element, self.TunChannel):
                 element.Cleanup()
@@ -68,12 +70,15 @@ class TestbedController(testbed_impl.TestbedController):
                     element.destroy()
         self._elements.clear()
 
-    def trace_filename(self, guid, trace_id):
-        # TODO: Need to be defined inside a home!!!! with and experiment id_code
-        return os.path.join(self.home_directory, "%d_%s" % (guid, trace_id))
+    def trace_filename(self, guid, trace_id, filename = None):
+        if not filename:
+            (trace, filename) = self._traces[guid][trace_id]
+        return os.path.join(self.home_directory, filename)
 
-    def follow_trace(self, trace_id, trace):
-        self._traces[trace_id] = trace
+    def follow_trace(self, guid, trace_id, trace, filename):
+        if not guid in self._traces:
+            self._traces[guid] = dict()
+        self._traces[guid][trace_id] = (trace, filename)
 
     def _load_netns_module(self):
         # TODO: Do something with the configuration!!!

@@ -27,6 +27,12 @@ TUNCHANNEL = "TunChannel"
 NS3_TESTBED_ID = "ns3"
 FDNETDEV = "ns3::FileDescriptorNetDevice"
 
+def _follow_trace(testbed_instance, guid, trace_id, filename):
+    filepath = testbed_instance.trace_filename(guid, trace_id, filename)
+    trace = open(filepath, "wb")
+    testbed_instance.follow_trace(guid, trace_id, trace, filename)
+    return trace
+
 ### Connection functions ####
 
 def connect_switch(testbed_instance, switch_guid, interface_guid):
@@ -74,6 +80,27 @@ def connect_tunchannel_tap(testbed_instance, chan_guid, tap_guid):
         # in which case, we assume it uses PI headers (as is usual)
         pass
     chan.with_pi = with_pi
+
+### Trace functions ###
+
+def nodepcap_trace(testbed_instance, guid, trace_id):
+    node = testbed_instance._elements[guid]
+    parameters = testbed_instance._get_parameters(guid)
+    filename = "%d-cap.stdout" % guid
+    stdout = _follow_trace(testbed_instance, guid, "pcap_stdout", filename)
+    filename = "%d-pcap.stderr" % guid
+    stderr = _follow_trace(testbed_instance, guid, "pcap_stderr", filename)
+    filename = "%d-node.pcap" % guid
+    filepath = testbed_instance.trace_filename(guid, trace_id, filename)
+    command = "tcpdump -i 'any' -w %s" % filepath
+    user = "root"
+    trace = node.Popen(command, shell = True, stdout = stdout, 
+            stderr = stderr, user = user)
+    testbed_instance.follow_trace(guid, trace_id, trace, filename)
+
+trace_functions = dict({
+    "pcap": nodepcap_trace,
+    })
 
 ### Creation functions ###
 
@@ -148,14 +175,11 @@ def start_application(testbed_instance, guid):
         user = parameters["user"]
     stdout = stderr = None
     if "stdout" in traces:
-        filename = testbed_instance.trace_filename(guid, "stdout")
-        stdout = open(filename, "wb")
-        testbed_instance.follow_trace("stdout", stdout)
+        filename = "%d-stdout.trace" % guid
+        stdout = _follow_trace(testbed_instance, guid, "stdout", filename)
     if "stderr" in traces:
-        filename = testbed_instance.trace_filename(guid, "stderr")
-        stderr = open(filename, "wb")
-        testbed_instance.follow_trace("stderr", stderr)
-
+        filename = "%d-stderr.trace" % guid
+        stderr = _follow_trace(testbed_instance, guid, "stderr", filename)
     node_guid = testbed_instance.get_connected(guid, "node", "apps")
     if len(node_guid) == 0:
         raise RuntimeError("Can't instantiate interface %d outside netns \
@@ -177,7 +201,16 @@ def status_application(testbed_instance, guid):
 
 ### Configure functions ###
 
+def configure_traces(testbed_instance, guid):
+    traces = testbed_instance._get_traces(guid)
+    for trace_id in traces:
+        if trace_id not in trace_functions:
+            continue
+        trace_func = trace_functions[trace_id]
+        trace_func(testbed_instance, guid, trace_id)
+
 def configure_device(testbed_instance, guid):
+    configure_traces(testbed_instance, guid)
     element = testbed_instance._elements[guid]
     if not guid in testbed_instance._add_address:
         return
@@ -188,6 +221,7 @@ def configure_device(testbed_instance, guid):
         element.add_v4_address(address, netprefix)
 
 def configure_node(testbed_instance, guid):
+    configure_traces(testbed_instance, guid)
     element = testbed_instance._elements[guid]
     if not guid in testbed_instance._add_route:
         return
@@ -403,6 +437,10 @@ traces = dict({
     "stderr": dict({
                 "name": "stderr",
                 "help": "Application standard error",
+        }),
+    "node_pcap": dict({
+                "name": "pcap",
+                "help": "tcpdump at all node interfaces",
         }) 
     })
 
@@ -422,7 +460,8 @@ factories_info = dict({
             "create_function": create_node,
             "configure_function": configure_node,
             "box_attributes": ["forward_X11"],
-            "connector_types": ["devs", "apps"]
+            "connector_types": ["devs", "apps"],
+            "traces": ["node_pcap"]
        }),
     P2PIFACE: dict({
             "allow_addresses": True,
