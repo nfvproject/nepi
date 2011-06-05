@@ -28,7 +28,7 @@ NS3_TESTBED_ID = "ns3"
 FDNETDEV = "ns3::FileDescriptorNetDevice"
 
 def _follow_trace(testbed_instance, guid, trace_id, filename):
-    filepath = testbed_instance.trace_filename(guid, trace_id, filename)
+    filepath = testbed_instance.trace_filepath(guid, trace_id, filename)
     trace = open(filepath, "wb")
     testbed_instance.follow_trace(guid, trace_id, trace, filename)
     return trace
@@ -91,7 +91,7 @@ def nodepcap_trace(testbed_instance, guid, trace_id):
     filename = "%d-pcap.stderr" % guid
     stderr = _follow_trace(testbed_instance, guid, "pcap_stderr", filename)
     filename = "%d-node.pcap" % guid
-    filepath = testbed_instance.trace_filename(guid, trace_id, filename)
+    filepath = testbed_instance.trace_filenpath(guid, trace_id, filename)
     command = "tcpdump -i 'any' -w %s" % filepath
     user = "root"
     trace = node.Popen(command, shell = True, stdout = stdout, 

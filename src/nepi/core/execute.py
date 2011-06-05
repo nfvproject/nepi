@@ -341,6 +341,19 @@ class TestbedController(object):
     def trace(self, guid, trace_id, attribute='value'):
         raise NotImplementedError
 
+    def traces_info(self):
+        """ dictionary of dictionaries:
+            traces_info = dict({
+                guid = dict({
+                    trace_id = dict({
+                            host = host,
+                            filepath = filepath,
+                            filesize = size in bytes,
+                        })
+                })
+            })"""
+        raise NotImplementedError
+
     def shutdown(self):
         raise NotImplementedError
 
@@ -382,6 +395,12 @@ class ExperimentController(object):
         if testbed != None:
             return testbed.trace(guid, trace_id, attribute)
         raise RuntimeError("No element exists with guid %d" % guid)    
+
+    def traces_info(self):
+        traces_info = dict()
+        for guid, testbed in self._testbeds.iteritems():
+            traces_info[guid] = testbed.traces_info()
+        return traces_info
 
     @staticmethod
     def _parallel(callables):

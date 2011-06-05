@@ -48,8 +48,19 @@ class ExecuteTestCase(unittest.TestCase):
 --- 10.0.0.2 ping statistics ---
 1 packets transmitted, 1 received, 0% packet loss, time 0ms
 """
-        
         self.assertTrue(app_result.startswith(comp_result))
+
+        traces_info = instance.traces_info()
+        expected_traces_info = dict({
+            7 : dict({
+                'fake': dict({
+                    'host': 'localhost', 
+                    'filesize': '-1', 
+                    'filepath': '<test>'
+                    })
+                })
+            })
+        self.assertEquals(traces_info, expected_traces_info)
 
         instance.stop()
         instance.shutdown()

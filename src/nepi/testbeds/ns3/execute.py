@@ -114,7 +114,7 @@ class TestbedController(testbed_impl.TestbedController):
     def action(self, time, guid, action):
         raise NotImplementedError
 
-    def trace_filename(self, guid, trace_id):
+    def trace_filepath(self, guid, trace_id):
         filename = self._traces[guid][trace_id]
         return os.path.join(self.home_directory, filename)
 

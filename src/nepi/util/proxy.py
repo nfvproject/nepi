@@ -57,6 +57,7 @@ DO_PRESTART = 37
 GET_FACTORY_ID = 38
 GET_TESTBED_ID = 39
 GET_TESTBED_VERSION = 40
+TRACES_INFO = 41
 
 instruction_text = dict({
     OK:     "OK",
@@ -98,6 +99,7 @@ instruction_text = dict({
     GUIDS:  "GUIDS",
     TESTBED_ID: "TESTBED_ID",
     TESTBED_VERSION: "TESTBED_VERSION",
+    TRACES_INFO: "TRACES_INFO",
     })
 
 def log_msg(server, params):
@@ -179,7 +181,7 @@ class PermDir(object):
     def __init__(self, path):
         self.path = path
 
-def create_controller(xml, access_config = None):
+def create_experiment_controller(xml, access_config = None):
     mode = None if not access_config \
             else access_config.get_attribute_value(DC.DEPLOYMENT_MODE)
     launch = True if not access_config \
@@ -475,6 +477,12 @@ class TestbedControllerServer(BaseServer):
     def trace(self, guid, trace_id, attribute):
         return self._testbed.trace(guid, trace_id, attribute)
 
+    @Marshalling.handles(TRACES_INFO)
+    @Marshalling.args()
+    @Marshalling.retval( Marshalling.pickled_data )
+    def traces_info(self):
+        return self._testbed.traces_info()
+
     @Marshalling.handles(START)
     @Marshalling.args()
     @Marshalling.retvoid
@@ -655,90 +663,96 @@ class ExperimentControllerServer(BaseServer):
     def __init__(self, root_dir, log_level, experiment_xml):
         super(ExperimentControllerServer, self).__init__(root_dir, log_level)
         self._experiment_xml = experiment_xml
-        self._controller = None
+        self._experiment = None
 
     def post_daemonize(self):
         from nepi.core.execute import ExperimentController
-        self._controller = ExperimentController(self._experiment_xml, 
+        self._experiment = ExperimentController(self._experiment_xml, 
             root_dir = self._root_dir)
 
     @Marshalling.handles(GUIDS)
     @Marshalling.args()
     @Marshalling.retval( Marshalling.pickled_data )
     def guids(self):
-        return self._controller.guids
+        return self._experiment.guids
 
     @Marshalling.handles(XML)
     @Marshalling.args()
     @Marshalling.retval()
     def experiment_xml(self):
-        return self._controller.experiment_xml
+        return self._experiment.experiment_xml
         
     @Marshalling.handles(TRACE)
     @Marshalling.args(int, str, Marshalling.base64_data)
     @Marshalling.retval()
     def trace(self, guid, trace_id, attribute):
-        return str(self._controller.trace(guid, trace_id, attribute))
+        return str(self._experiment.trace(guid, trace_id, attribute))
+
+    @Marshalling.handles(TRACES_INFO)
+    @Marshalling.args()
+    @Marshalling.retval( Marshalling.pickled_data )
+    def traces_info(self):
+        return self._experiment.traces_info()
 
     @Marshalling.handles(FINISHED)
     @Marshalling.args(int)
     @Marshalling.retval(Marshalling.bool)
     def is_finished(self, guid):
-        return self._controller.is_finished(guid)
+        return self._experiment.is_finished(guid)
 
     @Marshalling.handles(GET)
     @Marshalling.args(int, Marshalling.base64_data, str)
     @Marshalling.retval( Marshalling.pickled_data )
     def get(self, guid, name, time):
-        return self._controller.get(guid, name, time)
+        return self._experiment.get(guid, name, time)
 
     @Marshalling.handles(SET)
     @Marshalling.args(int, Marshalling.base64_data, Marshalling.pickled_data, str)
     @Marshalling.retvoid
     def set(self, guid, name, value, time):
-        self._controller.set(guid, name, value, time)
+        self._experiment.set(guid, name, value, time)
 
     @Marshalling.handles(START)
     @Marshalling.args()
     @Marshalling.retvoid
     def start(self):
-        self._controller.start()
+        self._experiment.start()
 
     @Marshalling.handles(STOP)
     @Marshalling.args()
     @Marshalling.retvoid
     def stop(self):
-        self._controller.stop()
+        self._experiment.stop()
 
     @Marshalling.handles(RECOVER)
     @Marshalling.args()
     @Marshalling.retvoid
     def recover(self):
-        self._controller.recover()
+        self._experiment.recover()
 
     @Marshalling.handles(SHUTDOWN)
     @Marshalling.args()
     @Marshalling.retvoid
     def shutdown(self):
-        self._controller.shutdown()
+        self._experiment.shutdown()
 
     @Marshalling.handles(GET_TESTBED_ID)
     @Marshalling.args(int)
     @Marshalling.retval()
     def get_testbed_id(self, guid):
-        return self._controller.get_testbed_id(guid)
+        return self._experiment.get_testbed_id(guid)
 
     @Marshalling.handles(GET_FACTORY_ID)
     @Marshalling.args(int)
     @Marshalling.retval()
     def get_factory_id(self, guid):
-        return self._controller.get_factory_id(guid)
+        return self._experiment.get_factory_id(guid)
 
     @Marshalling.handles(GET_TESTBED_VERSION)
     @Marshalling.args(int)
     @Marshalling.retval()
     def get_testbed_version(self, guid):
-        return self._controller.get_testbed_version(guid)
+        return self._experiment.get_testbed_version(guid)
 
 class BaseProxy(object):
     _ServerClass = None

@@ -70,7 +70,7 @@ class TestbedController(testbed_impl.TestbedController):
                     element.destroy()
         self._elements.clear()
 
-    def trace_filename(self, guid, trace_id, filename = None):
+    def trace_filepath(self, guid, trace_id, filename = None):
         if not filename:
             (trace, filename) = self._traces[guid][trace_id]
         return os.path.join(self.home_directory, filename)
