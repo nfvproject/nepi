@@ -115,12 +115,11 @@ class TestbedController(testbed_impl.TestbedController):
         raise NotImplementedError
 
     def trace_filename(self, guid, trace_id):
-        # TODO: Need to be defined inside a home!!!! with and experiment id_code
         filename = self._traces[guid][trace_id]
         return os.path.join(self.home_directory, filename)
 
     def follow_trace(self, guid, trace_id, filename):
-        if guid not in self._traces:
+        if not guid in self._traces:
             self._traces[guid] = dict()
         self._traces[guid][trace_id] = filename
 

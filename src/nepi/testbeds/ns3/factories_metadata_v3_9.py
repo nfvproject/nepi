@@ -87,7 +87,7 @@ def p2pascii_trace(testbed_instance, guid, trace_id):
     filepath = testbed_instance.trace_filename(guid, trace_id)
     helper = testbed_instance.ns3.PointToPointHelper()
     asciiHelper = testbed_instance.ns3.AsciiTraceHelper()
-    stream = asciiHelper.CreateFileStream (filepath)
+    stream = asciiHelper.CreateFileStream(filepath)
     helper.EnableAscii(stream, element)
 
 def p2ppcap_trace(testbed_instance, guid, trace_id):
@@ -172,7 +172,6 @@ def rtt_trace(testbed_instance, guid, trace_id):
     filepath = testbed_instance.trace_filename(guid, trace_id)
     prefix = filepath[:filepath.find(prefix)+len(prefix)]
     helper.EnableTrace(element, trace_id, prefix, "T")
-
 
 trace_functions = dict({
     "P2PPcapTrace": p2ppcap_trace,
