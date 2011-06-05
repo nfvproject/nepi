@@ -108,7 +108,7 @@ class NetnsIntegrationTestCase(unittest.TestCase):
         access_config.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
         access_config.set_attribute_value(DC.ROOT_DIRECTORY, self.root_dir)
         access_config.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
-        controller = proxy.create_controller(xml, access_config)
+        controller = proxy.create_experiment_controller(xml, access_config)
 
         controller.start()
         while not controller.is_finished(app.guid):
@@ -171,7 +171,7 @@ class NetnsIntegrationTestCase(unittest.TestCase):
         access_config.set_attribute_value(DC.DEPLOYMENT_COMMUNICATION, DC.ACCESS_SSH)
         access_config.set_attribute_value(DC.DEPLOYMENT_PORT, env.port)
         access_config.set_attribute_value(DC.USE_AGENT, True)
-        controller = proxy.create_controller(xml, access_config)
+        controller = proxy.create_experiment_controller(xml, access_config)
 
         controller.start()
         while not controller.is_finished(app.guid):

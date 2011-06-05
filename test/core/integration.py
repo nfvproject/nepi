@@ -75,7 +75,7 @@ class ExecuteTestCase(unittest.TestCase):
                 self.make_cross_test_experiment()
         xml = exp_desc.to_xml()
         access_config = None
-        controller = proxy.create_controller(xml, access_config)
+        controller = proxy.create_experiment_controller(xml, access_config)
 
         controller.start()
         cross1 = controller.get(iface12.guid, "cross")
@@ -88,7 +88,7 @@ class ExecuteTestCase(unittest.TestCase):
         exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()
         xml = exp_desc.to_xml()
         access_config = None
-        controller = proxy.create_controller(xml, access_config)
+        controller = proxy.create_experiment_controller(xml, access_config)
 
         controller.start()
         while not controller.is_finished(app.guid):
@@ -114,7 +114,7 @@ class ExecuteTestCase(unittest.TestCase):
         access_config = proxy.AccessConfiguration()
         access_config.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
         access_config.set_attribute_value(DC.ROOT_DIRECTORY, self.root_dir)
-        controller = proxy.create_controller(xml, access_config)
+        controller = proxy.create_experiment_controller(xml, access_config)
 
         controller.start()
         while not controller.is_finished(app.guid):
@@ -142,7 +142,7 @@ class ExecuteTestCase(unittest.TestCase):
 
         xml = exp_desc.to_xml()
         
-        controller = proxy.create_controller(xml, access_config = None)
+        controller = proxy.create_experiment_controller(xml, access_config = None)
 
         controller.start()
         while not controller.is_finished(app.guid):
@@ -175,7 +175,7 @@ class ExecuteTestCase(unittest.TestCase):
         access_config = proxy.AccessConfiguration()
         access_config.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
         access_config.set_attribute_value(DC.ROOT_DIRECTORY, self.root_dir)
-        controller = proxy.create_controller(xml, access_config)
+        controller = proxy.create_experiment_controller(xml, access_config)
 
         controller.start()
         while not controller.is_finished(app.guid):
@@ -191,6 +191,20 @@ class ExecuteTestCase(unittest.TestCase):
         self.assertEquals(controller.get_testbed_id(node1.guid), "mock")
         self.assertEquals(controller.get_testbed_version(node1.guid), "01")
         self.assertEquals(controller.get_factory_id(node1.guid), "Node")
+
+        traces_info = controller.traces_info()
+        expected_traces_info = dict({
+            1: dict({ # testbed guid
+                6: dict({ # element guid
+                    'fake': dict({ # trace_id
+                        'host': 'localhost', 
+                        'filesize': '-1', 
+                        'filepath': '<test>'
+                        })
+                    })
+                })
+            })
+        self.assertEquals(traces_info, expected_traces_info)
 
         controller.stop()
         controller.shutdown()
@@ -208,7 +222,7 @@ class ExecuteTestCase(unittest.TestCase):
         access_config = proxy.AccessConfiguration()
         access_config.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
         access_config.set_attribute_value(DC.ROOT_DIRECTORY, self.root_dir)
-        controller = proxy.create_controller(xml, access_config)
+        controller = proxy.create_experiment_controller(xml, access_config)
 
         controller.start()
         while not controller.is_finished(app.guid):
@@ -230,7 +244,7 @@ class ExecuteTestCase(unittest.TestCase):
         
         # recover
         access_config.set_attribute_value(DC.RECOVER,True)
-        controller = proxy.create_controller(xml, access_config)
+        controller = proxy.create_experiment_controller(xml, access_config)
         
         # test recovery
         self.assertTrue(controller.is_finished(app.guid))
@@ -250,7 +264,7 @@ class ExecuteTestCase(unittest.TestCase):
         
         xml = exp_desc.to_xml()
         access_config = None
-        controller = proxy.create_controller(xml, access_config)
+        controller = proxy.create_experiment_controller(xml, access_config)
         controller.start()
         while not controller.is_finished(app.guid):
             time.sleep(0.5)
@@ -285,7 +299,7 @@ class ExecuteTestCase(unittest.TestCase):
         
         xml = exp_desc.to_xml()
         access_config = None
-        controller = proxy.create_controller(xml, access_config)
+        controller = proxy.create_experiment_controller(xml, access_config)
         controller.start()
         while not controller.is_finished(app.guid):
             time.sleep(0.5)
@@ -328,7 +342,7 @@ class ExecuteTestCase(unittest.TestCase):
         access_config.set_attribute_value(DC.DEPLOYMENT_COMMUNICATION, DC.ACCESS_SSH)
         access_config.set_attribute_value(DC.DEPLOYMENT_PORT, env.port)
         access_config.set_attribute_value(DC.USE_AGENT, True)
-        controller = proxy.create_controller(xml, access_config)
+        controller = proxy.create_experiment_controller(xml, access_config)
 
         controller.start()
         while not controller.is_finished(app.guid):

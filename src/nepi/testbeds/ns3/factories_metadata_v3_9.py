@@ -76,6 +76,11 @@ def _get_dev_number(testbed_instance, guid):
         interface_number += 1
     return interface_number
 
+def _follow_trace(testbed_instance, guid, trace_id, filename):
+    testbed_instance.follow_trace(guid, trace_id, filename)
+    filepath = testbed_instance.trace_filepath(guid, trace_id)
+    return filepath
+
 ### create traces functions ###
 
 def p2pascii_trace(testbed_instance, guid, trace_id):
@@ -83,8 +88,7 @@ def p2pascii_trace(testbed_instance, guid, trace_id):
     interface_number = _get_dev_number(testbed_instance, guid)
     element = testbed_instance._elements[guid]
     filename = "trace-p2p-node-%d-dev-%d.tr" % (node_guid, interface_number)
-    testbed_instance.follow_trace(guid, trace_id, filename)
-    filepath = testbed_instance.trace_filename(guid, trace_id)
+    filepath = _follow_trace(testbed_instance, guid, trace_id, filename)
     helper = testbed_instance.ns3.PointToPointHelper()
     asciiHelper = testbed_instance.ns3.AsciiTraceHelper()
     stream = asciiHelper.CreateFileStream(filepath)
@@ -95,8 +99,7 @@ def p2ppcap_trace(testbed_instance, guid, trace_id):
     interface_number = _get_dev_number(testbed_instance, guid)
     element = testbed_instance._elements[guid]
     filename = "trace-p2p-node-%d-dev-%d.pcap" % (node_guid, interface_number)
-    testbed_instance.follow_trace(guid, trace_id, filename)
-    filepath = testbed_instance.trace_filename(guid, trace_id)
+    filepath = _follow_trace(testbed_instance, guid, trace_id, filename)
     helper = testbed_instance.ns3.PointToPointHelper()
     helper.EnablePcap(filepath, element, explicitFilename = True)
 
@@ -105,8 +108,7 @@ def _csmapcap_trace(testbed_instance, guid, trace_id, promisc):
     interface_number = _get_dev_number(testbed_instance, guid)
     element = testbed_instance._elements[guid]
     filename = "trace-csma-node-%d-dev-%d.pcap" % (node_guid, interface_number)
-    testbed_instance.follow_trace(guid, trace_id, filename)
-    filepath = testbed_instance.trace_filename(guid, trace_id)
+    filepath = _follow_trace(testbed_instance, guid, trace_id, filename)
     helper = testbed_instance.ns3.CsmaHelper()
     helper.EnablePcap(filepath, element, promiscuous = promisc, 
             explicitFilename = True)
@@ -124,8 +126,7 @@ def fdpcap_trace(testbed_instance, guid, trace_id):
     interface_number = _get_dev_number(testbed_instance, guid)
     element = testbed_instance._elements[guid]
     filename = "trace-fd-node-%d-dev-%d.pcap" % (node_guid, interface_number)
-    testbed_instance.follow_trace(guid, trace_id, filename)
-    filepath = testbed_instance.trace_filename(guid, trace_id)
+    filepath = _follow_trace(testbed_instance, guid, trace_id, filename)
     helper = testbed_instance.ns3.FileDescriptorHelper()
     helper.EnablePcap(filepath, element, explicitFilename = True)
 
@@ -135,8 +136,7 @@ def yanswifipcap_trace(testbed_instance, guid, trace_id):
     interface_number = _get_dev_number(testbed_instance, dev_guid)
     element = testbed_instance._elements[dev_guid]
     filename = "trace-yanswifi-node-%d-dev-%d.pcap" % (node_guid, interface_number)
-    testbed_instance.follow_trace(guid, trace_id, filename)
-    filepath = testbed_instance.trace_filename(guid, trace_id)
+    filepath = _follow_trace(testbed_instance, guid, trace_id, filename)
     helper = testbed_instance.ns3.YansWifiPhyHelper()
     helper.EnablePcap(filepath, element, explicitFilename = True)
 
@@ -145,8 +145,7 @@ def wimaxascii_trace(testbed_instance, guid, trace_id):
     interface_number = _get_dev_number(testbed_instance, guid)
     element = testbed_instance._elements[guid]
     filename = "trace-wimax-node-%d-dev-%d.tr" % (node_guid, interface_number)
-    testbed_instance.follow_trace(guid, trace_id, filename)
-    filepath = testbed_instance.trace_filename(guid, trace_id)
+    filepath = _follow_trace(testbed_instance, guid, trace_id, filename)
     helper = testbed_instance.ns3.WimaxHelper()
     asciiHelper = testbed_instance.ns3.AsciiTraceHelper()
     stream = asciiHelper.CreateFileStream (filepath)
@@ -158,8 +157,7 @@ def wimaxpcap_trace(testbed_instance, guid, trace_id):
     interface_number = _get_dev_number(testbed_instance, guid)
     element = testbed_instance._elements[guid]
     filename = "trace-wimax-node-%d-dev-%d.pcap" % (node_guid, interface_number)
-    testbed_instance.follow_trace(guid, trace_id, filename)
-    filepath = testbed_instance.trace_filename(guid, trace_id)
+    filepath = _follow_trace(testbed_instance, guid, trace_id, filename)
     helper = testbed_instance.ns3.WimaxHelper()
     helper.EnablePcap(filepath, element, explicitFilename = True)
 
@@ -168,8 +166,7 @@ def rtt_trace(testbed_instance, guid, trace_id):
     helper = testbed_instance.ns3.PlotHelper()
     prefix = "trace-app-%d" % (guid, )
     filename = helper.GetFilenameFromSource(prefix, element, trace_id)
-    testbed_instance.follow_trace(guid, trace_id, filename)
-    filepath = testbed_instance.trace_filename(guid, trace_id)
+    filepath = _follow_trace(testbed_instance, guid, trace_id, filename)
     prefix = filepath[:filepath.find(prefix)+len(prefix)]
     helper.EnableTrace(element, trace_id, prefix, "T")
 

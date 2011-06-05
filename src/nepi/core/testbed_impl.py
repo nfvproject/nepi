@@ -428,19 +428,43 @@ class TestbedController(execute.TestbedController):
 
     def trace(self, guid, trace_id, attribute='value'):
         if attribute == 'value':
-            fd = open("%s" % self.trace_filename(guid, trace_id), "r")
+            fd = open("%s" % self.trace_filepath(guid, trace_id), "r")
             content = fd.read()
             fd.close()
         elif attribute == 'path':
-            content = self.trace_filename(guid, trace_id)
+            content = self.trace_filepath(guid, trace_id)
+        elif attribute == 'size':
+            content = str(self.traces_filesize(guid, trace_id))
         else:
             content = None
         return content
 
-    def trace_filename(self, guid, trace_id):
+    def traces_info(self):
+        traces_info = dict()
+        host = self._attributes.get_attribute_value("deployment_host")
+        for guid, trace_list in self._add_trace.iteritems(): 
+            traces_info[guid] = dict()
+            for trace_id in trace_list:
+                traces_info[guid][trace_id] = dict()
+                filepath = self.trace(guid, trace_id, attribute = "path")
+                # TODO: Filesize!
+                # filesize = self.trace(guid, trace_id)
+                filesize = -1
+                traces_info[guid][trace_id]["host"] = host
+                traces_info[guid][trace_id]["filepath"] = filepath
+                traces_info[guid][trace_id]["filesize"] = str(filesize)
+        return traces_info
+
+    def trace_filepath(self, guid, trace_id):
         """
         Return a trace's file path, for TestbedController's default 
         implementation of trace()
+        """
+        raise NotImplementedError
+
+    def trace_filesize(self, guid, trace_id):
+        """
+        Return a trace's filesize in bytes
         """
         raise NotImplementedError
 

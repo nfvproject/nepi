@@ -217,6 +217,9 @@ class TestbedController(testbed_impl.TestbedController):
                 content = None
         elif attribute == 'path':
             content = app.remote_trace_path(trace_id)
+        elif attribute == 'size':
+            # TODO
+            raise NotImplementedError
         else:
             content = None
         return content
