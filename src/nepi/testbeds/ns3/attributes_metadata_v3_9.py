@@ -2527,4 +2527,12 @@ attributes = dict({
         "type": Attribute.ENUM,
         "help": "Service flow scheduling type",
     }),
+   "WaypointList": dict({
+        "name": "WaypointList",
+        "validation_function": validation.is_string, # TODO: SPECIAL VALIDATION FUNC
+        "value": "",
+        "flags": Attribute.DesignOnly,
+        "type": Attribute.STRING,
+        "help": "Comma separated list of waypoints in format t:x:y:z. Ex: 0s:0:0:0, 1s:1:0:0"
+    }),
 })

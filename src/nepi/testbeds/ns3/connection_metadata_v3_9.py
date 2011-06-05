@@ -659,6 +659,12 @@ connections = [
         "can_cross": False
     }),
     dict({
+        "from": ( "ns3", "ns3::Node", "mobility" ),
+        "to":   ( "ns3", "ns3::WaypointMobilityModel", "node" ),
+        "init_code": connect_node_other,
+        "can_cross": False
+    }),
+    dict({
         "from": ( "ns3", "ns3::SubscriberStationNetDevice", "sflows" ),
         "to":   ( "ns3", "ns3::ServiceFlow", "dev" ),
         "init_code": connect_station_sflow,

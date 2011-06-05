@@ -204,10 +204,24 @@ def create_wifi_standard_model(testbed_instance, guid):
     create_element(testbed_instance, guid)
     element = testbed_instance._elements[guid]
     parameters = testbed_instance._get_parameters(guid)
-    if "Standard" in parameters:
-        standard = parameters["Standard"]
-        if standard:
-            element.ConfigureStandard(wifi_standards[standard])
+    standard = parameters.get("Standard")
+    if standard:
+        element.ConfigureStandard(wifi_standards[standard])
+
+def create_waypoint_mobility(testbed_instance, guid):
+    create_element(testbed_instance, guid)
+    element = testbed_instance._elements[guid]
+    parameters = testbed_instance._get_parameters(guid)
+    ns3 = testbed_instance.ns3
+    waypoints = parameters.get("WaypointList", "")
+    waypoints = waypoints.replace(" ","")
+    for swp in waypoints.split(","):
+        dwp = swp.split(":")
+        t = str(dwp[0])
+        time = ns3.Time(t)
+        pos = ns3.Vector(float(dwp[1]), float(dwp[2]), float(dwp[3]))
+        waypoint = ns3.Waypoint(time, pos)
+        element.AddWaypoint(waypoint)
 
 def create_ipv4protocol(testbed_instance, guid):
     create_element(testbed_instance, guid)
@@ -265,14 +279,10 @@ def create_wimax_phy(testbed_instance, guid):
 
 def create_service_flow(testbed_instance, guid):
     parameters = testbed_instance._get_parameters(guid)
-    direction = None
-    if "Direction" in parameters:
-        direction = parameters["Direction"]
+    direction = parameters.get("Direction")
     if direction == None:
         raise RuntimeError("No SchedulingType was found for service flow %d" % guid)
-    sched = None
-    if "SchedulingType" in parameters:
-        sched = parameters["SchedulingType"]
+    sched = parameters.get("SchedulingType")
     if sched == None:
         raise RuntimeError("No SchedulingType was found for service flow %d" % guid)
     ServiceFlow = testbed_instance.ns3.ServiceFlow
@@ -296,58 +306,38 @@ def create_service_flow(testbed_instance, guid):
 
 def create_ipcs_classifier_record(testbed_instance, guid):
     parameters = testbed_instance._get_parameters(guid)
-    src_address = None
-    if "SrcAddress" in parameters:
-        src_address = parameters["SrcAddress"]
+    src_address = parameters.get("SrcAddress")
     if src_address == None:
         raise RuntimeError("No SrcAddress was found for classifier %d" % guid)
     src_address = testbed_instance.ns3.Ipv4Address(src_address)
-    src_mask= None
-    if "SrcMask" in parameters:
-        src_mask = parameters["SrcMask"]
+    src_mask = parameters.get("SrcMask")
     if src_mask == None:
         raise RuntimeError("No SrcMask was found for classifier %d" % guid)
     src_mask = testbed_instance.ns3.Ipv4Mask(src_mask)
-    dst_address = None
-    if "DstAddress" in parameters:
-        dst_address = parameters["DstAddress"]
+    dst_address = parameters.get("DstAddress")
     if dst_address == None:
         raise RuntimeError("No Dstddress was found for classifier %d" % guid)
     dst_address = testbed_instance.ns3.Ipv4Address(dst_address)
-    dst_mask= None
-    if "DstMask" in parameters:
-        dst_mask = parameters["DstMask"]
+    dst_mask = parameters.get("DstMask")
     if dst_mask == None:
         raise RuntimeError("No DstMask was found for classifier %d" % guid)
     dst_mask = testbed_instance.ns3.Ipv4Mask(dst_mask)
-    src_port_low = None
-    if "SrcPortLow" in parameters:
-        src_port_low = parameters["SrcPortLow"]
+    src_port_low = parameters.get("SrcPortLow")
     if src_port_low == None:
         raise RuntimeError("No SrcPortLow was found for classifier %d" % guid)
-    src_port_high= None
-    if "SrcPortHigh" in parameters:
-        src_port_high = parameters["SrcPortHigh"]
+    src_port_high = parameters.get("SrcPortHigh")
     if src_port_high == None:
         raise RuntimeError("No SrcPortHigh was found for classifier %d" % guid)
-    dst_port_low = None
-    if "DstPortLow" in parameters:
-        dst_port_low = parameters["DstPortLow"]
+    dst_port_low = parameters.get("DstPortLow")
     if dst_port_low == None:
         raise RuntimeError("No DstPortLow was found for classifier %d" % guid)
-    dst_port_high = None
-    if "DstPortHigh" in parameters:
-        dst_port_high = parameters["DstPortHigh"]
+    dst_port_high = parameters.get("DstPortHigh")
     if dst_port_high == None:
         raise RuntimeError("No DstPortHigh was found for classifier %d" % guid)
-    protocol = None
-    if "Protocol" in parameters:
-        protocol = parameters["Protocol"]
+    protocol = parameters.get("Protocol")
     if protocol == None or protocol not in l4_protocols:
         raise RuntimeError("No Protocol was found for classifier %d" % guid)
-    priority = None
-    if "Priority" in parameters:
-        priority = parameters["Priority"]
+    priority = parameters.get("Priority")
     if priority == None:
         raise RuntimeError("No Priority was found for classifier %d" % guid)
     element = testbed_instance.ns3.IpcsClassifierRecord(src_address, src_mask,
@@ -378,13 +368,13 @@ def status_application(testbed_instance, guid):
         return STATUS_NOT_STARTED
     app = testbed_instance.elements[guid]
     parameters = testbed_instance._get_parameters(guid)
-    if "StartTime" in parameters and parameters["StartTime"]:
-        start_value = parameters["StartTime"]
+    start_value = parameters.get("StartTime")
+    if start_value != None:
         start_time = testbed_instance.ns3.Time(start_value)
         if now.Compare(start_time) < 0:
             return STATUS_NOT_STARTED
-    if "StopTime" in parameters and parameters["StopTime"]:
-        stop_value = parameters["StopTime"]
+    stop_value = parameters.get("StopTime")
+    if stop_value != None:
         stop_time = testbed_instance.ns3.Time(stop_value)
         if now.Compare(stop_time) < 0:
             return STATUS_RUNNING
@@ -409,8 +399,8 @@ def configure_device(testbed_instance, guid):
     element = testbed_instance._elements[guid]
 
     parameters = testbed_instance._get_parameters(guid)
-    if "macAddress" in parameters:
-        address = parameters["macAddress"]
+    address = parameters.get("macAddress")
+    if address:
         macaddr = testbed_instance.ns3.Mac48Address(address)
     else:
         macaddr = testbed_instance.ns3.Mac48Address.Allocate()
@@ -1029,13 +1019,14 @@ factories_info = dict({
     }),
      "ns3::WaypointMobilityModel": dict({
         "category": "Mobility",
-        "create_function": create_element,
+        "create_function": create_waypoint_mobility,
         "configure_function": configure_element,
-        "help": "",
-        "connector_types": [],
+        "help": "Waypoint-based mobility model.",
+        "connector_types": ["node"],
         "box_attributes": ["WaypointsLeft",
             "Position",
-            "Velocity"],
+            "Velocity",
+            "WaypointList"],
         "tags": [tags.MOBILE],
     }),
      "ns3::FileDescriptorNetDevice": dict({
