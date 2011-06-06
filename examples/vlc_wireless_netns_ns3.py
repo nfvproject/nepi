@@ -114,7 +114,7 @@ class VlcWirelessNetnsNs3Example(object):
     def run(self):
         bounds_width = bounds_height = 200
         x = y = 100
-        speed = 1
+        speed = 7
 
         exp_desc = ExperimentDescription()
 
