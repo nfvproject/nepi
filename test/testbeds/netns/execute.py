@@ -167,7 +167,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.shutdown()
 
     @test_util.skipUnless(os.getuid() == 0, "Test requires root privileges")
-    def bug_test_node_pcap_trace(self):
+    def test_node_pcap_trace(self):
         user = getpass.getuser()
         testbed_version = "01"
         instance = netns.TestbedController(testbed_version)
