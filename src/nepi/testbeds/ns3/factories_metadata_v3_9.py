@@ -718,7 +718,7 @@ factories_info = dict({
         "tags": [tags.MOBILE],
     }),
      "ns3::Node": dict({
-        "category": "Topology",
+        "category": "Node",
         "create_function": create_node,
         "configure_function": configure_node,
         "help": "",
@@ -1076,10 +1076,10 @@ factories_info = dict({
     }),
      "ns3::NqstaWifiMac": dict({
         "category": "Mac",
-        "create_function": create_element,
+        "create_function": create_wifi_standard_model,
         "configure_function": configure_element,
         "help": "",
-        "connector_types": [],
+        "connector_types": ["dev"],
         "box_attributes": ["ProbeRequestTimeout",
             "AssocRequestTimeout",
             "MaxMissedBeacons",
@@ -1336,10 +1336,10 @@ factories_info = dict({
     }),
      "ns3::NqapWifiMac": dict({
         "category": "Mac",
-        "create_function": create_element,
+        "create_function": create_wifi_standard_model,
         "configure_function": configure_element,
         "help": "",
-        "connector_types": [],
+        "connector_types": ["dev"],
         "box_attributes": ["BeaconInterval",
             "BeaconGeneration",
             "CtsTimeout",
@@ -1568,7 +1568,7 @@ factories_info = dict({
         "box_attributes": ["DefaultLoss"],
     }),
      "ns3::WifiNetDevice": dict({
-        "category": "Wifi",
+        "category": "Device",
         "create_function": create_element,
         "configure_function": configure_device,
         "help": "",
@@ -1577,7 +1577,7 @@ factories_info = dict({
         "box_attributes": ["Mtu"],
     }),
      "ns3::CsmaChannel": dict({
-        "category": "Topology",
+        "category": "Channel",
         "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
@@ -1745,7 +1745,7 @@ factories_info = dict({
             "EnableBeaconCollisionAvoidance"],
     }),
      "ns3::MeshPointDevice": dict({
-        "category": "Topology",
+        "category": "Device",
         "create_function": create_element,
         "configure_function": configure_element,
         "help": "",

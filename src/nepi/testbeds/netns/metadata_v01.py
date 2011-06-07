@@ -189,6 +189,11 @@ def start_application(testbed_instance, guid):
             stderr = stderr, user = user)
     testbed_instance.elements[guid] = element
 
+def stop_application(testbed_instance, guid):
+    #app = testbed_instance.elements[guid]
+    #app.signal()
+    pass
+
 ### Status functions ###
 
 def status_application(testbed_instance, guid):
@@ -511,6 +516,7 @@ factories_info = dict({
             "category": "applications",
             "create_function": create_application,
             "start_function": start_application,
+            "stop_function": stop_application,
             "status_function": status_application,
             "box_attributes": ["command", "user"],
             "connector_types": ["node"],

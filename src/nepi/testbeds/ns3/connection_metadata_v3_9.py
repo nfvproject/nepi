@@ -444,6 +444,18 @@ connections = [
             "can_cross": False
     }),
     dict({
+            "from": ( "ns3", "ns3::NqapWifiMac", "dev" ),
+            "to":   ( "ns3", "ns3::WifiNetDevice", "mac" ),
+            "init_code": connect_mac_device,
+            "can_cross": False
+    }),
+    dict({
+            "from": ( "ns3", "ns3::NqstaWifiMac", "dev" ),
+            "to":   ( "ns3", "ns3::WifiNetDevice", "mac" ),
+            "init_code": connect_mac_device,
+            "can_cross": False
+    }),
+    dict({
             "from": ( "ns3", "ns3::RateErrorModel", "dev" ),
             "to":   ( "ns3", "ns3::CsmaNetDevice", "err" ),
             "init_code": connect_errormodel_device,
