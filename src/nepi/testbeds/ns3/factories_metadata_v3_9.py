@@ -205,8 +205,9 @@ def create_wifi_standard_model(testbed_instance, guid):
     element = testbed_instance._elements[guid]
     parameters = testbed_instance._get_parameters(guid)
     standard = parameters.get("Standard")
-    if standard:
-        element.ConfigureStandard(wifi_standards[standard])
+    if not standard:
+        raise RuntimeError("No wifi standard set for %d" % guid)
+    element.ConfigureStandard(wifi_standards[standard])
 
 def create_waypoint_mobility(testbed_instance, guid):
     create_element(testbed_instance, guid)

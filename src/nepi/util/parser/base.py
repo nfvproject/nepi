@@ -261,7 +261,7 @@ class ExperimentParser(object):
 
     def from_data(self, experiment_description, data):
         box_guids = list()
-        for guid in data.guids:
+        for guid in sorted(data.guids):
             if data.is_testbed_data(guid):
                 self.testbed_from_data(experiment_description, guid, data)
             else:

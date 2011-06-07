@@ -16,7 +16,7 @@ class XmlExperimentParser(ExperimentParser):
         exp_tag.appendChild(testbeds_tag)
 
         elements_tags = dict()
-        for guid in data.guids:
+        for guid in sorted(data.guids):
             if data.is_testbed_data(guid):
                 elements_tag = self.testbed_data_to_xml(doc, testbeds_tag, guid, data)
                 elements_tags[guid] = elements_tag
