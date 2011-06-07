@@ -5,15 +5,55 @@ from constants import TESTBED_ID
 from nepi.core import testbed_impl
 from nepi.util.constants import TIME_NOW
 import os
+import fcntl
+import threading
 
 class TestbedController(testbed_impl.TestbedController):
     from nepi.util.tunchannel_impl import TunChannel
+    
+    class HostLock(object):
+        taken = False
+        processcond = threading.Condition()
+        
+        def __init__(self, lockfile):
+            processcond = self.__class__.processcond
+            
+            processcond.acquire()
+            try:
+                # It's not reentrant
+                while self.__class__.taken:
+                    processcond.wait()
+                self.__class__.taken = True
+            finally:
+                processcond.release()
+            
+            self.lockfile = lockfile
+            fcntl.flock(self.lockfile, fcntl.LOCK_EX)
+        
+        def __del__(self):
+            processcond = self.__class__.processcond
+            
+            processcond.acquire()
+            try:
+                assert self.__class__.taken, "HostLock unlocked without being locked!"
 
+                fcntl.flock(self.lockfile, fcntl.LOCK_UN)
+                
+                # It's not reentrant
+                self.__class__.taken = False
+                processcond.notify()
+            finally:
+                processcond.release()
+    
     def __init__(self, testbed_version):
         super(TestbedController, self).__init__(TESTBED_ID, testbed_version)
         self._netns = None
         self._home_directory = None
         self._traces = dict()
+        self._netns_lock = open("/tmp/nepi-netns-lock","a")
+    
+    def _lock(self):
+        return self.HostLock(self._netns_lock)
 
     @property
     def home_directory(self):
@@ -24,10 +64,16 @@ class TestbedController(testbed_impl.TestbedController):
         return self._netns
 
     def do_setup(self):
+        lock = self._lock()
+        
         self._home_directory = self._attributes.\
             get_attribute_value("homeDirectory")
         self._netns = self._load_netns_module()
         super(TestbedController, self).do_setup()
+    
+    def do_create(self):
+        lock = self._lock()
+        super(TestbedController, self).do_create()    
 
     def set(self, guid, name, value, time = TIME_NOW):
         super(TestbedController, self).set(guid, name, value, time)
@@ -57,6 +103,8 @@ class TestbedController(testbed_impl.TestbedController):
         raise NotImplementedError
 
     def shutdown(self):
+        lock = self._lock()
+        
         for guid, traces in self._traces.iteritems():
             for trace_id, (trace, filename) in traces.iteritems():
                 if hasattr(trace, "close"):
