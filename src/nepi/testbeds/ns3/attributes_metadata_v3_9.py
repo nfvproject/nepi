@@ -2415,7 +2415,7 @@ attributes = dict({
         "name": "Standard",
         "validation_function": validation.is_string,
         "value": "WIFI_PHY_STANDARD_80211a",
-        "flags": Attribute.DesignOnly,
+        "flags": Attribute.DesignOnly | Attribute.HasNoDefaultValue,
         "type": Attribute.ENUM,
         "allowed": wifi_standards.keys(),
         "help": "Wifi PHY standard"
