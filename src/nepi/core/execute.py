@@ -572,7 +572,9 @@ class ExperimentController(object):
         except:
             # Just print exceptions, this is just cleanup
             import traceback
-            traceback.print_exc(file=sys.stderr)
+            ######## BUG ##########
+            #BUG: If the next line is uncomented pyQt explodes when shutting down the experiment !!!!!!!!
+            #traceback.print_exc(file=sys.stderr)
 
     def stop(self):
        for testbed in self._testbeds.values():
