@@ -68,6 +68,11 @@ class TestbedController(testbed_impl.TestbedController):
         
         self._home_directory = self._attributes.\
             get_attribute_value("homeDirectory")
+        # create home...
+        home = os.path.normpath(self.home_directory)
+        if not os.path.exists(home):
+            os.makedirs(home, 0755)
+
         self._netns = self._load_netns_module()
         super(TestbedController, self).do_setup()
     
