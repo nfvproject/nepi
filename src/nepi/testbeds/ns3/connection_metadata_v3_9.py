@@ -3,6 +3,7 @@
 
 from constants import TESTBED_ID
 import functools
+from nepi.util.constants import CONNECTION_DELAY
 from nepi.util.tunchannel_impl import \
     crossconnect_tunchannel_peer_init, \
     crossconnect_tunchannel_peer_compl
@@ -29,6 +30,8 @@ def connect_manager_device(testbed_instance, manager_guid, device_guid):
 
 def connect_phy_device(testbed_instance, phy_guid, device_guid):
     phy = testbed_instance._elements[phy_guid]
+    if phy.GetErrorRateModel() == None:
+        return CONNECTION_DELAY
     device = testbed_instance._elements[device_guid]
     device.SetPhy(phy)
     phy.SetDevice(device)

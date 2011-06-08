@@ -20,6 +20,7 @@ TESTBED_STATUS_STOPPED = 7
 
 TIME_NOW = "0s"
 
+CONNECTION_DELAY = 0
 
 ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP = "_nepi_testbed_environment_setup"
 

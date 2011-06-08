@@ -12,9 +12,11 @@ from nepi.util.constants import STATUS_UNDETERMINED, TIME_NOW, \
     TESTBED_STATUS_CROSS_CONNECTED, \
     TESTBED_STATUS_CONFIGURED, \
     TESTBED_STATUS_STARTED, \
-    TESTBED_STATUS_STOPPED
+    TESTBED_STATUS_STOPPED,\
+    CONNECTION_DELAY
 
 import collections
+import copy
 
 class TestbedController(execute.TestbedController):
     def __init__(self, testbed_id, testbed_version):
@@ -204,27 +206,38 @@ class TestbedController(execute.TestbedController):
         self._status = TESTBED_STATUS_CREATED
 
     def _do_connect(self, init = True):
-        for guid1, connections in self._connect.iteritems():
-            factory1 = self._get_factory(guid1)
-            for connector_type_name1, connections2 in connections.iteritems():
-                connector_type1 = factory1.connector_type(connector_type_name1)
-                for guid2, connector_type_name2 in connections2.iteritems():
-                    factory_id2 = self._create[guid2]
-                    # Connections are executed in a "From -> To" direction only
-                    # This explicitly ignores the "To -> From" (mirror) 
-                    # connections of every connection pair.
-                    if init:
-                        connect_code = connector_type1.connect_to_init_code(
-                                self._testbed_id, factory_id2, 
-                                connector_type_name2,
-                                False)
-                    else:
-                        connect_code = connector_type1.connect_to_compl_code(
-                                self._testbed_id, factory_id2, 
-                                connector_type_name2,
-                                False)
-                    if connect_code:
-                        connect_code(self, guid1, guid2)
+        unconnected = copy.deepcopy(self._connect)
+        
+        while unconnected:
+            for guid1, connections in unconnected.items():
+                factory1 = self._get_factory(guid1)
+                for connector_type_name1, connections2 in connections.items():
+                    connector_type1 = factory1.connector_type(connector_type_name1)
+                    for guid2, connector_type_name2 in connections2.items():
+                        factory_id2 = self._create[guid2]
+                        # Connections are executed in a "From -> To" direction only
+                        # This explicitly ignores the "To -> From" (mirror) 
+                        # connections of every connection pair.
+                        if init:
+                            connect_code = connector_type1.connect_to_init_code(
+                                    self._testbed_id, factory_id2, 
+                                    connector_type_name2,
+                                    False)
+                        else:
+                            connect_code = connector_type1.connect_to_compl_code(
+                                    self._testbed_id, factory_id2, 
+                                    connector_type_name2,
+                                    False)
+                        delay = None
+                        if connect_code:
+                            delay = connect_code(self, guid1, guid2)
+
+                        if delay is not CONNECTION_DELAY:
+                            del unconnected[guid1][connector_type_name1][guid2]
+                    if not unconnected[guid1][connector_type_name1]:
+                        del unconnected[guid1][connector_type_name1]
+                if not unconnected[guid1]:
+                    del unconnected[guid1]
 
     def do_connect_init(self):
         self._do_connect()
