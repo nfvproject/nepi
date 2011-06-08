@@ -414,6 +414,54 @@ connections = [
             "can_cross": False
     }),
     dict({
+            "from": ( "ns3", "ns3::AarfcdWifiManager", "dev" ),
+            "to":   ( "ns3", "ns3::WifiNetDevice", "manager" ),  
+            "init_code": connect_manager_device,
+            "can_cross": False
+    }),
+    dict({
+            "from": ( "ns3", "ns3::AarfWifiManager", "dev" ),
+            "to":   ( "ns3", "ns3::WifiNetDevice", "manager" ),  
+            "init_code": connect_manager_device,
+            "can_cross": False
+    }),
+    dict({
+            "from": ( "ns3", "ns3::AmrrWifiManager", "dev" ),
+            "to":   ( "ns3", "ns3::WifiNetDevice", "manager" ),  
+            "init_code": connect_manager_device,
+            "can_cross": False
+    }),
+    dict({
+            "from": ( "ns3", "ns3::CaraWifiManager", "dev" ),
+            "to":   ( "ns3", "ns3::WifiNetDevice", "manager" ),  
+            "init_code": connect_manager_device,
+            "can_cross": False
+    }),
+    dict({
+            "from": ( "ns3", "ns3::IdealWifiManager", "dev" ),
+            "to":   ( "ns3", "ns3::WifiNetDevice", "manager" ),  
+            "init_code": connect_manager_device,
+            "can_cross": False
+    }),
+    dict({
+            "from": ( "ns3", "ns3::MinstrelWifiManager", "dev" ),
+            "to":   ( "ns3", "ns3::WifiNetDevice", "manager" ),  
+            "init_code": connect_manager_device,
+            "can_cross": False
+    }),
+    dict({
+            "from": ( "ns3", "ns3::OnoeWifiManager", "dev" ),
+            "to":   ( "ns3", "ns3::WifiNetDevice", "manager" ),  
+            "init_code": connect_manager_device,
+            "can_cross": False
+    }),
+    dict({
+            "from": ( "ns3", "ns3::RraaWifiManager", "dev" ),
+            "to":   ( "ns3", "ns3::WifiNetDevice", "manager" ),  
+            "init_code": connect_manager_device,
+            "can_cross": False
+    }),
+    dict({
             "from": ( "ns3", "ns3::YansWifiPhy", "dev" ),
             "to":   ( "ns3", "ns3::WifiNetDevice", "phy" ),  
             "init_code": connect_phy_device,
