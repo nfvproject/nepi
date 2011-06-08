@@ -25,3 +25,21 @@ def ipv4_mask2dot(mask):
     mask = '.'.join(map(str,map(ord,mask)))
     return mask
 
+def ipdist(a,b):
+    a = struct.unpack('!L',socket.inet_aton(a))[0]
+    b = struct.unpack('!L',socket.inet_aton(b))[0]
+    d = 32
+    while d and (b&0x80000000)==(a&0x80000000):
+        a <<= 1
+        b <<= 1
+        d -= 1
+    return d
+
+def ipdistn(a,b):
+    d = 32
+    while d and (b&0x80000000)==(a&0x80000000):
+        a <<= 1
+        b <<= 1
+        d -= 1
+    return d
+
