@@ -6,10 +6,15 @@ import plcapi
 import operator
 import os
 import os.path
+import sys
 import nepi.util.server as server
 import cStringIO
 import subprocess
 import rspawn
+import random
+import time
+import socket
+import threading
 
 from nepi.util.constants import STATUS_NOT_STARTED, STATUS_RUNNING, \
         STATUS_FINISHED
@@ -64,12 +69,23 @@ class Dependency(object):
         self._setuper = None
         self._pid = None
         self._ppid = None
+
+        # Spanning tree deployment
+        self._master = None
+        self._master_passphrase = None
+        self._master_prk = None
+        self._master_puk = None
+        self._master_token = ''.join(map(chr,[rng.randint(0,255) 
+                                      for rng in (random.SystemRandom(),)
+                                      for i in xrange(8)] )).encode("hex")
+        self._build_pid = None
+        self._build_ppid = None
+        
     
     def __str__(self):
         return "%s<%s>" % (
             self.__class__.__name__,
-            ' '.join(list(self.depends or [])
-                   + list(self.sources or []))
+            ' '.join(filter(bool,(self.depends, self.sources)))
         )
     
     def validate(self):
@@ -127,13 +143,20 @@ class Dependency(object):
 
     def setup(self):
         self._make_home()
-        self._build()
+        self._launch_build()
+        self._finish_build()
         self._setup = True
     
     def async_setup(self):
         if not self._setuper:
+            def setuper():
+                try:
+                    self.setup()
+                except:
+                    self._setuper._exc.append(sys.exc_info())
             self._setuper = threading.Thread(
-                target = self.setup)
+                target = setuper)
+            self._setuper._exc = []
             self._setuper.start()
     
     def async_setup_wait(self):
@@ -141,7 +164,11 @@ class Dependency(object):
             if self._setuper:
                 self._setuper.join()
                 if not self._setup:
-                    raise RuntimeError, "Failed to setup application"
+                    if self._setuper._exc:
+                        exctyp,exval,exctrace = self._setuper._exc[0]
+                        raise exctyp,exval,exctrace
+                    else:
+                        raise RuntimeError, "Failed to setup application"
             else:
                 self.setup()
         
@@ -149,7 +176,7 @@ class Dependency(object):
         # Make sure all the paths are created where 
         # they have to be created for deployment
         (out,err),proc = server.popen_ssh_command(
-            "mkdir -p %s" % (server.shell_escape(self.home_path),),
+            "mkdir -p %(home)s && ( rm -f %(home)s/{pid,build-pid,nepi-build.sh} >/dev/null 2>&1 || /bin/true )" % { 'home' : server.shell_escape(self.home_path) },
             host = self.node.hostname,
             port = None,
             user = self.node.slicename,
@@ -159,8 +186,7 @@ class Dependency(object):
             )
         
         if proc.wait():
-            raise RuntimeError, "Failed to set up application: %s %s" % (out,err,)
-        
+            raise RuntimeError, "Failed to set up application %s: %s %s" % (self.home_path, out,err,)
         
         if self.stdin:
             # Write program input
@@ -175,7 +201,7 @@ class Dependency(object):
                 )
             
             if proc.wait():
-                raise RuntimeError, "Failed to set up application: %s %s" % (out,err,)
+                raise RuntimeError, "Failed to set up application %s: %s %s" % (self.home_path, out,err,)
 
     def _replace_paths(self, command):
         """
@@ -187,7 +213,233 @@ class Dependency(object):
             .replace("${SOURCES}", root+server.shell_escape(self.home_path))
             .replace("${BUILD}", root+server.shell_escape(os.path.join(self.home_path,'build'))) )
 
-    def _build(self):
+    def _launch_build(self):
+        if self._master is not None:
+            self._do_install_keys()
+            buildscript = self._do_build_slave()
+        else:
+            buildscript = self._do_build_master()
+            
+        if buildscript is not None:
+            # upload build script
+            (out,err),proc = server.popen_scp(
+                buildscript,
+                '%s@%s:%s' % (self.node.slicename, self.node.hostname, 
+                    os.path.join(self.home_path, 'nepi-build.sh') ),
+                port = None,
+                agent = None,
+                ident_key = self.node.ident_path,
+                server_key = self.node.server_key
+                )
+            
+            if proc.wait():
+                raise RuntimeError, "Failed to set up application %s: %s %s" % (self.home_path, out,err,)
+            
+            # launch build
+            self._do_launch_build()
+    
+    def _finish_build(self):
+        self._do_wait_build()
+        self._do_install()
+
+    def _do_build_slave(self):
+        if not self.sources and not self.build:
+            return None
+            
+        # Create build script
+        files = set()
+        
+        if self.sources:
+            sources = self.sources.split(' ')
+            files.update(
+                "%s@%s:%s" % (self._master.node.slicename, self._master.node.hostname, 
+                    os.path.join(self._master.home_path, os.path.basename(source)),)
+                for source in sources
+            )
+        
+        if self.build:
+            files.add(
+                "%s@%s:%s" % (self._master.node.slicename, self._master.node.hostname, 
+                    os.path.join(self._master.home_path, 'build.tar.gz'),)
+            )
+        
+        launch_agent = "{ ( echo -e '#!/bin/sh\\ncat' > .ssh-askpass ) && chmod u+x .ssh-askpass"\
+                        " && export SSH_ASKPASS=$(pwd)/.ssh-askpass "\
+                        " && ssh-agent > .ssh-agent.sh ; } && . ./.ssh-agent.sh && ( echo $NEPI_MASTER_PASSPHRASE | ssh-add %(prk)s ) && rm -rf %(prk)s %(puk)s" %  \
+        {
+            'prk' : server.shell_escape(self._master_prk_name),
+            'puk' : server.shell_escape(self._master_puk_name),
+        }
+        
+        kill_agent = "kill $SSH_AGENT_PID"
+        
+        waitmaster = "{ . ./.ssh-agent.sh ; while [[ $(ssh -q -o UserKnownHostsFile=%(hostkey)s %(master)s cat %(token_path)s) != %(token)s ]] ; do sleep 5 ; done ; }" % {
+            'hostkey' : 'master_known_hosts',
+            'master' : "%s@%s" % (self._master.node.slicename, self._master.node.hostname),
+            'token_path' : os.path.join(self._master.home_path, 'build.token'),
+            'token' : server.shell_escape(self._master._master_token),
+        }
+        
+        syncfiles = "scp -p -o UserKnownHostsFile=%(hostkey)s %(files)s ." % {
+            'hostkey' : 'master_known_hosts',
+            'files' : ' '.join(files),
+        }
+        if self.build:
+            syncfiles += " && tar xzf build.tar.gz"
+        syncfiles += " && ( echo %s > build.token )" % (server.shell_escape(self._master_token),)
+        syncfiles = "{ . ./.ssh-agent.sh ; %s ; }" % (syncfiles,)
+        
+        cleanup = "{ . ./.ssh-agent.sh ; kill $SSH_AGENT_PID ; rm -rf %(prk)s %(puk)s master_known_hosts .ssh-askpass ; }" % {
+            'prk' : server.shell_escape(self._master_prk_name),
+            'puk' : server.shell_escape(self._master_puk_name),
+        }
+        
+        slavescript = "( ( %(launch_agent)s && %(waitmaster)s && %(syncfiles)s && %(kill_agent)s && %(cleanup)s ) || %(cleanup)s )" % {
+            'waitmaster' : waitmaster,
+            'syncfiles' : syncfiles,
+            'cleanup' : cleanup,
+            'kill_agent' : kill_agent,
+            'launch_agent' : launch_agent,
+            'home' : server.shell_escape(self.home_path),
+        }
+        
+        return cStringIO.StringIO(slavescript)
+         
+    def _do_launch_build(self):
+        script = "bash ./nepi-build.sh"
+        if self._master_passphrase:
+            script = "NEPI_MASTER_PASSPHRASE=%s %s" % (
+                server.shell_escape(self._master_passphrase),
+                script
+            )
+        (out,err),proc = rspawn.remote_spawn(
+            script,
+            
+            pidfile = 'build-pid',
+            home = self.home_path,
+            stdin = '/dev/null',
+            stdout = 'buildlog',
+            stderr = rspawn.STDOUT,
+            
+            host = self.node.hostname,
+            port = None,
+            user = self.node.slicename,
+            agent = None,
+            ident_key = self.node.ident_path,
+            server_key = self.node.server_key
+            )
+        
+        if proc.wait():
+            raise RuntimeError, "Failed to set up build slave %s: %s %s" % (self.home_path, out,err,)
+        
+        
+        pid = ppid = None
+        delay = 1.0
+        for i in xrange(5):
+            pidtuple = rspawn.remote_check_pid(
+                os.path.join(self.home_path,'build-pid'),
+                host = self.node.hostname,
+                port = None,
+                user = self.node.slicename,
+                agent = None,
+                ident_key = self.node.ident_path,
+                server_key = self.node.server_key
+                )
+            
+            if pidtuple:
+                pid, ppid = pidtuple
+                self._build_pid, self._build_ppid = pidtuple
+                break
+            else:
+                time.sleep(delay)
+                delay = min(30,delay*1.2)
+        else:
+            raise RuntimeError, "Failed to set up build slave %s: cannot get pid" % (self.home_path,)
+        
+    def _do_wait_build(self):
+        pid = self._build_pid
+        ppid = self._build_ppid
+        
+        if pid and ppid:
+            delay = 1.0
+            while True:
+                status = rspawn.remote_status(
+                    pid, ppid,
+                    host = self.node.hostname,
+                    port = None,
+                    user = self.node.slicename,
+                    agent = None,
+                    ident_key = self.node.ident_path,
+                    server_key = self.node.server_key
+                    )
+                
+                if status is not rspawn.RUNNING:
+                    self._build_pid = self._build_ppid = None
+                    break
+                else:
+                    time.sleep(delay*(0.5+random.random()))
+                    delay = min(30,delay*1.2)
+            
+            # check build token
+
+            (out,err),proc = server.popen_ssh_command(
+                "cat %(token_path)s" % {
+                    'token_path' : os.path.join(self.home_path, 'build.token'),
+                },
+                host = self.node.hostname,
+                port = None,
+                user = self.node.slicename,
+                agent = None,
+                ident_key = self.node.ident_path,
+                server_key = self.node.server_key
+                )
+            
+            slave_token = ""
+            if not proc.wait() and out:
+                slave_token = out.strip()
+            
+            if slave_token != self._master_token:
+                # Get buildlog for the error message
+
+                (buildlog,err),proc = server.popen_ssh_command(
+                    "cat %(buildlog)s" % {
+                        'buildlog' : os.path.join(self.home_path, 'buildlog'),
+                        'buildscript' : os.path.join(self.home_path, 'nepi-build.sh'),
+                    },
+                    host = self.node.hostname,
+                    port = None,
+                    user = self.node.slicename,
+                    agent = None,
+                    ident_key = self.node.ident_path,
+                    server_key = self.node.server_key
+                    )
+                
+                proc.wait()
+                
+                raise RuntimeError, "Failed to set up application %s: "\
+                        "build failed, got wrong token from pid %s/%s "\
+                        "(expected %r, got %r), see buildlog: %s" % (
+                    self.home_path, pid, ppid, self._master_token, slave_token, buildlog)
+
+    def _do_kill_build(self):
+        pid = self._build_pid
+        ppid = self._build_ppid
+        
+        if pid and ppid:
+            rspawn.remote_kill(
+                pid, ppid,
+                host = self.node.hostname,
+                port = None,
+                user = self.node.slicename,
+                agent = None,
+                ident_key = self.node.ident_path
+                )
+        
+        
+    def _do_build_master(self):
+        if not self.sources and not self.build and not self.buildDepends:
+            return None
+            
         if self.sources:
             sources = self.sources.split(' ')
             
@@ -203,59 +455,39 @@ class Dependency(object):
             if proc.wait():
                 raise RuntimeError, "Failed upload source file %r: %s %s" % (source, out,err,)
             
+        buildscript = cStringIO.StringIO()
+        
         if self.buildDepends:
             # Install build dependencies
-            (out,err),proc = server.popen_ssh_command(
-                "sudo -S yum -y install %(packages)s" % {
+            buildscript.write(
+                "sudo -S yum -y install %(packages)s\n" % {
                     'packages' : self.buildDepends
-                },
-                host = self.node.hostname,
-                port = None,
-                user = self.node.slicename,
-                agent = None,
-                ident_key = self.node.ident_path,
-                server_key = self.node.server_key
-                )
-        
-            if proc.wait():
-                raise RuntimeError, "Failed instal build dependencies: %s %s" % (out,err,)
+                }
+            )
         
             
         if self.build:
             # Build sources
-            (out,err),proc = server.popen_ssh_command(
-                "cd %(home)s && mkdir -p build && cd build && ( %(command)s ) > ${HOME}/%(home)s/buildlog 2>&1 || ( tail ${HOME}/%(home)s/buildlog >&2 && false )" % {
+            buildscript.write(
+                "mkdir -p build && ( cd build && ( %(command)s ) )\n" % {
                     'command' : self._replace_paths(self.build),
                     'home' : server.shell_escape(self.home_path),
-                },
-                host = self.node.hostname,
-                port = None,
-                user = self.node.slicename,
-                agent = None,
-                ident_key = self.node.ident_path,
-                server_key = self.node.server_key
-                )
+                }
+            )
         
-            if proc.wait():
-                raise RuntimeError, "Failed instal build sources: %s %s" % (out,err,)
-
             # Make archive
-            (out,err),proc = server.popen_ssh_command(
-                "cd %(home)s && tar czf build.tar.gz build" % {
-                    'command' : self._replace_paths(self.build),
-                    'home' : server.shell_escape(self.home_path),
-                },
-                host = self.node.hostname,
-                port = None,
-                user = self.node.slicename,
-                agent = None,
-                ident_key = self.node.ident_path,
-                server_key = self.node.server_key
-                )
+            buildscript.write(
+                "tar czf build.tar.gz build && ( echo %(master_token)s > build.token )\n" % {
+                    'master_token' : server.shell_escape(self._master_token)
+                }
+            )
         
-            if proc.wait():
-                raise RuntimeError, "Failed instal build sources: %s %s" % (out,err,)
+        buildscript.seek(0)
 
+        return buildscript
+        
+
+    def _do_install(self):
         if self.install:
             # Install application
             (out,err),proc = server.popen_ssh_command(
@@ -273,6 +505,57 @@ class Dependency(object):
         
             if proc.wait():
                 raise RuntimeError, "Failed instal build sources: %s %s" % (out,err,)
+
+    def set_master(self, master):
+        self._master = master
+        
+    def install_keys(self, prk, puk, passphrase):
+        # Install keys
+        self._master_passphrase = passphrase
+        self._master_prk = prk
+        self._master_puk = puk
+        self._master_prk_name = os.path.basename(prk.name)
+        self._master_puk_name = os.path.basename(puk.name)
+        
+    def _do_install_keys(self):
+        prk = self._master_prk
+        puk = self._master_puk
+        
+        (out,err),proc = server.popen_scp(
+            [ prk.name, puk.name ],
+            '%s@%s:%s' % (self.node.slicename, self.node.hostname, self.home_path ),
+            port = None,
+            agent = None,
+            ident_key = self.node.ident_path,
+            server_key = self.node.server_key
+            )
+        
+        if proc.wait():
+            raise RuntimeError, "Failed to set up application deployment keys: %s %s" % (out,err,)
+
+        (out,err),proc = server.popen_scp(
+            cStringIO.StringIO('%s,%s %s\n' % (
+                self._master.node.hostname, socket.gethostbyname(self._master.node.hostname), 
+                self._master.node.server_key)),
+            '%s@%s:%s' % (self.node.slicename, self.node.hostname, 
+                os.path.join(self.home_path,"master_known_hosts") ),
+            port = None,
+            agent = None,
+            ident_key = self.node.ident_path,
+            server_key = self.node.server_key
+            )
+        
+        if proc.wait():
+            raise RuntimeError, "Failed to set up application deployment keys: %s %s" % (out,err,)
+        
+        # No longer need'em
+        self._master_prk = None
+        self._master_puk = None
+    
+    def cleanup(self):
+        # make sure there's no leftover build processes
+        self._do_kill_build()
+
 
 class Application(Dependency):
     """
@@ -397,7 +680,8 @@ class Application(Dependency):
                 port = None,
                 user = self.node.slicename,
                 agent = None,
-                ident_key = self.node.ident_path
+                ident_key = self.node.ident_path,
+                server_key = self.node.server_key
                 )
             
             if status is rspawn.NOT_STARTED:
@@ -448,7 +732,7 @@ class NepiDependency(Dependency):
         tarname = os.path.basename(self.tarball.name)
         
         # it's already built - just move the tarball into place
-        self.build = "mv ${SOURCES}/%s ." % (tarname,)
+        self.build = "mv -f ${SOURCES}/%s ." % (tarname,)
         
         # unpack it into sources, and we're done
         self.install = "tar xzf ${BUILD}/%s -C .." % (tarname,)
@@ -492,12 +776,12 @@ class NS3Dependency(Dependency):
     def __init__(self, api = None):
         super(NS3Dependency, self).__init__(api)
         
-        self.buildDepends = 'build-essential waf gcc gcc-c++ gccxml unzip'
+        self.buildDepends = 'make waf gcc gcc-c++ gccxml unzip'
         
         # We have to download the sources, untar, build...
         pybindgen_source_url = "http://pybindgen.googlecode.com/files/pybindgen-0.15.0.zip"
         pygccxml_source_url = "http://leaseweb.dl.sourceforge.net/project/pygccxml/pygccxml/pygccxml-1.0/pygccxml-1.0.0.zip"
-        ns3_source_url = "http://yans.pl.sophia.inria.fr/code/hgwebdir.cgi/ns-3-dev/archive/tip.tar.gz"
+        ns3_source_url = "http://yans.pl.sophia.inria.fr/code/hgwebdir.cgi/nepi-ns-3.9/archive/tip.tar.gz"
         passfd_source_url = "http://yans.pl.sophia.inria.fr/code/hgwebdir.cgi/python-passfd/archive/tip.tar.gz"
         self.build =(
             " ( "

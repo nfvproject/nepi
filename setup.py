@@ -19,6 +19,7 @@ setup(
             "nepi.core",
             "nepi.util.parser",
             "nepi.util.settools",
+            "nepi.util.graphtools",
             "nepi.util" ],
         package_dir = {"": "src"},
         package_data = {"nepi.testbeds.planetlab" : ["scripts/*.py", "scripts/*.c"],

@@ -409,7 +409,7 @@ def configure_application(testbed_instance, guid):
     app.node.wait_dependencies()
     
     # Install stuff
-    app.setup()
+    app.async_setup()
 
 def configure_dependency(testbed_instance, guid):
     dep = testbed_instance._elements[guid]
@@ -421,7 +421,7 @@ def configure_dependency(testbed_instance, guid):
     dep.node.wait_dependencies()
     
     # Install stuff
-    dep.setup()
+    dep.async_setup()
 
 def configure_netpipe(testbed_instance, guid):
     netpipe = testbed_instance._elements[guid]
