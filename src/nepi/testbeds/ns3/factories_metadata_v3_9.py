@@ -7,6 +7,7 @@ from nepi.util.constants import AF_INET, STATUS_NOT_STARTED, STATUS_RUNNING, \
 from nepi.util.tunchannel_impl import \
     preconfigure_tunchannel, postconfigure_tunchannel, \
     wait_tunchannel, create_tunchannel
+import re
 
 wifi_standards = dict({
     "WIFI_PHY_STANDARD_holland": 5,
@@ -215,7 +216,7 @@ def create_waypoint_mobility(testbed_instance, guid):
     parameters = testbed_instance._get_parameters(guid)
     ns3 = testbed_instance.ns3
     waypoints = parameters.get("WaypointList", "")
-    waypoints = waypoints.replace(" ","")
+    waypoints = re.sub(" |\(|\)", "", waypoints)
     for swp in waypoints.split(","):
         dwp = swp.split(":")
         t = str(dwp[0])
