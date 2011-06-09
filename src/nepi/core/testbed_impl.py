@@ -246,7 +246,7 @@ class TestbedController(execute.TestbedController):
         self._do_connect(init = False)
         self._status = TESTBED_STATUS_CONNECTED
 
-    def _do_in_factory_order(self, action, order, postaction = None):
+    def _do_in_factory_order(self, action, order, postaction = None, poststep = None):
         guids = collections.defaultdict(list)
         # order guids (elements) according to factory_id
         for guid, factory_id in self._create.iteritems():
@@ -263,16 +263,33 @@ class TestbedController(execute.TestbedController):
                 getattr(factory, action)(self, guid)
                 if postaction:
                     postaction(self, guid)
+            if poststep:
+                for guid in guids[factory_id]:
+                    poststep(self, guid)
+
+    @staticmethod
+    def do_poststep_preconfigure(self, guid):
+        # dummy hook for implementations interested in
+        # two-phase configuration
+        pass
 
     def do_preconfigure(self):
         self._do_in_factory_order(
             'preconfigure_function',
-            self._metadata.preconfigure_order )
+            self._metadata.preconfigure_order,
+            poststep = self.do_poststep_preconfigure )
+
+    @staticmethod
+    def do_poststep_configure(self, guid):
+        # dummy hook for implementations interested in
+        # two-phase configuration
+        pass
 
     def do_configure(self):
         self._do_in_factory_order(
             'configure_function',
-            self._metadata.configure_order )
+            self._metadata.configure_order,
+            poststep = self.do_poststep_configure )
         self._status = TESTBED_STATUS_CONFIGURED
 
     def do_prestart(self):

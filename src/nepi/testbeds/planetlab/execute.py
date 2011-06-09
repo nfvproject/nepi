@@ -4,9 +4,26 @@
 from constants import TESTBED_ID
 from nepi.core import testbed_impl
 from nepi.util.constants import TIME_NOW
+from nepi.util.graphtools import mst
+from nepi.util import ipaddr2
 import os
+import os.path
 import time
 import resourcealloc
+import collections
+import operator
+import functools
+import socket
+import struct
+import tempfile
+import subprocess
+import random
+import shutil
+
+from nepi.util.constants import TESTBED_STATUS_CONFIGURED
+
+class TempKeyError(Exception):
+    pass
 
 class TestbedController(testbed_impl.TestbedController):
     def __init__(self, testbed_version):
@@ -63,11 +80,23 @@ class TestbedController(testbed_impl.TestbedController):
             get_attribute_value("authPass")
         self.sliceSSHKey = self._attributes.\
             get_attribute_value("sliceSSHKey")
+        self.sliceSSHKeyPass = None
         self.plcHost = self._attributes.\
             get_attribute_value("plcHost")
         self.plcUrl = self._attributes.\
             get_attribute_value("plcUrl")
         super(TestbedController, self).do_setup()
+
+    def do_post_asynclaunch(self, guid):
+        # Dependencies were launched asynchronously,
+        # so wait for them
+        dep = self._elements[guid]
+        if isinstance(dep, self._app.Dependency):
+            dep.async_setup_wait()
+    
+    # Two-phase configuration for asynchronous launch
+    do_poststep_preconfigure = staticmethod(do_post_asynclaunch)
+    do_poststep_configure = staticmethod(do_post_asynclaunch)
 
     def do_preconfigure(self):
         # Perform resource discovery if we don't have
@@ -76,6 +105,9 @@ class TestbedController(testbed_impl.TestbedController):
 
         # Create PlanetLab slivers
         self.do_provisioning()
+        
+        # Plan application deployment
+        self.do_spanning_deployment_plan()
 
         # Configure elements per XML data
         super(TestbedController, self).do_preconfigure()
@@ -146,7 +178,151 @@ class TestbedController(testbed_impl.TestbedController):
 
         # cleanup
         del self._to_provision
+    
+    def do_spanning_deployment_plan(self):
+        # Create application groups by collecting all applications
+        # based on their hash - the hash should contain everything that
+        # defines them and the platform they're built
+        
+        def dephash(app):
+            return (
+                frozenset((app.depends or "").split(' ')),
+                frozenset((app.sources or "").split(' ')),
+                app.build,
+                app.install,
+                app.node.architecture,
+                app.node.operatingSystem,
+                app.node.pl_distro,
+            )
+        
+        depgroups = collections.defaultdict(list)
+        
+        for element in self._elements.itervalues():
+            if isinstance(element, self._app.Dependency):
+                depgroups[dephash(element)].append(element)
+        
+        # Set up spanning deployment for those applications that
+        # have been deployed in several nodes.
+        for dh, group in depgroups.iteritems():
+            if len(group) > 1:
+                # Pick root (deterministically)
+                root = min(group, key=lambda app:app.node.hostname)
+                
+                # Obtain all IPs in numeric format
+                # (which means faster distance computations)
+                for dep in group:
+                    dep._ip = socket.gethostbyname(dep.node.hostname)
+                    dep._ip_n = struct.unpack('!L', socket.inet_aton(dep._ip))[0]
+                
+                # Compute plan
+                # NOTE: the plan is an iterator
+                plan = mst.mst(
+                    group,
+                    lambda a,b : ipaddr2.ipdistn(a._ip_n, b._ip_n),
+                    root = root,
+                    maxbranching = 2)
+                
+                # Re-sign private key
+                try:
+                    tempprk, temppuk, tmppass = self._make_temp_private_key()
+                except TempKeyError:
+                    continue
+                
+                # Set up slaves
+                plan = list(plan)
+                for slave, master in plan:
+                    slave.set_master(master)
+                    slave.install_keys(tempprk, temppuk, tmppass)
+                    
+        # We don't need the user's passphrase anymore
+        self.sliceSSHKeyPass = None
+    
+    def _make_temp_private_key(self):
+        # Get the user's key's passphrase
+        if not self.sliceSSHKeyPass:
+            if 'SSH_ASKPASS' in os.environ:
+                proc = subprocess.Popen(
+                    [ os.environ['SSH_ASKPASS'],
+                      "Please type the passphrase for the %s SSH identity file. "
+                      "The passphrase will be used to re-cipher the identity file with "
+                      "a random 256-bit key for automated chain deployment on the "
+                      "%s PlanetLab slice" % ( 
+                        os.path.basename(self.sliceSSHKey), 
+                        self.slicename
+                    ) ],
+                    stdin = open("/dev/null"),
+                    stdout = subprocess.PIPE,
+                    stderr = subprocess.PIPE)
+                out,err = proc.communicate()
+                self.sliceSSHKeyPass = out.strip()
+        
+        if not self.sliceSSHKeyPass:
+            raise TempKeyError
+        
+        # Create temporary key files
+        prk = tempfile.NamedTemporaryFile(
+            dir = self.root_directory,
+            prefix = "pl_deploy_tmpk_",
+            suffix = "")
 
+        puk = tempfile.NamedTemporaryFile(
+            dir = self.root_directory,
+            prefix = "pl_deploy_tmpk_",
+            suffix = ".pub")
+            
+        # Create secure 256-bits temporary passphrase
+        passphrase = ''.join(map(chr,[rng.randint(0,255) 
+                                      for rng in (random.SystemRandom(),)
+                                      for i in xrange(32)] )).encode("hex")
+                
+        # Copy keys
+        oprk = open(self.sliceSSHKey, "rb")
+        opuk = open(self.sliceSSHKey+".pub", "rb")
+        shutil.copymode(oprk.name, prk.name)
+        shutil.copymode(opuk.name, puk.name)
+        shutil.copyfileobj(oprk, prk)
+        shutil.copyfileobj(opuk, puk)
+        prk.flush()
+        puk.flush()
+        oprk.close()
+        opuk.close()
+        
+        # A descriptive comment
+        comment = "%s#NEPI_INTERNAL@%s" % (self.authUser, self.slicename)
+        
+        # Recipher keys
+        proc = subprocess.Popen(
+            ["ssh-keygen", "-p",
+             "-f", prk.name,
+             "-P", self.sliceSSHKeyPass,
+             "-N", passphrase,
+             "-C", comment ],
+            stdout = subprocess.PIPE,
+            stderr = subprocess.PIPE,
+            stdin = subprocess.PIPE
+        )
+        out, err = proc.communicate()
+        
+        if err:
+            raise RuntimeError, "Problem generating keys: \n%s\n%r" % (
+                out, err)
+        
+        prk.seek(0)
+        puk.seek(0)
+        
+        # Change comment on public key
+        puklines = puk.readlines()
+        puklines[0] = puklines[0].split(' ')
+        puklines[0][-1] = comment+'\n'
+        puklines[0] = ' '.join(puklines[0])
+        puk.seek(0)
+        puk.truncate()
+        puk.writelines(puklines)
+        del puklines
+        puk.flush()
+        
+        return prk, puk, passphrase
+    
     def set(self, guid, name, value, time = TIME_NOW):
         super(TestbedController, self).set(guid, name, value, time)
         # TODO: take on account schedule time for the task
