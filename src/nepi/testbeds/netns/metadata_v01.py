@@ -86,7 +86,7 @@ def connect_tunchannel_tap(testbed_instance, chan_guid, tap_guid):
 def nodepcap_trace(testbed_instance, guid, trace_id):
     node = testbed_instance._elements[guid]
     parameters = testbed_instance._get_parameters(guid)
-    filename = "%d-cap.stdout" % guid
+    filename = "%d-pcap.stdout" % guid
     stdout = _follow_trace(testbed_instance, guid, "pcap_stdout", filename)
     filename = "%d-pcap.stderr" % guid
     stderr = _follow_trace(testbed_instance, guid, "pcap_stderr", filename)
