@@ -210,11 +210,12 @@ for x in 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 ; do
     sleep 1.8
 done
 if [ `ps --ppid %(ppid)d -o pid | grep -c %(pid)d` != '0' ]; then
-    %(sudo)s kill -9 %(pid)d
+    %(sudo)s kill -9 -- -%(pid)d || /bin/true
+    %(sudo)s kill -9 %(pid)d || /bin/true
 fi
 """
     if nowait:
-        cmd = "{ %s } >/dev/null 2>/dev/null </dev/null &" % (cmd,)
+        cmd = "( %s ) >/dev/null 2>/dev/null </dev/null &" % (cmd,)
 
     (out,err),proc = server.popen_ssh_command(
         cmd % {
@@ -232,6 +233,5 @@ fi
     
     # wait, don't leave zombies around
     proc.wait()
-    
 
 

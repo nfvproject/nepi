@@ -272,7 +272,7 @@ class Node(object):
             # Start process in a "daemonized" way, using nohup and heavy
             # stdin/out redirection to avoid connection issues
             (out,err),proc = rspawn.remote_spawn(
-                "yum -y install %(packages)s" % {
+                "( yum -y install %(packages)s && echo SUCCESS || echo FAILURE )" % {
                     'packages' : ' '.join(self.required_packages),
                 },
                 pidfile = pidfile,
@@ -327,6 +327,26 @@ class Node(object):
                     ):
                 time.sleep(probe)
                 probe = min(probemax, 1.5*probe)
+            
+            # check results
+            logfile = self.DEPENDS_LOGFILE
+            
+            (out,err),proc = server.popen_ssh_command(
+                "cat %s" % (server.shell_escape(logfile),),
+                host = self.hostname,
+                port = None,
+                user = self.slicename,
+                agent = None,
+                ident_key = self.ident_path,
+                server_key = self.server_key
+                )
+            
+            if proc.wait():
+                raise RuntimeError, "Failed to install dependencies: %s %s" % (out,err,)
+            
+            success = out.strip().rsplit('\n',1)[-1].strip() == 'SUCCESS'
+            if not success:
+                raise RuntimeError, "Failed to install dependencies - buildlog:\n%s\n%s" % (out,err,)
         
     def is_alive(self):
         # Make sure all the paths are created where 
