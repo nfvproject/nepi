@@ -222,6 +222,16 @@ class TunProtoBase(object):
         self._started = True
     
     def _launch_and_wait(self, *p, **kw):
+        try:
+            self.__launch_and_wait(*p, **kw)
+        except:
+            if self._launcher:
+                import sys
+                self._launcher._exc.append(sys.exc_info())
+            else:
+                raise
+            
+    def __launch_and_wait(self, *p, **kw):
         local = self.local()
         
         self.launch(*p, **kw)
@@ -287,13 +297,18 @@ class TunProtoBase(object):
             self._launcher = threading.Thread(
                 target = self._launch_and_wait,
                 args = (check_proto, listen, extra_args))
+            self._launcher._exc = []
             self._launcher.start()
     
     def async_launch_wait(self):
         if self._launcher:
             self._launcher.join()
             if not self._started:
-                raise RuntimeError, "Failed to launch TUN forwarder"
+                if self._launcher._exc:
+                    exctyp,exval,exctrace = self._launcher._exc[0]
+                    raise exctyp,exval,exctrace
+                else:
+                    raise RuntimeError, "Failed to launch TUN forwarder"
         elif not self._started:
             self.launch()
 
