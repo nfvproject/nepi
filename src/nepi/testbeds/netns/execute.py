@@ -12,6 +12,9 @@ class TestbedController(testbed_impl.TestbedController):
     from nepi.util.tunchannel_impl import TunChannel
     
     class HostLock(object):
+        # This class is used as a lock to prevent concurrency issues with more
+        # than one instance of netns running in the same machine. Both in 
+        # different processes or different threads.
         taken = False
         processcond = threading.Condition()
         

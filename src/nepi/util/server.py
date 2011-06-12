@@ -32,8 +32,6 @@ if hasattr(os, "devnull"):
 else:
     DEV_NULL = "/dev/null"
 
-
-
 SHELL_SAFE = re.compile('^[-a-zA-Z0-9_=+:.,/]*$')
 
 def shell_escape(s):
@@ -88,7 +86,15 @@ class Server(object):
         pid1 = os.fork()
         if pid1 > 0:
             os.close(w)
-            os.read(r, 1)
+            while True:
+                try:
+                    os.read(r, 1)
+                except OSError, e: # pragma: no cover
+                    if e.errno == errno.EINTR:
+                        continue
+                    else:
+                        raise
+                break
             os.close(r)
             # os.waitpid avoids leaving a <defunc> (zombie) process
             st = os.waitpid(pid1, 0)[1]
