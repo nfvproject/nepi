@@ -129,14 +129,24 @@ class TestbedController(testbed_impl.TestbedController):
             if isinstance(element, self.LOCAL_TYPES):
                 # graceful shutdown of locally-implemented objects
                 element.Cleanup()
-        self._elements.clear()
         if self.ns3:
             self.ns3.Simulator.Stop()
+            
+            # Wait for it to stop, with a 30s timeout
+            for i in xrange(300):
+                if self.ns3.Simulator.isFinished():
+                    break
+                time.sleep(0.1)
             #self._stop_simulation("0s")
-        # TODO!!!! SHOULD WAIT UNTIL THE THREAD FINISHES
-        #   if self._simulator_thread:
-        #       self._simulator_thread.join()
+        
+        self._elements.clear()
+        
+        if self.ns3:
+            # TODO!!!! SHOULD WAIT UNTIL THE THREAD FINISHES
+            #   if self._simulator_thread:
+            #       self._simulator_thread.join()
             self.ns3.Simulator.Destroy()
+        
         self._ns3 = None
         sys.stdout.flush()
         sys.stderr.flush()
