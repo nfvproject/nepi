@@ -10,8 +10,14 @@ import os
 import collections
 import cStringIO
 import resourcealloc
+import socket
+import sys
 
 from nepi.util import server
+from nepi.util import parallel
+
+class UnresponsiveNodeError(RuntimeError):
+    pass
 
 class Node(object):
     BASEFILTERS = {
@@ -101,6 +107,8 @@ class Node(object):
         )
     
     def find_candidates(self, filter_slice_id=None):
+        print >>sys.stderr, "Finding candidates for", self.make_filter_description()
+        
         fields = ('node_id',)
         replacements = {'timeframe':self.timeframe}
         
@@ -113,6 +121,8 @@ class Node(object):
         # only pick healthy nodes
         basefilters['run_level'] = 'boot'
         basefilters['boot_state'] = 'boot'
+        basefilters['node_type'] = 'regular' # nepi can only handle regular nodes (for now)
+        basefilters['>last_contact'] = int(time.time()) - 5*3600 # allow 5h out of contact, for timezone discrepancies
         
         # keyword-only "pseudofilters"
         extra = {}
@@ -182,6 +192,24 @@ class Node(object):
                     len(ifaces.get(node_id,())) <= self.max_num_external_ifaces )
             
             candidates = set(filter(predicate, candidates))
+        
+        # make sure hostnames are resolvable
+        if candidates:
+            print >>sys.stderr, "  Found", len(candidates), "candidates. Checking for reachability..."
+            
+            hostnames = dict(map(operator.itemgetter('node_id','hostname'),
+                self._api.GetNodes(list(candidates), ['node_id','hostname'])
+            ))
+            def resolvable(node_id):
+                try:
+                    addr = socket.gethostbyname(hostnames[node_id])
+                    return addr is not None
+                except:
+                    return False
+            candidates = set(parallel.pfilter(resolvable, candidates,
+                maxthreads = 16))
+
+            print >>sys.stderr, "  Found", len(candidates), "reachable candidates."
             
         return candidates
     
@@ -225,11 +253,19 @@ class Node(object):
         self._node_id = node_id
         self.fetch_node_info()
     
+    def unassign_node(self):
+        self._node_id = None
+        self.__dict__.update(self.__orig_attrs)
+    
     def fetch_node_info(self):
+        orig_attrs = {}
+        
         info = self._api.GetNodes(self._node_id)[0]
         tags = dict( (t['tagname'],t['value'])
                      for t in self._api.GetNodeTags(node_id=self._node_id, fields=('tagname','value')) )
 
+        orig_attrs['min_num_external_ifaces'] = self.min_num_external_ifaces
+        orig_attrs['max_num_external_ifaces'] = self.max_num_external_ifaces
         self.min_num_external_ifaces = None
         self.max_num_external_ifaces = None
         self.timeframe = 'm'
@@ -238,14 +274,19 @@ class Node(object):
         for attr, tag in self.BASEFILTERS.iteritems():
             if tag in info:
                 value = info[tag]
+                if hasattr(self, attr):
+                    orig_attrs[attr] = getattr(self, attr)
                 setattr(self, attr, value)
         for attr, (tag,_) in self.TAGFILTERS.iteritems():
             tag = tag % replacements
             if tag in tags:
                 value = tags[tag]
+                if hasattr(self, attr):
+                    orig_attrs[attr] = getattr(self, attr)
                 setattr(self, attr, value)
         
         if 'peer_id' in info:
+            orig_attrs['site'] = self.site
             self.site = self._api.peer_map[info['peer_id']]
         
         if 'interface_ids' in info:
@@ -253,7 +294,10 @@ class Node(object):
             self.max_num_external_ifaces = len(info['interface_ids'])
         
         if 'ssh_rsa_key' in info:
+            orig_attrs['server_key'] = self.server_key
             self.server_key = info['ssh_rsa_key']
+        
+        self.__orig_attrs = orig_attrs
 
     def validate(self):
         if self.home_path is None:
@@ -290,6 +334,21 @@ class Node(object):
             
             if proc.wait():
                 raise RuntimeError, "Failed to set up application: %s %s" % (out,err,)
+    
+    def wait_provisioning(self):
+        # recently provisioned nodes may not be up yet
+        sleeptime = 1.0
+        totaltime = 0.0
+        while not self.is_alive():
+            time.sleep(sleeptime)
+            totaltime += sleeptime
+            sleeptime = min(30.0, sleeptime*1.5)
+            
+            if totaltime > 20*60:
+                # PlanetLab has a 15' delay on configuration propagation
+                # If we're above that delay, the unresponsiveness is not due
+                # to this delay.
+                raise UnresponsiveNodeError, "Unresponsive host %s" % (self.hostname,)
     
     def wait_dependencies(self, pidprobe=1, probe=0.5, pidmax=10, probemax=10):
         if self.required_packages:
