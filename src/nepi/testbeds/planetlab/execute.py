@@ -6,6 +6,7 @@ from nepi.core import testbed_impl
 from nepi.util.constants import TIME_NOW
 from nepi.util.graphtools import mst
 from nepi.util import ipaddr2
+import sys
 import os
 import os.path
 import time
@@ -36,6 +37,8 @@ class TestbedController(testbed_impl.TestbedController):
         self._node = node
         self._interfaces = interfaces
         self._app = application
+        
+        self._blacklist = set()
 
     @property
     def home_directory(self):
@@ -99,12 +102,23 @@ class TestbedController(testbed_impl.TestbedController):
     do_poststep_configure = staticmethod(do_post_asynclaunch)
 
     def do_preconfigure(self):
-        # Perform resource discovery if we don't have
-        # specific resources assigned yet
-        self.do_resource_discovery()
+        while True:
+            # Perform resource discovery if we don't have
+            # specific resources assigned yet
+            self.do_resource_discovery()
 
-        # Create PlanetLab slivers
-        self.do_provisioning()
+            # Create PlanetLab slivers
+            self.do_provisioning()
+            
+            try:
+                # Wait for provisioning
+                self.do_wait_nodes()
+                
+                # Okkey...
+                break
+            except self._node.UnresponsiveNodeError:
+                # Oh... retry...
+                pass
         
         # Plan application deployment
         self.do_spanning_deployment_plan()
@@ -115,6 +129,11 @@ class TestbedController(testbed_impl.TestbedController):
     def do_resource_discovery(self):
         to_provision = self._to_provision = set()
         
+        reserved = set(self._blacklist)
+        for guid, node in self._elements.iteritems():
+            if isinstance(node, self._node.Node) and node._node_id is not None:
+                reserved.add(node._node_id)
+        
         # Initial algo:
         #   look for perfectly defined nodes
         #   (ie: those with only one candidate)
@@ -124,9 +143,12 @@ class TestbedController(testbed_impl.TestbedController):
                 # If we have only one candidate, simply use it
                 candidates = node.find_candidates(
                     filter_slice_id = self.slice_id)
+                candidates -= reserved
                 if len(candidates) == 1:
-                    node.assign_node_id(iter(candidates).next())
-                else:
+                    node_id = iter(candidates).next()
+                    node.assign_node_id(node_id)
+                    reserved.add(node_id)
+                elif not candidates:
                     # Try again including unassigned nodes
                     candidates = node.find_candidates()
                     if len(candidates) > 1:
@@ -135,6 +157,7 @@ class TestbedController(testbed_impl.TestbedController):
                         node_id = iter(candidates).next()
                         node.assign_node_id(node_id)
                         to_provision.add(node_id)
+                        reserved.add(node_id)
                     elif not candidates:
                         raise RuntimeError, "Cannot assign resources for node %s, no candidates sith %s" % (guid,
                             node.make_filter_description())
@@ -149,6 +172,7 @@ class TestbedController(testbed_impl.TestbedController):
                 # If we have only one candidate, simply use it
                 candidates = node.find_candidates(
                     filter_slice_id = self.slice_id)
+                candidates -= reserved
                 reqs.append(candidates)
                 nodes.append(node)
         
@@ -178,6 +202,40 @@ class TestbedController(testbed_impl.TestbedController):
 
         # cleanup
         del self._to_provision
+    
+    def do_wait_nodes(self):
+        for guid, node in self._elements.iteritems():
+            if isinstance(node, self._node.Node):
+                # Just inject configuration stuff
+                node.home_path = "nepi-node-%s" % (guid,)
+                node.ident_path = self.sliceSSHKey
+                node.slicename = self.slicename
+            
+                # Show the magic
+                print "PlanetLab Node", guid, "configured at", node.hostname
+            
+        try:
+            for guid, node in self._elements.iteritems():
+                if isinstance(node, self._node.Node):
+                    print "Waiting for Node", guid, "configured at", node.hostname,
+                    sys.stdout.flush()
+                    
+                    node.wait_provisioning()
+                    
+                    print "READY"
+        except self._node.UnresponsiveNodeError:
+            # Uh... 
+            print "UNRESPONSIVE"
+            
+            # Mark all dead nodes (which are unresponsive) on the blacklist
+            # and re-raise
+            for guid, node in self._elements.iteritems():
+                if isinstance(node, self._node.Node):
+                    if not node.is_alive():
+                        print "Blacklisting", node.hostname, "for unresponsiveness"
+                        self._blacklist.add(node._node_id)
+                        node.unassign_node()
+            raise
     
     def do_spanning_deployment_plan(self):
         # Create application groups by collecting all applications

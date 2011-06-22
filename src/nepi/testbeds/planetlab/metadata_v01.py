@@ -377,12 +377,6 @@ def configure_node(testbed_instance, guid):
     # Do some validations
     node.validate()
     
-    # recently provisioned nodes may not be up yet
-    sleeptime = 1.0
-    while not node.is_alive():
-        time.sleep(sleeptime)
-        sleeptime = min(30.0, sleeptime*1.5)
-    
     # this will be done in parallel in all nodes
     # this call only spawns the process
     node.install_dependencies()
