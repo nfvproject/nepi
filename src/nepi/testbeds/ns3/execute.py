@@ -134,7 +134,7 @@ class TestbedController(testbed_impl.TestbedController):
             
             # Wait for it to stop, with a 30s timeout
             for i in xrange(300):
-                if self.ns3.Simulator.isFinished():
+                if self.ns3.Simulator.IsFinished():
                     break
                 time.sleep(0.1)
             #self._stop_simulation("0s")
