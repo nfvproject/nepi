@@ -88,4 +88,49 @@ class ParallelMap(object):
                         raise StopIteration
             
     
+class ParallelFilter(ParallelMap):
+    class _FILTERED:
+        pass
     
+    def __filter(self, x):
+        if self.filter_condition(x):
+            return x
+        else:
+            return self._FILTERED
+    
+    def __init__(self, filter_condition, maxthreads = None, maxqueue = None):
+        super(ParallelFilter, self).__init__(maxthreads, maxqueue, True)
+        self.filter_condition = filter_condition
+
+    def put(self, what):
+        super(ParallelFilter, self).put(self.__filter, what)
+    
+    def put_nowait(self, what):
+        super(ParallelFilter, self).put_nowait(self.__filter, what)
+        
+    def __iter__(self):
+        for rv in super(ParallelFilter, self).__iter__():
+            if rv is not self._FILTERED:
+                yield rv
+
+
+def pmap(mapping, iterable, maxthreads = None, maxqueue = None):
+    mapper = ParallelMap(
+        maxthreads = maxthreads,
+        maxqueue = maxqueue,
+        results = True)
+    mapper.start()
+    for elem in iterable:
+        mapper.put(elem)
+    return list(mapper)
+
+def pfilter(condition, iterable, maxthreads = None, maxqueue = None):
+    filtrer = ParallelFilter(
+        condition,
+        maxthreads = maxthreads,
+        maxqueue = maxqueue)
+    filtrer.start()
+    for elem in iterable:
+        filtrer.put(elem)
+    return list(filtrer)
+
