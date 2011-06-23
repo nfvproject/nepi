@@ -335,7 +335,7 @@ class Node(object):
             if proc.wait():
                 raise RuntimeError, "Failed to set up application: %s %s" % (out,err,)
     
-    def wait_provisioning(self):
+    def wait_provisioning(self, timeout = 20*60):
         # recently provisioned nodes may not be up yet
         sleeptime = 1.0
         totaltime = 0.0
@@ -344,7 +344,7 @@ class Node(object):
             totaltime += sleeptime
             sleeptime = min(30.0, sleeptime*1.5)
             
-            if totaltime > 20*60:
+            if totaltime > timeout:
                 # PlanetLab has a 15' delay on configuration propagation
                 # If we're above that delay, the unresponsiveness is not due
                 # to this delay.

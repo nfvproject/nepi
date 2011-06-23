@@ -1,6 +1,6 @@
 # vim:ts=4:sw=4:et:ai:sts=4
 
-import os, subprocess
+import os, subprocess, os.path
 
 __all__ =  ["python", "ssh_path"]
 __all__ += ["rsh", "tcpdump_path", "sshd_path"]
@@ -57,3 +57,16 @@ def backticks(cmd):
         raise RuntimeError("Error executing `%s': %s" % (" ".join(cmd), err))
     return out
 
+def homepath(path, app='.nepi', mode = 0500):
+    home = os.environ.get('HOME')
+    if home is None:
+        home = os.path.join(os.sep, 'home', os.getlogin())
+    
+    path = os.path.join(home, app, path)
+    dirname = os.path.dirname(path)
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+    
+    return path
+
+    

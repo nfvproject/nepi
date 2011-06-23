@@ -6,6 +6,7 @@ from nepi.core import testbed_impl
 from nepi.util.constants import TIME_NOW
 from nepi.util.graphtools import mst
 from nepi.util import ipaddr2
+from nepi.util import environ
 import sys
 import os
 import os.path
@@ -39,6 +40,9 @@ class TestbedController(testbed_impl.TestbedController):
         self._app = application
         
         self._blacklist = set()
+        self._just_provisioned = set()
+        
+        self._load_blacklist()
 
     @property
     def home_directory(self):
@@ -71,7 +75,34 @@ class TestbedController(testbed_impl.TestbedController):
                 # If it wasn't found, don't remember this failure, keep trying
                 return None
         return self._slice_id
-
+    
+    def _load_blacklist(self):
+        blpath = environ.homepath('plblacklist')
+        
+        try:
+            bl = open(blpath, "r")
+        except:
+            self._blacklist = set()
+            return
+            
+        try:
+            self._blacklist = set(
+                map(int,
+                    map(str.strip, bl.readlines())
+                )
+            )
+        finally:
+            bl.close()
+    
+    def _save_blacklist(self):
+        blpath = environ.homepath('plblacklist')
+        bl = open(blpath, "w")
+        try:
+            bl.writelines(
+                map('%s\n'.__mod__, self._blacklist))
+        finally:
+            bl.close()
+    
     def do_setup(self):
         self._home_directory = self._attributes.\
             get_attribute_value("homeDirectory")
@@ -151,6 +182,7 @@ class TestbedController(testbed_impl.TestbedController):
                 elif not candidates:
                     # Try again including unassigned nodes
                     candidates = node.find_candidates()
+                    candidates -= reserved
                     if len(candidates) > 1:
                         continue
                     if len(candidates) == 1:
@@ -201,6 +233,7 @@ class TestbedController(testbed_impl.TestbedController):
             self.plapi.UpdateSlice(self.slicename, nodes=new_nodes)
 
         # cleanup
+        self._just_provisioned = self._to_provision
         del self._to_provision
     
     def do_wait_nodes(self):
@@ -220,7 +253,9 @@ class TestbedController(testbed_impl.TestbedController):
                     print "Waiting for Node", guid, "configured at", node.hostname,
                     sys.stdout.flush()
                     
-                    node.wait_provisioning()
+                    node.wait_provisioning(
+                        (20*60 if node._node_id in self._just_provisioned else 60)
+                    )
                     
                     print "READY"
         except self._node.UnresponsiveNodeError:
@@ -235,6 +270,14 @@ class TestbedController(testbed_impl.TestbedController):
                         print "Blacklisting", node.hostname, "for unresponsiveness"
                         self._blacklist.add(node._node_id)
                         node.unassign_node()
+            
+            try:
+                self._save_blacklist()
+            except:
+                # not important...
+                import traceback
+                traceback.print_exc()
+            
             raise
     
     def do_spanning_deployment_plan(self):
