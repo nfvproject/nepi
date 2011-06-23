@@ -49,7 +49,7 @@ class TunProtoBase(object):
         cmd = "mkdir -p %(home)s ; rm -f %(home)s/pid" % {
             'home' : server.shell_escape(self.home_path)
         }
-        (out,err),proc = server.popen_ssh_command(
+        (out,err),proc = server.eintr_retry(server.popen_ssh_command)(
             cmd,
             host = local.node.hostname,
             port = None,
@@ -81,7 +81,7 @@ class TunProtoBase(object):
         dest = "%s@%s:%s" % (
             local.node.slicename, local.node.hostname, 
             os.path.join(self.home_path,'.'),)
-        (out,err),proc = server.popen_scp(
+        (out,err),proc = server.eintr_retry(server.popen_scp)(
             sources,
             dest,
             ident_key = local.node.ident_path,
@@ -245,7 +245,7 @@ class TunProtoBase(object):
             if self.status() != rspawn.RUNNING:
                 break
             
-            (out,err),proc = server.popen_ssh_command(
+            (out,err),proc = server.eintr_retry(server.popen_ssh_command)(
                 "cd %(home)s ; grep -c Connected capture" % dict(
                     home = server.shell_escape(self.home_path)),
                 host = local.node.hostname,
@@ -271,7 +271,7 @@ class TunProtoBase(object):
             local = self.local()
             if local:
                 for spin in xrange(30):
-                    (out,err),proc = server.popen_ssh_command(
+                    (out,err),proc = server.eintr_retry(server.popen_ssh_command)(
                         "cd %(home)s ; grep 'Using tun:' capture | head -1" % dict(
                             home = server.shell_escape(self.home_path)),
                         host = local.node.hostname,

@@ -49,6 +49,23 @@ def shell_escape(s):
         s = ''.join(map(escp,s))
         return "'%s'" % (s,)
 
+def eintr_retry(func):
+    import functools
+    @functools.wraps(func)
+    def rv(*p, **kw):
+        retry = kw.pop("_retry", False)
+        for i in xrange(0 if retry else 4):
+            try:
+                return func(*p, **kw)
+            except select.error, args:
+                if args[0] == errno.EINTR:
+                    continue
+                else:
+                    raise 
+        else:
+            return func(*p, **kw)
+    return rv
+
 class Server(object):
     def __init__(self, root_dir = ".", log_level = ERROR_LEVEL):
         self._root_dir = root_dir

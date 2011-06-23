@@ -96,6 +96,7 @@ def remote_spawn(command, pidfile, stdout='/dev/null', stderr=STDOUT, stdin='/de
 
     return (out,err),proc
 
+@server.eintr_retry
 def remote_check_pid(pidfile,
         host = None, port = None, user = None, agent = None, 
         ident_key = None, server_key = None):
@@ -136,6 +137,7 @@ def remote_check_pid(pidfile,
             return None
 
 
+@server.eintr_retry
 def remote_status(pid, ppid, 
         host = None, port = None, user = None, agent = None, 
         ident_key = None, server_key = None):
@@ -178,6 +180,7 @@ def remote_status(pid, ppid,
     return RUNNING if status else FINISHED
     
 
+@server.eintr_retry
 def remote_kill(pid, ppid, sudo = False,
         host = None, port = None, user = None, agent = None, 
         ident_key = None, server_key = None,
