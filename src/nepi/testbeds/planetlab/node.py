@@ -410,7 +410,7 @@ class Node(object):
     def is_alive(self):
         # Make sure all the paths are created where 
         # they have to be created for deployment
-        (out,err),proc = server.popen_ssh_command(
+        (out,err),proc = server.eintr_retry(server.popen_ssh_command)(
             "echo 'ALIVE'",
             host = self.hostname,
             port = None,
