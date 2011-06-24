@@ -385,6 +385,12 @@ class TunProtoBase(object):
                 break
             time.sleep(interval)
             interval = min(30.0, interval * 1.1)
+    
+    def remote_trace_path(self, whichtrace):
+        if whichtrace != 'packets':
+            return None
+        
+        return os.path.join(self.home_path, 'capture')
         
     def sync_trace(self, local_dir, whichtrace):
         if whichtrace != 'packets':
@@ -398,13 +404,14 @@ class TunProtoBase(object):
         local_path = os.path.join(local_dir, 'capture')
         
         # create parent local folders
-        proc = subprocess.Popen(
-            ["mkdir", "-p", os.path.dirname(local_path)],
-            stdout = open("/dev/null","w"),
-            stdin = open("/dev/null","r"))
+        if os.path.dirname(local_path):
+            proc = subprocess.Popen(
+                ["mkdir", "-p", os.path.dirname(local_path)],
+                stdout = open("/dev/null","w"),
+                stdin = open("/dev/null","r"))
 
-        if proc.wait():
-            raise RuntimeError, "Failed to synchronize trace: %s %s" % (out,err,)
+            if proc.wait():
+                raise RuntimeError, "Failed to synchronize trace"
         
         # sync files
         (out,err),proc = server.popen_scp(
