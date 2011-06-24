@@ -13,6 +13,42 @@ import random
 import socket
 import weakref
 
+def init():
+        if 'ns3' in sys.modules:
+            return
+
+        import ctypes
+        import imp
+
+	bindings = os.environ["NEPI_NS3BINDINGS"] \
+		if "NEPI_NS3BINDINGS" in os.environ else None
+	libfile = os.environ["NEPI_NS3LIBRARY"] \
+		if "NEPI_NS3LIBRARY" in os.environ else None
+
+	if libfile:
+	    ctypes.CDLL(libfile, ctypes.RTLD_GLOBAL)
+
+	path = [ os.path.dirname(__file__) ] + sys.path
+	if bindings:
+	    path = [ bindings ] + path
+
+	try:
+	    module = imp.find_module ('ns3', path)
+	    mod = imp.load_module ('ns3', *module)
+	except ImportError:
+	    # In some environments, ns3 per-se does not exist,
+	    # only the low-level _ns3
+	    module = imp.find_module ('_ns3', path)
+	    mod = imp.load_module ('_ns3', *module)
+	    sys.modules["ns3"] = mod # install it as ns3 too
+	    
+	    # When using _ns3, we have to make sure we destroy
+	    # the simulator when the process finishes
+	    import atexit
+	    atexit.register(mod.Simulator.Destroy)
+
+ 
+
 class TestbedController(testbed_impl.TestbedController):
     from nepi.util.tunchannel_impl import TunChannel
     
@@ -244,41 +280,15 @@ class TestbedController(testbed_impl.TestbedController):
         return ns3_value
 
     def _load_ns3_module(self):
-        import ctypes
-        import imp
-
         simu_impl_type = self._attributes.get_attribute_value(
                 "SimulatorImplementationType")
         checksum = self._attributes.get_attribute_value("ChecksumEnabled")
         stop_time = self._attributes.get_attribute_value("StopTime")
 
-        bindings = os.environ["NEPI_NS3BINDINGS"] \
-                if "NEPI_NS3BINDINGS" in os.environ else None
-        libfile = os.environ["NEPI_NS3LIBRARY"] \
-                if "NEPI_NS3LIBRARY" in os.environ else None
+        init()
 
-        if libfile:
-            ctypes.CDLL(libfile, ctypes.RTLD_GLOBAL)
-
-        path = [ os.path.dirname(__file__) ] + sys.path
-        if bindings:
-            path = [ bindings ] + path
-
-        try:
-            module = imp.find_module ('ns3', path)
-            mod = imp.load_module ('ns3', *module)
-        except ImportError:
-            # In some environments, ns3 per-se does not exist,
-            # only the low-level _ns3
-            module = imp.find_module ('_ns3', path)
-            mod = imp.load_module ('_ns3', *module)
-            sys.modules["ns3"] = mod # install it as ns3 too
-            
-            # When using _ns3, we have to make sure we destroy
-            # the simulator when the process finishes
-            import atexit
-            atexit.register(mod.Simulator.Destroy)
-    
+        import ns3 as mod
+ 
         if simu_impl_type:
             value = mod.StringValue(simu_impl_type)
             mod.GlobalValue.Bind ("SimulatorImplementationType", value)
