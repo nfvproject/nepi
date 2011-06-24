@@ -399,7 +399,9 @@ class ExperimentController(object):
     def traces_info(self):
         traces_info = dict()
         for guid, testbed in self._testbeds.iteritems():
-            traces_info[guid] = testbed.traces_info()
+            tinfo = testbed.traces_info()
+            if tinfo:
+                traces_info[guid] = testbed.traces_info()
         return traces_info
 
     @staticmethod
