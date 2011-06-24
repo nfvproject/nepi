@@ -198,7 +198,7 @@ class ExecuteTestCase(unittest.TestCase):
                 6: dict({ # element guid
                     'fake': dict({ # trace_id
                         'host': 'localhost', 
-                        'filesize': '-1', 
+                        'user': 'root', 
                         'filepath': '<test>'
                         })
                     })

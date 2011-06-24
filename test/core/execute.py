@@ -55,7 +55,7 @@ class ExecuteTestCase(unittest.TestCase):
             7 : dict({
                 'fake': dict({
                     'host': 'localhost', 
-                    'filesize': '-1', 
+                    'user': 'root', 
                     'filepath': '<test>'
                     })
                 })
