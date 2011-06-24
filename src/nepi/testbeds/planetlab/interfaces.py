@@ -262,6 +262,12 @@ class TunIface(object):
         else:
             return None
 
+    def remote_trace_path(self, whichtrace):
+        if self.peer_proto_impl:
+            return self.peer_proto_impl.remote_trace_path(whichtrace)
+        else:
+            return None
+
 class TapIface(TunIface):
     _PROTO_MAP = tunproto.TAP_PROTO_MAP
     _KIND = 'TAP'
