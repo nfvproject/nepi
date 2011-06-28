@@ -16,6 +16,9 @@ import traceback
 import signal
 import re
 import tempfile
+import defer
+import functools
+import collections
 
 CTRL_SOCK = "ctrl.sock"
 STD_ERR = "stderr.log"
@@ -72,6 +75,7 @@ class Server(object):
         self._stop = False
         self._ctrl_sock = None
         self._log_level = log_level
+        self._rdbuf = ""
 
     def run(self):
         try:
@@ -195,8 +199,9 @@ class Server(object):
                 self.log_error()
 
     def recv_msg(self, conn):
-        data = ""
-        while True:
+        data = [self._rdbuf]
+        chunk = data[0]
+        while '\n' not in chunk:
             try:
                 chunk = conn.recv(1024)
             except OSError, e:
@@ -205,12 +210,15 @@ class Server(object):
                 if chunk == '':
                     continue
             if chunk:
-                data += chunk
-                if chunk[-1] == "\n":
-                    break
+                data.append(chunk)
             else:
                 # empty chunk = EOF
                 break
+        data = ''.join(data).split('\n',1)
+        while len(data) < 2:
+            data.append('')
+        data, self._rdbuf = data
+        
         decoded = base64.b64decode(data)
         return decoded.rstrip()
 
@@ -250,6 +258,7 @@ class Forwarder(object):
         self._ctrl_sock = None
         self._root_dir = root_dir
         self._stop = False
+        self._rdbuf = ""
 
     def forward(self):
         self.connect()
@@ -284,8 +293,9 @@ class Forwarder(object):
             self._stop = True
 
     def recv_from_server(self):
-        data = ""
-        while True:
+        data = [self._rdbuf]
+        chunk = data[0]
+        while '\n' not in chunk:
             try:
                 chunk = self._ctrl_sock.recv(1024)
             except OSError, e:
@@ -293,10 +303,17 @@ class Forwarder(object):
                     raise
                 if chunk == '':
                     continue
-            data += chunk
-            if chunk[-1] == "\n":
+            if chunk:
+                data.append(chunk)
+            else:
+                # empty chunk = EOF
                 break
-        return data
+        data = ''.join(data).split('\n',1)
+        while len(data) < 2:
+            data.append('')
+        data, self._rdbuf = data
+        
+        return data+'\n'
  
     def connect(self):
         self.disconnect()
@@ -319,6 +336,7 @@ class Client(object):
         self.agent = agent
         self.environment_setup = environment_setup
         self._stopped = False
+        self._deferreds = collections.deque()
         self.connect()
     
     def __del__(self):
@@ -377,10 +395,51 @@ class Client(object):
         self.send_msg(STOP_MSG)
         self._stopped = True
 
-    def read_reply(self):
+    def defer_reply(self, transform=None):
+        defer_entry = []
+        self._deferreds.append(defer_entry)
+        return defer.Defer(
+            functools.partial(self.read_reply, defer_entry, transform)
+        )
+        
+    def _read_reply(self):
         data = self._process.stdout.readline()
         encoded = data.rstrip() 
         return base64.b64decode(encoded)
+    
+    def read_reply(self, which=None, transform=None):
+        # Test to see if someone did it already
+        if which is not None and len(which):
+            # Ok, they did it...
+            # ...just return the deferred value
+            if transform:
+                return transform(which[0])
+            else:
+                return which[0]
+        
+        # Process all deferreds until the one we're looking for
+        # or until the queue is empty
+        while self._deferreds:
+            try:
+                deferred = self._deferreds.popleft()
+            except IndexError:
+                # emptied
+                break
+            
+            deferred.append(self._read_reply())
+            if deferred is which:
+                # We reached the one we were looking for
+                if transform:
+                    return transform(deferred[0])
+                else:
+                    return deferred[0]
+        
+        if which is None:
+            # They've requested a synchronous read
+            if transform:
+                return transform(self._read_reply())
+            else:
+                return self._read_reply()
 
 def _make_server_key_args(server_key, host, port, args):
     """ 
