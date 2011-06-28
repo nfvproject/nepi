@@ -255,7 +255,7 @@ class TestbedController(testbed_impl.TestbedController):
         else:
             self._stop_ns3_simulation(time)
 
-    def _stop_simulation(self, time = TIME_NOW):
+    def _stop_ns3_simulation(self, time = TIME_NOW):
         if not self.ns3:
             return
         if time == TIME_NOW:
