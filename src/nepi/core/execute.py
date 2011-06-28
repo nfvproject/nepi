@@ -612,6 +612,12 @@ class ExperimentController(object):
             return testbed.get(guid, name, time)
         raise RuntimeError("No element exists with guid %d" % guid)    
 
+    def get_deferred(self, guid, name, time = TIME_NOW):
+        testbed = self._testbed_for_guid(guid)
+        if testbed != None:
+            return testbed.get_deferred(guid, name, time)
+        raise RuntimeError("No element exists with guid %d" % guid)    
+
     def get_factory_id(self, guid):
         testbed = self._testbed_for_guid(guid)
         if testbed != None:

@@ -902,7 +902,11 @@ class BaseProxy(object):
         func_template = func_template_file.read()
         func_template_file.close()
         
-        for methname in vars(template_class):
+        for methname in vars(template_class).copy():
+            if methname.endswith('_deferred'):
+                # cannot wrap deferreds...
+                continue
+            dmethname = methname+'_deferred'
             if hasattr(server_class, methname) and not methname.startswith('_'):
                 template_meth = getattr(template_class, methname)
                 server_meth = getattr(server_class, methname)
@@ -930,6 +934,7 @@ class BaseProxy(object):
                         argtypes = argtypes,
                         argencoders = argencoders,
                         rvtype = rvtype,
+                        functools = functools,
                     )
                     context = dict()
                     
@@ -955,8 +960,15 @@ class BaseProxy(object):
                     
                     if doprop:
                         rv[methname] = property(context[methname])
+                        rv[dmethname] = property(context[dmethname])
                     else:
                         rv[methname] = context[methname]
+                        rv[dmethname] = context[dmethname]
+                    
+                    # inject _deferred into core classes
+                    if hasattr(template_class, methname) and not hasattr(template_class, dmethname):
+                        setattr(template_class, dmethname, 
+                            getattr(template_class, methname))
         
         return rv
                         
