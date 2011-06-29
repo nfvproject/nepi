@@ -3,12 +3,12 @@
 
 from nepi.util import tags
 from nepi.util.constants import STATUS_FINISHED
+import getpass
 import mock
 import mock.metadata_v01 
 import sys
 import time
 import unittest
-import os
 
 class ExecuteTestCase(unittest.TestCase):
     def setUp(self):
@@ -56,7 +56,7 @@ class ExecuteTestCase(unittest.TestCase):
             7 : dict({
                 'fake': dict({
                     'host': 'localhost', 
-                    'user': os.getlogin(), 
+                    'user': getpass.getuser(), 
                     'filepath': '<test>'
                     })
                 })
