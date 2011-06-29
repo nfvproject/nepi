@@ -119,6 +119,42 @@ IFNAMSIZ = 0x00000010
 IFREQ_SZ = 0x00000028
 FIONREAD = 0x0000541b
 
+class HostLock(object):
+    # This class is used as a lock to prevent concurrency issues with more
+    # than one instance of netns running in the same machine. Both in 
+    # different processes or different threads.
+    taken = False
+    processcond = threading.Condition()
+    
+    def __init__(self, lockfile):
+        processcond = self.__class__.processcond
+        
+        processcond.acquire()
+        try:
+            # It's not reentrant
+            while self.__class__.taken:
+                processcond.wait()
+            self.__class__.taken = True
+        finally:
+            processcond.release()
+        
+        self.lockfile = lockfile
+        fcntl.flock(self.lockfile, fcntl.LOCK_EX)
+    
+    def __del__(self):
+        processcond = self.__class__.processcond
+        
+        processcond.acquire()
+        try:
+            if not self.lockfile.closed:
+                fcntl.flock(self.lockfile, fcntl.LOCK_UN)
+            
+            # It's not reentrant
+            self.__class__.taken = False
+            processcond.notify()
+        finally:
+            processcond.release()
+
 def ifnam(x):
     return x+'\x00'*(IFNAMSIZ-len(x))
 
@@ -245,8 +281,20 @@ def pl_tuntap_alloc(kind, tun_path, tun_name):
     return str(fd), name
 
 def pl_vif_start(tun_path, tun_name):
+    out = []
+    def outreader():
+        stdout = open("/vsys/vif_up.out","r")
+        out.append(stdout.read())
+        stdout.close()
+
     stdin = open("/vsys/vif_up.in","w")
-    stdout = open("/vsys/vif_up.out","r")
+    
+    # Serialize access to vsys
+    lock = HostLock(stdin)
+
+    t = threading.Thread(target=outreader)
+    t.start()
+    
     stdin.write(tun_name+"\n")
     stdin.write(options.vif_addr+"\n")
     stdin.write(str(options.vif_mask)+"\n")
@@ -257,18 +305,32 @@ def pl_vif_start(tun_path, tun_name):
     if options.vif_txqueuelen is not None:
         stdin.write("txqueuelen=%d\n" % (options.vif_txqueuelen,))
     stdin.close()
-    out = stdout.read()
-    stdout.close()
+    
+    t.join()
+    out = ''.join(out)
     if out.strip():
         print >>sys.stderr, out
 
 def pl_vif_stop(tun_path, tun_name):
+    out = []
+    def outreader():
+        stdout = open("/vsys/vif_down.out","r")
+        out.append(stdout.read())
+        stdout.close()
+
     stdin = open("/vsys/vif_down.in","w")
-    stdout = open("/vsys/vif_down.out","r")
+    
+    # Serialize access to vsys
+    lock = HostLock(stdin)
+    
+    t = threading.Thread(target=outreader)
+    t.start()
+    
     stdin.write(tun_name+"\n")
     stdin.close()
-    out = stdout.read()
-    stdout.close()
+    
+    t.join()
+    out = ''.join(out)
     if out.strip():
         print >>sys.stderr, out
 
