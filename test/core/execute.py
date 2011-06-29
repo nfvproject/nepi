@@ -8,6 +8,7 @@ import mock.metadata_v01
 import sys
 import time
 import unittest
+import os
 
 class ExecuteTestCase(unittest.TestCase):
     def setUp(self):
@@ -55,7 +56,7 @@ class ExecuteTestCase(unittest.TestCase):
             7 : dict({
                 'fake': dict({
                     'host': 'localhost', 
-                    'user': 'root', 
+                    'user': os.getlogin(), 
                     'filepath': '<test>'
                     })
                 })
