@@ -67,8 +67,6 @@ class TestbedController(testbed_impl.TestbedController):
         return self._netns
 
     def do_setup(self):
-        lock = self._lock()
-        
         self._home_directory = self._attributes.\
             get_attribute_value("homeDirectory")
         # create home...
@@ -111,8 +109,6 @@ class TestbedController(testbed_impl.TestbedController):
         raise NotImplementedError
 
     def shutdown(self):
-        lock = self._lock()
-        
         for guid, traces in self._traces.iteritems():
             for trace_id, (trace, filename) in traces.iteritems():
                 if hasattr(trace, "close"):
