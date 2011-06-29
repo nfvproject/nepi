@@ -967,9 +967,12 @@ class BaseProxy(object):
                     
                     # inject _deferred into core classes
                     if hasattr(template_class, methname) and not hasattr(template_class, dmethname):
-                        def dmeth(self, *p, **kw): 
-                            return getattr(self, methname)(*p, **kw)
-                        dmeth.__name__ = dmethname
+                        def freezename(methname, dmethname):
+                            def dmeth(self, *p, **kw): 
+                                return getattr(self, methname)(*p, **kw)
+                            dmeth.__name__ = dmethname
+                            return dmeth
+                        dmeth = freezename(methname, dmethname)
                         setattr(template_class, dmethname, dmeth)
         
         return rv
