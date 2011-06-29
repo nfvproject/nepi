@@ -4,6 +4,7 @@
 from nepi.core.design import ExperimentDescription, FactoriesProvider
 from nepi.util import proxy
 from nepi.util.constants import STATUS_FINISHED, DeploymentConfiguration as DC
+import getpass
 import mock
 import mock.metadata_v01
 import mock2
@@ -198,7 +199,7 @@ class ExecuteTestCase(unittest.TestCase):
                 6: dict({ # element guid
                     'fake': dict({ # trace_id
                         'host': 'localhost', 
-                        'user': os.getlogin(), 
+                        'user': getpass.getuser(), 
                         'filepath': '<test>'
                         })
                     })
