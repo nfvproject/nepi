@@ -40,6 +40,8 @@ class Node(object):
     
     DEPENDS_PIDFILE = '/tmp/nepi-depends.pid'
     DEPENDS_LOGFILE = '/tmp/nepi-depends.log'
+    RPM_FUSION_URL = 'http://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-stable.noarch.rpm'
+    RPM_FUSION_URL_F12 = 'http://download1.rpmfusion.org/free/fedora/releases/12/Everything/x86_64/os/rpmfusion-free-release-12-1.noarch.rpm'
     
     def __init__(self, api=None):
         if not api:
@@ -65,6 +67,7 @@ class Node(object):
         self.required_packages = set()
         self.required_vsys = set()
         self.pythonpath = []
+        self.rpmFusion = False
         self.env = collections.defaultdict(list)
         
         # Testbed-derived attributes
@@ -313,11 +316,29 @@ class Node(object):
             pidfile = self.DEPENDS_PIDFILE
             logfile = self.DEPENDS_LOGFILE
             
+            # If we need rpmfusion, we must install the repo definition and the gpg keys
+            if self.rpmFusion:
+                if self.operatingSystem == 'f12':
+                    # Fedora 12 requires a different rpmfusion package
+                    RPM_FUSION_URL = self.RPM_FUSION_URL_F12
+                else:
+                    # This one works for f13+
+                    RPM_FUSION_URL = self.RPM_FUSION_URL
+                    
+                rpmFusion = (
+                  '( rpm -q $(rpm -q -p %(RPM_FUSION_URL)s) || rpm -i %(RPM_FUSION_URL)s ) &&'
+                ) % {
+                    'RPM_FUSION_URL' : RPM_FUSION_URL
+                }
+            else:
+                rpmFusion = ''
+            
             # Start process in a "daemonized" way, using nohup and heavy
             # stdin/out redirection to avoid connection issues
             (out,err),proc = rspawn.remote_spawn(
-                "( yum -y install %(packages)s && echo SUCCESS || echo FAILURE )" % {
+                "( %(rpmfusion)s yum -y install %(packages)s && echo SUCCESS || echo FAILURE )" % {
                     'packages' : ' '.join(self.required_packages),
+                    'rpmfusion' : rpmFusion,
                 },
                 pidfile = pidfile,
                 stdout = logfile,

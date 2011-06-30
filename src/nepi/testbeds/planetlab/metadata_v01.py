@@ -147,6 +147,9 @@ def connect_dep(testbed_instance, node_guid, app_guid):
         for envkey, envval in app.env.iteritems():
             envval = app._replace_paths(envval)
             node.env[envkey].append(envval)
+    
+    if app.rpmFusion:
+        node.rpmFusion = True
 
 def connect_node_netpipe(testbed_instance, node_guid, netpipe_guid):
     node = testbed_instance._elements[node_guid]
@@ -794,6 +797,14 @@ attributes = dict({
                 "flags": Attribute.DesignOnly,
                 "validation_function": validation.is_string
             }),
+    "rpm-fusion": dict({
+                "name": "rpmFusion",
+                "help": "True if required packages can be found in the RpmFusion repository",
+                "type": Attribute.BOOL,
+                "flags": Attribute.DesignOnly,
+                "value": False,
+                "validation_function": validation.is_bool
+            }),
     "sources": dict({
                 "name": "sources",
                 "help": "Space-separated list of regular files to be deployed in the working path prior to building. "
@@ -1007,7 +1018,7 @@ factories_info = dict({
             "configure_function": configure_application,
             "box_attributes": ["command", "sudo", "stdin",
                                "depends", "build-depends", "build", "install",
-                               "sources" ],
+                               "sources", "rpm-fusion" ],
             "connector_types": ["node"],
             "traces": ["stdout", "stderr", "buildlog"]
         }),
@@ -1017,7 +1028,7 @@ factories_info = dict({
             "create_function": create_dependency,
             "preconfigure_function": configure_dependency,
             "box_attributes": ["depends", "build-depends", "build", "install",
-                               "sources" ],
+                               "sources", "rpm-fusion" ],
             "connector_types": ["node"],
             "traces": ["buildlog"]
         }),

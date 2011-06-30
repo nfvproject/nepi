@@ -46,6 +46,7 @@ class Dependency(object):
         self.depends = None
         self.buildDepends = None
         self.sources = None
+        self.rpmFusion = False
         self.env = {}
         
         self.stdin = None
