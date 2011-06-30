@@ -371,7 +371,7 @@ def wait_tunchannel(testbed_instance, guid):
     """
     Wait for the channel forwarder to be up and running.
     
-    Useful as a start function to assure proper startup synchronization,
+    Useful as a pre-start function to assure proper startup synchronization,
     be certain to start TunChannels before applications that might require them.
     """
     element = testbed_instance.elements[guid]

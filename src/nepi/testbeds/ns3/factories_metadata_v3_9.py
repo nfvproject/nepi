@@ -1048,7 +1048,7 @@ factories_info = dict({
         "create_function": create_tunchannel,
         "preconfigure_function": preconfigure_tunchannel,
         "configure_function": postconfigure_tunchannel,
-        "start_function": wait_tunchannel,
+        "prestart_function": wait_tunchannel,
         "help": "Channel to forward FileDescriptorNetDevice data to "
                 "other TAP interfaces supporting the NEPI tunneling protocol.",
         "connector_types": ["fd->", "udp", "tcp"],
