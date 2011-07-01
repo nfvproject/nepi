@@ -370,7 +370,8 @@ class Dependency(object):
             (out, err), proc = self._popen_ssh_command(
                 "cat %(token_path)s" % {
                     'token_path' : os.path.join(self.home_path, 'build.token'),
-                })
+                },
+                noerrors = True)
             slave_token = ""
             if not proc.wait() and out:
                 slave_token = out.strip()
@@ -382,7 +383,8 @@ class Dependency(object):
                     "cat %(buildlog)s" % {
                         'buildlog' : os.path.join(self.home_path, 'buildlog'),
                         'buildscript' : os.path.join(self.home_path, 'nepi-build.sh'),
-                    })
+                    },
+                    noerrors = True)
                 
                 proc.wait()
                 
@@ -445,11 +447,12 @@ class Dependency(object):
             )
         
             # Make archive
-            buildscript.write(
-                "tar czf build.tar.gz build && ( echo %(master_token)s > build.token )\n" % {
-                    'master_token' : server.shell_escape(self._master_token)
-                }
-            )
+            buildscript.write("tar czf build.tar.gz build\n")
+        
+        # Write token
+        buildscript.write("echo %(master_token)s > build.token" % {
+            'master_token' : server.shell_escape(self._master_token)
+        })
         
         buildscript.seek(0)
 
@@ -464,10 +467,10 @@ class Dependency(object):
                         {
                         'command' : self._replace_paths(self.install),
                         'home' : server.shell_escape(self.home_path),
-                        }
+                        },
                     )
             except RuntimeError, e:
-                raise RuntimeError, "Failed instal build sources: %s %s" % (e.args[0], e.args[1],)
+                raise RuntimeError, "Failed install build sources: %s %s" % (e.args[0], e.args[1],)
 
     def set_master(self, master):
         self._master = master
@@ -530,7 +533,7 @@ class Dependency(object):
   
 
     @server.eintr_retry
-    def _popen_ssh_command(self, command, retry = True):
+    def _popen_ssh_command(self, command, retry = True, noerrors=False):
         (out,err),proc = server.popen_ssh_command(
             command,
             host = self.node.hostname,
@@ -542,7 +545,8 @@ class Dependency(object):
             )
 
         if server.eintr_retry(proc.wait)():
-            raise RuntimeError, (out, err)
+            if not noerrors:
+                raise RuntimeError, (out, err)
         return (out, err), proc
 
 class Application(Dependency):
