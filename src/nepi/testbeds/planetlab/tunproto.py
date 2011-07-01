@@ -352,7 +352,8 @@ class TunProtoBase(object):
                 port = None,
                 user = local.node.slicename,
                 agent = None,
-                ident_key = local.node.ident_path
+                ident_key = local.node.ident_path,
+                server_key = local.node.server_key
                 )
             return status
     
