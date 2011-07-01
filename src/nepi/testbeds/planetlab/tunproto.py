@@ -10,6 +10,7 @@ import threading
 import base64
 import time
 import re
+import sys
 
 from nepi.util import server
 
@@ -33,6 +34,13 @@ class TunProtoBase(object):
         self._pid = None
         self._ppid = None
         self._if_name = None
+    
+    def __str__(self):
+        local = self.local()
+        if local:
+            return '<%s for %s>' % (self.__class__.__name__, local)
+        else:
+            return super(TunProtoBase,self).__str__()
 
     def _make_home(self):
         local = self.local()
@@ -195,6 +203,8 @@ class TunProtoBase(object):
         
         self._make_home()
         self._install_scripts()
+
+        print >>sys.stderr, "Starting", self
         
         # Start process in a "daemonized" way, using nohup and heavy
         # stdin/out redirection to avoid connection issues
@@ -243,6 +253,7 @@ class TunProtoBase(object):
         # Wait for the connection to be established
         for spin in xrange(30):
             if self.status() != rspawn.RUNNING:
+                print >>sys.stderr, "Connected", self
                 break
             
             (out,err),proc = server.eintr_retry(server.popen_ssh_command)(
@@ -263,6 +274,8 @@ class TunProtoBase(object):
                 break
             
             time.sleep(1.0)
+        else:
+            print >>sys.stderr, "FAILED TO CONNECT! ", self
     
     @property
     def if_name(self):
@@ -365,6 +378,8 @@ class TunProtoBase(object):
         
         status = self.status()
         if status == rspawn.RUNNING:
+            print >>sys.stderr, "Stopping", self
+            
             # kill by ppid+pid - SIGTERM first, then try SIGKILL
             rspawn.remote_kill(
                 self._pid, self._ppid,
@@ -383,6 +398,7 @@ class TunProtoBase(object):
         for i in xrange(30):
             status = self.status()
             if status != rspawn.RUNNING:
+                print >>sys.stderr, "Stopped", self
                 break
             time.sleep(interval)
             interval = min(30.0, interval * 1.1)
