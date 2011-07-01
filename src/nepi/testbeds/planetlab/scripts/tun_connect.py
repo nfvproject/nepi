@@ -286,6 +286,7 @@ def pl_vif_start(tun_path, tun_name):
         stdout = open("/vsys/vif_up.out","r")
         out.append(stdout.read())
         stdout.close()
+        time.sleep(1)
 
     # Serialize access to vsys
     lockfile = open("/tmp/nepi-tun-connect.lock", "a")
@@ -320,6 +321,7 @@ def pl_vif_stop(tun_path, tun_name):
         stdout = open("/vsys/vif_down.out","r")
         out.append(stdout.read())
         stdout.close()
+        time.sleep(1)
 
     # Serialize access to vsys
     lockfile = open("/tmp/nepi-tun-connect.lock", "a")
