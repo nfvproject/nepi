@@ -287,10 +287,11 @@ def pl_vif_start(tun_path, tun_name):
         out.append(stdout.read())
         stdout.close()
 
-    stdin = open("/vsys/vif_up.in","w")
-    
     # Serialize access to vsys
-    lock = HostLock(stdin)
+    lockfile = open("/tmp/nepi-tun-connect.lock", "a")
+    lock = HostLock(lockfile)
+
+    stdin = open("/vsys/vif_up.in","w")
 
     t = threading.Thread(target=outreader)
     t.start()
@@ -310,6 +311,8 @@ def pl_vif_start(tun_path, tun_name):
     out = ''.join(out)
     if out.strip():
         print >>sys.stderr, out
+    
+    del lock, lockfile
 
 def pl_vif_stop(tun_path, tun_name):
     out = []
@@ -318,10 +321,11 @@ def pl_vif_stop(tun_path, tun_name):
         out.append(stdout.read())
         stdout.close()
 
-    stdin = open("/vsys/vif_down.in","w")
-    
     # Serialize access to vsys
-    lock = HostLock(stdin)
+    lockfile = open("/tmp/nepi-tun-connect.lock", "a")
+    lock = HostLock(lockfile)
+
+    stdin = open("/vsys/vif_down.in","w")
     
     t = threading.Thread(target=outreader)
     t.start()
@@ -333,6 +337,8 @@ def pl_vif_stop(tun_path, tun_name):
     out = ''.join(out)
     if out.strip():
         print >>sys.stderr, out
+    
+    del lock, lockfile
 
 
 def tun_fwd(tun, remote):
