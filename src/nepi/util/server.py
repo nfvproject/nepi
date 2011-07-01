@@ -467,6 +467,7 @@ def _make_server_key_args(server_key, host, port, args):
     tmp_known_hosts.flush()
     
     args.extend(['-o', 'UserKnownHostsFile=%s' % (tmp_known_hosts.name,)])
+    
     return tmp_known_hosts
 
 def popen_ssh_command(command, host, port, user, agent, 
@@ -584,7 +585,7 @@ def popen_scp(source, dest,
                         stdin = source)
                 err = proc.stderr.read()
                 proc._known_hosts = tmp_known_hosts
-                proc.wait()
+                eintr_retry(proc.wait)()
                 return ((None,err), proc)
             elif isinstance(dest, file):
                 proc = subprocess.Popen(args, 
@@ -593,7 +594,7 @@ def popen_scp(source, dest,
                         stdin = source)
                 err = proc.stderr.read()
                 proc._known_hosts = tmp_known_hosts
-                proc.wait()
+                eintr_retry(proc.wait)()
                 return ((None,err), proc)
             elif hasattr(source, 'read'):
                 # file-like (but not file) source
@@ -630,7 +631,7 @@ def popen_scp(source, dest,
                 err.append(proc.stderr.read())
                     
                 proc._known_hosts = tmp_known_hosts
-                proc.wait()
+                eintr_retry(proc.wait)()
                 return ((None,''.join(err)), proc)
             elif hasattr(dest, 'write'):
                 # file-like (but not file) dest
@@ -665,7 +666,7 @@ def popen_scp(source, dest,
                 err.append(proc.stderr.read())
                     
                 proc._known_hosts = tmp_known_hosts
-                proc.wait()
+                eintr_retry(proc.wait)()
                 return ((None,''.join(err)), proc)
             else:
                 raise AssertionError, "Unreachable code reached! :-Q"
@@ -708,7 +709,7 @@ def popen_scp(source, dest,
             proc._known_hosts = tmp_known_hosts
             
             comm = proc.communicate()
-            proc.wait()
+            eintr_retry(proc.wait)()
             return (comm, proc)
  
 def popen_ssh_subprocess(python_code, host, port, user, agent, 
