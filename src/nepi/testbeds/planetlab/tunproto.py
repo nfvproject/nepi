@@ -200,12 +200,12 @@ class TunProtoBase(object):
             args.extend(map(str,extra_args))
         if not listen and check_proto != 'fd':
             args.append(str(peer_addr))
+
+        print >>sys.stderr, "Starting", self
         
         self._make_home()
         self._install_scripts()
 
-        print >>sys.stderr, "Starting", self
-        
         # Start process in a "daemonized" way, using nohup and heavy
         # stdin/out redirection to avoid connection issues
         (out,err),proc = rspawn.remote_spawn(
@@ -253,7 +253,7 @@ class TunProtoBase(object):
         # Wait for the connection to be established
         for spin in xrange(30):
             if self.status() != rspawn.RUNNING:
-                print >>sys.stderr, "Connected", self
+                print >>sys.stderr, "FAILED TO CONNECT! ", self
                 break
             
             (out,err),proc = server.eintr_retry(server.popen_ssh_command)(
@@ -323,6 +323,7 @@ class TunProtoBase(object):
                 else:
                     raise RuntimeError, "Failed to launch TUN forwarder"
         elif not self._started:
+            print >>sys.stderr, "SYNC", 
             self.launch()
 
     def checkpid(self):            
