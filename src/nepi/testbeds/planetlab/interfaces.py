@@ -192,7 +192,7 @@ class TunIface(object):
             if pointopoint:
                 prefix = 32
                 
-            dest, destprefix, nexthop = route
+            dest, destprefix, nexthop, metric = route
             
             myNet = ipaddr.IPNetwork("%s/%d" % (addr, prefix))
             gwIp = ipaddr.IPNetwork(nexthop)

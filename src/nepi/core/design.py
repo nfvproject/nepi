@@ -139,12 +139,6 @@ class Trace(AttributesMap):
 class Address(AttributesMap):
     def __init__(self):
         super(Address, self).__init__()
-        self.add_attribute(name = "AutoConfigure", 
-                help = "If set, this address will automatically be assigned", 
-                type = Attribute.BOOL,
-                value = False,
-                flags = Attribute.DesignOnly,
-                validation_function = validation.is_bool)
         self.add_attribute(name = "Address",
                 help = "Address number", 
                 type = Attribute.STRING,
@@ -168,7 +162,7 @@ class Route(AttributesMap):
         self.add_attribute(name = "Destination", 
                 help = "Network destintation",
                 type = Attribute.STRING, 
-                validation_function = validation.is_ip_address)
+                validation_function = validation.is_ref_address)
         self.add_attribute(name = "NetPrefix",
                 help = "Network destination prefix", 
                 type = Attribute.INTEGER, 
@@ -180,7 +174,13 @@ class Route(AttributesMap):
                 help = "Address for the next hop", 
                 type = Attribute.STRING,
                 flags = Attribute.HasNoDefaultValue,
-                validation_function = validation.is_ip_address)
+                validation_function = validation.is_ref_address)
+        self.add_attribute(name = "Metric",
+                help = "Routing metric", 
+                type = Attribute.INTEGER,
+                value = 0,
+                flags = Attribute.HasNoDefaultValue,
+                validation_function = validation.is_integer)
 
 class Box(AttributesMap):
     def __init__(self, guid, factory, testbed_guid, container = None):

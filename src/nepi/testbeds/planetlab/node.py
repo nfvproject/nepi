@@ -459,7 +459,7 @@ class Node(object):
             for dev in devs:
                 if dev.routes_here(route):
                     # Schedule rule
-                    dest, prefix, nexthop = route
+                    dest, prefix, nexthop, metric = route
                     rules.append(
                         "add %s%s gw %s %s" % (
                             dest,

@@ -54,8 +54,14 @@ def is_ip6_address(attribute, value):
         return False
     return True
 
-# TODO: Allow netrefs!
 def is_ip_address(attribute, value):
+    if not is_ip4_address(attribute, value) and \
+            not is_ip6_address(attribute, value):
+        return False
+    return True
+
+# TODO: Allow netrefs!
+def is_ref_address(attribute, value):
     if not is_ip4_address(attribute, value) and \
             not is_ip6_address(attribute, value):
         return False

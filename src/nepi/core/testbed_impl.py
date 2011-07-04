@@ -177,7 +177,7 @@ class TestbedController(execute.TestbedController):
             self._add_address[guid] = list()
         self._add_address[guid].append((address, netprefix, broadcast))
 
-    def defer_add_route(self, guid, destination, netprefix, nexthop):
+    def defer_add_route(self, guid, destination, netprefix, nexthop, metric = 0):
         if not guid in self._create:
             raise RuntimeError("Element guid %d doesn't exist" % guid)
         factory = self._get_factory(guid)
@@ -186,7 +186,7 @@ class TestbedController(execute.TestbedController):
                     factory.factory_id)
         if not guid in self._add_route:
             self._add_route[guid] = list()
-        self._add_route[guid].append((destination, netprefix, nexthop)) 
+        self._add_route[guid].append((destination, netprefix, nexthop, metric)) 
 
     def do_setup(self):
         self._root_directory = self._attributes.\

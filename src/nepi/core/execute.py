@@ -235,7 +235,7 @@ class TestbedController(object):
         """Instructs the addition of an address"""
         raise NotImplementedError
 
-    def defer_add_route(self, guid, destination, netprefix, nexthop):
+    def defer_add_route(self, guid, destination, netprefix, nexthop, metric = 0):
         """Instructs the addition of a route"""
         raise NotImplementedError
 
@@ -880,13 +880,13 @@ class ExperimentController(object):
                                 cross_guid, cross_connector_type_name)
                 for trace_id in data.get_trace_data(guid):
                     testbed.defer_add_trace(guid, trace_id)
-                for (autoconf, address, netprefix, broadcast) in \
+                for (address, netprefix, broadcast) in \
                         data.get_address_data(guid):
                     if address != None:
                         testbed.defer_add_address(guid, address, netprefix, 
                                 broadcast)
-                for (destination, netprefix, nexthop) in data.get_route_data(guid):
-                    testbed.defer_add_route(guid, destination, netprefix, nexthop)
+                for (destination, netprefix, nexthop, metric) in data.get_route_data(guid):
+                    testbed.defer_add_route(guid, destination, netprefix, nexthop, metric)
     
     def _program_testbed_cross_connections(self, data):
         data_guids = data.guids
