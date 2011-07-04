@@ -213,6 +213,8 @@ class Dependency(object):
             buildscript = self._do_build_master()
             
         if buildscript is not None:
+            print "Building", self
+            
             # upload build script
             try:
                 self._popen_scp(
