@@ -139,6 +139,7 @@ class Dependency(object):
         return local_path
 
     def setup(self):
+        print >>sys.stderr, "Setting up", self
         self._make_home()
         self._launch_build()
         self._finish_build()
@@ -158,6 +159,7 @@ class Dependency(object):
     
     def async_setup_wait(self):
         if not self._setup:
+            print >>sys.stderr, "Waiting for", self, "to be setup"
             if self._setuper:
                 self._setuper.join()
                 if not self._setup:
@@ -211,6 +213,8 @@ class Dependency(object):
             buildscript = self._do_build_master()
             
         if buildscript is not None:
+            print "Building", self
+            
             # upload build script
             try:
                 self._popen_scp(
@@ -341,6 +345,8 @@ class Dependency(object):
                 delay = min(30,delay*1.2)
         else:
             raise RuntimeError, "Failed to set up build slave %s: cannot get pid" % (self.home_path,)
+
+        print >>sys.stderr, "Deploying", self
         
     def _do_wait_build(self):
         pid = self._build_pid
@@ -348,6 +354,7 @@ class Dependency(object):
         
         if pid and ppid:
             delay = 1.0
+            first = True
             while True:
                 status = rspawn.remote_status(
                     pid, ppid,
@@ -363,6 +370,14 @@ class Dependency(object):
                     self._build_pid = self._build_ppid = None
                     break
                 else:
+                    if first:
+                        print >>sys.stderr, "Waiting for", self, "to finish building",
+                        if self._master is not None:
+                            print >>sys.stderr, "(build master)"
+                        else:
+                            print >>sys.stderr, "(build slave)"
+                        
+                        first = False
                     time.sleep(delay*(0.5+random.random()))
                     delay = min(30,delay*1.2)
             
@@ -393,11 +408,14 @@ class Dependency(object):
                         "(expected %r, got %r), see buildlog: %s" % (
                     self.home_path, pid, ppid, self._master_token, slave_token, buildlog)
 
+            print >>sys.stderr, "Built", self
+
     def _do_kill_build(self):
         pid = self._build_pid
         ppid = self._build_ppid
         
         if pid and ppid:
+            print >>sys.stderr, "Killing build of", self
             rspawn.remote_kill(
                 pid, ppid,
                 host = self.node.hostname,
@@ -460,6 +478,8 @@ class Dependency(object):
 
     def _do_install(self):
         if self.install:
+            print >>sys.stderr, "Installing", self
+            
             # Install application
             try:
                 self._popen_ssh_command(
@@ -587,6 +607,8 @@ class Application(Dependency):
         )
     
     def start(self):
+        print >>sys.stderr, "Starting", self
+        
         # Create shell script with the command
         # This way, complex commands and scripts can be ran seamlessly
         # sync files
@@ -696,6 +718,7 @@ class Application(Dependency):
                 ident_key = self.node.ident_path,
                 server_key = self.node.server_key
                 )
+            print >>sys.stderr, "Killed", self
 
 
 class NepiDependency(Dependency):
