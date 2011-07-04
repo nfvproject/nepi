@@ -72,15 +72,13 @@ class ExperimentData(object):
         connection_data = connections_data[connector_type_name]
         connection_data[other_guid] = other_connector_type_name
 
-    def add_address_data(self, guid, autoconf, address, netprefix, 
+    def add_address_data(self, guid, address, netprefix, 
             broadcast):
         data = self.data[guid]
         if not "addresses" in data:
             data["addresses"] = list()
         addresses_data = data["addresses"]
         address_data = dict()
-        if autoconf:
-            address_data["AutoConfigure"] = autoconf
         if address:
             address_data["Address"] = address
         address_data["NetPrefix"] = netprefix
@@ -88,7 +86,7 @@ class ExperimentData(object):
             address_data["Broadcast"] = broadcast
         addresses_data.append(address_data)
 
-    def add_route_data(self, guid, destination, netprefix, nexthop): 
+    def add_route_data(self, guid, destination, netprefix, nexthop, metric):
         data = self.data[guid]
         if not "routes" in data:
             data["routes"] = list()
@@ -96,7 +94,8 @@ class ExperimentData(object):
         route_data = dict({
             "Destination": destination,
             "NetPrefix": netprefix, 
-            "NextHop": nexthop 
+            "NextHop": nexthop, 
+            "Metric": metric
             })
         routes_data.append(route_data)
 
@@ -172,8 +171,7 @@ class ExperimentData(object):
         if not "addresses" in data:
             return []
         addresses_data = data["addresses"]
-        return [(data["AutoConfigure"] if "AutoConfigure" in data else None,
-                 data["Address"] if "Address" in data else None,
+        return [(data["Address"] if "Address" in data else None,
                  data["NetPrefix"] if "NetPrefix" in data else None,
                  data["Broadcast"] if "Broadcast" in data else None) \
                  for data in addresses_data]
@@ -185,7 +183,8 @@ class ExperimentData(object):
         routes_data = data["routes"]
         return [(data["Destination"],
                  data["NetPrefix"],
-                 data["NextHop"]) \
+                 data["NextHop"],
+                 data["Metric"]) \
                          for data in routes_data]
 
 class ExperimentParser(object):
@@ -243,21 +242,20 @@ class ExperimentParser(object):
 
     def addresses_to_data(self, data, guid, addresses):
         for addr in addresses:
-             autoconf = addr.get_attribute_value("AutoConfigure")
              address = addr.get_attribute_value("Address")
              netprefix = addr.get_attribute_value("NetPrefix")
              broadcast = addr.get_attribute_value("Broadcast") \
                     if addr.has_attribute("Broadcast") and \
                     addr.is_attribute_modified("Broadcast") else None
-             data.add_address_data(guid, autoconf, address, netprefix, 
-                    broadcast)
+             data.add_address_data(guid, address, netprefix, broadcast)
 
     def routes_to_data(self, data, guid, routes):
         for route in routes:
              destination = route.get_attribute_value("Destination")
              netprefix = route.get_attribute_value("NetPrefix")
              nexthop = route.get_attribute_value("NextHop")
-             data.add_route_data(guid, destination, netprefix, nexthop)
+             metric = route.get_attribute_value("Metric")
+             data.add_route_data(guid, destination, netprefix, nexthop, metric)
 
     def from_data(self, experiment_description, data):
         box_guids = list()
@@ -315,11 +313,8 @@ class ExperimentParser(object):
             box.enable_trace(name)
 
     def addresses_from_data(self, box, data):
-        for (autoconf, address, netprefix, broadcast) \
-                in data.get_address_data(box.guid):
+        for (address, netprefix, broadcast) in data.get_address_data(box.guid):
             addr = box.add_address()
-            if autoconf:
-                addr.set_attribute_value("AutoConfigure", autoconf)
             if address:
                 addr.set_attribute_value("Address", address)
             if netprefix != None:
@@ -328,12 +323,13 @@ class ExperimentParser(object):
                 addr.set_attribute_value("Broadcast", broadcast)
 
     def routes_from_data(self, box, data):
-         for (destination, netprefix, nexthop) \
+         for (destination, netprefix, nexthop, metric) \
                  in data.get_route_data(box.guid):
             addr = box.add_route()
             addr.set_attribute_value("Destination", destination)
             addr.set_attribute_value("NetPrefix", netprefix)
             addr.set_attribute_value("NextHop", nexthop)
+            addr.set_attribute_value("Metric", metric)
 
     def connections_from_data(self, experiment_description, guids, data):
         for guid in guids:

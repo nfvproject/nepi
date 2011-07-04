@@ -469,7 +469,7 @@ def configure_node(testbed_instance, guid):
     ns3 = testbed_instance.ns3
     routes = testbed_instance._add_route[guid]
     for route in routes:
-        (destination, netprefix, nexthop) = route
+        (destination, netprefix, nexthop, metric) = route
         address = ns3.Ipv4Address(destination)
         if nexthop:
             nexthop_address = ns3.Ipv4Address(nexthop)

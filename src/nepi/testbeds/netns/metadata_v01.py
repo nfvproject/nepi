@@ -232,9 +232,9 @@ def configure_node(testbed_instance, guid):
         return
     routes = testbed_instance._add_route[guid]
     for route in routes:
-        (destination, netprefix, nexthop) = route
+        (destination, netprefix, nexthop, metric) = route
         element.add_route(prefix = destination, prefix_len = netprefix,
-            nexthop = nexthop)
+            nexthop = nexthop, metric = metric)
 
 ### Factory information ###
 
