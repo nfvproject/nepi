@@ -185,7 +185,11 @@ class TunIface(object):
         """
         if self.address and self.netprefix:
             addr, prefix = self.address, self.netprefix
-            if self.pointopoint:
+            pointopoint = self.pointopoint
+            if not pointopoint:
+                pointopoint = self.peer_iface.address
+            
+            if pointopoint:
                 prefix = 32
                 
             dest, destprefix, nexthop = route
@@ -193,8 +197,8 @@ class TunIface(object):
             myNet = ipaddr.IPNetwork("%s/%d" % (addr, prefix))
             gwIp = ipaddr.IPNetwork(nexthop)
             
-            if self.pointopoint:
-                peerIp = ipaddr.IPNetwork(self.pointopoint)
+            if pointopoint:
+                peerIp = ipaddr.IPNetwork(pointopoint)
                 
                 if gwIp == peerIp:
                     return True
