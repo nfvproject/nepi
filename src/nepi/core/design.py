@@ -217,7 +217,7 @@ class Box(AttributesMap):
                     attr.range, attr.allowed, attr.flags, 
                     attr.validation_function, attr.category)
         for attr in factory.attributes:
-            if attr.modified:
+            if attr.modified or attr.invisible:
                 self._factory_attributes[attr.name] = attr.value
 
     def __str__(self):
@@ -286,7 +286,9 @@ class AddressableMixin(object):
     def __init__(self, guid, factory, testbed_guid, container = None):
         super(AddressableMixin, self).__init__(guid, factory, testbed_guid, 
                 container)
-        self._max_addresses = 1 # TODO: How to make this configurable!
+        max_addr =  self._factory_attributes["MaxAddresses"] \
+                if "MaxAddresses" in self._factory_attributes else 1
+        self._max_addresses = max_addr
         self._addresses = list()
 
     @property

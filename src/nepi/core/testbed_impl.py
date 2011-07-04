@@ -4,16 +4,10 @@
 from nepi.core import execute
 from nepi.core.metadata import Metadata
 from nepi.util import validation
-from nepi.util.constants import STATUS_UNDETERMINED, TIME_NOW, \
-    TESTBED_STATUS_ZERO, \
-    TESTBED_STATUS_SETUP, \
-    TESTBED_STATUS_CREATED, \
-    TESTBED_STATUS_CONNECTED, \
-    TESTBED_STATUS_CROSS_CONNECTED, \
-    TESTBED_STATUS_CONFIGURED, \
-    TESTBED_STATUS_STARTED, \
-    TESTBED_STATUS_STOPPED,\
-    CONNECTION_DELAY
+from nepi.util.constants import TIME_NOW, \
+        ApplicationStatus as AS, \
+        TestbedStatus as TS, \
+        CONNECTION_DELAY
 
 import collections
 import copy
@@ -21,7 +15,7 @@ import copy
 class TestbedController(execute.TestbedController):
     def __init__(self, testbed_id, testbed_version):
         super(TestbedController, self).__init__(testbed_id, testbed_version)
-        self._status = TESTBED_STATUS_ZERO
+        self._status = TS.STATUS_ZERO
         # testbed attributes for validation
         self._attributes = None
         # element factories for validation
@@ -191,7 +185,7 @@ class TestbedController(execute.TestbedController):
     def do_setup(self):
         self._root_directory = self._attributes.\
             get_attribute_value("rootDirectory")
-        self._status = TESTBED_STATUS_SETUP
+        self._status = TS.STATUS_SETUP
 
     def do_create(self):
         def set_params(self, guid):
@@ -203,7 +197,7 @@ class TestbedController(execute.TestbedController):
             'create_function',
             self._metadata.create_order,
             postaction = set_params )
-        self._status = TESTBED_STATUS_CREATED
+        self._status = TS.STATUS_CREATED
 
     def _do_connect(self, init = True):
         unconnected = copy.deepcopy(self._connect)
@@ -244,7 +238,7 @@ class TestbedController(execute.TestbedController):
 
     def do_connect_compl(self):
         self._do_connect(init = False)
-        self._status = TESTBED_STATUS_CONNECTED
+        self._status = TS.STATUS_CONNECTED
 
     def _do_in_factory_order(self, action, order, postaction = None, poststep = None):
         guids = collections.defaultdict(list)
@@ -290,7 +284,7 @@ class TestbedController(execute.TestbedController):
             'configure_function',
             self._metadata.configure_order,
             poststep = self.do_poststep_configure )
-        self._status = TESTBED_STATUS_CONFIGURED
+        self._status = TS.STATUS_CONFIGURED
 
     def do_prestart(self):
         self._do_in_factory_order(
@@ -324,7 +318,7 @@ class TestbedController(execute.TestbedController):
 
     def do_cross_connect_compl(self, cross_data):
         self._do_cross_connect(cross_data, init = False)
-        self._status = TESTBED_STATUS_CROSS_CONNECTED
+        self._status = TS.STATUS_CROSS_CONNECTED
 
     def set(self, guid, name, value, time = TIME_NOW):
         if not guid in self._create:
@@ -333,7 +327,7 @@ class TestbedController(execute.TestbedController):
         if not factory.box_attributes.has_attribute(name):
             raise AttributeError("Invalid attribute %s for element type %s" %
                     (name, factory.factory_id))
-        if self._status > TESTBED_STATUS_STARTED and \
+        if self._status > TS.STATUS_STARTED and \
                 factory.box_attributes.is_attribute_design_only(name):
             raise AttributeError("Attribute %s can only be modified during experiment design" % name)
         if not factory.box_attributes.is_attribute_value_valid(name, value):
@@ -435,7 +429,7 @@ class TestbedController(execute.TestbedController):
         self._do_in_factory_order(
             'start_function',
             self._metadata.start_order )
-        self._status = TESTBED_STATUS_STARTED
+        self._status = TS.STATUS_STARTED
 
     #action: NotImplementedError
 
@@ -443,7 +437,7 @@ class TestbedController(execute.TestbedController):
         self._do_in_factory_order(
             'stop_function',
             reversed(self._metadata.start_order) )
-        self._status = TESTBED_STATUS_STOPPED
+        self._status = TS.STATUS_STOPPED
 
     def status(self, guid = None):
         if not guid:
@@ -454,7 +448,7 @@ class TestbedController(execute.TestbedController):
         status_function = factory.status_function
         if status_function:
             return status_function(self, guid)
-        return STATUS_UNDETERMINED
+        return AS.STATUS_UNDETERMINED
 
     def trace(self, guid, trace_id, attribute='value'):
         if attribute == 'value':

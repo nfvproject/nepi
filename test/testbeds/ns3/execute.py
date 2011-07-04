@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from nepi.util.constants import STATUS_FINISHED
+from nepi.util.constants import ApplicationStatus as AS
 from nepi.testbeds import ns3
 import os
 import shutil
@@ -71,7 +71,7 @@ class Ns3ExecuteTestCase(unittest.TestCase):
         instance.do_configure()
         instance.do_prestart()
         instance.start()
-        while instance.status(17) != STATUS_FINISHED:
+        while instance.status(17) != AS.STATUS_FINISHED:
             time.sleep(0.1)
         ping_result = instance.trace(14, "P2PAsciiTrace")
         ping_rtt = instance.trace(17, "Rtt")

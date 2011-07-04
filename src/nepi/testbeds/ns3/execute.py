@@ -4,8 +4,7 @@
 from nepi.core import testbed_impl
 from nepi.core.attributes import Attribute
 from constants import TESTBED_ID
-from nepi.util.constants import TIME_NOW, \
-    TESTBED_STATUS_STARTED
+from nepi.util.constants import TIME_NOW, TestbedStatus as TS
 import os
 import sys
 import threading
@@ -226,7 +225,7 @@ class TestbedController(testbed_impl.TestbedController):
                 condition.release()
 
     def _set_attribute(self, name, ns3_value, element):
-        if self.status() == TESTBED_STATUS_STARTED:
+        if self.status() == TS.STATUS_STARTED:
             # schedule the event in the Simulator
             self._schedule_event(self._condition, self._set_ns3_attribute, 
                     name, ns3_value, element)
@@ -234,7 +233,7 @@ class TestbedController(testbed_impl.TestbedController):
             self._set_ns3_attribute(name, ns3_value, element)
 
     def _get_attribute(self, name, ns3_value, element):
-        if self.status() == TESTBED_STATUS_STARTED:
+        if self.status() == TS.STATUS_STARTED:
             # schedule the event in the Simulator
             self._schedule_event(self._condition, self._get_ns3_attribute, 
                     name, ns3_value, element)
@@ -248,7 +247,7 @@ class TestbedController(testbed_impl.TestbedController):
         element.GetAttribute(name, ns3_value)
 
     def _stop_simulation(self, time):
-        if self.status() == TESTBED_STATUS_STARTED:
+        if self.status() == TS.STATUS_STARTED:
             # schedule the event in the Simulator
             self._schedule_event(self._condition, self._stop_ns3_simulation, 
                     time)

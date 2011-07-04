@@ -5,10 +5,9 @@ from nepi.core.attributes import Attribute, AttributesMap
 import sys
 import getpass
 from nepi.util import validation
-from nepi.util.constants import ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP, DeploymentConfiguration
-
-# Attribute categories
-CATEGORY_DEPLOYMENT = "Deployment"
+from nepi.util.constants import ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP, \
+        DeploymentConfiguration as DC, \
+        AttributeCategories as AC
 
 class VersionedMetadataInfo(object):
     @property
@@ -169,10 +168,6 @@ class Metadata(object):
         )),
     )
     
-    # Shorthand for DeploymentConfiguration
-    # Syntactic sugar to shorten stuff
-    DC = DeploymentConfiguration
-
     STANDARD_TESTBED_ATTRIBUTES = (
         ("home_directory", dict(
             name = "homeDirectory",
@@ -199,7 +194,7 @@ class Metadata(object):
                 help = "Shell commands to run before spawning TestbedController processes",
                 type = Attribute.STRING,
                 flags = Attribute.DesignOnly,
-                category = CATEGORY_DEPLOYMENT,
+                category = AC.CATEGORY_DEPLOYMENT,
         )),
         (DC.DEPLOYMENT_MODE, dict(name = DC.DEPLOYMENT_MODE,
                 help = "Instance execution mode",
@@ -211,7 +206,7 @@ class Metadata(object):
                 ],
                 flags = Attribute.DesignOnly,
                 validation_function = validation.is_enum,
-                category = CATEGORY_DEPLOYMENT,
+                category = AC.CATEGORY_DEPLOYMENT,
         )),
         (DC.DEPLOYMENT_COMMUNICATION, dict(name = DC.DEPLOYMENT_COMMUNICATION,
                 help = "Instance communication mode",
@@ -223,7 +218,7 @@ class Metadata(object):
                 ],
                 flags = Attribute.DesignOnly,
                 validation_function = validation.is_enum,
-                category = CATEGORY_DEPLOYMENT,
+                category = AC.CATEGORY_DEPLOYMENT,
         )),
         (DC.DEPLOYMENT_HOST, dict(name = DC.DEPLOYMENT_HOST,
                 help = "Host where the testbed will be executed",
@@ -231,7 +226,7 @@ class Metadata(object):
                 value = "localhost",
                 flags = Attribute.DesignOnly,
                 validation_function = validation.is_string,
-                category = CATEGORY_DEPLOYMENT,
+                category = AC.CATEGORY_DEPLOYMENT,
         )),
         (DC.DEPLOYMENT_USER, dict(name = DC.DEPLOYMENT_USER,
                 help = "User on the Host to execute the testbed",
@@ -239,14 +234,14 @@ class Metadata(object):
                 value = getpass.getuser(),
                 flags = Attribute.DesignOnly,
                 validation_function = validation.is_string,
-                category = CATEGORY_DEPLOYMENT,
+                category = AC.CATEGORY_DEPLOYMENT,
         )),
         (DC.DEPLOYMENT_KEY, dict(name = DC.DEPLOYMENT_KEY,
                 help = "Path to SSH key to use for connecting",
                 type = Attribute.STRING,
                 flags = Attribute.DesignOnly,
                 validation_function = validation.is_string,
-                category = CATEGORY_DEPLOYMENT,
+                category = AC.CATEGORY_DEPLOYMENT,
         )),
         (DC.DEPLOYMENT_PORT, dict(name = DC.DEPLOYMENT_PORT,
                 help = "Port on the Host",
@@ -254,7 +249,7 @@ class Metadata(object):
                 value = 22,
                 flags = Attribute.DesignOnly,
                 validation_function = validation.is_integer,
-                category = CATEGORY_DEPLOYMENT,
+                category = AC.CATEGORY_DEPLOYMENT,
         )),
         (DC.ROOT_DIRECTORY, dict(name = DC.ROOT_DIRECTORY,
                 help = "Root directory for storing process files",
@@ -262,7 +257,7 @@ class Metadata(object):
                 value = ".",
                 flags = Attribute.DesignOnly,
                 validation_function = validation.is_string, # TODO: validation.is_path
-                category = CATEGORY_DEPLOYMENT,
+                category = AC.CATEGORY_DEPLOYMENT,
         )),
         (DC.USE_AGENT, dict(name = DC.USE_AGENT,
                 help = "Use -A option for forwarding of the authentication agent, if ssh access is used", 
@@ -270,7 +265,7 @@ class Metadata(object):
                 value = False,
                 flags = Attribute.DesignOnly,
                 validation_function = validation.is_bool,
-                category = CATEGORY_DEPLOYMENT,
+                category = AC.CATEGORY_DEPLOYMENT,
         )),
         (DC.LOG_LEVEL, dict(name = DC.LOG_LEVEL,
                 help = "Log level for instance",
@@ -282,7 +277,7 @@ class Metadata(object):
                 ],
                 flags = Attribute.DesignOnly,
                 validation_function = validation.is_enum,
-                category = CATEGORY_DEPLOYMENT,
+                category = AC.CATEGORY_DEPLOYMENT,
         )),
         (DC.RECOVER, dict(name = DC.RECOVER,
                 help = "Do not intantiate testbeds, rather, reconnect to already-running instances. Used to recover from a dead controller.", 
@@ -290,14 +285,11 @@ class Metadata(object):
                 value = False,
                 flags = Attribute.DesignOnly,
                 validation_function = validation.is_bool,
-                category = CATEGORY_DEPLOYMENT,
+                category = AC.CATEGORY_DEPLOYMENT,
         )),
     )
     
     STANDARD_TESTBED_ATTRIBUTES += DEPLOYMENT_ATTRIBUTES
-    
-    del DC
-    
     
     STANDARD_ATTRIBUTE_BUNDLES = {
             "tun_proto" : dict({

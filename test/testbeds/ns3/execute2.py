@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from nepi.util.constants import STATUS_FINISHED
+from nepi.util.constants import ApplicationStatus as AS
 from nepi.testbeds import ns3
 import os
 import shutil
@@ -106,7 +106,7 @@ class Ns3ExecuteTestCase(unittest.TestCase):
         instance.do_configure()
         instance.do_prestart()
         instance.start()
-        while instance.status(27) != STATUS_FINISHED:
+        while instance.status(27) != AS.STATUS_FINISHED:
             time.sleep(0.1)
         ping_result = instance.trace(24, "P2PAsciiTrace")
         comp_result = "- 9.04199 /NodeList/2/DeviceList/0/$ns3::PointToPointNetDevice/TxQueue/Dequeue ns3::PppHeader (Point-to-Point Protocol: IP (0x0021)) ns3::Ipv4Header (tos 0x0 ttl 64 id 9 protocol 1 offset 0 flags [none] length: 84 10.0.1.2 > 10.0.0.1) ns3::Icmpv4Header (type=0, code=0) ns3::Icmpv4Echo (identifier=0, sequence=9)"

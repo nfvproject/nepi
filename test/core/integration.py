@@ -3,7 +3,7 @@
 
 from nepi.core.design import ExperimentDescription, FactoriesProvider
 from nepi.util import proxy
-from nepi.util.constants import STATUS_FINISHED, DeploymentConfiguration as DC
+from nepi.util.constants import DeploymentConfiguration as DC
 import getpass
 import mock
 import mock.metadata_v01

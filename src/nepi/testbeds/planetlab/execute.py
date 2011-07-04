@@ -22,8 +22,6 @@ import subprocess
 import random
 import shutil
 
-from nepi.util.constants import TESTBED_STATUS_CONFIGURED
-
 class TempKeyError(Exception):
     pass
 

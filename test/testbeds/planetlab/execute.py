@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import getpass
-from nepi.util.constants import STATUS_FINISHED
+from nepi.util.constants import ApplicationStatus as AS
 from nepi.testbeds import planetlab
 import os
 import shutil
@@ -99,7 +99,7 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
             
             instance.do_prestart()
             instance.start()
-            while instance.status(7) != STATUS_FINISHED:
+            while instance.status(7) != AS.STATUS_FINISHED:
                 time.sleep(0.5)
             ping_result = instance.trace(7, "stdout") or ""
             instance.stop()
@@ -137,7 +137,7 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
             
             instance.do_prestart()
             instance.start()
-            while instance.status(5) != STATUS_FINISHED:
+            while instance.status(5) != AS.STATUS_FINISHED:
                 time.sleep(0.5)
             ping_result = instance.trace(5, "stdout") or ""
             comp_result = r".*GNU Fortran \(GCC\).*"
@@ -195,7 +195,7 @@ FIONREAD = 0x[0-9a-fA-F]{8}.*
             
             instance.do_prestart()
             instance.start()
-            while instance.status(10) != STATUS_FINISHED:
+            while instance.status(10) != AS.STATUS_FINISHED:
                 time.sleep(0.5)
             ping_result = instance.trace(10, "stdout") or ""
             instance.stop()
@@ -244,7 +244,7 @@ echo 'OKIDOKI'
             
             instance.do_prestart()
             instance.start()
-            while instance.status(6) != STATUS_FINISHED:
+            while instance.status(6) != AS.STATUS_FINISHED:
                 time.sleep(0.5)
             test_result = (instance.trace(6, "stdout") or "").strip()
             comp_result = "OKIDOKI"
@@ -293,7 +293,7 @@ echo 'OKIDOKI'
             
             instance.do_prestart()
             instance.start()
-            while instance.status(8) != STATUS_FINISHED:
+            while instance.status(8) != AS.STATUS_FINISHED:
                 time.sleep(0.5)
             test_result = (instance.trace(8, "stderr") or "").strip()
             comp_result = r".*real\s*(?P<min>[0-9]+)m(?P<sec>[0-9]+[.][0-9]+)s.*"
@@ -399,7 +399,7 @@ echo 'OKIDOKI'
             
             instance.do_prestart()
             instance.start()
-            while instance.status(9) != STATUS_FINISHED:
+            while instance.status(9) != AS.STATUS_FINISHED:
                 time.sleep(0.5)
             ping_result = instance.trace(9, "stdout") or ""
             packets1 = instance.trace(7, "packets") or ""
@@ -458,7 +458,7 @@ echo 'OKIDOKI'
             
             instance.do_prestart()
             instance.start()
-            while instance.status(12) != STATUS_FINISHED:
+            while instance.status(12) != AS.STATUS_FINISHED:
                 time.sleep(0.5)
             ping_result = (instance.trace(12, "stderr") or "").strip()
             instance.stop()
@@ -500,7 +500,7 @@ echo 'OKIDOKI'
             
             instance.do_prestart()
             instance.start()
-            while instance.status(12) != STATUS_FINISHED:
+            while instance.status(12) != AS.STATUS_FINISHED:
                 time.sleep(0.5)
             ping_result = (instance.trace(12, "stderr") or "").strip()
             instance.stop()
@@ -555,7 +555,7 @@ echo 'OKIDOKI'
             
             instance.do_prestart()
             instance.start()
-            while instance.status(7) != STATUS_FINISHED:
+            while instance.status(7) != AS.STATUS_FINISHED:
                 time.sleep(0.5)
             ping_result = instance.trace(7, "stdout") or ""
             instance.stop()

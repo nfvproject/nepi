@@ -4,7 +4,7 @@
 from nepi.core.attributes import Attribute, AttributesMap
 from nepi.core.connector import ConnectorTypeBase
 from nepi.util import validation
-from nepi.util.constants import STATUS_FINISHED, TIME_NOW
+from nepi.util.constants import ApplicationStatus as AS, TIME_NOW
 from nepi.util.parser._xml import XmlExperimentParser
 import sys
 import re
@@ -596,7 +596,7 @@ class ExperimentController(object):
     def is_finished(self, guid):
         testbed = self._testbed_for_guid(guid)
         if testbed != None:
-            return testbed.status(guid) == STATUS_FINISHED
+            return testbed.status(guid) == AS.STATUS_FINISHED
         raise RuntimeError("No element exists with guid %d" % guid)    
 
     def set(self, guid, name, value, time = TIME_NOW):
