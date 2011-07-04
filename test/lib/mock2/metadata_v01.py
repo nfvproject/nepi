@@ -5,7 +5,7 @@ from constants import TESTBED_ID
 from nepi.core import metadata
 from nepi.core.attributes import Attribute
 from nepi.util import validation
-from nepi.util.constants import STATUS_FINISHED
+from nepi.util.constants import ApplicationStatus as AS
 
 NODE = "Node"
 IFACE = "Interface"
@@ -33,7 +33,7 @@ def create_application(testbed_instance, guid):
 ### Status functions ###
 
 def status_application(testbed_instance, guid):
-    return STATUS_FINISHED
+    return AS.STATUS_FINISHED
 
 ### Factory information ###
 

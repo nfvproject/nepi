@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from nepi.util import tags
-from nepi.util.constants import STATUS_FINISHED
+from nepi.util.constants import ApplicationStatus as AS
 import getpass
 import mock
 import mock.metadata_v01 
@@ -41,7 +41,7 @@ class ExecuteTestCase(unittest.TestCase):
         instance.start()
         attr_list = instance.get_attribute_list(5)
         self.assertEquals(attr_list, ["test", "fake", "cross", "label"])
-        while instance.status(7) != STATUS_FINISHED:
+        while instance.status(7) != AS.STATUS_FINISHED:
             time.sleep(0.5)
         app_result = instance.trace(7, "fake")
         comp_result = """PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.

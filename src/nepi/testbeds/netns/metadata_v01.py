@@ -5,8 +5,8 @@ from constants import TESTBED_ID
 from nepi.core import metadata
 from nepi.core.attributes import Attribute
 from nepi.util import validation
-from nepi.util.constants import STATUS_NOT_STARTED, STATUS_RUNNING, \
-        STATUS_FINISHED
+from nepi.util.constants import ApplicationStatus as AS, \
+        FactoryCategories as FC
 
 from nepi.util.tunchannel_impl import \
     preconfigure_tunchannel, postconfigure_tunchannel, \
@@ -16,6 +16,7 @@ from nepi.util.tunchannel_impl import \
 
 import functools
 
+# Factories
 NODE = "Node"
 P2PIFACE = "P2PNodeInterface"
 TAPIFACE = "TapNodeInterface"
@@ -198,11 +199,11 @@ def stop_application(testbed_instance, guid):
 
 def status_application(testbed_instance, guid):
     if guid not in testbed_instance.elements.keys():
-        return STATUS_NOT_STARTED
+        return AS.STATUS_NOT_STARTED
     app = testbed_instance.elements[guid]
     if app.poll() == None:
-        return STATUS_RUNNING
-    return STATUS_FINISHED
+        return AS.STATUS_RUNNING
+    return AS.STATUS_FINISHED
 
 ### Configure functions ###
 
@@ -461,7 +462,7 @@ factories_info = dict({
     NODE: dict({
             "allow_routes": True,
             "help": "Emulated Node with virtualized network stack",
-            "category": "topology",
+            "category": FC.CATEGORY_NODES,
             "create_function": create_node,
             "configure_function": configure_node,
             "box_attributes": ["forward_X11"],
@@ -471,7 +472,7 @@ factories_info = dict({
     P2PIFACE: dict({
             "allow_addresses": True,
             "help": "Point to point network interface",
-            "category": "devices",
+            "category": FC.CATEGORY_DEVICES,
             "create_function": create_p2piface,
             "configure_function": configure_device,
             "box_attributes": ["lladdr", "up", "device_name", "mtu", 
@@ -481,7 +482,7 @@ factories_info = dict({
     TAPIFACE: dict({
             "allow_addresses": True,
             "help": "Tap device network interface",
-            "category": "devices",
+            "category": FC.CATEGORY_DEVICES,
             "create_function": create_tapiface,
             "configure_function": configure_device,
             "box_attributes": ["lladdr", "up", "device_name", "mtu", 
@@ -491,7 +492,7 @@ factories_info = dict({
     NODEIFACE: dict({
             "allow_addresses": True,
             "help": "Node network interface",
-            "category": "devices",
+            "category": FC.CATEGORY_DEVICES,
             "create_function": create_nodeiface,
             "configure_function": configure_device,
             "box_attributes": ["lladdr", "up", "device_name", "mtu", 
@@ -501,7 +502,7 @@ factories_info = dict({
     SWITCH: dict({
             "display_name": "Switch",
             "help": "Switch interface",
-            "category": "devices",
+            "category": FC.CATEGORY_DEVICES,
             "create_function": create_switch,
             "box_attributes": ["up", "device_name", "mtu", "multicast"],
              #TODO: Add attribute ("Stp", help, type, value, range, allowed, readonly, validation_function),
@@ -513,7 +514,7 @@ factories_info = dict({
         }),
     APPLICATION: dict({
             "help": "Generic executable command line application",
-            "category": "applications",
+            "category": FC.CATEGORY_APPLICATIONS,
             "create_function": create_application,
             "start_function": start_application,
             "stop_function": stop_application,
@@ -523,7 +524,7 @@ factories_info = dict({
             "traces": ["stdout", "stderr"]
         }),
      TUNCHANNEL : dict({
-        "category": "Channel",
+        "category": FC.CATEGORY_TUNNELS,
         "create_function": create_tunchannel,
         "preconfigure_function": preconfigure_tunchannel,
         "configure_function": postconfigure_tunchannel,

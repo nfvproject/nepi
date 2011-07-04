@@ -5,7 +5,7 @@ from constants import TESTBED_ID
 from nepi.core import metadata
 from nepi.core.attributes import Attribute
 from nepi.util import validation, tags
-from nepi.util.constants import STATUS_FINISHED
+from nepi.util.constants import ApplicationStatus as AS
 
 NODE = "Node"
 IFACE = "Interface"
@@ -33,7 +33,7 @@ def create_application(testbed_instance, guid):
 ### Status functions ###
 
 def status_application(testbed_instance, guid):
-    return STATUS_FINISHED
+    return AS.STATUS_FINISHED
 
 ### Factory information ###
 
@@ -113,7 +113,15 @@ attributes = dict({
                 "type": Attribute.BOOL,
                 "value": False,
                 "validation_function": validation.is_bool
-        })
+        }),
+    "MaxAddresses": dict({
+                "name": "MaxAddresses",
+                "help": "Attribute that indicates the maximum number of addresses for an interface",
+                "type": Attribute.INTEGER,
+                "value": 3,
+                "flags": Attribute.Invisible,
+                "validation_function": validation.is_integer
+       })
     })
 
 traces = dict({
@@ -145,7 +153,7 @@ factories_info = dict({
             "stop_function": None,
             "status_function": None,
             "allow_addresses": True,
-            "factory_attributes": ["fake"],
+            "factory_attributes": ["fake", "MaxAddresses"],
             "box_attributes": ["fake", "test", "cross"],
             "connector_types": ["node", "iface", "cross"]
        }),

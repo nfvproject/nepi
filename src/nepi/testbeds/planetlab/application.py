@@ -16,8 +16,7 @@ import time
 import socket
 import threading
 
-from nepi.util.constants import STATUS_NOT_STARTED, STATUS_RUNNING, \
-        STATUS_FINISHED
+from nepi.util.constants import ApplicationStatus as AS
 
 class Dependency(object):
     """
@@ -681,9 +680,9 @@ class Application(Dependency):
     def status(self):
         self.checkpid()
         if not self._started:
-            return STATUS_NOT_STARTED
+            return AS.STATUS_NOT_STARTED
         elif not self._pid or not self._ppid:
-            return STATUS_NOT_STARTED
+            return AS.STATUS_NOT_STARTED
         else:
             status = rspawn.remote_status(
                 self._pid, self._ppid,
@@ -696,18 +695,18 @@ class Application(Dependency):
                 )
             
             if status is rspawn.NOT_STARTED:
-                return STATUS_NOT_STARTED
+                return AS.STATUS_NOT_STARTED
             elif status is rspawn.RUNNING:
-                return STATUS_RUNNING
+                return AS.STATUS_RUNNING
             elif status is rspawn.FINISHED:
-                return STATUS_FINISHED
+                return AS.STATUS_FINISHED
             else:
                 # WTF?
-                return STATUS_NOT_STARTED
+                return AS.STATUS_NOT_STARTED
     
     def kill(self):
         status = self.status()
-        if status == STATUS_RUNNING:
+        if status == AS.STATUS_RUNNING:
             # kill by ppid+pid - SIGTERM first, then try SIGKILL
             rspawn.remote_kill(
                 self._pid, self._ppid,

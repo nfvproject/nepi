@@ -7,8 +7,9 @@ from constants import TESTBED_ID
 from nepi.core import metadata
 from nepi.core.attributes import Attribute
 from nepi.util import validation
-from nepi.util.constants import STATUS_NOT_STARTED, STATUS_RUNNING, \
-        STATUS_FINISHED, ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP
+from nepi.util.constants import ApplicationStatus as AS, \
+        FactoryCategories as FC, \
+        ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP
 
 import functools
 import os
@@ -282,7 +283,7 @@ def stop_application(testbed_instance, guid):
 
 def status_application(testbed_instance, guid):
     if guid not in testbed_instance.elements.keys():
-        return STATUS_NOT_STARTED
+        return AS.STATUS_NOT_STARTED
     
     app = testbed_instance.elements[guid]
     return app.status()
@@ -946,7 +947,7 @@ factories_info = dict({
     NODE: dict({
             "allow_routes": True,
             "help": "Virtualized Node (V-Server style)",
-            "category": "topology",
+            "category": FC.CATEGORY_NODES,
             "create_function": create_node,
             "preconfigure_function": configure_node,
             "prestart_function": configure_node_routes,
@@ -970,7 +971,7 @@ factories_info = dict({
     NODEIFACE: dict({
             "has_addresses": True,
             "help": "External network interface - they cannot be brought up or down, and they MUST be connected to the internet.",
-            "category": "devices",
+            "category": FC.CATEGORY_DEVICES,
             "create_function": create_nodeiface,
             "preconfigure_function": configure_nodeiface,
             "box_attributes": [ ],
@@ -979,7 +980,7 @@ factories_info = dict({
     TUNIFACE: dict({
             "allow_addresses": True,
             "help": "Virtual TUN network interface (layer 3)",
-            "category": "devices",
+            "category": FC.CATEGORY_DEVICES,
             "create_function": create_tuniface,
             "preconfigure_function": preconfigure_tuniface,
             "configure_function": postconfigure_tuniface,
@@ -995,7 +996,7 @@ factories_info = dict({
     TAPIFACE: dict({
             "allow_addresses": True,
             "help": "Virtual TAP network interface (layer 2)",
-            "category": "devices",
+            "category": FC.CATEGORY_DEVICES,
             "create_function": create_tapiface,
             "preconfigure_function": preconfigure_tuniface,
             "configure_function": postconfigure_tuniface,
@@ -1010,7 +1011,7 @@ factories_info = dict({
         }),
     APPLICATION: dict({
             "help": "Generic executable command line application",
-            "category": "applications",
+            "category": FC.CATEGORY_APPLICATIONS,
             "create_function": create_application,
             "start_function": start_application,
             "status_function": status_application,
@@ -1024,7 +1025,7 @@ factories_info = dict({
         }),
     DEPENDENCY: dict({
             "help": "Requirement for package or application to be installed on some node",
-            "category": "applications",
+            "category": FC.CATEGORY_APPLICATIONS,
             "create_function": create_dependency,
             "preconfigure_function": configure_dependency,
             "box_attributes": ["depends", "build-depends", "build", "install",
@@ -1034,7 +1035,7 @@ factories_info = dict({
         }),
     NEPIDEPENDENCY: dict({
             "help": "Requirement for NEPI inside NEPI - required to run testbed instances inside a node",
-            "category": "applications",
+            "category": FC.CATEGORY_APPLICATIONS,
             "create_function": create_nepi_dependency,
             "preconfigure_function": configure_dependency,
             "box_attributes": [ ],
@@ -1043,7 +1044,7 @@ factories_info = dict({
         }),
     NS3DEPENDENCY: dict({
             "help": "Requirement for NS3 inside NEPI - required to run NS3 testbed instances inside a node. It also needs NepiDependency.",
-            "category": "applications",
+            "category": FC.CATEGORY_APPLICATIONS,
             "create_function": create_ns3_dependency,
             "preconfigure_function": configure_dependency,
             "box_attributes": [ ],
@@ -1052,13 +1053,13 @@ factories_info = dict({
         }),
     INTERNET: dict({
             "help": "Internet routing",
-            "category": "topology",
+            "category": FC.CATEGORY_CHANNELS,
             "create_function": create_internet,
             "connector_types": ["devs"],
         }),
     NETPIPE: dict({
             "help": "Link emulation",
-            "category": "topology",
+            "category": FC.CATEGORY_CHANNELS,
             "create_function": create_netpipe,
             "configure_function": configure_netpipe,
             "box_attributes": ["netpipe_mode",

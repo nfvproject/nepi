@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import getpass
-from nepi.util.constants import STATUS_FINISHED
+from nepi.util.constants import ApplicationStatus as AS
 from nepi.testbeds import netns
 import os
 import shutil
@@ -49,7 +49,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.do_configure()
         instance.do_prestart()
         instance.start()
-        while instance.status(7) != STATUS_FINISHED:
+        while instance.status(7) != AS.STATUS_FINISHED:
             time.sleep(0.5)
         ping_result = instance.trace(7, "stdout")
         comp_result = """PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
@@ -92,7 +92,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.do_configure()
         instance.do_prestart()
         instance.start()
-        while instance.status(6) != STATUS_FINISHED:
+        while instance.status(6) != AS.STATUS_FINISHED:
             time.sleep(0.5)
         ping_result = instance.trace(6, "stdout")
         comp_result = """PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
@@ -154,7 +154,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.do_configure()
         instance.do_prestart()
         instance.start()
-        while instance.status(11) != STATUS_FINISHED:
+        while instance.status(11) != AS.STATUS_FINISHED:
             time.sleep(0.5)
         ping_result = instance.trace(11, "stdout")
         comp_result = """PING 10.0.1.2 (10.0.1.2) 56(84) bytes of data.
@@ -198,7 +198,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.do_configure()
         instance.do_prestart()
         instance.start()
-        while instance.status(6) != STATUS_FINISHED:
+        while instance.status(6) != AS.STATUS_FINISHED:
             time.sleep(0.5)
         pcap_result = instance.trace(2, "pcap")
         self.assertEquals(len(pcap_result), 1024)
