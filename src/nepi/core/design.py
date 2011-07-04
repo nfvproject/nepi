@@ -93,6 +93,9 @@ class Connector(object):
         connector._connections.remove(self)
 
     def can_connect(self, connector):
+        # can't connect with self
+        if self.box.guid == connector.box.guid:
+            return False
         if self.is_full() or connector.is_full():
             return False
         if self.is_connected(connector):
