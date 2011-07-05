@@ -6,42 +6,13 @@ Experiment design API
 """
 
 from nepi.core.attributes import AttributesMap, Attribute
-from nepi.core.connector import ConnectorTypeBase
+from nepi.core.connector import ConnectorType
 from nepi.core.metadata import Metadata
 from nepi.util import validation
 from nepi.util.guid import GuidGenerator
 from nepi.util.graphical_info import GraphicalInfo
 from nepi.util.parser._xml import XmlExperimentParser
 import sys
-
-class ConnectorType(ConnectorTypeBase):
-    def __init__(self, testbed_id, factory_id, name, help, max = -1, min = 0):
-        super(ConnectorType, self).__init__(testbed_id, factory_id, name, max, min)
-        
-        # help -- help text
-        self._help = help
-        
-        # allowed_connections -- keys in the dictionary correspond to the 
-        # connector_type_id for possible connections. The value indicates if
-        # the connection is allowed accros different testbed instances
-        self._allowed_connections = dict()
-
-    @property
-    def help(self):
-        return self._help
-
-    def add_allowed_connection(self, testbed_id, factory_id, name, can_cross):
-        type_id = self.make_connector_type_id(testbed_id, factory_id, name)
-        self._allowed_connections[type_id] = can_cross
-
-    def can_connect(self, connector_type_id, testbed_guid1, testbed_guid2):
-        for lookup_type_id in self._type_resolution_order(connector_type_id):
-            if lookup_type_id in self._allowed_connections:
-                can_cross = self._allowed_connections[lookup_type_id]
-                if can_cross or (testbed_guid1 == testbed_guid2):
-                    return True
-        else:
-            return False
 
 class Connector(object):
     """A Connector sepcifies the connection points in an Object"""
@@ -100,11 +71,12 @@ class Connector(object):
             return False
         if self.is_connected(connector):
             return False
-        connector_type_id = connector.connector_type.connector_type_id
+        (testbed_id, factory_id, name) = connector.connector_type.connector_type_id
         testbed_guid1 = self.box.testbed_guid
         testbed_guid2 = connector.box.testbed_guid
-        return self.connector_type.can_connect(connector_type_id, 
-                testbed_guid1, testbed_guid2)
+        must_cross = (testbed_guid1 != testbed_guid2)
+        return self.connector_type.can_connect(testbed_id, factory_id, name,
+                must_cross)
 
     def destroy(self):
         for connector in self.connections:
