@@ -3,6 +3,7 @@
 
 from nepi.core.attributes import Attribute, AttributesMap
 from nepi.core.connector import ConnectorType
+from nepi.core.factory import Factory
 import sys
 import getpass
 from nepi.util import validation
@@ -383,37 +384,7 @@ class Metadata(object):
         
         return attributes
 
-    def build_design_factories(self):
-        from nepi.core.design import Factory
-        factories = list()
-        for factory_id, info in self._metadata.factories_info.iteritems():
-            help = info["help"]
-            category = info["category"]
-            allow_addresses = info.get("allow_addresses", False)
-            allow_routes = info.get("allow_routes", False)
-            has_addresses = info.get("has_addresses", False)
-            has_routes = info.get("has_routes", False)
-            factory = Factory(factory_id, 
-                    allow_addresses, has_addresses,
-                    allow_routes, has_routes,
-                    help, category)
-            
-            # standard attributes
-            self._add_standard_attributes(factory, info, True, True,
-                self.STANDARD_BOX_ATTRIBUTES)
-            
-            # custom attributes - they override standard ones
-            self._add_attributes(factory, info, "factory_attributes")
-            self._add_attributes(factory, info, "box_attributes", True)
-            
-            self._add_design_traces(factory, info)
-            self._add_tags(factory, info)
-            self._add_connector_types(factory, info)
-            factories.append(factory)
-        return factories
-
-    def build_execute_factories(self):
-        from nepi.core.execute import Factory
+    def build_factories(self):
         factories = list()
         for factory_id, info in self._metadata.factories_info.iteritems():
             create_function = info.get("create_function")
@@ -427,12 +398,22 @@ class Metadata(object):
             allow_routes = info.get("allow_routes", False)
             has_addresses = info.get("has_addresses", False)
             has_routes = info.get("has_routes", False)
-            factory = Factory(factory_id, create_function, start_function,
-                    stop_function, status_function, 
-                    configure_function, preconfigure_function,
+            help = info["help"]
+            category = info["category"]
+            factory = Factory(factory_id, 
+                    create_function, 
+                    start_function,
+                    stop_function, 
+                    status_function, 
+                    configure_function, 
+                    preconfigure_function,
                     prestart_function,
-                    allow_addresses, has_addresses,
-                    allow_routes, has_routes)
+                    help,
+                    category,
+                    allow_addresses, 
+                    has_addresses,
+                    allow_routes, 
+                    has_routes)
                     
             # standard attributes
             self._add_standard_attributes(factory, info, False, True,
@@ -442,7 +423,7 @@ class Metadata(object):
             self._add_attributes(factory, info, "factory_attributes")
             self._add_attributes(factory, info, "box_attributes", True)
             
-            self._add_execute_traces(factory, info)
+            self._add_traces(factory, info)
             self._add_tags(factory, info)
             self._add_connector_types(factory, info)
             factories.append(factory)
@@ -492,20 +473,13 @@ class Metadata(object):
                 factory.add_attribute(name, help, type, value, range, 
                         allowed, flags, validation_function, category)
 
-    def _add_design_traces(self, factory, info):
+    def _add_traces(self, factory, info):
         if "traces" in info:
-            for trace in info["traces"]:
-                trace_info = self._metadata.traces[trace]
-                trace_id = trace_info["name"]
+            for trace_id in info["traces"]:
+                trace_info = self._metadata.traces[trace_id]
+                name = trace_info["name"]
                 help = trace_info["help"]
-                factory.add_trace(trace_id, help)
-
-    def _add_execute_traces(self, factory, info):
-        if "traces" in info:
-            for trace in info["traces"]:
-                trace_info = self._metadata.traces[trace]
-                trace_id = trace_info["name"]
-                factory.add_trace(trace_id)
+                factory.add_trace(name, help)
 
     def _add_tags(self, factory, info):
         if "tags" in info:

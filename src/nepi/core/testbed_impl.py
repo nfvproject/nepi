@@ -41,7 +41,7 @@ class TestbedController(execute.TestbedController):
         self._elements = dict()
 
         self._metadata = Metadata(self._testbed_id, self._testbed_version)
-        for factory in self._metadata.build_execute_factories():
+        for factory in self._metadata.build_factories():
             self._factories[factory.factory_id] = factory
         self._attributes = self._metadata.testbed_attributes()
         self._root_directory = None
@@ -157,16 +157,16 @@ class TestbedController(execute.TestbedController):
                 (cross_guid, cross_testbed_guid, cross_testbed_id, 
                 cross_factory_id, cross_connector_type_name)
 
-    def defer_add_trace(self, guid, trace_id):
+    def defer_add_trace(self, guid, trace_name):
         if not guid in self._create:
             raise RuntimeError("Element guid %d doesn't exist" % guid)
         factory = self._get_factory(guid)
-        if not trace_id in factory.traces:
+        if not trace_name in factory.traces_list:
             raise RuntimeError("Element type '%s' has no trace '%s'" %
-                    (factory.factory_id, trace_id))
+                    (factory.factory_id, trace_name))
         if not guid in self._add_trace:
             self._add_trace[guid] = list()
-        self._add_trace[guid].append(trace_id)
+        self._add_trace[guid].append(trace_name)
 
     def defer_add_address(self, guid, address, netprefix, broadcast):
         if not guid in self._create:
