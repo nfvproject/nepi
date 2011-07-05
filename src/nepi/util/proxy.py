@@ -161,7 +161,7 @@ class AccessConfiguration(AttributesMap):
         
         from nepi.core.metadata import Metadata
         
-        for _,attr_info in Metadata.DEPLOYMENT_ATTRIBUTES:
+        for _,attr_info in Metadata.DEPLOYMENT_ATTRIBUTES.iteritems():
             self.add_attribute(**attr_info)
         
         if params:
