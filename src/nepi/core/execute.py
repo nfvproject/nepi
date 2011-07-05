@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 from nepi.core.attributes import Attribute, AttributesMap
-from nepi.core.connector import ConnectorTypeBase
 from nepi.util import validation
 from nepi.util.constants import ApplicationStatus as AS, TIME_NOW
 from nepi.util.parser._xml import XmlExperimentParser
@@ -17,63 +16,6 @@ import functools
 ATTRIBUTE_PATTERN_BASE = re.compile(r"\{#\[(?P<label>[-a-zA-Z0-9._]*)\](?P<expr>(?P<component>\.addr\[[0-9]+\]|\.route\[[0-9]+\]|\.trace\[[0-9]+\])?.\[(?P<attribute>[-a-zA-Z0-9._]*)\])#}")
 ATTRIBUTE_PATTERN_GUID_SUB = r"{#[%(guid)s]%(expr)s#}"
 COMPONENT_PATTERN = re.compile(r"(?P<kind>[a-z]*)\[(?P<index>.*)\]")
-
-class ConnectorType(ConnectorTypeBase):
-    def __init__(self, testbed_id, factory_id, name, max = -1, min = 0):
-        super(ConnectorType, self).__init__(testbed_id, factory_id, name, max, min)
-        # from_connections -- connections where the other connector is the "From"
-        # to_connections -- connections where the other connector is the "To"
-        # keys in the dictionary correspond to the 
-        # connector_type_id for possible connections. The value is a tuple:
-        # (can_cross, connect)
-        # can_cross: indicates if the connection is allowed accros different
-        #    testbed instances
-        # code: is the connection function to be invoked when the elements
-        #    are connected
-        self._from_connections = dict()
-        self._to_connections = dict()
-
-    def add_from_connection(self, testbed_id, factory_id, name, can_cross, 
-            init_code, compl_code):
-        type_id = self.make_connector_type_id(testbed_id, factory_id, name)
-        self._from_connections[type_id] = (can_cross, init_code, compl_code)
-
-    def add_to_connection(self, testbed_id, factory_id, name, can_cross, 
-            init_code, compl_code):
-        type_id = self.make_connector_type_id(testbed_id, factory_id, name)
-        self._to_connections[type_id] = (can_cross, init_code, compl_code)
-
-    def can_connect(self, testbed_id, factory_id, name, count, 
-            must_cross):
-        connector_type_id = self.make_connector_type_id(testbed_id, factory_id, name)
-        for lookup_type_id in self._type_resolution_order(connector_type_id):
-            if lookup_type_id in self._from_connections:
-                (can_cross, init_code, compl_code) = self._from_connections[lookup_type_id]
-            elif lookup_type_id in self._to_connections:
-                (can_cross, init_code, compl_code) = self._to_connections[lookup_type_id]
-            else:
-                # keep trying
-                continue
-            return not must_cross or can_cross
-        else:
-            return False
-
-    def _connect_to_code(self, testbed_id, factory_id, name,
-            must_cross):
-        connector_type_id = self.make_connector_type_id(testbed_id, factory_id, name)
-        for lookup_type_id in self._type_resolution_order(connector_type_id):
-            if lookup_type_id in self._to_connections:
-                (can_cross, init_code, compl_code) = self._to_connections[lookup_type_id]
-                if not must_cross or can_cross:
-                    return (init_code, compl_code)
-        else:
-            return (False, False)
-    
-    def connect_to_init_code(self, testbed_id, factory_id, name, must_cross):
-        return self._connect_to_code(testbed_id, factory_id, name, must_cross)[0]
-
-    def connect_to_compl_code(self, testbed_id, factory_id, name, must_cross):
-        return self._connect_to_code(testbed_id, factory_id, name, must_cross)[1]
 
 class Factory(AttributesMap):
     def __init__(self, factory_id, create_function, start_function, 

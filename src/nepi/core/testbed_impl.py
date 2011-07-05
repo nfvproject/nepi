@@ -110,10 +110,17 @@ class TestbedController(execute.TestbedController):
             connector_type_name2):
         factory1 = self._get_factory(guid1)
         factory_id2 = self._create[guid2]
-        count = self._get_connection_count(guid1, connector_type_name1)
+        # TODO VALIDATE!!!
+        #if self.box.guid == connector.box.guid:
+        #    return False
+        #if self.is_full() or connector.is_full():
+        #    return False
+        #if self.is_connected(connector):
+        #    return False
+        #count = self._get_connection_count(guid1, connector_type_name1)
         connector_type = factory1.connector_type(connector_type_name1)
         connector_type.can_connect(self._testbed_id, factory_id2, 
-                connector_type_name2, count, False)
+                connector_type_name2, False)
         if not guid1 in self._connect:
             self._connect[guid1] = dict()
         if not connector_type_name1 in self._connect[guid1]:
@@ -131,10 +138,17 @@ class TestbedController(execute.TestbedController):
             cross_testbed_guid, cross_testbed_id, cross_factory_id, 
             cross_connector_type_name):
         factory = self._get_factory(guid)
-        count = self._get_connection_count(guid, connector_type_name)
+        # TODO VALIDATE!!!
+        #if self.box.guid == connector.box.guid:
+        #    return False
+        #if self.is_full() or connector.is_full():
+        #    return False
+        #if self.is_connected(connector):
+        #    return False
+        #count = self._get_connection_count(guid, connector_type_name)
         connector_type = factory.connector_type(connector_type_name)
         connector_type.can_connect(cross_testbed_id, cross_factory_id, 
-                cross_connector_type_name, count, True)
+                cross_connector_type_name, True)
         if not guid in self._cross_connect:
             self._cross_connect[guid] = dict()
         if not connector_type_name in self._cross_connect[guid]:

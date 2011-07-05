@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from nepi.core.attributes import Attribute, AttributesMap
+from nepi.core.connector import ConnectorType
 import sys
 import getpass
 from nepi.util import validation
@@ -407,7 +408,7 @@ class Metadata(object):
             
             self._add_design_traces(factory, info)
             self._add_tags(factory, info)
-            self._add_design_connector_types(factory, info)
+            self._add_connector_types(factory, info)
             factories.append(factory)
         return factories
 
@@ -443,7 +444,7 @@ class Metadata(object):
             
             self._add_execute_traces(factory, info)
             self._add_tags(factory, info)
-            self._add_execute_connector_types(factory, info)
+            self._add_connector_types(factory, info)
             factories.append(factory)
         return factories
 
@@ -511,40 +512,7 @@ class Metadata(object):
             for tag_id in info["tags"]:
                 factory.add_tag(tag_id)
 
-    def _add_design_connector_types(self, factory, info):
-        from nepi.core.design import ConnectorType
-        if "connector_types" in info:
-            connections = dict()
-            for connection in self._metadata.connections:
-                from_ = connection["from"]
-                to = connection["to"]
-                can_cross = connection["can_cross"]
-                if from_ not in connections:
-                    connections[from_] = list()
-                if to not in connections:
-                    connections[to] = list()
-                connections[from_].append((to, can_cross))
-                connections[to].append((from_, can_cross))
-            for connector_id in info["connector_types"]:
-                connector_type_info = self._metadata.connector_types[
-                        connector_id]
-                name = connector_type_info["name"]
-                help = connector_type_info["help"]
-                max = connector_type_info["max"]
-                min = connector_type_info["min"]
-                testbed_id = self._testbed_id
-                factory_id = factory.factory_id
-                connector_type = ConnectorType(testbed_id, factory_id, name, 
-                        help, max, min)
-                for (to, can_cross) in connections[(testbed_id, factory_id, 
-                        name)]:
-                    (testbed_id_to, factory_id_to, name_to) = to
-                    connector_type.add_allowed_connection(testbed_id_to, 
-                            factory_id_to, name_to, can_cross)
-                factory.add_connector_type(connector_type)
-
-    def _add_execute_connector_types(self, factory, info):
-        from nepi.core.execute import ConnectorType
+    def _add_connector_types(self, factory, info):
         if "connector_types" in info:
             from_connections = dict()
             to_connections = dict()
@@ -568,12 +536,13 @@ class Metadata(object):
                 connector_type_info = self._metadata.connector_types[
                         connector_id]
                 name = connector_type_info["name"]
+                help = connector_type_info["help"]
                 max = connector_type_info["max"]
                 min = connector_type_info["min"]
                 testbed_id = self._testbed_id
                 factory_id = factory.factory_id
                 connector_type = ConnectorType(testbed_id, factory_id, name, 
-                        max, min)
+                        help, max, min)
                 connector_key = (testbed_id, factory_id, name)
                 if connector_key in to_connections:
                     for (from_, can_cross, init_code, compl_code) in \
