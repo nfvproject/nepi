@@ -160,179 +160,192 @@ class VersionedMetadataInfo(object):
         raise NotImplementedError
 
 class Metadata(object):
-    STANDARD_BOX_ATTRIBUTES = (
-        ("label", dict(
-            name = "label",
-            validation_function = validation.is_string,
-            type = Attribute.STRING,
-            flags = Attribute.DesignOnly,
-            help = "A unique identifier for referring to this box",
-        )),
-    )
+    # These attributes should be added to all boxes
+    STANDARD_BOX_ATTRIBUTES = dict({
+        "label" : dict({
+            "name" : "label",
+            "validation_function" : validation.is_string,
+            "type" : Attribute.STRING,
+            "flags" : Attribute.DesignOnly,
+            "help" : "A unique identifier for referring to this box",
+        }),
+     })
+
+    # These attributes should be added to all testbeds
+    STANDARD_TESTBED_ATTRIBUTES = dict({
+        "home_directory" : dict({
+            "name" : "homeDirectory",
+            "validation_function" : validation.is_string,
+            "help" : "Path to the directory where traces and other files will be stored",
+            "type" : Attribute.STRING,
+            "value" : "",
+            "flags" : Attribute.DesignOnly
+            }),
+        "label" : dict({
+            "name" : "label",
+            "validation_function" : validation.is_string,
+            "type" : Attribute.STRING,
+            "flags" : Attribute.DesignOnly,
+            "help" : "A unique identifier for referring to this testbed",
+            }),
+        })
     
-    STANDARD_TESTBED_ATTRIBUTES = (
-        ("home_directory", dict(
-            name = "homeDirectory",
-            validation_function = validation.is_string,
-            help = "Path to the directory where traces and other files will be stored",
-            type = Attribute.STRING,
-            value = "",
-            flags = Attribute.DesignOnly
-        )),
-        ("label", dict(
-            name = "label",
-            validation_function = validation.is_string,
-            type = Attribute.STRING,
-            flags = Attribute.DesignOnly,
-            help = "A unique identifier for referring to this testbed",
-        )),
-    )
-    
-    DEPLOYMENT_ATTRIBUTES = (
+    # These attributes should be added to all testbeds
+    DEPLOYMENT_ATTRIBUTES = dict({
         # TESTBED DEPLOYMENT ATTRIBUTES
-        (DC.DEPLOYMENT_ENVIRONMENT_SETUP, dict(
-                name = DC.DEPLOYMENT_ENVIRONMENT_SETUP,
-                validation_function = validation.is_string,
-                help = "Shell commands to run before spawning TestbedController processes",
-                type = Attribute.STRING,
-                flags = Attribute.DesignOnly,
-                category = AC.CATEGORY_DEPLOYMENT,
-        )),
-        (DC.DEPLOYMENT_MODE, dict(name = DC.DEPLOYMENT_MODE,
-                help = "Instance execution mode",
-                type = Attribute.ENUM,
-                value = DC.MODE_SINGLE_PROCESS,
-                allowed = [
+        DC.DEPLOYMENT_ENVIRONMENT_SETUP : dict({
+            "name" : DC.DEPLOYMENT_ENVIRONMENT_SETUP,
+            "validation_function" : validation.is_string,
+            "help" : "Shell commands to run before spawning TestbedController processes",
+            "type" : Attribute.STRING,
+            "flags" : Attribute.DesignOnly,
+            "category" : AC.CATEGORY_DEPLOYMENT,
+        }),
+        DC.DEPLOYMENT_MODE: dict({
+            "name" : DC.DEPLOYMENT_MODE,
+            "help" : "Instance execution mode",
+            "type" : Attribute.ENUM,
+            "value" : DC.MODE_SINGLE_PROCESS,
+            "allowed" : [
                     DC.MODE_DAEMON,
                     DC.MODE_SINGLE_PROCESS
                 ],
-                flags = Attribute.DesignOnly,
-                validation_function = validation.is_enum,
-                category = AC.CATEGORY_DEPLOYMENT,
-        )),
-        (DC.DEPLOYMENT_COMMUNICATION, dict(name = DC.DEPLOYMENT_COMMUNICATION,
-                help = "Instance communication mode",
-                type = Attribute.ENUM,
-                value = DC.ACCESS_LOCAL,
-                allowed = [
+            "flags" : Attribute.DesignOnly,
+            "validation_function" : validation.is_enum,
+            "category" : AC.CATEGORY_DEPLOYMENT,
+            }),
+        DC.DEPLOYMENT_COMMUNICATION : dict({
+            "name" : DC.DEPLOYMENT_COMMUNICATION,
+            "help" : "Instance communication mode",
+            "type" : Attribute.ENUM,
+            "value" : DC.ACCESS_LOCAL,
+            "allowed" : [
                     DC.ACCESS_LOCAL,
                     DC.ACCESS_SSH
                 ],
-                flags = Attribute.DesignOnly,
-                validation_function = validation.is_enum,
-                category = AC.CATEGORY_DEPLOYMENT,
-        )),
-        (DC.DEPLOYMENT_HOST, dict(name = DC.DEPLOYMENT_HOST,
-                help = "Host where the testbed will be executed",
-                type = Attribute.STRING,
-                value = "localhost",
-                flags = Attribute.DesignOnly,
-                validation_function = validation.is_string,
-                category = AC.CATEGORY_DEPLOYMENT,
-        )),
-        (DC.DEPLOYMENT_USER, dict(name = DC.DEPLOYMENT_USER,
-                help = "User on the Host to execute the testbed",
-                type = Attribute.STRING,
-                value = getpass.getuser(),
-                flags = Attribute.DesignOnly,
-                validation_function = validation.is_string,
-                category = AC.CATEGORY_DEPLOYMENT,
-        )),
-        (DC.DEPLOYMENT_KEY, dict(name = DC.DEPLOYMENT_KEY,
-                help = "Path to SSH key to use for connecting",
-                type = Attribute.STRING,
-                flags = Attribute.DesignOnly,
-                validation_function = validation.is_string,
-                category = AC.CATEGORY_DEPLOYMENT,
-        )),
-        (DC.DEPLOYMENT_PORT, dict(name = DC.DEPLOYMENT_PORT,
-                help = "Port on the Host",
-                type = Attribute.INTEGER,
-                value = 22,
-                flags = Attribute.DesignOnly,
-                validation_function = validation.is_integer,
-                category = AC.CATEGORY_DEPLOYMENT,
-        )),
-        (DC.ROOT_DIRECTORY, dict(name = DC.ROOT_DIRECTORY,
-                help = "Root directory for storing process files",
-                type = Attribute.STRING,
-                value = ".",
-                flags = Attribute.DesignOnly,
-                validation_function = validation.is_string, # TODO: validation.is_path
-                category = AC.CATEGORY_DEPLOYMENT,
-        )),
-        (DC.USE_AGENT, dict(name = DC.USE_AGENT,
-                help = "Use -A option for forwarding of the authentication agent, if ssh access is used", 
-                type = Attribute.BOOL,
-                value = False,
-                flags = Attribute.DesignOnly,
-                validation_function = validation.is_bool,
-                category = AC.CATEGORY_DEPLOYMENT,
-        )),
-        (DC.LOG_LEVEL, dict(name = DC.LOG_LEVEL,
-                help = "Log level for instance",
-                type = Attribute.ENUM,
-                value = DC.ERROR_LEVEL,
-                allowed = [
+            "flags" : Attribute.DesignOnly,
+            "validation_function" : validation.is_enum,
+            "category" : AC.CATEGORY_DEPLOYMENT,
+            }),
+        DC.DEPLOYMENT_HOST : dict({
+            "name" : DC.DEPLOYMENT_HOST,
+            "help" : "Host where the testbed will be executed",
+            "type" : Attribute.STRING,
+            "value" : "localhost",
+            "flags" : Attribute.DesignOnly,
+            "validation_function" : validation.is_string,
+            "category" : AC.CATEGORY_DEPLOYMENT,
+            }),
+        DC.DEPLOYMENT_USER : dict({
+            "name" : DC.DEPLOYMENT_USER,
+            "help" : "User on the Host to execute the testbed",
+            "type" : Attribute.STRING,
+            "value" : getpass.getuser(),
+            "flags" : Attribute.DesignOnly,
+            "validation_function" : validation.is_string,
+            "category" : AC.CATEGORY_DEPLOYMENT,
+            }),
+        DC.DEPLOYMENT_KEY : dict({
+            "name" : DC.DEPLOYMENT_KEY,
+            "help" : "Path to SSH key to use for connecting",
+            "type" : Attribute.STRING,
+            "flags" : Attribute.DesignOnly,
+            "validation_function" : validation.is_string,
+            "category" : AC.CATEGORY_DEPLOYMENT,
+            }),
+        DC.DEPLOYMENT_PORT : dict({
+            "name" : DC.DEPLOYMENT_PORT,
+            "help" : "Port on the Host",
+            "type" : Attribute.INTEGER,
+            "value" : 22,
+            "flags" : Attribute.DesignOnly,
+            "validation_function" : validation.is_integer,
+            "category" : AC.CATEGORY_DEPLOYMENT,
+            }),
+        DC.ROOT_DIRECTORY : dict({
+            "name" : DC.ROOT_DIRECTORY,
+            "help" : "Root directory for storing process files",
+            "type" : Attribute.STRING,
+            "value" : ".",
+            "flags" : Attribute.DesignOnly,
+            "validation_function" : validation.is_string, # TODO: validation.is_path
+            "category" : AC.CATEGORY_DEPLOYMENT,
+            }),
+        DC.USE_AGENT : dict({
+            "name" : DC.USE_AGENT,
+            "help" : "Use -A option for forwarding of the authentication agent, if ssh access is used", 
+            "type" : Attribute.BOOL,
+            "value" : False,
+            "flags" : Attribute.DesignOnly,
+            "validation_function" : validation.is_bool,
+            "category" : AC.CATEGORY_DEPLOYMENT,
+            }),
+        DC.LOG_LEVEL : dict({
+            "name" : DC.LOG_LEVEL,
+            "help" : "Log level for instance",
+            "type" : Attribute.ENUM,
+            "value" : DC.ERROR_LEVEL,
+            "allowed" : [
                     DC.ERROR_LEVEL,
                     DC.DEBUG_LEVEL
                 ],
-                flags = Attribute.DesignOnly,
-                validation_function = validation.is_enum,
-                category = AC.CATEGORY_DEPLOYMENT,
-        )),
-        (DC.RECOVER, dict(name = DC.RECOVER,
-                help = "Do not intantiate testbeds, rather, reconnect to already-running instances. Used to recover from a dead controller.", 
-                type = Attribute.BOOL,
-                value = False,
-                flags = Attribute.DesignOnly,
-                validation_function = validation.is_bool,
-                category = AC.CATEGORY_DEPLOYMENT,
-        )),
-    )
+            "flags" : Attribute.DesignOnly,
+            "validation_function" : validation.is_enum,
+            "category" : AC.CATEGORY_DEPLOYMENT,
+            }),
+        DC.RECOVER : dict({
+            "name" : DC.RECOVER,
+            "help" : "Do not intantiate testbeds, rather, reconnect to already-running instances. Used to recover from a dead controller.", 
+            "type" : Attribute.BOOL,
+            "value" : False,
+            "flags" : Attribute.DesignOnly,
+            "validation_function" : validation.is_bool,
+            "category" : AC.CATEGORY_DEPLOYMENT,
+            }),
+        })
+  
+    # These attributes could appear in the boxes attribute list
+    STANDARD_BOX_ATTRIBUTE_DEFINITIONS = dict({
+        "tun_proto" : dict({
+            "name" : "tun_proto", 
+            "help" : "TUNneling protocol used",
+            "type" : Attribute.STRING,
+            "flags" : Attribute.Invisible,
+            "validation_function" : validation.is_string,
+            }),
+        "tun_key" : dict({
+            "name" : "tun_key", 
+            "help" : "Randomly selected TUNneling protocol cryptographic key. "
+                     "Endpoints must agree to use the minimum (in lexicographic order) "
+                     "of both the remote and local sides.",
+            "type" : Attribute.STRING,
+            "flags" :Attribute.Invisible,
+            "validation_function" : validation.is_string,
+            }),
+        "tun_addr" : dict({
+            "name": "tun_addr", 
+            "help" : "Address (IP, unix socket, whatever) of the tunnel endpoint",
+            "type" : Attribute.STRING,
+            "flags" : Attribute.Invisible,
+            "validation_function" : validation.is_string,
+            }),
+        "tun_port" : dict({
+            "name" : "tun_port", 
+            "help" : "IP port of the tunnel endpoint",
+            "type" : Attribute.INTEGER,
+            "flags" : Attribute.Invisible,
+            "validation_function" : validation.is_integer,
+            }),
+        ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP : dict({
+            "name" : ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP,
+            "help" : "Commands to set up the environment needed to run NEPI testbeds",
+            "type" : Attribute.STRING,
+            "flags" : Attribute.Invisible,
+            "validation_function" : validation.is_string
+            }),
+        })
     
-    STANDARD_TESTBED_ATTRIBUTES += DEPLOYMENT_ATTRIBUTES
-    
-    STANDARD_ATTRIBUTE_BUNDLES = {
-            "tun_proto" : dict({
-                "name": "tun_proto", 
-                "help": "TUNneling protocol used",
-                "type": Attribute.STRING,
-                "flags": Attribute.Invisible,
-                "validation_function": validation.is_string,
-            }),
-            "tun_key" : dict({
-                "name": "tun_key", 
-                "help": "Randomly selected TUNneling protocol cryptographic key. "
-                        "Endpoints must agree to use the minimum (in lexicographic order) "
-                        "of both the remote and local sides.",
-                "type": Attribute.STRING,
-                "flags": Attribute.Invisible,
-                "validation_function": validation.is_string,
-            }),
-            "tun_addr" : dict({
-                "name": "tun_addr", 
-                "help": "Address (IP, unix socket, whatever) of the tunnel endpoint",
-                "type": Attribute.STRING,
-                "flags": Attribute.Invisible,
-                "validation_function": validation.is_string,
-            }),
-            "tun_port" : dict({
-                "name": "tun_port", 
-                "help": "IP port of the tunnel endpoint",
-                "type": Attribute.INTEGER,
-                "flags": Attribute.Invisible,
-                "validation_function": validation.is_integer,
-            }),
-            ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP : dict({
-                "name": ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP,
-                "help": "Commands to set up the environment needed to run NEPI testbeds",
-                "type": Attribute.STRING,
-                "flags": Attribute.Invisible,
-                "validation_function": validation.is_string
-            }),
-    }
-    
+    STANDARD_TESTBED_ATTRIBUTES.update(DEPLOYMENT_ATTRIBUTES.copy())
 
     def __init__(self, testbed_id, version):
         self._version = version
@@ -362,26 +375,8 @@ class Metadata(object):
 
     def testbed_attributes(self):
         attributes = AttributesMap()
-
-        # standard attributes
-        self._add_standard_attributes(attributes, None, True, False,
-            self.STANDARD_TESTBED_ATTRIBUTES)
-        
-        # custom attributes - they override standard ones
-        for attr_info in self._metadata.testbed_attributes.values():
-            name = attr_info["name"]
-            help = attr_info["help"]
-            type = attr_info["type"] 
-            value = attr_info["value"] if "value" in attr_info else None
-            range = attr_info["range"] if "range" in attr_info else None
-            allowed = attr_info["allowed"] if "allowed" in attr_info else None
-            flags =  attr_info["flags"] if "flags" in attr_info \
-                    else Attribute.NoFlags
-            validation_function = attr_info["validation_function"]
-            category = attr_info["category"] if "category" in attr_info else None
-            attributes.add_attribute(name, help, type, value, 
-                    range, allowed, flags, validation_function, category)
-        
+        testbed_attributes = self._testbed_attributes()
+        self._add_attributes(attributes.add_attribute, testbed_attributes)
         return attributes
 
     def build_factories(self):
@@ -415,13 +410,10 @@ class Metadata(object):
                     allow_routes, 
                     has_routes)
                     
-            # standard attributes
-            self._add_standard_attributes(factory, info, False, True,
-                self.STANDARD_BOX_ATTRIBUTES)
-            
-            # custom attributes - they override standard ones
-            self._add_attributes(factory, info, "factory_attributes")
-            self._add_attributes(factory, info, "box_attributes", True)
+            factory_attributes = self._factory_attributes(factory_id, info)
+            self._add_attributes(factory.add_attribute, factory_attributes)
+            box_attributes = self._box_attributes(factory_id, info)
+            self._add_attributes(factory.add_box_attribute, box_attributes)
             
             self._add_traces(factory, info)
             self._add_tags(factory, info)
@@ -436,24 +428,40 @@ class Metadata(object):
             __import__(mod_name)
         return sys.modules[mod_name]
 
-    def _add_standard_attributes(self, factory, info, design, box, STANDARD_ATTRIBUTES):
-        if design:
-            attr_bundle = STANDARD_ATTRIBUTES
-        else:
-            # Only add non-DesignOnly attributes
-            def nonDesign(attr_info):
-                return not (attr_info[1].get('flags',Attribute.NoFlags) & Attribute.DesignOnly)
-            attr_bundle = filter(nonDesign, STANDARD_ATTRIBUTES)
-        self._add_attributes(factory, info, None, box, 
-            attr_bundle = STANDARD_ATTRIBUTES)
+    def _testbed_attributes(self):
+        # standar attributes
+        attributes = self.STANDARD_TESTBED_ATTRIBUTES.copy()
+        # custom attributes
+        attributes.update(self._metadata.testbed_attributes.copy())
+        return attributes
+        
+    def _factory_attributes(self, factory_id, info):
+        if "factory_attributes" not in info:
+            return dict()
+        definitions = self._metadata.attributes.copy()
+        # filter attributes corresponding to the factory_id
+        return self._filter_attributes(info["factory_attributes"], 
+                definitions)
 
-    def _add_attributes(self, factory, info, attr_key, box_attributes = False, attr_bundle = ()):
-        if not attr_bundle and info and attr_key in info:
-            definitions = self.STANDARD_ATTRIBUTE_BUNDLES.copy()
+    def _box_attributes(self, factory_id, info):
+        if "box_attributes" in info:
+            definitions = self.STANDARD_BOX_ATTRIBUTE_DEFINITIONS.copy()
             definitions.update(self._metadata.attributes)
-            attr_bundle = [ (attr_id, definitions[attr_id])
-                            for attr_id in info[attr_key] ]
-        for attr_id, attr_info in attr_bundle:
+            attributes = self._filter_attributes(info["box_attributes"], 
+                definitions)
+        else:
+            attributes = dict()
+        attributes.update(self.STANDARD_BOX_ATTRIBUTES.copy())
+        return attributes
+
+    def _filter_attributes(self, attr_list, definitions):
+        # filter attributes corresponding to the factory_id
+        attributes = dict((attr_id, definitions[attr_id]) \
+           for attr_id in attr_list)
+        return attributes
+
+    def _add_attributes(self, add_attr_func, attributes):
+        for attr_id, attr_info in attributes.iteritems():
             name = attr_info["name"]
             help = attr_info["help"]
             type = attr_info["type"] 
@@ -466,12 +474,8 @@ class Metadata(object):
                     else Attribute.NoFlags
             validation_function = attr_info["validation_function"]
             category = attr_info["category"] if "category" in attr_info else None
-            if box_attributes:
-                factory.add_box_attribute(name, help, type, value, range, 
-                        allowed, flags, validation_function, category)
-            else:
-                factory.add_attribute(name, help, type, value, range, 
-                        allowed, flags, validation_function, category)
+            add_attr_func(name, help, type, value, range, allowed, flags, 
+                    validation_function, category)
 
     def _add_traces(self, factory, info):
         if "traces" in info:
