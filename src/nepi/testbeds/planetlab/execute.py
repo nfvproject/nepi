@@ -214,6 +214,7 @@ class TestbedController(testbed_impl.TestbedController):
                 reqs = []
                 for node in nodes:
                     candidates = node.find_candidates()
+                    candidates -= reserved
                     reqs.append(candidates)
                 
                 solution = resourcealloc.alloc(reqs)
