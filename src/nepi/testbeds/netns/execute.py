@@ -86,7 +86,8 @@ class TestbedController(testbed_impl.TestbedController):
         # TODO: take on account schedule time for the task 
         factory_id = self._create[guid]
         factory = self._factories[factory_id]
-        if factory.box_attributes.is_attribute_design_only(name):
+        if factory.box_attributes.is_attribute_design_only(name) or \
+                factory.box_attributes.is_attribute_invisible(name):
             return
         element = self._elements.get(guid)
         if element:
@@ -97,7 +98,8 @@ class TestbedController(testbed_impl.TestbedController):
         # TODO: take on account schedule time for the task
         factory_id = self._create[guid]
         factory = self._factories[factory_id]
-        if factory.box_attributes.is_attribute_design_only(name):
+        if factory.box_attributes.is_attribute_design_only(name) or \
+                factory.box_attributes.is_attribute_invisible(name):
             return value
         element = self._elements.get(guid)
         try:
