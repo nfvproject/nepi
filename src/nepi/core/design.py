@@ -11,6 +11,7 @@ from nepi.util import validation
 from nepi.util.guid import GuidGenerator
 from nepi.util.graphical_info import GraphicalInfo
 from nepi.util.parser._xml import XmlExperimentParser
+from nepi.util.tags import Taggable
 import sys
 
 class Connector(object):
@@ -153,7 +154,7 @@ class Route(AttributesMap):
                 flags = Attribute.HasNoDefaultValue,
                 validation_function = validation.is_integer)
 
-class Box(AttributesMap):
+class Box(AttributesMap, Taggable):
     def __init__(self, guid, factory, testbed_guid, container = None):
         super(Box, self).__init__()
         # guid -- global unique identifier
@@ -166,8 +167,6 @@ class Box(AttributesMap):
         self._container = container
         # traces -- list of available traces for the box
         self._traces = dict()
-        # tags -- list of tags for the box
-        self._tags = list()
         # connectors -- list of available connectors for the box
         self._connectors = dict()
         # factory_attributes -- factory attributes for box construction
@@ -182,7 +181,7 @@ class Box(AttributesMap):
             trace = Trace(name, help, enabled)
             self._traces[name] = trace
         for tag_id in factory.tags:
-            self._tags.append(tag_id)
+            self.add_tag(tag_id)
         for attr in factory.box_attributes.attributes:
             self.add_attribute(attr.name, attr.help, attr.type, attr.value, 
                     attr.range, attr.allowed, attr.flags, 
@@ -225,10 +224,6 @@ class Box(AttributesMap):
     @property
     def factory_attributes(self):
         return self._factory_attributes
-
-    @property
-    def tags(self):
-        return self._tags
 
     def trace_help(self, trace_id):
         return self._traces[trace_id].help

@@ -111,10 +111,6 @@ class VersionedMetadataInfo(object):
     def factories_info(self):
         """ dictionary of dictionaries of factory specific information
             factory_id: dict({
-                "allow_addresses": whether the box allows adding IP addresses,
-                "allow_routes": wether the box allows adding routes,
-                "has_addresses": whether the box allows obtaining IP addresses,
-                "has_routes": wether the box allows obtaining routes,
                 "help": help text,
                 "category": category the element belongs to,
                 "create_function": function for element instantiation,
@@ -389,10 +385,6 @@ class Metadata(object):
             configure_function = info.get("configure_function")
             preconfigure_function = info.get("preconfigure_function")
             prestart_function = info.get("prestart_function")
-            allow_addresses = info.get("allow_addresses", False)
-            allow_routes = info.get("allow_routes", False)
-            has_addresses = info.get("has_addresses", False)
-            has_routes = info.get("has_routes", False)
             help = info["help"]
             category = info["category"]
             factory = Factory(factory_id, 
@@ -404,11 +396,7 @@ class Metadata(object):
                     preconfigure_function,
                     prestart_function,
                     help,
-                    category,
-                    allow_addresses, 
-                    has_addresses,
-                    allow_routes, 
-                    has_routes)
+                    category)
                     
             factory_attributes = self._factory_attributes(factory_id, info)
             self._add_attributes(factory.add_attribute, factory_attributes)

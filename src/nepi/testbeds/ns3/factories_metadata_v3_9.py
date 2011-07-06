@@ -686,11 +686,11 @@ factories_info = dict({
         "category": FC.CATEGORY_APPLICATIONS,
         "create_function": create_element,
         "configure_function": configure_element,
-        "help": "",
-        "connector_types": [],
         "stop_function": stop_application,
         "start_function": start_application,
         "status_function": status_application,
+        "help": "",
+        "connector_types": [],
         "box_attributes": ["MaxPackets",
             "Interval",
             "RemoteIpv6",
@@ -698,6 +698,7 @@ factories_info = dict({
             "PacketSize",
             "StartTime",
             "StopTime"],
+        "tags": [tags.APPLICATION],
     }),
      "ns3::UdpL4Protocol": dict({
         "category": FC.CATEGORY_PROTOCOLS,
@@ -706,6 +707,7 @@ factories_info = dict({
         "help": "",
         "connector_types": ["node"],
         "box_attributes": ["ProtocolNumber"],
+        "tags": [tags.PROTOCOL],
     }),
      "ns3::RandomDiscPositionAllocator": dict({
         "category": FC.CATEGORY_MOBILITY_MODELS,
@@ -725,8 +727,7 @@ factories_info = dict({
         "configure_function": configure_node,
         "help": "",
         "connector_types": ["devs", "apps", "protos", "mobility"],
-        "allow_routes": True,
-        "box_attributes": [],
+        "tags": [tags.NODE, tags.ALLOW_ROUTES],
     }),
      "ns3::GridPositionAllocator": dict({
         "category": FC.CATEGORY_MOBILITY_MODELS,
@@ -740,7 +741,6 @@ factories_info = dict({
             "DeltaX",
             "DeltaY",
             "LayoutType"],
-        "tags": [tags.MOBILE],
     }),
      "ns3::TapBridge": dict({
         "category": FC.CATEGORY_DEVICES,
@@ -748,7 +748,6 @@ factories_info = dict({
         "configure_function": configure_element,
         "help": "",
         "connector_types": [],
-        "allow_addresses": True,
         "box_attributes": ["Mtu",
             "DeviceName",
             "Gateway",
@@ -757,9 +756,10 @@ factories_info = dict({
             "Netmask",
             "Start",
             "Stop"],
+        "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
     }),
      "ns3::FlowMonitor": dict({
-        "category": "",
+        "category": FC.CATEGORY_SERVICE_FLOWS,
         "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
@@ -797,6 +797,7 @@ factories_info = dict({
             "StartTime",
             "StopTime"],
         "traces": ["rtt"],
+        "tags": [tags.APPLICATION],
     }),
      "ns3::dot11s::PeerLink": dict({
         "category": "",
@@ -817,12 +818,12 @@ factories_info = dict({
         "configure_function": configure_device,
         "help": "",
         "connector_types": ["node", "err", "queue", "chan"],
-        "allow_addresses": True,
         "box_attributes": ["Mtu",
             "Address",
             "DataRate",
             "InterframeGap"],
-        "traces": ["p2ppcap", "p2pascii"]
+        "traces": ["p2ppcap", "p2pascii"],
+        "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
     }),
      "ns3::NakagamiPropagationLossModel": dict({
         "category": FC.CATEGORY_LOSS_MODELS,
@@ -891,6 +892,7 @@ factories_info = dict({
             "Protocol",
             "StartTime",
             "StopTime"],
+        "tags": [tags.APPLICATION],
     }),
      "ns3::AdhocWifiMac": dict({
         "category": FC.CATEGORY_MAC_MODELS,
@@ -1037,11 +1039,11 @@ factories_info = dict({
         "configure_function": configure_device,
         "help": "Network interface associated to a file descriptor",
         "connector_types": ["node", "->fd"],
-        "allow_addresses": True,
         "box_attributes": ["Address", 
             "LinuxSocketAddress",
             "tun_proto", "tun_addr", "tun_port", "tun_key"],
-        "traces": ["fdpcap"]
+        "traces": ["fdpcap"],
+        "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
     }),
      "ns3::Nepi::TunChannel": dict({
         "category": FC.CATEGORY_TUNNELS,
@@ -1053,7 +1055,9 @@ factories_info = dict({
                 "other TAP interfaces supporting the NEPI tunneling protocol.",
         "connector_types": ["fd->", "udp", "tcp"],
         "allow_addresses": False,
-        "box_attributes": ["tun_proto", "tun_addr", "tun_port", "tun_key"]
+        "box_attributes": ["tun_proto", "tun_addr", "tun_port", "tun_key"],
+        "tags": [tags.TUNNEL],
+ 
     }),
      "ns3::CsmaNetDevice": dict({
         "category": FC.CATEGORY_DEVICES,
@@ -1061,12 +1065,12 @@ factories_info = dict({
         "configure_function": configure_device,
         "help": "CSMA (carrier sense, multiple access) interface",
         "connector_types": ["node", "chan", "err", "queue"],
-        "allow_addresses": True,
         "box_attributes": ["Address",
             "Mtu",
             "SendEnable",
             "ReceiveEnable"],
-        "traces": ["csmapcap", "csmapcap_promisc"]
+        "traces": ["csmapcap", "csmapcap_promisc"],
+        "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
     }),
      "ns3::UanPropModelThorp": dict({
         "category": "",
@@ -1111,8 +1115,8 @@ factories_info = dict({
         "configure_function": configure_element,
         "help": "",
         "connector_types": ["node", "chan"],
-        "allow_addresses": True,
         "box_attributes": [],
+        "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
     }),
      "ns3::FriisPropagationLossModel": dict({
         "category": FC.CATEGORY_LOSS_MODELS,
@@ -1169,6 +1173,7 @@ factories_info = dict({
         "help": "",
         "connector_types": [],
         "box_attributes": [],
+        "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
     }),
      "ns3::ConstantSpeedPropagationDelayModel": dict({
         "category": FC.CATEGORY_DELAY_MODELS,
@@ -1444,7 +1449,6 @@ factories_info = dict({
         "configure_function": configure_station,
         "help": "Base station for wireless mobile network",
         "connector_types": ["node", "chan", "phy", "uplnk", "dwnlnk"],
-        "allow_addresses": True,
         "box_attributes": ["InitialRangInterval",
             "DcdInterval",
             "UcdInterval",
@@ -1456,6 +1460,7 @@ factories_info = dict({
             "RTG",
             "TTG"],
         "traces": ["wimaxpcap", "wimaxascii"],
+        "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
     }),
      "ns3::UdpServer": dict({
         "category": FC.CATEGORY_APPLICATIONS,
@@ -1523,6 +1528,7 @@ factories_info = dict({
             "Start",
             "Stop",
             "RxQueueSize"],
+        "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
     }),
      "ns3::Ipv6ExtensionLooseRouting": dict({
         "category": FC.CATEGORY_ROUTING,
@@ -1560,6 +1566,7 @@ factories_info = dict({
         "connector_types": [],
         "box_attributes": ["Address",
             "Mtu"],
+        "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
     }),
      "ns3::MatrixPropagationLossModel": dict({
         "category": FC.CATEGORY_LOSS_MODELS,
@@ -1575,8 +1582,8 @@ factories_info = dict({
         "configure_function": configure_device,
         "help": "",
         "connector_types": ["node", "mac", "phy", "manager"],
-        "allow_addresses": True,
         "box_attributes": ["Mtu"],
+        "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
     }),
      "ns3::CsmaChannel": dict({
         "category": FC.CATEGORY_CHANNELS,
@@ -1593,10 +1600,10 @@ factories_info = dict({
         "configure_function": configure_element,
         "help": "",
         "connector_types": ["node"],
-        "allow_addresses": True,
         "box_attributes": ["Mtu",
            "EnableLearning",
            "ExpirationTime"],
+        "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
     }),
      "ns3::Ipv6ExtensionRouting": dict({
         "category": FC.CATEGORY_ROUTING,
@@ -1643,6 +1650,7 @@ factories_info = dict({
             "PacketSize",
             "StartTime",
             "StopTime"],
+        "tags": [tags.APPLICATION],
     }),
      "ns3::UdpClient": dict({
         "category": FC.CATEGORY_APPLICATIONS,
@@ -1660,6 +1668,7 @@ factories_info = dict({
             "PacketSize",
             "StartTime",
             "StopTime"],
+        "tags": [tags.APPLICATION],
     }),
      "ns3::PointToPointChannel": dict({
         "category": FC.CATEGORY_CHANNELS,
@@ -1752,8 +1761,8 @@ factories_info = dict({
         "configure_function": configure_element,
         "help": "",
         "connector_types": [],
-        "allow_addresses": True,
         "box_attributes": ["Mtu"],
+        "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
     }),
      "ns3::BasicEnergySource": dict({
         "category": FC.CATEGORY_ENERGY_MODELS,
@@ -1816,8 +1825,8 @@ factories_info = dict({
         "configure_function": configure_element,
         "help": "",
         "connector_types": [],
-        "allow_addresses": True,
         "box_attributes": [],
+        "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
     }),
      "ns3::RateErrorModel": dict({
         "category": FC.CATEGORY_ERROR_MODELS,
@@ -2114,8 +2123,8 @@ factories_info = dict({
         "configure_function": configure_element,
         "help": "",
         "connector_types": [],
-        "allow_addresses": True,
         "box_attributes": ["Mtu"],
+        "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
     }),
      "ns3::UanPhyGen": dict({
         "category": FC.CATEGORY_PHY_MODELS,
@@ -2211,6 +2220,7 @@ factories_info = dict({
             "Protocol",
             "StartTime",
             "StopTime"],
+        "tags": [tags.APPLICATION],
     }),
      "ns3::RandomDirection2dMobilityModel": dict({
         "category": FC.CATEGORY_MOBILITY_MODELS,
@@ -2364,6 +2374,7 @@ factories_info = dict({
         "box_attributes": ["Port",
            "StartTime",
            "StopTime"],
+        "tags": [tags.APPLICATION],
     }),
      "ns3::AmrrWifiManager": dict({
         "category": FC.CATEGORY_MANAGERS,
@@ -2404,7 +2415,6 @@ factories_info = dict({
         "configure_function": configure_station,
         "help": "Subscriber station for mobile wireless network",
         "connector_types": ["node", "chan", "phy", "sflows"],
-        "allow_addresses": True,
         "box_attributes": ["LostDlMapInterval",
             "LostUlMapInterval",
             "MaxDcdInterval",
@@ -2421,6 +2431,7 @@ factories_info = dict({
             "RTG",
             "TTG"],
         "traces": ["wimaxpcap", "wimaxascii"],
+        "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
     }),
     "ns3::flame::FlameRtable": dict({
         "category": "",

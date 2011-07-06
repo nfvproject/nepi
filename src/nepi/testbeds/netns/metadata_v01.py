@@ -4,7 +4,7 @@
 from constants import TESTBED_ID
 from nepi.core import metadata
 from nepi.core.attributes import Attribute
-from nepi.util import validation
+from nepi.util import tags, validation
 from nepi.util.constants import ApplicationStatus as AS, \
         FactoryCategories as FC
 
@@ -460,44 +460,44 @@ configure_order = [ P2PIFACE, NODEIFACE, TAPIFACE,
 
 factories_info = dict({
     NODE: dict({
-            "allow_routes": True,
             "help": "Emulated Node with virtualized network stack",
             "category": FC.CATEGORY_NODES,
             "create_function": create_node,
             "configure_function": configure_node,
             "box_attributes": ["forward_X11"],
             "connector_types": ["devs", "apps"],
-            "traces": ["node_pcap"]
+            "traces": ["node_pcap"],
+            "tags": [tags.NODE, tags.ALLOW_ROUTES],
        }),
     P2PIFACE: dict({
-            "allow_addresses": True,
             "help": "Point to point network interface",
             "category": FC.CATEGORY_DEVICES,
             "create_function": create_p2piface,
             "configure_function": configure_device,
             "box_attributes": ["lladdr", "up", "device_name", "mtu", 
                 "multicast", "broadcast", "arp"],
-            "connector_types": ["node", "p2p"]
+            "connector_types": ["node", "p2p"],
+            "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
        }),
     TAPIFACE: dict({
-            "allow_addresses": True,
             "help": "Tap device network interface",
             "category": FC.CATEGORY_DEVICES,
             "create_function": create_tapiface,
             "configure_function": configure_device,
             "box_attributes": ["lladdr", "up", "device_name", "mtu", 
                 "multicast", "broadcast", "arp"],
-            "connector_types": ["node", "fd->"]
+            "connector_types": ["node", "fd->"],
+            "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
         }),
     NODEIFACE: dict({
-            "allow_addresses": True,
             "help": "Node network interface",
             "category": FC.CATEGORY_DEVICES,
             "create_function": create_nodeiface,
             "configure_function": configure_device,
             "box_attributes": ["lladdr", "up", "device_name", "mtu", 
                 "multicast", "broadcast", "arp"],
-            "connector_types": ["node", "switch"]
+            "connector_types": ["node", "switch"],
+            "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
         }),
     SWITCH: dict({
             "display_name": "Switch",
@@ -510,7 +510,8 @@ factories_info = dict({
              #TODO: Add attribute ("HelloTime", help, type, value, range, allowed, readonly, validation_function),
              #TODO: Add attribute ("AgeingTime", help, type, value, range, allowed, readonly, validation_function),
              #TODO: Add attribute ("MaxAge", help, type, value, range, allowed, readonly, validation_function)
-           "connector_types": ["devs"]
+            "connector_types": ["devs"],
+            "tags": [tags.SWITCH],
         }),
     APPLICATION: dict({
             "help": "Generic executable command line application",
@@ -521,19 +522,21 @@ factories_info = dict({
             "status_function": status_application,
             "box_attributes": ["command", "user"],
             "connector_types": ["node"],
-            "traces": ["stdout", "stderr"]
+            "traces": ["stdout", "stderr"],
+            "tags": [tags.APPLICATION],
         }),
      TUNCHANNEL : dict({
-        "category": FC.CATEGORY_TUNNELS,
-        "create_function": create_tunchannel,
-        "preconfigure_function": preconfigure_tunchannel,
-        "configure_function": postconfigure_tunchannel,
-        "prestart_function": wait_tunchannel,
-        "help": "Channel to forward "+TAPIFACE+" data to "
+            "category": FC.CATEGORY_TUNNELS,
+            "create_function": create_tunchannel,
+            "preconfigure_function": preconfigure_tunchannel,
+            "configure_function": postconfigure_tunchannel,
+            "prestart_function": wait_tunchannel,
+            "help": "Channel to forward "+TAPIFACE+" data to "
                 "other TAP interfaces supporting the NEPI tunneling protocol.",
-        "connector_types": ["->fd", "udp", "tcp"],
-        "allow_addresses": False,
-        "box_attributes": ["tun_proto", "tun_addr", "tun_port", "tun_key"]
+            "connector_types": ["->fd", "udp", "tcp"],
+            "allow_addresses": False,
+            "box_attributes": ["tun_proto", "tun_addr", "tun_port", "tun_key"],
+            "tags": [tags.TUNNEL],
     }),
 })
 
