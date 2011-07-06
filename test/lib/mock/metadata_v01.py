@@ -114,8 +114,8 @@ attributes = dict({
                 "value": False,
                 "validation_function": validation.is_bool
         }),
-    "MaxAddresses": dict({
-                "name": "MaxAddresses",
+    "maxAddresses": dict({
+                "name": "maxAddresses",
                 "help": "Attribute that indicates the maximum number of addresses for an interface",
                 "type": Attribute.INTEGER,
                 "value": 3,
@@ -153,7 +153,7 @@ factories_info = dict({
             "stop_function": None,
             "status_function": None,
             "allow_addresses": True,
-            "factory_attributes": ["fake", "MaxAddresses"],
+            "factory_attributes": ["fake", "maxAddresses"],
             "box_attributes": ["fake", "test", "cross"],
             "connector_types": ["node", "iface", "cross"],
             "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],

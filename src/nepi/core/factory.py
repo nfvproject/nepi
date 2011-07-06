@@ -9,8 +9,7 @@ class AddressableMixin(object):
     def __init__(self, guid, factory, testbed_guid, container = None):
         super(AddressableMixin, self).__init__(guid, factory, testbed_guid, 
                 container)
-        max_addr =  self._factory_attributes["MaxAddresses"] \
-                if "MaxAddresses" in self._factory_attributes else 1
+        max_addr = self._factory_attributes["maxAddresses"]
         self._max_addresses = max_addr
         self._addresses = list()
 
