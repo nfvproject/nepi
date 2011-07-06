@@ -165,7 +165,7 @@ class TestbedController(object):
         """
         raise NotImplementedError
 
-    def get_attribute_list(self, guid):
+    def get_attribute_list(self, guid, filter_flags = None):
         raise NotImplementedError
 
     def get_factory_id(self, guid):
@@ -368,7 +368,7 @@ class ExperimentController(object):
         for testbed_guid, testbed_config in self._deployment_config.iteritems():
             testbed_guid = str(testbed_guid)
             conf.add_section(testbed_guid)
-            for attr in testbed_config.attributes_list:
+            for attr in testbed_config.get_attribute_list():
                 if attr not in TRANSIENT:
                     conf.set(testbed_guid, attr, 
                         testbed_config.get_attribute_value(attr))
@@ -399,7 +399,7 @@ class ExperimentController(object):
                 
             testbed_guid = str(testbed_guid)
             conf.add_section(testbed_guid)
-            for attr in testbed_config.attributes_list:
+            for attr in testbed_config.get_attribute_list():
                 if attr not in TRANSIENT:
                     getter = getattr(conf, TYPEMAP.get(
                         testbed_config.get_attribute_type(attr),
@@ -772,8 +772,9 @@ class ExperimentController(object):
                     _testbed_id = cross_testbed.testbed_id,
                     _testbed_version = cross_testbed.testbed_version)
                 cross_data[cross_testbed_guid][cross_guid] = elem_cross_data
-                attributes_list = cross_testbed.get_attribute_list(cross_guid)
-                for attr_name in attributes_list:
+                attribute_list = cross_testbed.get_attribute_list(cross_guid,
+                        filter_flags = Attribute.DesignOnly)
+                for attr_name in attribute_list:
                     attr_value = cross_testbed.get(cross_guid, attr_name)
                     elem_cross_data[attr_name] = attr_value
         return cross_data
