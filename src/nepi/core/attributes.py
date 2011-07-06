@@ -39,7 +39,7 @@ class Attribute(object):
     HasNoDefaultValue = 0x08
 
     def __init__(self, name, help, type, value = None, range = None,
-        allowed = None, flags = NoFlags, validation_function = None, 
+        allowed = None, flags = None, validation_function = None, 
         category = None):
         if not type in Attribute.types:
             raise AttributeError("invalid type %s " % type)
@@ -47,7 +47,7 @@ class Attribute(object):
         self._type = type
         self._help = help
         self._value = value
-        self._flags = flags
+        self._flags = flags if flags != None else Attribute.NoFlags
         # range: max and min possible values
         self._range = range
         # list of possible values
@@ -143,15 +143,21 @@ class AttributesMap(object):
     are going to be manipulated by the end-user in a script or GUI.
     """
     def __init__(self):
+        super(AttributesMap, self).__init__()
         self._attributes = dict()
 
     @property
     def attributes(self):
         return self._attributes.values()
 
-    @property
-    def attributes_list(self):
-        return self._attributes.keys()
+    def get_attribute_list(self, filter_flags = None):
+        attributes = self._attributes
+        if filter_flags != None:
+            def filter_attrs(attr):
+                (attr_id, attr_data) = attr
+                return not ((attr_data.flags & filter_flags) == filter_flags)
+            attributes = dict(filter(filter_attrs, attributes.iteritems()))
+        return attributes.keys()
 
     def set_attribute_value(self, name, value):
         self._attributes[name].value = value

@@ -4,7 +4,7 @@
 from constants import TESTBED_ID
 from nepi.core import metadata
 from nepi.core.attributes import Attribute
-from nepi.util import validation
+from nepi.util import tags, validation
 from nepi.util.constants import ApplicationStatus as AS
 
 NODE = "Node"
@@ -134,7 +134,8 @@ factories_info = dict({
             "stop_function": None,
             "status_function": None,
             "box_attributes": ["fake","test"],
-            "connector_types": ["devs", "apps"]
+            "connector_types": ["devs", "apps"],
+            "tags": [tags.NODE, tags.ALLOW_ROUTES],
        }),
     IFACE: dict({
             "help": "Fake iface",
@@ -146,7 +147,8 @@ factories_info = dict({
             "allow_addresses": True,
             "factory_attributes": ["fake"],
             "box_attributes": ["fake", "test", "cross"],
-            "connector_types": ["node", "iface", "cross"]
+            "connector_types": ["node", "iface", "cross"],
+            "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
        }),
     APP: dict({
             "help": "Fake application",
@@ -157,7 +159,8 @@ factories_info = dict({
             "status_function": status_application,
             "box_attributes": ["fake", "test"],
             "connector_types": ["node"],
-            "traces": ["fake"]
+            "traces": ["fake"],
+            "tags": [tags.APPLICATION],
         }),
 })
 

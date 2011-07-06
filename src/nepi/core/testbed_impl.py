@@ -41,7 +41,7 @@ class TestbedController(execute.TestbedController):
         self._elements = dict()
 
         self._metadata = Metadata(self._testbed_id, self._testbed_version)
-        for factory in self._metadata.build_execute_factories():
+        for factory in self._metadata.build_factories():
             self._factories[factory.factory_id] = factory
         self._attributes = self._metadata.testbed_attributes()
         self._root_directory = None
@@ -110,10 +110,17 @@ class TestbedController(execute.TestbedController):
             connector_type_name2):
         factory1 = self._get_factory(guid1)
         factory_id2 = self._create[guid2]
-        count = self._get_connection_count(guid1, connector_type_name1)
+        # TODO VALIDATE!!!
+        #if self.box.guid == connector.box.guid:
+        #    return False
+        #if self.is_full() or connector.is_full():
+        #    return False
+        #if self.is_connected(connector):
+        #    return False
+        #count = self._get_connection_count(guid1, connector_type_name1)
         connector_type = factory1.connector_type(connector_type_name1)
         connector_type.can_connect(self._testbed_id, factory_id2, 
-                connector_type_name2, count, False)
+                connector_type_name2, False)
         if not guid1 in self._connect:
             self._connect[guid1] = dict()
         if not connector_type_name1 in self._connect[guid1]:
@@ -131,10 +138,17 @@ class TestbedController(execute.TestbedController):
             cross_testbed_guid, cross_testbed_id, cross_factory_id, 
             cross_connector_type_name):
         factory = self._get_factory(guid)
-        count = self._get_connection_count(guid, connector_type_name)
+        # TODO VALIDATE!!!
+        #if self.box.guid == connector.box.guid:
+        #    return False
+        #if self.is_full() or connector.is_full():
+        #    return False
+        #if self.is_connected(connector):
+        #    return False
+        #count = self._get_connection_count(guid, connector_type_name)
         connector_type = factory.connector_type(connector_type_name)
         connector_type.can_connect(cross_testbed_id, cross_factory_id, 
-                cross_connector_type_name, count, True)
+                cross_connector_type_name, True)
         if not guid in self._cross_connect:
             self._cross_connect[guid] = dict()
         if not connector_type_name in self._cross_connect[guid]:
@@ -143,16 +157,16 @@ class TestbedController(execute.TestbedController):
                 (cross_guid, cross_testbed_guid, cross_testbed_id, 
                 cross_factory_id, cross_connector_type_name)
 
-    def defer_add_trace(self, guid, trace_id):
+    def defer_add_trace(self, guid, trace_name):
         if not guid in self._create:
             raise RuntimeError("Element guid %d doesn't exist" % guid)
         factory = self._get_factory(guid)
-        if not trace_id in factory.traces:
+        if not trace_name in factory.traces_list:
             raise RuntimeError("Element type '%s' has no trace '%s'" %
-                    (factory.factory_id, trace_id))
+                    (factory.factory_id, trace_name))
         if not guid in self._add_trace:
             self._add_trace[guid] = list()
-        self._add_trace[guid].append(trace_id)
+        self._add_trace[guid].append(trace_name)
 
     def defer_add_address(self, guid, address, netprefix, broadcast):
         if not guid in self._create:
@@ -416,10 +430,10 @@ class TestbedController(execute.TestbedController):
         
         return addresses[index][attribute_index]
 
-    def get_attribute_list(self, guid):
+    def get_attribute_list(self, guid, filter_flags = None):
         factory = self._get_factory(guid)
         attribute_list = list()
-        return factory.box_attributes.attributes_list
+        return factory.box_attributes.get_attribute_list(filter_flags)
 
     def get_factory_id(self, guid):
         factory = self._get_factory(guid)

@@ -35,7 +35,7 @@ class DesignTestCase(unittest.TestCase):
         app.connector("node").connect(node1.connector("apps"))
         app.enable_trace("fake")
 
-        self.assertEquals(node1.tags, [tags.MOBILE])
+        self.assertEquals(node1.tags, [tags.MOBILE, tags.NODE, tags.ALLOW_ROUTES])
 
         xml = exp_desc.to_xml()
         exp_desc2 = ExperimentDescription()
