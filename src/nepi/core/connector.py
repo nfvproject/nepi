@@ -81,18 +81,14 @@ class ConnectorType(object):
         testbed_id, factory_id, name = connector_type_id
         
         # the key is always a candidate
-        #print " 1 - ", connector_type_id
         yield connector_type_id
         
         # Try wildcard combinations
         if (testbed_id, None, name) != connector_type_id:
-            #print " 2 - ", (testbed_id, None, name)
             yield (testbed_id, None, name)
         if (None, factory_id, name) != connector_type_id:
-            #print " 3 - ", (None, factory_id, name)
             yield (None, factory_id, name)
         if (None, None, name) != connector_type_id:
-            #print " 4 - ", (None, None, name)
             yield (None, None, name)
 
     def add_from_connection(self, testbed_id, factory_id, name, can_cross, 
@@ -117,7 +113,7 @@ class ConnectorType(object):
         for lookup_type_id in self._type_resolution_order(connector_type_id):
             if lookup_type_id in self._to_connections:
                 (can_cross, init_code, compl_code) = self._to_connections[lookup_type_id]
-                if not must_cross or can_cross:
+                if must_cross == can_cross:
                     return (init_code, compl_code)
         else:
             return (False, False)

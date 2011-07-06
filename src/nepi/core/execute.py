@@ -268,7 +268,6 @@ class ExperimentController(object):
     def start(self):
         parser = XmlExperimentParser()
         data = parser.from_xml_to_data(self._experiment_xml)
-        
         self._init_testbed_controllers(data)
         
         # persist testbed connection data, for potential recovery
