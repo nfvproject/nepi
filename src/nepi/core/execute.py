@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 from nepi.core.attributes import Attribute, AttributesMap
-from nepi.core.connector import ConnectorTypeBase
 from nepi.util import validation
 from nepi.util.constants import ApplicationStatus as AS, TIME_NOW
 from nepi.util.parser._xml import XmlExperimentParser
@@ -17,166 +16,6 @@ import functools
 ATTRIBUTE_PATTERN_BASE = re.compile(r"\{#\[(?P<label>[-a-zA-Z0-9._]*)\](?P<expr>(?P<component>\.addr\[[0-9]+\]|\.route\[[0-9]+\]|\.trace\[[0-9]+\])?.\[(?P<attribute>[-a-zA-Z0-9._]*)\])#}")
 ATTRIBUTE_PATTERN_GUID_SUB = r"{#[%(guid)s]%(expr)s#}"
 COMPONENT_PATTERN = re.compile(r"(?P<kind>[a-z]*)\[(?P<index>.*)\]")
-
-class ConnectorType(ConnectorTypeBase):
-    def __init__(self, testbed_id, factory_id, name, max = -1, min = 0):
-        super(ConnectorType, self).__init__(testbed_id, factory_id, name, max, min)
-        # from_connections -- connections where the other connector is the "From"
-        # to_connections -- connections where the other connector is the "To"
-        # keys in the dictionary correspond to the 
-        # connector_type_id for possible connections. The value is a tuple:
-        # (can_cross, connect)
-        # can_cross: indicates if the connection is allowed accros different
-        #    testbed instances
-        # code: is the connection function to be invoked when the elements
-        #    are connected
-        self._from_connections = dict()
-        self._to_connections = dict()
-
-    def add_from_connection(self, testbed_id, factory_id, name, can_cross, 
-            init_code, compl_code):
-        type_id = self.make_connector_type_id(testbed_id, factory_id, name)
-        self._from_connections[type_id] = (can_cross, init_code, compl_code)
-
-    def add_to_connection(self, testbed_id, factory_id, name, can_cross, 
-            init_code, compl_code):
-        type_id = self.make_connector_type_id(testbed_id, factory_id, name)
-        self._to_connections[type_id] = (can_cross, init_code, compl_code)
-
-    def can_connect(self, testbed_id, factory_id, name, count, 
-            must_cross):
-        connector_type_id = self.make_connector_type_id(testbed_id, factory_id, name)
-        for lookup_type_id in self._type_resolution_order(connector_type_id):
-            if lookup_type_id in self._from_connections:
-                (can_cross, init_code, compl_code) = self._from_connections[lookup_type_id]
-            elif lookup_type_id in self._to_connections:
-                (can_cross, init_code, compl_code) = self._to_connections[lookup_type_id]
-            else:
-                # keep trying
-                continue
-            return not must_cross or can_cross
-        else:
-            return False
-
-    def _connect_to_code(self, testbed_id, factory_id, name,
-            must_cross):
-        connector_type_id = self.make_connector_type_id(testbed_id, factory_id, name)
-        for lookup_type_id in self._type_resolution_order(connector_type_id):
-            if lookup_type_id in self._to_connections:
-                (can_cross, init_code, compl_code) = self._to_connections[lookup_type_id]
-                if not must_cross or can_cross:
-                    return (init_code, compl_code)
-        else:
-            return (False, False)
-    
-    def connect_to_init_code(self, testbed_id, factory_id, name, must_cross):
-        return self._connect_to_code(testbed_id, factory_id, name, must_cross)[0]
-
-    def connect_to_compl_code(self, testbed_id, factory_id, name, must_cross):
-        return self._connect_to_code(testbed_id, factory_id, name, must_cross)[1]
-
-class Factory(AttributesMap):
-    def __init__(self, factory_id, create_function, start_function, 
-            stop_function, status_function, 
-            configure_function, preconfigure_function,
-            prestart_function,
-            allow_addresses = False, has_addresses = False,
-            allow_routes = False, has_routes = False):
-        super(Factory, self).__init__()
-        self._factory_id = factory_id
-        self._allow_addresses = bool(allow_addresses)
-        self._allow_routes = bool(allow_routes)
-        self._has_addresses = bool(has_addresses) or self._allow_addresses
-        self._has_routes = bool(has_routes) or self._allow_routes
-        self._create_function = create_function
-        self._start_function = start_function
-        self._stop_function = stop_function
-        self._status_function = status_function
-        self._configure_function = configure_function
-        self._preconfigure_function = preconfigure_function
-        self._prestart_function = prestart_function
-        self._connector_types = dict()
-        self._traces = list()
-        self._tags = list()
-        self._box_attributes = AttributesMap()
-
-    @property
-    def factory_id(self):
-        return self._factory_id
-
-    @property
-    def allow_addresses(self):
-        return self._allow_addresses
-
-    @property
-    def allow_routes(self):
-        return self._allow_routes
-
-    @property
-    def has_addresses(self):
-        return self._has_addresses
-
-    @property
-    def has_routes(self):
-        return self._has_routes
-
-    @property
-    def box_attributes(self):
-        return self._box_attributes
-
-    @property
-    def create_function(self):
-        return self._create_function
-
-    @property
-    def prestart_function(self):
-        return self._prestart_function
-
-    @property
-    def start_function(self):
-        return self._start_function
-
-    @property
-    def stop_function(self):
-        return self._stop_function
-
-    @property
-    def status_function(self):
-        return self._status_function
-
-    @property
-    def configure_function(self):
-        return self._configure_function
-
-    @property
-    def preconfigure_function(self):
-        return self._preconfigure_function
-
-    @property
-    def traces(self):
-        return self._traces
-
-    @property
-    def tags(self):
-        return self._tags
-
-    def connector_type(self, name):
-        return self._connector_types[name]
-
-    def add_connector_type(self, connector_type):
-        self._connector_types[connector_type.name] = connector_type
-
-    def add_trace(self, trace_id):
-        self._traces.append(trace_id)
-
-    def add_tag(self, tag_id):
-        self._tags.append(tag_id)
-
-    def add_box_attribute(self, name, help, type, value = None, range = None,
-        allowed = None, flags = Attribute.NoFlags, validation_function = None,
-        category = None):
-        self._box_attributes.add_attribute(name, help, type, value, range, 
-                allowed, flags, validation_function, category)
 
 class TestbedController(object):
     def __init__(self, testbed_id, testbed_version):
@@ -326,7 +165,7 @@ class TestbedController(object):
         """
         raise NotImplementedError
 
-    def get_attribute_list(self, guid):
+    def get_attribute_list(self, guid, filter_flags = None):
         raise NotImplementedError
 
     def get_factory_id(self, guid):
@@ -429,7 +268,6 @@ class ExperimentController(object):
     def start(self):
         parser = XmlExperimentParser()
         data = parser.from_xml_to_data(self._experiment_xml)
-        
         self._init_testbed_controllers(data)
         
         # persist testbed connection data, for potential recovery
@@ -529,7 +367,7 @@ class ExperimentController(object):
         for testbed_guid, testbed_config in self._deployment_config.iteritems():
             testbed_guid = str(testbed_guid)
             conf.add_section(testbed_guid)
-            for attr in testbed_config.attributes_list:
+            for attr in testbed_config.get_attribute_list():
                 if attr not in TRANSIENT:
                     conf.set(testbed_guid, attr, 
                         testbed_config.get_attribute_value(attr))
@@ -560,7 +398,7 @@ class ExperimentController(object):
                 
             testbed_guid = str(testbed_guid)
             conf.add_section(testbed_guid)
-            for attr in testbed_config.attributes_list:
+            for attr in testbed_config.get_attribute_list():
                 if attr not in TRANSIENT:
                     getter = getattr(conf, TYPEMAP.get(
                         testbed_config.get_attribute_type(attr),
@@ -933,8 +771,9 @@ class ExperimentController(object):
                     _testbed_id = cross_testbed.testbed_id,
                     _testbed_version = cross_testbed.testbed_version)
                 cross_data[cross_testbed_guid][cross_guid] = elem_cross_data
-                attributes_list = cross_testbed.get_attribute_list(cross_guid)
-                for attr_name in attributes_list:
+                attribute_list = cross_testbed.get_attribute_list(cross_guid,
+                        filter_flags = Attribute.DesignOnly)
+                for attr_name in attribute_list:
                     attr_value = cross_testbed.get(cross_guid, attr_name)
                     elem_cross_data[attr_name] = attr_value
         return cross_data

@@ -153,7 +153,7 @@ class ExperimentData(object):
         data = self.data[guid]
         if not "traces" in data:
             return []
-        return [trace_id for trace_id in data["traces"]]
+        return data["traces"]
 
     def get_connection_data(self, guid):
         data = self.data[guid]
@@ -229,7 +229,7 @@ class ExperimentParser(object):
     def traces_to_data(self, data, guid, traces):
         for trace in traces:
             if trace.enabled:
-                data.add_trace_data(guid, trace.trace_id)
+                data.add_trace_data(guid, trace.name)
 
     def connections_to_data(self, data, guid, connectors):
         for connector in connectors:

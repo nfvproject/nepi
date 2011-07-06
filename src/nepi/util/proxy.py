@@ -161,7 +161,7 @@ class AccessConfiguration(AttributesMap):
         
         from nepi.core.metadata import Metadata
         
-        for _,attr_info in Metadata.DEPLOYMENT_ATTRIBUTES:
+        for _,attr_info in Metadata.DEPLOYMENT_ATTRIBUTES.iteritems():
             self.add_attribute(**attr_info)
         
         if params:
@@ -648,10 +648,10 @@ class TestbedControllerServer(BaseServer):
         return self._testbed.status(guid)
 
     @Marshalling.handles(GET_ATTRIBUTE_LIST)
-    @Marshalling.args(int)
+    @Marshalling.args(int, int)
     @Marshalling.retval( Marshalling.pickled_data )
-    def get_attribute_list(self, guid):
-        return self._testbed.get_attribute_list(guid)
+    def get_attribute_list(self, guid, filter_flags = None):
+        return self._testbed.get_attribute_list(guid, filter_flags)
 
     @Marshalling.handles(GET_FACTORY_ID)
     @Marshalling.args(int)
