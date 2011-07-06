@@ -6,7 +6,7 @@ from nepi.core.connector import ConnectorType
 from nepi.core.factory import Factory
 import sys
 import getpass
-from nepi.util import validation
+from nepi.util import tags, validation
 from nepi.util.constants import ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP, \
         DeploymentConfiguration as DC, \
         AttributeCategories as AC
@@ -166,6 +166,24 @@ class Metadata(object):
             "help" : "A unique identifier for referring to this box",
         }),
      })
+
+    # These are the attribute definitions for tagged attributes
+    STANDARD_TAGGED_ATTRIBUTES_DEFINITIONS = dict({
+        "maxAddresses" : dict({
+            "name" : "maxAddresses",
+            "validation_function" : validation.is_integer,
+            "type" : Attribute.INTEGER,
+            "value" : 1,
+            "flags" : Attribute.Invisible,
+            "help" : "The maximum allowed number of addresses",
+            }),
+        })
+
+    # Attributes to be added to all boxes with specific tags
+    STANDARD_TAGGED_BOX_ATTRIBUTES = dict({
+        tags.ALLOW_ADDRESSES : ["maxAddresses"],
+        tags.HAS_ADDRESSES : ["maxAddresses"],
+    })
 
     # These attributes should be added to all testbeds
     STANDARD_TESTBED_ATTRIBUTES = dict({
@@ -398,9 +416,9 @@ class Metadata(object):
                     help,
                     category)
                     
-            factory_attributes = self._factory_attributes(factory_id, info)
+            factory_attributes = self._factory_attributes(info)
             self._add_attributes(factory.add_attribute, factory_attributes)
-            box_attributes = self._box_attributes(factory_id, info)
+            box_attributes = self._box_attributes(info)
             self._add_attributes(factory.add_box_attribute, box_attributes)
             
             self._add_traces(factory, info)
@@ -423,27 +441,45 @@ class Metadata(object):
         attributes.update(self._metadata.testbed_attributes.copy())
         return attributes
         
-    def _factory_attributes(self, factory_id, info):
-        if "factory_attributes" not in info:
-            return dict()
-        definitions = self._metadata.attributes.copy()
-        # filter attributes corresponding to the factory_id
-        return self._filter_attributes(info["factory_attributes"], 
+    def _factory_attributes(self, info):
+        tagged_attributes = self._tagged_attributes(info)
+        if "factory_attributes" in info:
+            definitions = self._metadata.attributes.copy()
+            # filter attributes corresponding to the factory_id
+            factory_attributes = self._filter_attributes(info["factory_attributes"], 
                 definitions)
+        else:
+            factory_attributes = dict()
+        attributes = dict(tagged_attributes.items() + \
+                factory_attributes.items())
+        return attributes
 
-    def _box_attributes(self, factory_id, info):
+    def _box_attributes(self, info):
+        tagged_attributes = self._tagged_attributes(info)
         if "box_attributes" in info:
             definitions = self.STANDARD_BOX_ATTRIBUTE_DEFINITIONS.copy()
             definitions.update(self._metadata.attributes)
-            attributes = self._filter_attributes(info["box_attributes"], 
+            box_attributes = self._filter_attributes(info["box_attributes"], 
                 definitions)
         else:
-            attributes = dict()
+            box_attributes = dict()
+        attributes = dict(tagged_attributes.items() + \
+                box_attributes.items())
         attributes.update(self.STANDARD_BOX_ATTRIBUTES.copy())
         return attributes
 
+    def _tagged_attributes(self, info):
+        tagged_attributes = dict()
+        for tag_id in info.get("tags", []):
+            if tag_id in self.STANDARD_TAGGED_BOX_ATTRIBUTES:
+                attr_list = self.STANDARD_TAGGED_BOX_ATTRIBUTES[tag_id]
+                attributes = self._filter_attributes(attr_list,
+                    self.STANDARD_TAGGED_ATTRIBUTES_DEFINITIONS)
+                tagged_attributes.update(attributes)
+        return tagged_attributes
+
     def _filter_attributes(self, attr_list, definitions):
-        # filter attributes corresponding to the factory_id
+        # filter attributes not corresponding to the factory
         attributes = dict((attr_id, definitions[attr_id]) \
            for attr_id in attr_list)
         return attributes
@@ -453,30 +489,26 @@ class Metadata(object):
             name = attr_info["name"]
             help = attr_info["help"]
             type = attr_info["type"] 
-            value = attr_info["value"] if "value" in attr_info else None
-            range = attr_info["range"] if "range" in attr_info else None
-            allowed = attr_info["allowed"] if "allowed" in attr_info \
-                    else None
-            flags = attr_info["flags"] if "flags" in attr_info \
-                    and attr_info["flags"] != None \
-                    else Attribute.NoFlags
+            value = attr_info.get("value")
+            range = attr_info.get("range")
+            allowed = attr_info.get("allowed")
+            flags = attr_info.get("flags")
+            flags = Attribute.NoFlags if flags == None else flags
             validation_function = attr_info["validation_function"]
-            category = attr_info["category"] if "category" in attr_info else None
+            category = attr_info.get("category")
             add_attr_func(name, help, type, value, range, allowed, flags, 
                     validation_function, category)
 
     def _add_traces(self, factory, info):
-        if "traces" in info:
-            for trace_id in info["traces"]:
-                trace_info = self._metadata.traces[trace_id]
-                name = trace_info["name"]
-                help = trace_info["help"]
-                factory.add_trace(name, help)
+        for trace_id in info.get("traces", []):
+            trace_info = self._metadata.traces[trace_id]
+            name = trace_info["name"]
+            help = trace_info["help"]
+            factory.add_trace(name, help)
 
     def _add_tags(self, factory, info):
-        if "tags" in info:
-            for tag_id in info["tags"]:
-                factory.add_tag(tag_id)
+        for tag_id in info.get("tags", []):
+            factory.add_tag(tag_id)
 
     def _add_connector_types(self, factory, info):
         if "connector_types" in info:
@@ -486,10 +518,8 @@ class Metadata(object):
                 from_ = connection["from"]
                 to = connection["to"]
                 can_cross = connection["can_cross"]
-                init_code = connection["init_code"] \
-                        if "init_code" in connection else None
-                compl_code = connection["compl_code"] \
-                        if "compl_code" in connection else None
+                init_code = connection.get("init_code")
+                compl_code = connection.get("compl_code")
                 if from_ not in from_connections:
                     from_connections[from_] = list()
                 if to not in to_connections:
