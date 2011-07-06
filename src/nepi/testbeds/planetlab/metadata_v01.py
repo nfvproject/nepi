@@ -6,7 +6,7 @@ import time
 from constants import TESTBED_ID
 from nepi.core import metadata
 from nepi.core.attributes import Attribute
-from nepi.util import validation
+from nepi.util import tags, validation
 from nepi.util.constants import ApplicationStatus as AS, \
         FactoryCategories as FC, \
         ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP
@@ -945,7 +945,6 @@ start_order = [ INTERNET, NODEIFACE, TAPIFACE, TUNIFACE, NODE, NETPIPE, NEPIDEPE
 
 factories_info = dict({
     NODE: dict({
-            "allow_routes": True,
             "help": "Virtualized Node (V-Server style)",
             "category": FC.CATEGORY_NODES,
             "create_function": create_node,
@@ -966,19 +965,19 @@ factories_info = dict({
                 # NEPI-in-NEPI attributes
                 ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP,
             ],
-            "connector_types": ["devs", "apps", "pipes", "deps"]
+            "connector_types": ["devs", "apps", "pipes", "deps"],
+            "tags": [tags.NODE, tags.ALLOW_ROUTES],
        }),
     NODEIFACE: dict({
-            "has_addresses": True,
             "help": "External network interface - they cannot be brought up or down, and they MUST be connected to the internet.",
             "category": FC.CATEGORY_DEVICES,
             "create_function": create_nodeiface,
             "preconfigure_function": configure_nodeiface,
             "box_attributes": [ ],
-            "connector_types": ["node", "inet"]
+            "connector_types": ["node", "inet"],
+            "tags": [tags.INTERFACE, tags.HAS_ADDRESSES],
         }),
     TUNIFACE: dict({
-            "allow_addresses": True,
             "help": "Virtual TUN network interface (layer 3)",
             "category": FC.CATEGORY_DEVICES,
             "create_function": create_tuniface,
@@ -991,10 +990,10 @@ factories_info = dict({
                 "tun_proto", "tun_addr", "tun_port", "tun_key"
             ],
             "traces": ["packets"],
-            "connector_types": ["node","udp","tcp","fd->"]
+            "connector_types": ["node","udp","tcp","fd->"],
+            "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
         }),
     TAPIFACE: dict({
-            "allow_addresses": True,
             "help": "Virtual TAP network interface (layer 2)",
             "category": FC.CATEGORY_DEVICES,
             "create_function": create_tapiface,
@@ -1007,7 +1006,8 @@ factories_info = dict({
                 "tun_proto", "tun_addr", "tun_port", "tun_key"
             ],
             "traces": ["packets"],
-            "connector_types": ["node","udp","tcp","fd->"]
+            "connector_types": ["node","udp","tcp","fd->"],
+            "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
         }),
     APPLICATION: dict({
             "help": "Generic executable command line application",
@@ -1021,7 +1021,8 @@ factories_info = dict({
                                "depends", "build-depends", "build", "install",
                                "sources", "rpm-fusion" ],
             "connector_types": ["node"],
-            "traces": ["stdout", "stderr", "buildlog"]
+            "traces": ["stdout", "stderr", "buildlog"],
+            "tags": [tags.APPLICATION],
         }),
     DEPENDENCY: dict({
             "help": "Requirement for package or application to be installed on some node",
@@ -1031,16 +1032,16 @@ factories_info = dict({
             "box_attributes": ["depends", "build-depends", "build", "install",
                                "sources", "rpm-fusion" ],
             "connector_types": ["node"],
-            "traces": ["buildlog"]
+            "traces": ["buildlog"],
         }),
     NEPIDEPENDENCY: dict({
             "help": "Requirement for NEPI inside NEPI - required to run testbed instances inside a node",
             "category": FC.CATEGORY_APPLICATIONS,
             "create_function": create_nepi_dependency,
             "preconfigure_function": configure_dependency,
-            "box_attributes": [ ],
+            "box_attributes": [],
             "connector_types": ["node"],
-            "traces": ["buildlog"]
+            "traces": ["buildlog"],
         }),
     NS3DEPENDENCY: dict({
             "help": "Requirement for NS3 inside NEPI - required to run NS3 testbed instances inside a node. It also needs NepiDependency.",
@@ -1049,13 +1050,14 @@ factories_info = dict({
             "preconfigure_function": configure_dependency,
             "box_attributes": [ ],
             "connector_types": ["node"],
-            "traces": ["buildlog"]
+            "traces": ["buildlog"],
         }),
     INTERNET: dict({
             "help": "Internet routing",
             "category": FC.CATEGORY_CHANNELS,
             "create_function": create_internet,
             "connector_types": ["devs"],
+            "tags": [tags.INTERNET],
         }),
     NETPIPE: dict({
             "help": "Link emulation",
@@ -1067,7 +1069,7 @@ factories_info = dict({
                                "bw_in","plr_in","delay_in",
                                "bw_out","plr_out","delay_out"],
             "connector_types": ["node"],
-            "traces": ["netpipe_stats"]
+            "traces": ["netpipe_stats"],
         }),
 })
 

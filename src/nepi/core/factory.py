@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 from nepi.core.attributes import AttributesMap, Attribute
+from nepi.util import tags
+from nepi.util.tags import Taggable
 
 class AddressableMixin(object):
     def __init__(self, guid, factory, testbed_guid, container = None):
@@ -96,7 +98,7 @@ def MixIn(MyClass, MixIn):
         MixIn.__name__.replace('MixIn','')+'Box',
         1)
 
-class Factory(AttributesMap):
+class Factory(AttributesMap, Taggable):
     _box_class_cache = {}
 
     def __init__(self, factory_id,
@@ -108,19 +110,11 @@ class Factory(AttributesMap):
             preconfigure_function,
             prestart_function,
             help = None,
-            category = None,
-            allow_addresses = False, 
-            has_addresses = False,
-            allow_routes = False, 
-            has_routes = False):
+            category = None):
 
         super(Factory, self).__init__()
 
         self._factory_id = factory_id
-        self._allow_addresses = bool(allow_addresses)
-        self._allow_routes = bool(allow_routes)
-        self._has_addresses = bool(has_addresses) or self._allow_addresses
-        self._has_routes = bool(has_routes) or self._allow_routes
         self._create_function = create_function
         self._start_function = start_function
         self._stop_function = stop_function
@@ -132,15 +126,21 @@ class Factory(AttributesMap):
         self._category = category
         self._connector_types = dict()
         self._traces = dict()
-        self._tags = list()
         self._box_attributes = AttributesMap()
+        self._factory = None
+
+    @property
+    def factory(self):
+        if self._factory:
+            return self._factory
 
         from nepi.core.design import Box
-        if not self._has_addresses and not self._has_routes:
+
+        if not self.has_addresses and not self.has_routes:
             self._factory = Box
         else:
-            addresses = 'w' if self._allow_addresses else ('r' if self._has_addresses else '-')
-            routes    = 'w' if self._allow_routes else ('r' if self._has_routes else '-')
+            addresses = 'w' if self.allow_addresses else ('r' if self.has_addresses else '-')
+            routes    = 'w' if self.allow_routes else ('r' if self.has_routes else '-')
             key = addresses+routes
             
             if key in self._box_class_cache:
@@ -152,18 +152,19 @@ class Factory(AttributesMap):
                         super(_factory, self).__init__(guid, factory, testbed_guid, container)
                 
                 # Add mixins, one by one
-                if allow_addresses:
+                if self.allow_addresses:
                     MixIn(_factory, UserAddressableMixin)
-                elif has_addresses:
+                elif self.has_addresses:
                     MixIn(_factory, AddressableMixin)
                     
-                if allow_routes:
+                if self.allow_routes:
                     MixIn(_factory, UserRoutableMixin)
-                elif has_routes:
+                elif self.has_routes:
                     MixIn(_factory, RoutableMixin)
                 
                 # Put into cache
                 self._box_class_cache[key] = self._factory = _factory
+        return self._factory
 
     @property
     def factory_id(self):
@@ -171,19 +172,21 @@ class Factory(AttributesMap):
 
     @property
     def allow_addresses(self):
-        return self._allow_addresses
+        return self.has_tag(tags.ALLOW_ADDRESSES)
 
     @property
     def allow_routes(self):
-        return self._allow_routes
+        return self.has_tag(tags.ALLOW_ROUTES)
 
     @property
     def has_addresses(self):
-        return self._has_addresses
+        return self.has_tag(tags.HAS_ADDRESSES) or \
+                self.allow_addresses
 
     @property
     def has_routes(self):
-        return self._has_routes
+        return self.has_tag(tags.HAS_ROUTES) or \
+                self.allow_routes
 
     @property
     def help(self):
@@ -205,10 +208,6 @@ class Factory(AttributesMap):
     def traces_list(self):
         return self._traces.keys()
 
-    @property
-    def tags(self):
-        return self._tags
-    
     @property
     def box_attributes(self):
         return self._box_attributes
@@ -250,9 +249,6 @@ class Factory(AttributesMap):
     def add_trace(self, name, help, enabled = False):
         self._traces[name] = (name, help, enabled)
 
-    def add_tag(self, tag_id):
-        self._tags.append(tag_id)
-
     def add_box_attribute(self, name, help, type, value = None, range = None,
         allowed = None, flags = Attribute.NoFlags, validation_function = None,
         category = None):
@@ -260,7 +256,7 @@ class Factory(AttributesMap):
                 allowed, flags, validation_function, category)
 
     def create(self, guid, testbed_description):
-        return self._factory(guid, self, testbed_description.guid)
+        return self.factory(guid, self, testbed_description.guid)
 
     def destroy(self):
         super(Factory, self).destroy()

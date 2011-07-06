@@ -143,6 +143,7 @@ class AttributesMap(object):
     are going to be manipulated by the end-user in a script or GUI.
     """
     def __init__(self):
+        super(AttributesMap, self).__init__()
         self._attributes = dict()
 
     @property
