@@ -26,17 +26,21 @@ class Attribute(object):
     }
 
     ### Attribute Flags
-    NoFlags     = 0x00
-    # Attribute is only modifiable during experiment design
-    DesignOnly  = 0x01
-    # Attribute is read only and can't be modified by the user
-    # Note: ReadOnly implies DesignOnly
-    ReadOnly    = 0x03
-    # Attribute is invisible to the user but can be modified
-    Invisible   = 0x04
-    # Attribute has no default value in the testbed instance. 
-    # So it needs to be set explicitely
-    HasNoDefaultValue = 0x08
+    NoFlags          = 0x00
+    # Read-only attribute at design time
+    DesignReadOnly   = 0x01
+    # Invisible attribute at design time
+    DesignInvisible  = 0x02
+    # Read-only attribute at execution time
+    ExecReadOnly     = 0x04
+    # Invisible attribute at execution time
+    ExecInvisible    = 0x08
+    # Attribute doesn't change value during execution time
+    ExecImmutable    = 0x10
+    # Attribute has no default value in the testbed
+    NoDefaultValue   = 0x20
+    # Metadata attribute (is not directly reflected by a real object attribute)
+    Metadata         = 0x30
 
     def __init__(self, name, help, type, value = None, range = None,
         allowed = None, flags = None, validation_function = None, 
@@ -73,21 +77,32 @@ class Attribute(object):
         return self._flags
 
     @property
-    def invisible(self):
-        return (self._flags & Attribute.Invisible) == Attribute.Invisible
+    def is_design_invisible(self):
+        return self.has_flag(Attribute.DesignInvisible)
 
     @property
-    def read_only(self):
-        return (self._flags & Attribute.ReadOnly) == Attribute.ReadOnly
+    def is_design_read_only(self):
+        return self.has_flag(Attribute.DesignReadOnly)
+
+    @property
+    def is_exec_invisible(self):
+        return self.has_flag(Attribute.ExecInvisible)
+
+    @property
+    def is_exec_read_only(self):
+        return self.has_flag(Attribute.ExecReadOnly)
+
+    @property
+    def is_exec_immutable(self):
+        return self.has_flag(Attribute.ExecImmutable)
+
+    @property
+    def is_metadata(self):
+        return self.has_flag(Attribute.Metadata)
 
     @property
     def has_no_default_value(self):
-        return (self._flags & Attribute.HasNoDefaultValue) == \
-                Attribute.HasNoDefaultValue
-
-    @property
-    def design_only(self):
-        return (self._flags & Attribute.DesignOnly) == Attribute.DesignOnly
+        return self.has_flag(Attribute.NoDefaultValue)
 
     @property
     def modified(self):
@@ -108,6 +123,9 @@ class Attribute(object):
     @property
     def validation_function(self):
         return self._validation_function
+
+    def has_flag(self, flag):
+        return (self._flags & flag) == flag
 
     def get_value(self):
         return self._value
@@ -153,9 +171,9 @@ class AttributesMap(object):
     def get_attribute_list(self, filter_flags = None):
         attributes = self._attributes
         if filter_flags != None:
-            def filter_attrs(attr):
-                (attr_id, attr_data) = attr
-                return not ((attr_data.flags & filter_flags) == filter_flags)
+            def filter_attrs(attr_data):
+                (attr_id, attr) = attr_data
+                return not attr.has_flag(filter_flags)
             attributes = dict(filter(filter_attrs, attributes.iteritems()))
         return attributes.keys()
 
@@ -182,14 +200,23 @@ class AttributesMap(object):
     def get_attribute_category(self, name):
         return self._attributes[name].category
 
-    def is_attribute_read_only(self, name):
-        return self._attributes[name].read_only
+    def is_attribute_design_invisible(self, name):
+        return self._attributes[name].is_design_invisible
 
-    def is_attribute_invisible(self, name):
-        return self._attributes[name].invisible
+    def is_attribute_design_read_only(self, name):
+        return self._attributes[name].is_design_read_only
 
-    def is_attribute_design_only(self, name):
-        return self._attributes[name].design_only
+    def is_attribute_exec_invisible(self, name):
+        return self._attributes[name].is_exec_invisible
+
+    def is_attribute_exec_read_only(self, name):
+        return self._attributes[name].is_exec_read_only
+
+    def is_attribute_exec_immutable(self, name):
+        return self._attributes[name].is_exec_immutable
+
+    def is_attribute_metadata(self, name):
+        return self._attributes[name].is_metadata
 
     def has_attribute_no_default_value(self, name):
         return self._attributes[name].has_no_default_value

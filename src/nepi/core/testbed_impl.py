@@ -58,69 +58,45 @@ class TestbedController(execute.TestbedController):
     def elements(self):
         return self._elements
     
-    def _get_factory_id(self, guid):
-        """ Returns the factory ID of the (perhaps not yet) created object """
-        return self._create.get(guid, None)
-
     def defer_configure(self, name, value):
-        if not self._attributes.has_attribute(name):
-            raise AttributeError("Invalid attribute %s for testbed" % name)
-        # Validation
+        self._validate_testbed_attribute(name)
+        self._validate_testbed_value(name, value)
         self._attributes.set_attribute_value(name, value)
         self._configure[name] = value
 
     def defer_create(self, guid, factory_id):
-        if factory_id not in self._factories:
-            raise AttributeError("Invalid element type %s for testbed version %s" %
-                    (factory_id, self._testbed_version))
-        if guid in self._create:
-            raise AttributeError("Cannot add elements with the same guid: %d" %
-                    guid)
+        self._validate_factory_id(factory_id)
+        self._validate_not_guid(guid)
         self._create[guid] = factory_id
 
     def defer_create_set(self, guid, name, value):
-        if not guid in self._create:
-            raise RuntimeError("Element guid %d doesn't exist" % guid)
-        factory = self._get_factory(guid)
-        if not factory.box_attributes.has_attribute(name):
-            raise AttributeError("Invalid attribute %s for element type %s" %
-                    (name, factory.factory_id))
-        if not factory.box_attributes.is_attribute_value_valid(name, value):
-            raise AttributeError("Invalid value %s for attribute %s" % \
-                (value, name))
+        self._validate_guid(guid)
+        self._validate_box_attribute(guid, name)
+        self._validate_box_value(guid, name, value)
         if guid not in self._create_set:
             self._create_set[guid] = dict()
         self._create_set[guid][name] = value
 
     def defer_factory_set(self, guid, name, value):
-        if not guid in self._create:
-            raise RuntimeError("Element guid %d doesn't exist" % guid)
-        factory = self._get_factory(guid)
-        if not factory.has_attribute(name):
-            raise AttributeError("Invalid attribute %s for element type %s" %
-                    (name, factory.factory_id))
-        if not factory.is_attribute_value_valid(name, value):
-            raise AttributeError("Invalid value %s for attribute %s" % \
-                (value, name))
+        self._validate_guid(guid)
+        self._validate_factory_attribute(guid, name)
+        self._validate_factory_value(guid, name, value)
         if guid not in self._factory_set:
             self._factory_set[guid] = dict()
         self._factory_set[guid][name] = value
 
     def defer_connect(self, guid1, connector_type_name1, guid2, 
             connector_type_name2):
+        self._validate_guid(guid1)
+        self._validate_guid(guid2)
         factory1 = self._get_factory(guid1)
         factory_id2 = self._create[guid2]
-        # TODO VALIDATE!!!
-        #if self.box.guid == connector.box.guid:
-        #    return False
-        #if self.is_full() or connector.is_full():
-        #    return False
-        #if self.is_connected(connector):
-        #    return False
-        #count = self._get_connection_count(guid1, connector_type_name1)
         connector_type = factory1.connector_type(connector_type_name1)
         connector_type.can_connect(self._testbed_id, factory_id2, 
                 connector_type_name2, False)
+        self._validate_connection(guid1, connector_type_name1, guid2, 
+            connector_type_name2)
+
         if not guid1 in self._connect:
             self._connect[guid1] = dict()
         if not connector_type_name1 in self._connect[guid1]:
@@ -132,23 +108,19 @@ class TestbedController(execute.TestbedController):
         if not connector_type_name2 in self._connect[guid2]:
              self._connect[guid2][connector_type_name2] = dict()
         self._connect[guid2][connector_type_name2][guid1] = \
-                connector_type_name1
+               connector_type_name1
 
     def defer_cross_connect(self, guid, connector_type_name, cross_guid, 
             cross_testbed_guid, cross_testbed_id, cross_factory_id, 
             cross_connector_type_name):
+        self._validate_guid(guid)
         factory = self._get_factory(guid)
-        # TODO VALIDATE!!!
-        #if self.box.guid == connector.box.guid:
-        #    return False
-        #if self.is_full() or connector.is_full():
-        #    return False
-        #if self.is_connected(connector):
-        #    return False
-        #count = self._get_connection_count(guid, connector_type_name)
         connector_type = factory.connector_type(connector_type_name)
         connector_type.can_connect(cross_testbed_id, cross_factory_id, 
                 cross_connector_type_name, True)
+        self._validate_connection(guid, connector_type_name, cross_guid, 
+            cross_connector_type_name)
+
         if not guid in self._cross_connect:
             self._cross_connect[guid] = dict()
         if not connector_type_name in self._cross_connect[guid]:
@@ -158,40 +130,22 @@ class TestbedController(execute.TestbedController):
                 cross_factory_id, cross_connector_type_name)
 
     def defer_add_trace(self, guid, trace_name):
-        if not guid in self._create:
-            raise RuntimeError("Element guid %d doesn't exist" % guid)
-        factory = self._get_factory(guid)
-        if not trace_name in factory.traces_list:
-            raise RuntimeError("Element type '%s' has no trace '%s'" %
-                    (factory.factory_id, trace_name))
+        self._validate_guid(guid)
+        self._validate_trace(guid, trace_name)
         if not guid in self._add_trace:
             self._add_trace[guid] = list()
         self._add_trace[guid].append(trace_name)
 
     def defer_add_address(self, guid, address, netprefix, broadcast):
-        if not guid in self._create:
-            raise RuntimeError("Element guid %d doesn't exist" % guid)
-        factory = self._get_factory(guid)
-        if not factory.allow_addresses:
-            raise RuntimeError("Element type '%s' doesn't support addresses" %
-                    factory.factory_id)
-            max_addresses = 1 # TODO: MAKE THIS PARAMETRIZABLE
-        if guid in self._add_address:
-            count_addresses = len(self._add_address[guid])
-            if max_addresses == count_addresses:
-                raise RuntimeError("Element guid %d of type '%s' can't accept \
-                        more addresses" % (guid, factory.factory_id))
-        else:
+        self._validate_guid(guid)
+        self._validate_allow_addresses(guid)
+        if guid not in self._add_address:
             self._add_address[guid] = list()
         self._add_address[guid].append((address, netprefix, broadcast))
 
     def defer_add_route(self, guid, destination, netprefix, nexthop, metric = 0):
-        if not guid in self._create:
-            raise RuntimeError("Element guid %d doesn't exist" % guid)
-        factory = self._get_factory(guid)
-        if not factory.allow_routes:
-            raise RuntimeError("Element type '%s' doesn't support routes" %
-                    factory.factory_id)
+        self._validate_guid(guid)
+        self._validate_allow_routes(guid)
         if not guid in self._add_route:
             self._add_route[guid] = list()
         self._add_route[guid].append((destination, netprefix, nexthop, metric)) 
@@ -335,18 +289,10 @@ class TestbedController(execute.TestbedController):
         self._status = TS.STATUS_CROSS_CONNECTED
 
     def set(self, guid, name, value, time = TIME_NOW):
-        if not guid in self._create:
-            raise RuntimeError("Element guid %d doesn't exist" % guid)
-        factory = self._get_factory(guid)
-        if not factory.box_attributes.has_attribute(name):
-            raise AttributeError("Invalid attribute %s for element type %s" %
-                    (name, factory.factory_id))
-        if self._status > TS.STATUS_STARTED and \
-                factory.box_attributes.is_attribute_design_only(name):
-            raise AttributeError("Attribute %s can only be modified during experiment design" % name)
-        if not factory.box_attributes.is_attribute_value_valid(name, value):
-            raise AttributeError("Invalid value %s for attribute %s" % \
-                    (value, name))
+        self._validate_guid(guid)
+        self._validate_box_attribute(guid, name)
+        self._validate_box_value(guid, name, value)
+        self._validate_modify_box_value(guid, name)
         if guid not in self._set:
             self._set[guid] = dict()
             self._setlog[guid] = dict()
@@ -362,16 +308,14 @@ class TestbedController(execute.TestbedController):
         through the defer_create interface, and AttributeError if the
         attribute isn't available (doesn't exist or is design-only)
         """
-        if not guid in self._create:
-            raise KeyError, "Element guid %d doesn't exist" % guid
-        factory = self._get_factory(guid)
-        if not factory.box_attributes.has_attribute(name):
-            raise AttributeError, "Invalid attribute %s for element type %s" % \
-            (name, factory.factory_id)
+        self._validate_guid(guid)
+        self._validate_box_attribute(guid, name)
         if guid in self._set and name in self._set[guid]:
             return self._set[guid][name]
         if guid in self._create_set and name in self._create_set[guid]:
             return self._create_set[guid][name]
+        # if nothing else found, returns the factory default value
+        factory = self._get_factory(guid)
         return factory.box_attributes.get_attribute_value(name)
 
     def get_route(self, guid, index, attribute):
@@ -456,8 +400,7 @@ class TestbedController(execute.TestbedController):
     def status(self, guid = None):
         if not guid:
             return self._status
-        if not guid in self._create:
-            raise RuntimeError("Element guid %d doesn't exist" % guid)
+        self._validate_guid(guid)
         factory = self._get_factory(guid)
         status_function = factory.status_function
         if status_function:
@@ -536,4 +479,110 @@ class TestbedController(execute.TestbedController):
     def _get_factory(self, guid):
         factory_id = self._create[guid]
         return self._factories[factory_id]
+
+    def _get_factory_id(self, guid):
+        """ Returns the factory ID of the (perhaps not yet) created object """
+        return self._create.get(guid, None)
+
+    def _validate_guid(self, guid):
+        if not guid in self._create:
+            raise RuntimeError("Element guid %d doesn't exist" % guid)
+
+    def _validate_not_guid(self, guid):
+        if guid in self._create:
+            raise AttributeError("Cannot add elements with the same guid: %d" %
+                    guid)
+
+    def _validate_factory_id(self, factory_id):
+        if factory_id not in self._factories:
+            raise AttributeError("Invalid element type %s for testbed version %s" %
+                    (factory_id, self._testbed_version))
+
+    def _validate_testbed_attribute(self, name):
+        if not self._attributes.has_attribute(name):
+            raise AttributeError("Invalid testbed attribute %s for testbed" % \
+                    name)
+
+    def _validate_testbed_value(self, name, value):
+        if not self._attributes.is_attribute_value_valid(name, value):
+            raise AttributeError("Invalid value %s for testbed attribute %s" % \
+                (value, name))
+
+    def _validate_box_attribute(self, guid, name):
+        factory = self._get_factory(guid)
+        if not factory.box_attributes.has_attribute(name):
+            raise AttributeError("Invalid attribute %s for element type %s" %
+                    (name, factory.factory_id))
+
+    def _validate_box_value(self, guid, name, value):
+        factory = self._get_factory(guid)
+        if not factory.box_attributes.is_attribute_value_valid(name, value):
+            raise AttributeError("Invalid value %s for attribute %s" % \
+                (value, name))
+
+    def _validate_factory_attribute(self, guid, name):
+        factory = self._get_factory(guid)
+        if not factory.has_attribute(name):
+            raise AttributeError("Invalid attribute %s for element type %s" %
+                    (name, factory.factory_id))
+
+    def _validate_factory_value(self, guid, name, value):
+        factory = self._get_factory(guid)
+        if not factory.is_attribute_value_valid(name, value):
+            raise AttributeError("Invalid value %s for attribute %s" % \
+                (value, name))
+
+    def _validate_trace(self, guid, trace_name):
+        factory = self._get_factory(guid)
+        if not trace_name in factory.traces_list:
+            raise RuntimeError("Element type '%s' has no trace '%s'" %
+                    (factory.factory_id, trace_name))
+
+    def _validate_allow_addresses(self, guid):
+        factory = self._get_factory(guid)
+        if not factory.allow_addresses:
+            raise RuntimeError("Element type '%s' doesn't support addresses" %
+                    factory.factory_id)
+        attr_name = "maxAddresses"
+        if guid in self._create_set and attr_name in self._create_set[guid]:
+            max_addresses = self._create_set[guid][attr_name]
+        else:
+            factory = self._get_factory(guid)
+            max_addresses = factory.box_attributes.get_attribute_value(attr_name)
+        if guid in self._add_address:
+            count_addresses = len(self._add_address[guid])
+            if max_addresses == count_addresses:
+                raise RuntimeError("Element guid %d of type '%s' can't accept \
+                        more addresses" % (guid, factory.factory_id))
+
+    def _validate_allow_routes(self, guid):
+        factory = self._get_factory(guid)
+        if not factory.allow_routes:
+            raise RuntimeError("Element type '%s' doesn't support routes" %
+                    factory.factory_id)
+
+    def _validate_connection(self, guid1, connector_type_name1, guid2, 
+            connector_type_name2, cross = False):
+        # can't connect with self
+        if guid1 == guid2:
+            raise AttributeError("Can't connect guid %d to self" % \
+                (guid1))
+        # the connection is already done, so ignore
+        connected = self.get_connected(guid1, connector_type_name1, 
+                connector_type_name2)
+        if guid2 in connected:
+            return
+        count1 = self._get_connection_count(guid1, connector_type_name1)
+        factory1 = self._get_factory(guid1)
+        connector_type1 = factory1.connector_type(connector_type_name1)
+        if count1 == connector_type1.max:
+            raise AttributeError("Connector %s is full for guid %d" % \
+                (connector_type_name1, guid1))
+
+    def _validate_modify_box_value(self, guid, name):
+        factory = self._get_factory(guid)
+        if self._status > TS.STATUS_STARTED and \
+                (factory.box_attributes.is_attribute_exec_read_only(name) or \
+                factory.box_attributes.is_attribute_exec_immutable(name)):
+            raise AttributeError("Attribute %s can only be modified during experiment design" % name)
 

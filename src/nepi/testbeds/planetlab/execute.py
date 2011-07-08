@@ -439,8 +439,6 @@ class TestbedController(testbed_impl.TestbedController):
         # TODO: take on account schedule time for the task
         factory_id = self._create[guid]
         factory = self._factories[factory_id]
-        if factory.box_attributes.is_attribute_design_only(name):
-            return value
         element = self._elements.get(guid)
         try:
             return getattr(element, name)

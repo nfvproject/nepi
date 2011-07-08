@@ -10,7 +10,7 @@ class AddressableMixin(object):
         super(AddressableMixin, self).__init__(guid, factory, testbed_guid, 
                 container)
         max_addr = self._factory_attributes["maxAddresses"]
-        self._max_addresses = max_addr
+        self.set_attribute_value("maxAddresses", max_addr)
         self._addresses = list()
 
     @property
@@ -19,7 +19,7 @@ class AddressableMixin(object):
 
     @property
     def max_addresses(self):
-        return self._max_addresses
+        return self.get_attribute_value("maxAddresses")
 
 class UserAddressableMixin(AddressableMixin):
     def __init__(self, guid, factory, testbed_guid, container = None):

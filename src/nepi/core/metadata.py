@@ -162,7 +162,9 @@ class Metadata(object):
             "name" : "label",
             "validation_function" : validation.is_string,
             "type" : Attribute.STRING,
-            "flags" : Attribute.DesignOnly,
+            "flags" : Attribute.ExecReadOnly |\
+                    Attribute.ExecImmutable |\
+                    Attribute.Metadata,
             "help" : "A unique identifier for referring to this box",
         }),
      })
@@ -174,7 +176,9 @@ class Metadata(object):
             "validation_function" : validation.is_integer,
             "type" : Attribute.INTEGER,
             "value" : 1,
-            "flags" : Attribute.Invisible,
+            "flags" : Attribute.DesignReadOnly |\
+                    Attribute.ExecInvisible |\
+                    Attribute.Metadata,
             "help" : "The maximum allowed number of addresses",
             }),
         })
@@ -193,13 +197,17 @@ class Metadata(object):
             "help" : "Path to the directory where traces and other files will be stored",
             "type" : Attribute.STRING,
             "value" : "",
-            "flags" : Attribute.DesignOnly
+            "flags" : Attribute.ExecReadOnly |\
+                    Attribute.ExecImmutable |\
+                    Attribute.Metadata,
             }),
         "label" : dict({
             "name" : "label",
             "validation_function" : validation.is_string,
             "type" : Attribute.STRING,
-            "flags" : Attribute.DesignOnly,
+            "flags" : Attribute.ExecReadOnly |\
+                    Attribute.ExecImmutable |\
+                    Attribute.Metadata,
             "help" : "A unique identifier for referring to this testbed",
             }),
         })
@@ -212,7 +220,9 @@ class Metadata(object):
             "validation_function" : validation.is_string,
             "help" : "Shell commands to run before spawning TestbedController processes",
             "type" : Attribute.STRING,
-            "flags" : Attribute.DesignOnly,
+            "flags" : Attribute.ExecReadOnly |\
+                    Attribute.ExecImmutable |\
+                    Attribute.Metadata,
             "category" : AC.CATEGORY_DEPLOYMENT,
         }),
         DC.DEPLOYMENT_MODE: dict({
@@ -224,7 +234,9 @@ class Metadata(object):
                     DC.MODE_DAEMON,
                     DC.MODE_SINGLE_PROCESS
                 ],
-            "flags" : Attribute.DesignOnly,
+           "flags" : Attribute.ExecReadOnly |\
+                    Attribute.ExecImmutable |\
+                    Attribute.Metadata,
             "validation_function" : validation.is_enum,
             "category" : AC.CATEGORY_DEPLOYMENT,
             }),
@@ -237,7 +249,9 @@ class Metadata(object):
                     DC.ACCESS_LOCAL,
                     DC.ACCESS_SSH
                 ],
-            "flags" : Attribute.DesignOnly,
+            "flags" : Attribute.ExecReadOnly |\
+                    Attribute.ExecImmutable |\
+                    Attribute.Metadata,
             "validation_function" : validation.is_enum,
             "category" : AC.CATEGORY_DEPLOYMENT,
             }),
@@ -246,7 +260,9 @@ class Metadata(object):
             "help" : "Host where the testbed will be executed",
             "type" : Attribute.STRING,
             "value" : "localhost",
-            "flags" : Attribute.DesignOnly,
+            "flags" : Attribute.ExecReadOnly |\
+                    Attribute.ExecImmutable |\
+                    Attribute.Metadata,
             "validation_function" : validation.is_string,
             "category" : AC.CATEGORY_DEPLOYMENT,
             }),
@@ -255,7 +271,9 @@ class Metadata(object):
             "help" : "User on the Host to execute the testbed",
             "type" : Attribute.STRING,
             "value" : getpass.getuser(),
-            "flags" : Attribute.DesignOnly,
+            "flags" : Attribute.ExecReadOnly |\
+                    Attribute.ExecImmutable |\
+                    Attribute.Metadata,
             "validation_function" : validation.is_string,
             "category" : AC.CATEGORY_DEPLOYMENT,
             }),
@@ -263,7 +281,9 @@ class Metadata(object):
             "name" : DC.DEPLOYMENT_KEY,
             "help" : "Path to SSH key to use for connecting",
             "type" : Attribute.STRING,
-            "flags" : Attribute.DesignOnly,
+            "flags" : Attribute.ExecReadOnly |\
+                    Attribute.ExecImmutable |\
+                    Attribute.Metadata,
             "validation_function" : validation.is_string,
             "category" : AC.CATEGORY_DEPLOYMENT,
             }),
@@ -272,7 +292,9 @@ class Metadata(object):
             "help" : "Port on the Host",
             "type" : Attribute.INTEGER,
             "value" : 22,
-            "flags" : Attribute.DesignOnly,
+            "flags" : Attribute.ExecReadOnly |\
+                    Attribute.ExecImmutable |\
+                    Attribute.Metadata,
             "validation_function" : validation.is_integer,
             "category" : AC.CATEGORY_DEPLOYMENT,
             }),
@@ -281,7 +303,9 @@ class Metadata(object):
             "help" : "Root directory for storing process files",
             "type" : Attribute.STRING,
             "value" : ".",
-            "flags" : Attribute.DesignOnly,
+            "flags" : Attribute.ExecReadOnly |\
+                    Attribute.ExecImmutable |\
+                    Attribute.Metadata,
             "validation_function" : validation.is_string, # TODO: validation.is_path
             "category" : AC.CATEGORY_DEPLOYMENT,
             }),
@@ -290,7 +314,9 @@ class Metadata(object):
             "help" : "Use -A option for forwarding of the authentication agent, if ssh access is used", 
             "type" : Attribute.BOOL,
             "value" : False,
-            "flags" : Attribute.DesignOnly,
+            "flags" : Attribute.ExecReadOnly |\
+                    Attribute.ExecImmutable |\
+                    Attribute.Metadata,
             "validation_function" : validation.is_bool,
             "category" : AC.CATEGORY_DEPLOYMENT,
             }),
@@ -303,7 +329,9 @@ class Metadata(object):
                     DC.ERROR_LEVEL,
                     DC.DEBUG_LEVEL
                 ],
-            "flags" : Attribute.DesignOnly,
+            "flags" : Attribute.ExecReadOnly |\
+                    Attribute.ExecImmutable |\
+                    Attribute.Metadata,
             "validation_function" : validation.is_enum,
             "category" : AC.CATEGORY_DEPLOYMENT,
             }),
@@ -312,7 +340,9 @@ class Metadata(object):
             "help" : "Do not intantiate testbeds, rather, reconnect to already-running instances. Used to recover from a dead controller.", 
             "type" : Attribute.BOOL,
             "value" : False,
-            "flags" : Attribute.DesignOnly,
+            "flags" : Attribute.ExecReadOnly |\
+                    Attribute.ExecImmutable |\
+                    Attribute.Metadata,
             "validation_function" : validation.is_bool,
             "category" : AC.CATEGORY_DEPLOYMENT,
             }),
@@ -324,7 +354,10 @@ class Metadata(object):
             "name" : "tun_proto", 
             "help" : "TUNneling protocol used",
             "type" : Attribute.STRING,
-            "flags" : Attribute.Invisible,
+            "flags" : Attribute.DesignInvisible | \
+                    Attribute.ExecInvisible | \
+                    Attribute.ExecImmutable | \
+                    Attribute.Metadata,
             "validation_function" : validation.is_string,
             }),
         "tun_key" : dict({
@@ -333,28 +366,40 @@ class Metadata(object):
                      "Endpoints must agree to use the minimum (in lexicographic order) "
                      "of both the remote and local sides.",
             "type" : Attribute.STRING,
-            "flags" :Attribute.Invisible,
+            "flags" : Attribute.DesignInvisible | \
+                    Attribute.ExecInvisible | \
+                    Attribute.ExecImmutable | \
+                    Attribute.Metadata,
             "validation_function" : validation.is_string,
             }),
         "tun_addr" : dict({
             "name": "tun_addr", 
             "help" : "Address (IP, unix socket, whatever) of the tunnel endpoint",
             "type" : Attribute.STRING,
-            "flags" : Attribute.Invisible,
+            "flags" : Attribute.DesignInvisible | \
+                    Attribute.ExecInvisible | \
+                    Attribute.ExecImmutable | \
+                    Attribute.Metadata,
             "validation_function" : validation.is_string,
             }),
         "tun_port" : dict({
             "name" : "tun_port", 
             "help" : "IP port of the tunnel endpoint",
             "type" : Attribute.INTEGER,
-            "flags" : Attribute.Invisible,
+            "flags" : Attribute.DesignInvisible | \
+                    Attribute.ExecInvisible | \
+                    Attribute.ExecImmutable | \
+                    Attribute.Metadata,
             "validation_function" : validation.is_integer,
             }),
         ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP : dict({
             "name" : ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP,
             "help" : "Commands to set up the environment needed to run NEPI testbeds",
             "type" : Attribute.STRING,
-            "flags" : Attribute.Invisible,
+            "flags" : Attribute.DesignInvisible | \
+                    Attribute.ExecInvisible | \
+                    Attribute.ExecImmutable | \
+                    Attribute.Metadata,
             "validation_function" : validation.is_string
             }),
         })
@@ -493,7 +538,6 @@ class Metadata(object):
             range = attr_info.get("range")
             allowed = attr_info.get("allowed")
             flags = attr_info.get("flags")
-            flags = Attribute.NoFlags if flags == None else flags
             validation_function = attr_info["validation_function"]
             category = attr_info.get("category")
             add_attr_func(name, help, type, value, range, allowed, flags, 

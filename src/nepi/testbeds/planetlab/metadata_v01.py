@@ -621,21 +621,21 @@ attributes = dict({
                 "help": "Forward x11 from main namespace to the node",
                 "type": Attribute.BOOL, 
                 "value": False,
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_bool,
             }),
     "hostname": dict({      
                 "name": "hostname",
                 "help": "Constrain hostname during resource discovery. May use wildcards.",
                 "type": Attribute.STRING, 
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_string,
             }),
     "architecture": dict({      
                 "name": "architecture",
                 "help": "Constrain architexture during resource discovery.",
                 "type": Attribute.ENUM, 
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "allowed": ["x86_64",
                             "i386"],
                 "validation_function": validation.is_enum,
@@ -644,7 +644,7 @@ attributes = dict({
                 "name": "operatingSystem",
                 "help": "Constrain operating system during resource discovery.",
                 "type": Attribute.ENUM, 
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "allowed": ["f8",
                             "f12",
                             "f14",
@@ -656,7 +656,7 @@ attributes = dict({
                 "name": "site",
                 "help": "Constrain the PlanetLab site this node should reside on.",
                 "type": Attribute.ENUM, 
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "allowed": ["PLE",
                             "PLC",
                             "PLJ"],
@@ -667,7 +667,7 @@ attributes = dict({
                 "help": "Enable emulation on this node. Enables NetfilterRoutes, bridges, and a host of other functionality.",
                 "type": Attribute.BOOL,
                 "value": False, 
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_bool,
             }),
     "min_reliability": dict({
@@ -675,7 +675,7 @@ attributes = dict({
                 "help": "Constrain reliability while picking PlanetLab nodes. Specifies a lower acceptable bound.",
                 "type": Attribute.DOUBLE,
                 "range": (0,100),
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_double,
             }),
     "max_reliability": dict({
@@ -683,7 +683,7 @@ attributes = dict({
                 "help": "Constrain reliability while picking PlanetLab nodes. Specifies an upper acceptable bound.",
                 "type": Attribute.DOUBLE,
                 "range": (0,100),
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_double,
             }),
     "min_bandwidth": dict({
@@ -691,7 +691,7 @@ attributes = dict({
                 "help": "Constrain available bandwidth while picking PlanetLab nodes. Specifies a lower acceptable bound.",
                 "type": Attribute.DOUBLE,
                 "range": (0,2**31),
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_double,
             }),
     "max_bandwidth": dict({
@@ -699,7 +699,7 @@ attributes = dict({
                 "help": "Constrain available bandwidth while picking PlanetLab nodes. Specifies an upper acceptable bound.",
                 "type": Attribute.DOUBLE,
                 "range": (0,2**31),
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_double,
             }),
             
@@ -721,7 +721,7 @@ attributes = dict({
                 "name": "name",
                 "help": "Device name",
                 "type": Attribute.STRING,
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_string
             }),
     "mtu":  dict({
@@ -749,14 +749,14 @@ attributes = dict({
                 "help": "If the interface is a P2P link, the remote endpoint's IP "
                         "should be set on this attribute.",
                 "type": Attribute.STRING,
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_string
             }),
     "txqueuelen":  dict({
                 "name": "mask", 
                 "help": "Transmission queue length (in packets)",
                 "type": Attribute.INTEGER,
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "range" : (1,10000),
                 "validation_function": validation.is_integer
             }),
@@ -765,14 +765,14 @@ attributes = dict({
                 "name": "command",
                 "help": "Command line string",
                 "type": Attribute.STRING,
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_string
             }),
     "sudo": dict({
                 "name": "sudo",
                 "help": "Run with root privileges",
                 "type": Attribute.BOOL,
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "value": False,
                 "validation_function": validation.is_bool
             }),
@@ -780,7 +780,7 @@ attributes = dict({
                 "name": "stdin",
                 "help": "Standard input",
                 "type": Attribute.STRING,
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_string
             }),
             
@@ -788,21 +788,21 @@ attributes = dict({
                 "name": "depends",
                 "help": "Space-separated list of packages required to run the application",
                 "type": Attribute.STRING,
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_string
             }),
     "build-depends": dict({
                 "name": "buildDepends",
                 "help": "Space-separated list of packages required to build the application",
                 "type": Attribute.STRING,
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_string
             }),
     "rpm-fusion": dict({
                 "name": "rpmFusion",
                 "help": "True if required packages can be found in the RpmFusion repository",
                 "type": Attribute.BOOL,
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "value": False,
                 "validation_function": validation.is_bool
             }),
@@ -811,7 +811,7 @@ attributes = dict({
                 "help": "Space-separated list of regular files to be deployed in the working path prior to building. "
                         "Archives won't be expanded automatically.",
                 "type": Attribute.STRING,
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_string
             }),
     "build": dict({
@@ -826,7 +826,7 @@ attributes = dict({
                         "make sure to clean up temporary files, to reduce bandwidth usage between "
                         "nodes when transferring built packages.",
                 "type": Attribute.STRING,
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_string
             }),
     "install": dict({
@@ -842,7 +842,7 @@ attributes = dict({
                         "make and other tools to install, be sure to provide them as "
                         "actual dependencies instead.",
                 "type": Attribute.STRING,
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_string
             }),
     
@@ -853,7 +853,7 @@ attributes = dict({
                         " * CLIENT: applies to outgoing connections\n"
                         " * SERVICE: applies to both",
                 "type": Attribute.ENUM, 
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "allowed": ["SERVER",
                             "CLIENT",
                             "SERVICE"],
@@ -1078,21 +1078,21 @@ testbed_attributes = dict({
             "name": "slice",
             "help": "The name of the PlanetLab slice to use",
             "type": Attribute.STRING,
-            "flags": Attribute.DesignOnly | Attribute.HasNoDefaultValue,
+            "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable | Attribute.NoDefaultValue,
             "validation_function": validation.is_string
         }),
         "auth_user": dict({
             "name": "authUser",
             "help": "The name of the PlanetLab user to use for API calls - it must have at least a User role.",
             "type": Attribute.STRING,
-            "flags": Attribute.DesignOnly | Attribute.HasNoDefaultValue,
+            "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable | Attribute.NoDefaultValue,
             "validation_function": validation.is_string
         }),
         "auth_pass": dict({
             "name": "authPass",
             "help": "The PlanetLab user's password.",
             "type": Attribute.STRING,
-            "flags": Attribute.DesignOnly | Attribute.HasNoDefaultValue,
+            "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable | Attribute.NoDefaultValue,
             "validation_function": validation.is_string
         }),
         "plc_host": dict({
@@ -1100,7 +1100,7 @@ testbed_attributes = dict({
             "help": "The PlanetLab PLC API host",
             "type": Attribute.STRING,
             "value": "www.planet-lab.eu",
-            "flags": Attribute.DesignOnly,
+            "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
             "validation_function": validation.is_string
         }),
         "plc_url": dict({
@@ -1108,7 +1108,7 @@ testbed_attributes = dict({
             "help": "The PlanetLab PLC API url pattern - %(hostname)s is replaced by plcHost.",
             "type": Attribute.STRING,
             "value": "https://%(hostname)s:443/PLCAPI/",
-            "flags": Attribute.DesignOnly,
+            "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
             "validation_function": validation.is_string
         }),
         "slice_ssh_key": dict({
@@ -1119,7 +1119,7 @@ testbed_attributes = dict({
                     "It is recommended that a NEPI-specific user be created for this purpose and "
                     "this purpose alone.",
             "type": Attribute.STRING,
-            "flags": Attribute.DesignOnly | Attribute.HasNoDefaultValue,
+            "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable | Attribute.NoDefaultValue,
             "validation_function": validation.is_string
         }),
     })
