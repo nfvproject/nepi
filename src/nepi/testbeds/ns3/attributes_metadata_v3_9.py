@@ -2410,7 +2410,9 @@ attributes = dict({
         "name": "Standard",
         "validation_function": validation.is_string,
         "value": "WIFI_PHY_STANDARD_80211a",
-        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable | Attribute.NoDefaultValue,
+        "flags": Attribute.ExecReadOnly | \
+                Attribute.ExecImmutable | \
+                Attribute.NoDefaultValue,
         "type": Attribute.ENUM,
         "allowed": wifi_standards.keys(),
         "help": "Wifi PHY standard"
@@ -2419,7 +2421,11 @@ attributes = dict({
         "name": "LinuxSocketAddress",
         "validation_function": None,
         "value": "",
-        "flags": Attribute.DesignInvisible | Attribute.ExecInvisible | Attribute.ExecReadOnly | Attribute.ExecImmutable,
+        "flags": Attribute.DesignInvisible | \
+                Attribute.ExecInvisible | \
+                Attribute.ExecReadOnly | \
+                Attribute.ExecImmutable | \
+                Attribute.Metadata,
         "type": Attribute.STRING,
         "help": "Socket address assigned to the Linux socket created to recive file descriptor"
     }),
@@ -2526,7 +2532,7 @@ attributes = dict({
         "name": "WaypointList",
         "validation_function": validation.is_string, # TODO: SPECIAL VALIDATION FUNC
         "value": "",
-        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable | Attribute.Metadata,
         "type": Attribute.STRING,
         "help": "Comma separated list of waypoints in format t:x:y:z. Ex: 0s:0:0:0, 1s:1:0:0"
     }),
