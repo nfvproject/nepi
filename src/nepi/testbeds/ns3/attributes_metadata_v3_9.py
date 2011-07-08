@@ -12,7 +12,7 @@ testbed_attributes = dict({
             "name": "SimulatorImplementationType",
             "help": "The object class to use as the simulator implementation",
             "type": Attribute.STRING,
-            "flags": Attribute.DesignOnly,
+            "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
             "validation_function": validation.is_string
         }),
     "checksum": dict({
@@ -20,7 +20,7 @@ testbed_attributes = dict({
             "help": "A global switch to enable all checksums for all protocols",
             "type": Attribute.BOOL,
             "value": False,
-            "flags": Attribute.DesignOnly,
+            "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
             "validation_function": validation.is_bool
         }),
     "simu_stop": dict({
@@ -931,7 +931,7 @@ attributes = dict({
         "name": "WaypointsLeft",
         "validation_function": validation.is_integer,
         "value": 0,
-        "flags": Attribute.DesignOnly,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
         "type": Attribute.INTEGER,
         "help": "The number of waypoints remaining."
     }),
@@ -1560,7 +1560,7 @@ attributes = dict({
         "name": "Library",
         "validation_function": validation.is_string,
         "value": "liblinux2.6.26.so",
-        "flags": Attribute.DesignOnly,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
         "type": Attribute.STRING,
         "help": "Set the linux library to be used to create the stack"
     }),
@@ -2165,8 +2165,7 @@ attributes = dict({
         "name": "ProtocolNumber",
         "validation_function": validation.is_integer,
         "value": 0,
- 
-        "flags": Attribute.ReadOnly,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
         "type": Attribute.INTEGER,
         "help": "The Ipv4 protocol number."
      }),
@@ -2181,9 +2180,7 @@ attributes = dict({
         "name": "Velocity",
         "validation_function": validation.is_string,
         "value": "0:0:0", 
- 
-        "flags": Attribute.DesignOnly,
- 
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
         "type": Attribute.STRING,
         "help": "The current velocity of the mobility model."
      }),
@@ -2191,9 +2188,7 @@ attributes = dict({
         "name": "StartTime",
         "validation_function": validation.is_string,
         "value": "0ns", 
- 
-        "flags": Attribute.DesignOnly,
- 
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
         "type": Attribute.STRING,
         "help": "Time at which the application will start"
      }),
@@ -2415,7 +2410,7 @@ attributes = dict({
         "name": "Standard",
         "validation_function": validation.is_string,
         "value": "WIFI_PHY_STANDARD_80211a",
-        "flags": Attribute.DesignOnly | Attribute.HasNoDefaultValue,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable | Attribute.NoDefaultValue,
         "type": Attribute.ENUM,
         "allowed": wifi_standards.keys(),
         "help": "Wifi PHY standard"
@@ -2424,7 +2419,7 @@ attributes = dict({
         "name": "LinuxSocketAddress",
         "validation_function": None,
         "value": "",
-        "flags": Attribute.Invisible,
+        "flags": Attribute.DesignInvisible | Attribute.ExecInvisible | Attribute.ExecReadOnly | Attribute.ExecImmutable,
         "type": Attribute.STRING,
         "help": "Socket address assigned to the Linux socket created to recive file descriptor"
     }),
@@ -2432,7 +2427,7 @@ attributes = dict({
         "name": "SrcAddress",
         "validation_function": validation.is_string, # TODO:! Address + Netref
         "value": "",
-        "flags": Attribute.DesignOnly,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
         "type": Attribute.STRING,
         "help": "The source ip address for the IpcsClassifierRecord"
     }),
@@ -2440,7 +2435,7 @@ attributes = dict({
         "name": "SrcMask",
         "validation_function": validation.is_string, # TODO:! NetworkMask
         "value": "",
-        "flags": Attribute.DesignOnly,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
         "type": Attribute.STRING,
         "help": "The mask to apply on the source ip address for the IpcsClassifierRecord"
     }),
@@ -2448,7 +2443,7 @@ attributes = dict({
         "name": "DstAddress",
         "validation_function": validation.is_string, # TODO:! Address + Netref
         "value": "",
-        "flags": Attribute.DesignOnly,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
         "type": Attribute.STRING,
         "help": "The destination ip address for the IpcsClassifierRecord"
     }),
@@ -2456,7 +2451,7 @@ attributes = dict({
         "name": "DstMask",
         "validation_function": validation.is_string, # TODO:! NetworkMask
         "value": "",
-        "flags": Attribute.DesignOnly,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
         "type": Attribute.STRING,
         "help": "The mask to apply on the destination ip address for the IpcsClassifierRecord"
     }),
@@ -2464,7 +2459,7 @@ attributes = dict({
         "name": "SrcPortLow",
         "validation_function": validation.is_integer,
         "value": 0,
-        "flags": Attribute.DesignOnly,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
         "type": Attribute.INTEGER,
         "help": "The lower boundary of the source port range for the IpcsClassifierRecord"
     }),
@@ -2472,7 +2467,7 @@ attributes = dict({
         "name": "SrcPortHigh",
         "validation_function": validation.is_integer,
         "value": 65000,
-        "flags": Attribute.DesignOnly,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
         "type": Attribute.INTEGER,
         "help": "The higher boundary of the source port range for the IpcsClassifierRecord"
     }),
@@ -2480,7 +2475,7 @@ attributes = dict({
         "name": "DstPortLow",
         "validation_function": validation.is_integer,
         "value": 0,
-        "flags": Attribute.DesignOnly,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
         "type": Attribute.INTEGER,
         "help": "The lower boundary of the destination port range for the IpcsClassifierRecord"
     }),
@@ -2488,7 +2483,7 @@ attributes = dict({
         "name": "DstPortHigh",
         "validation_function": validation.is_integer,
         "value": 65000,
-        "flags": Attribute.DesignOnly,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
         "type": Attribute.INTEGER,
         "help": "The higher boundary of the destination port range for the IpcsClassifierRecord"
     }),
@@ -2497,7 +2492,7 @@ attributes = dict({
         "validation_function": validation.is_string,
         "value": "UdpL4Protocol",
         "allowed": l4_protocols.keys(),
-        "flags": Attribute.DesignOnly,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
         "type": Attribute.ENUM,
         "help": "The L4 protocol for the IpcsClassifierRecord"
     }),
@@ -2505,7 +2500,7 @@ attributes = dict({
         "name": "Priority",
         "validation_function": validation.is_integer,
         "value": 1,
-        "flags": Attribute.DesignOnly,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
         "type": Attribute.INTEGER,
         "help": "The priority of the IpcsClassifierRecord"
     }),
@@ -2514,7 +2509,7 @@ attributes = dict({
         "validation_function": validation.is_string,
         "value": "SF_DIRECTION_UP",
         "allowed": service_flow_direction.keys(),
-        "flags": Attribute.DesignOnly,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
         "type": Attribute.ENUM,
         "help": "Service flow direction as described by the IEEE-802.16 standard"
     }),
@@ -2523,7 +2518,7 @@ attributes = dict({
         "validation_function": validation.is_string,
         "value": "SF_TYPE_RTPS",
         "allowed": service_flow_scheduling_type.keys(),
-        "flags": Attribute.DesignOnly,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
         "type": Attribute.ENUM,
         "help": "Service flow scheduling type",
     }),
@@ -2531,7 +2526,7 @@ attributes = dict({
         "name": "WaypointList",
         "validation_function": validation.is_string, # TODO: SPECIAL VALIDATION FUNC
         "value": "",
-        "flags": Attribute.DesignOnly,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
         "type": Attribute.STRING,
         "help": "Comma separated list of waypoints in format t:x:y:z. Ex: 0s:0:0:0, 1s:1:0:0"
     }),

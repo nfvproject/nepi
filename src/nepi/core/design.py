@@ -114,14 +114,14 @@ class Address(AttributesMap):
         self.add_attribute(name = "Address",
                 help = "Address number", 
                 type = Attribute.STRING,
-                flags = Attribute.HasNoDefaultValue,
+                flags = Attribute.NoDefaultValue,
                 validation_function = validation.is_ip_address)
         self.add_attribute(name = "NetPrefix",
                 help = "Network prefix for the address", 
                 type = Attribute.INTEGER, 
                 range = (0, 128),
                 value = 24,
-                flags = Attribute.HasNoDefaultValue,
+                flags = Attribute.NoDefaultValue,
                 validation_function = validation.is_integer)
         self.add_attribute(name = "Broadcast",
                 help = "Broadcast address", 
@@ -140,18 +140,18 @@ class Route(AttributesMap):
                 type = Attribute.INTEGER, 
                 range = (0, 128),
                 value = 24,
-                flags = Attribute.HasNoDefaultValue,
+                flags = Attribute.NoDefaultValue,
                 validation_function = validation.is_integer)
         self.add_attribute(name = "NextHop",
                 help = "Address for the next hop", 
                 type = Attribute.STRING,
-                flags = Attribute.HasNoDefaultValue,
+                flags = Attribute.NoDefaultValue,
                 validation_function = validation.is_ref_address)
         self.add_attribute(name = "Metric",
                 help = "Routing metric", 
                 type = Attribute.INTEGER,
                 value = 0,
-                flags = Attribute.HasNoDefaultValue,
+                flags = Attribute.NoDefaultValue,
                 validation_function = validation.is_integer)
 
 class Box(AttributesMap, Taggable):
@@ -187,7 +187,7 @@ class Box(AttributesMap, Taggable):
                     attr.range, attr.allowed, attr.flags, 
                     attr.validation_function, attr.category)
         for attr in factory.attributes:
-            if attr.modified or attr.invisible:
+            if attr.modified or attr.is_metadata:
                 self._factory_attributes[attr.name] = attr.value
 
     def __str__(self):

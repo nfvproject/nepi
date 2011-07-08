@@ -54,16 +54,14 @@ def _get_ipv4_protocol_guid(testbed_instance, node_guid):
             ipv4_guid = proto_guid
             break
     if not ipv4_guid:
-        raise RuntimeError("No Ipv4L3Protocol associated to node %d. \
-                can't add Ipv4 addresses" % node_guid)
+        raise RuntimeError("No Ipv4L3Protocol associated to node %d. Can't add Ipv4 addresses" % node_guid)
     return ipv4_guid
 
 def _get_node_guid(testbed_instance, guid):
     # search for the node asociated with the device
     node_guids = testbed_instance.get_connected(guid, "node", "devs")
     if len(node_guids) == 0:
-        raise RuntimeError("Can't instantiate interface %d outside netns \
-                node" % guid)
+        raise RuntimeError("Can't instantiate interface %d outside node" % guid)
     node_guid = node_guids[0]
     return node_guid
 

@@ -119,7 +119,9 @@ attributes = dict({
                 "help": "Attribute that indicates the maximum number of addresses for an interface",
                 "type": Attribute.INTEGER,
                 "value": 3,
-                "flags": Attribute.Invisible,
+                "flags" : Attribute.DesignReadOnly |\
+                    Attribute.ExecInvisible |\
+                    Attribute.Metadata,
                 "validation_function": validation.is_integer
        })
     })

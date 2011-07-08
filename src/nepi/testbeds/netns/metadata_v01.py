@@ -362,14 +362,14 @@ attributes = dict({
                 "help": "Forward x11 from main namespace to the node",
                 "type": Attribute.BOOL, 
                 "value": False,
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_bool
             }),
     "lladdr": dict({      
                 "name": "lladdr", 
                 "help": "Mac address", 
                 "type": Attribute.STRING,
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_mac_address
             }),
     "up": dict({
@@ -383,7 +383,7 @@ attributes = dict({
                 "name": "name",
                 "help": "Device name",
                 "type": Attribute.STRING,
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_string
             }),
     "mtu":  dict({
@@ -416,21 +416,21 @@ attributes = dict({
                 "name": "command",
                 "help": "Command line string",
                 "type": Attribute.STRING,
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_string
             }),
     "user": dict({
                 "name": "user",
                 "help": "System user",
                 "type": Attribute.STRING,
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_string
             }),
     "stdin": dict({
                 "name": "stdin",
                 "help": "Standard input",
                 "type": Attribute.STRING,
-                "flags": Attribute.DesignOnly,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_string
             }),
     })
