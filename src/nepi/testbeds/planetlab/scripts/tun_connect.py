@@ -100,8 +100,13 @@ parser.add_option(
     "-N", "--no-capture", dest="no_capture", 
     action = "store_true",
     default = False,
-    help = "If specified, packets won't be logged to standard error "
-           "(default is to log them to standard error). " )
+    help = "If specified, packets won't be logged to standard output "
+           "(default is to log them to standard output). " )
+parser.add_option(
+    "-c", "--pcap-capture", dest="pcap_capture", metavar="FILE",
+    default = None,
+    help = "If specified, packets won't be logged to standard output, "
+           "but dumped to a pcap-formatted trace in the specified file. " )
 
 (options, remaining_args) = parser.parse_args(sys.argv[1:])
 
@@ -354,8 +359,7 @@ def tun_fwd(tun, remote):
         cipher_key = options.cipher_key,
         udp = options.udp,
         TERMINATE = TERMINATE,
-        stderr = open("/dev/null","w") if options.no_capture 
-                 else sys.stderr 
+        stderr = open("/dev/null","w")
     )
 
 
@@ -444,12 +448,6 @@ try:
             sock.connect(options.pass_fd)
         passfd.sendfd(sock, tun.fileno(), '0')
         
-        # Launch a tcpdump subprocess, to capture and dump packets,
-        # we will not be able to capture them ourselves.
-        # Make sure to catch sigterm and kill the tcpdump as well
-        tcpdump = subprocess.Popen(
-            ["tcpdump","-l","-n","-i",tun_name])
-        
         # just wait forever
         def tun_fwd(tun, remote):
             while not TERMINATE:
@@ -514,6 +512,13 @@ try:
             rsock,raddr = lsock.accept()
         remote = os.fdopen(rsock.fileno(), 'r+b', 0)
 
+    if not options.no_capture:
+        # Launch a tcpdump subprocess, to capture and dump packets.
+        # Make sure to catch sigterm and kill the tcpdump as well
+        tcpdump = subprocess.Popen(
+            ["tcpdump","-l","-n","-i",tun_name, "-s", "4096"]
+            + ["-w",options.pcap_capture,"-U"] * bool(options.pcap_capture) )
+    
     print >>sys.stderr, "Connected"
 
     tun_fwd(tun, remote)
