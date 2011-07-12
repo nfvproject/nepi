@@ -165,7 +165,7 @@ class TestbedController(object):
         """
         raise NotImplementedError
 
-    def get_attribute_list(self, guid, filter_flags = None):
+    def get_attribute_list(self, guid, filter_flags = None, exclude = False):
         raise NotImplementedError
 
     def get_factory_id(self, guid):
