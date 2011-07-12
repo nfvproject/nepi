@@ -333,7 +333,12 @@ def preconfigure_tuniface(testbed_instance, guid):
 
     # Set enabled traces
     traces = testbed_instance._get_traces(guid)
-    element.capture = 'packets' in traces
+    for capmode in ('pcap', 'packets'):
+        if capmode in traces:
+            element.capture = capmode
+            break
+    else:
+        element.capture = False
     
     # Do some validations
     element.validate()
@@ -934,6 +939,10 @@ traces = dict({
                 "name": "packets",
                 "help": "Detailled log of all packets going through the interface",
               }),
+    "pcap": dict({
+                "name": "pcap",
+                "help": "PCAP trace of all packets going through the interface",
+              }),
     })
 
 create_order = [ INTERNET, NODE, NODEIFACE, TAPIFACE, TUNIFACE, NETPIPE, NEPIDEPENDENCY, NS3DEPENDENCY, DEPENDENCY, APPLICATION ]
@@ -989,7 +998,7 @@ factories_info = dict({
                 "txqueuelen",
                 "tun_proto", "tun_addr", "tun_port", "tun_key"
             ],
-            "traces": ["packets"],
+            "traces": ["packets", "pcap"],
             "connector_types": ["node","udp","tcp","fd->"],
             "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
         }),
@@ -1005,7 +1014,7 @@ factories_info = dict({
                 "txqueuelen",
                 "tun_proto", "tun_addr", "tun_port", "tun_key"
             ],
-            "traces": ["packets"],
+            "traces": ["packets", "pcap"],
             "connector_types": ["node","udp","tcp","fd->"],
             "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
         }),

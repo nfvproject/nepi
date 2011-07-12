@@ -196,6 +196,8 @@ class TunProtoBase(object):
             args.extend(("-Q",str(local_txq)))
         if not local_cap:
             args.append("-N")
+        elif local_cap == 'pcap':
+            args.extend(('-c','pcap'))
         if extra_args:
             args.extend(map(str,extra_args))
         if not listen and check_proto != 'fd':
@@ -404,14 +406,24 @@ class TunProtoBase(object):
             time.sleep(interval)
             interval = min(30.0, interval * 1.1)
     
+    _TRACEMAP = {
+        # tracename : (remotename, localname)
+        'packets' : ('capture','capture'),
+        'pcap' : ('pcap','capture.pcap'),
+    }
+    
     def remote_trace_path(self, whichtrace):
-        if whichtrace != 'packets':
+        tracemap = self._TRACEMAP
+        
+        if whichtrace not in tracemap:
             return None
         
-        return os.path.join(self.home_path, 'capture')
+        return os.path.join(self.home_path, tracemap[whichtrace][1])
         
     def sync_trace(self, local_dir, whichtrace):
-        if whichtrace != 'packets':
+        tracemap = self._TRACEMAP
+        
+        if whichtrace not in tracemap:
             return None
         
         local = self.local()
@@ -419,7 +431,7 @@ class TunProtoBase(object):
         if not local:
             return None
         
-        local_path = os.path.join(local_dir, 'capture')
+        local_path = os.path.join(local_dir, tracemap[whichtrace][1])
         
         # create parent local folders
         if os.path.dirname(local_path):
@@ -434,7 +446,7 @@ class TunProtoBase(object):
         # sync files
         (out,err),proc = server.popen_scp(
             '%s@%s:%s' % (local.node.slicename, local.node.hostname, 
-                os.path.join(self.home_path, 'capture')),
+                os.path.join(self.home_path, tracemap[whichtrace][0])),
             local_path,
             port = None,
             agent = None,
