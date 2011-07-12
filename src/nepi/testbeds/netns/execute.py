@@ -102,7 +102,7 @@ class TestbedController(testbed_impl.TestbedController):
         element = self._elements.get(guid)
         try:
             return getattr(element, name)
-        except KeyError, AttributeError:
+        except (KeyError, AttributeError):
             return value
 
     def action(self, time, guid, action):

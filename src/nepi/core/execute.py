@@ -198,7 +198,8 @@ class TestbedController(object):
 
 class ExperimentController(object):
     def __init__(self, experiment_xml, root_dir):
-        self._experiment_xml = experiment_xml
+        self._experiment_design_xml = experiment_xml
+        self._experiment_execute_xml = None
         self._testbeds = dict()
         self._deployment_config = dict()
         self._netrefs = collections.defaultdict(set)
@@ -211,8 +212,12 @@ class ExperimentController(object):
         self.persist_experiment_xml()
 
     @property
-    def experiment_xml(self):
-        return self._experiment_xml
+    def experiment_design_xml(self):
+        return self._experiment_design_xml
+
+    @property
+    def experiment_execute_xml(self):
+        return self._experiment_execute_xml
 
     @property
     def guids(self):
@@ -224,9 +229,15 @@ class ExperimentController(object):
         return guids
 
     def persist_experiment_xml(self):
-        xml_path = os.path.join(self._root_dir, "experiment.xml")
+        xml_path = os.path.join(self._root_dir, "experiment-design.xml")
         f = open(xml_path, "w")
-        f.write(self._experiment_xml)
+        f.write(self._experiment_design_xml)
+        f.close()
+
+    def persist_execute_xml(self):
+        xml_path = os.path.join(self._root_dir, "experiment-execute.xml")
+        f = open(xml_path, "w")
+        f.write(self._experiment_execute_xml)
         f.close()
 
     def trace(self, guid, trace_id, attribute='value'):
@@ -267,7 +278,7 @@ class ExperimentController(object):
 
     def start(self):
         parser = XmlExperimentParser()
-        data = parser.from_xml_to_data(self._experiment_xml)
+        data = parser.from_xml_to_data(self._experiment_design_xml)
 
         # instantiate testbed controllers
         self._init_testbed_controllers(data)
@@ -347,6 +358,10 @@ class ExperimentController(object):
                         for testbed in self._testbeds.itervalues()])
 
         self._clear_caches()
+        
+        # update execution xml with execution-specific values
+        self._update_execute_xml()
+        self.persist_execute_xml()
 
         # start experiment (parallel start on all testbeds)
         self._parallel([testbed.start
@@ -415,6 +430,66 @@ class ExperimentController(object):
             ######## BUG ##########
             #BUG: If the next line is uncomented pyQt explodes when shutting down the experiment !!!!!!!!
             #traceback.print_exc(file=sys.stderr)
+
+    def _update_execute_xml(self):
+        # For all testbeds,
+        #   For all elements in testbed,
+        #       - gather immutable execute-readable attribuets lists
+        #         asynchronously
+        # Generate new design description from design xml
+        # (Wait for attributes lists - implicit syncpoint)
+        # For all testbeds,
+        #   For all elements in testbed,
+        #       - gather all immutable execute-readable attribute
+        #         values, asynchronously
+        # (Wait for attribute values - implicit syncpoint)
+        # For all testbeds,
+        #   For all elements in testbed,
+        #       - inject non-None values into new design
+        # Generate execute xml from new design
+
+        def undefer(deferred):
+            if hasattr(deferred, '_get'):
+                return deferred._get()
+            else:
+                return deferred
+        
+        attribute_lists = dict(
+            (testbed_guid, collections.defaultdict(dict))
+            for testbed_guid in self._testbeds
+        )
+        
+        for testbed_guid, testbed in self._testbeds.iteritems():
+            guids = self._guids_in_testbed(testbed_guid)
+            for guid in guids:
+                attribute_lists[testbed_guid][guid] = \
+                    testbed.get_attribute_list_deferred(guid, Attribute.ExecImmutable)
+        
+        parser = XmlExperimentParser()
+        execute_data = parser.from_xml_to_data(self._experiment_design_xml)
+
+        attribute_values = dict(
+            (testbed_guid, collections.defaultdict(dict))
+            for testbed_guid in self._testbeds
+        )
+        
+        for testbed_guid, testbed_attribute_lists in attribute_lists.iteritems():
+            testbed = self._testbeds[testbed_guid]
+            for guid, attribute_list in testbed_attribute_lists.iteritems():
+                attribute_list = undefer(attribute_list)
+                attribute_values[testbed_guid][guid] = dict(
+                    (attribute, testbed.get_deferred(guid, attribute))
+                    for attribute in attribute_list
+                )
+        
+        for testbed_guid, testbed_attribute_values in attribute_values.iteritems():
+            for guid, attribute_values in testbed_attribute_values.iteritems():
+                for attribute, value in attribute_values.iteritems():
+                    value = undefer(value)
+                    if value is not None:
+                        execute_data.add_attribute_data(guid, attribute, value)
+        
+        self._experiment_execute_xml = parser.to_xml(data=execute_data)
 
     def stop(self):
        for testbed in self._testbeds.values():

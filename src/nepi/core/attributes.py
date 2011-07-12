@@ -40,7 +40,7 @@ class Attribute(object):
     # Attribute has no default value in the testbed
     NoDefaultValue   = 0x20
     # Metadata attribute (is not directly reflected by a real object attribute)
-    Metadata         = 0x30
+    Metadata         = 0x40
 
     def __init__(self, name, help, type, value = None, range = None,
         allowed = None, flags = None, validation_function = None, 
@@ -173,7 +173,7 @@ class AttributesMap(object):
         if filter_flags != None:
             def filter_attrs(attr_data):
                 (attr_id, attr) = attr_data
-                return not attr.has_flag(filter_flags)
+                return attr.has_flag(filter_flags)
             attributes = dict(filter(filter_attrs, attributes.iteritems()))
         return attributes.keys()
 
