@@ -650,10 +650,10 @@ class TestbedControllerServer(BaseServer):
         return self._testbed.status(guid)
 
     @Marshalling.handles(GET_ATTRIBUTE_LIST)
-    @Marshalling.args(int, int)
+    @Marshalling.args(int, int, Marshalling.bool)
     @Marshalling.retval( Marshalling.pickled_data )
-    def get_attribute_list(self, guid, filter_flags = None):
-        return self._testbed.get_attribute_list(guid, filter_flags)
+    def get_attribute_list(self, guid, filter_flags = None, exclude = False):
+        return self._testbed.get_attribute_list(guid, filter_flags, exclude)
 
     @Marshalling.handles(GET_FACTORY_ID)
     @Marshalling.args(int)

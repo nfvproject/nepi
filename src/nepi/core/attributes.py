@@ -168,12 +168,22 @@ class AttributesMap(object):
     def attributes(self):
         return self._attributes.values()
 
-    def get_attribute_list(self, filter_flags = None):
+    def get_attribute_list(self, filter_flags = None, exclude = False):
+        """
+        Returns the list of attributes.
+        
+        Params:
+            filter_flags: if given, only attributes with (all) the specified
+                flags will be returned.
+            
+            exclude: if True, only attributes without (any of) the specified
+                flags will be returned.
+        """
         attributes = self._attributes
         if filter_flags != None:
             def filter_attrs(attr_data):
                 (attr_id, attr) = attr_data
-                return attr.has_flag(filter_flags)
+                return attr.has_flag(filter_flags) == (not exclude)
             attributes = dict(filter(filter_attrs, attributes.iteritems()))
         return attributes.keys()
 

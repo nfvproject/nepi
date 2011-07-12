@@ -374,10 +374,10 @@ class TestbedController(execute.TestbedController):
         
         return addresses[index][attribute_index]
 
-    def get_attribute_list(self, guid, filter_flags = None):
+    def get_attribute_list(self, guid, filter_flags = None, exclude = False):
         factory = self._get_factory(guid)
         attribute_list = list()
-        return factory.box_attributes.get_attribute_list(filter_flags)
+        return factory.box_attributes.get_attribute_list(filter_flags, exclude)
 
     def get_factory_id(self, guid):
         factory = self._get_factory(guid)
