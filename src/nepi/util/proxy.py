@@ -58,11 +58,13 @@ GET_FACTORY_ID = 38
 GET_TESTBED_ID = 39
 GET_TESTBED_VERSION = 40
 TRACES_INFO = 41
+EXEC_XML = 42
 
 instruction_text = dict({
     OK:     "OK",
     ERROR:  "ERROR",
     XML:    "XML",
+    EXEC_XML:    "EXEC_XML",
     TRACE:  "TRACE",
     FINISHED:   "FINISHED",
     START:  "START",
@@ -679,8 +681,14 @@ class ExperimentControllerServer(BaseServer):
     @Marshalling.handles(XML)
     @Marshalling.args()
     @Marshalling.retval()
-    def experiment_xml(self):
-        return self._experiment.experiment_xml
+    def experiment_design_xml(self):
+        return self._experiment.experiment_design_xml
+        
+    @Marshalling.handles(EXEC_XML)
+    @Marshalling.args()
+    @Marshalling.retval()
+    def experiment_execute_xml(self):
+        return self._experiment.experiment_execute_xml
         
     @Marshalling.handles(TRACE)
     @Marshalling.args(int, str, Marshalling.base64_data)

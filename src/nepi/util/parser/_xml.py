@@ -8,8 +8,11 @@ from xml.dom import minidom
 import sys
 
 class XmlExperimentParser(ExperimentParser):
-    def to_xml(self, experiment_description):
-        data = self.to_data(experiment_description)
+    def to_xml(self, experiment_description=None, data=None):
+        if experiment_description is not None:
+            data = self.to_data(experiment_description)
+        elif data is None:
+            raise TypeError, "XmlExperimentParser.to_xml needs either 'experiment_description' or 'data' arguments"
         doc = minidom.Document()        
         exp_tag = doc.createElement("experiment")
         testbeds_tag = doc.createElement("testbeds")
