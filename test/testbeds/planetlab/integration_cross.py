@@ -16,7 +16,6 @@ import re
 
 class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
     testbed_id = "planetlab"
-    testbed_version = "01"
     
     slicename1 = "inria_nepi"
     plchost1 = "nepiplc.pl.sophia.inria.fr"
@@ -43,7 +42,6 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
 
     def make_experiment_desc(self):
         testbed_id = self.testbed_id
-        testbed_version = self.testbed_version
         
         slicename1 = self.slicename1
         plchost1 = self.plchost1
@@ -57,7 +55,7 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
         pl_user, pl_pwd = test_util.pl_auth()
 
         exp_desc = ExperimentDescription()
-        pl_provider = FactoriesProvider(testbed_id, testbed_version)
+        pl_provider = FactoriesProvider(testbed_id)
         pl_desc = exp_desc.add_testbed_description(pl_provider)
         pl_desc.set_attribute_value("homeDirectory", self.root_dir)
         pl_desc.set_attribute_value("slice", slicename1)
@@ -105,7 +103,6 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
 
     def make_ns_in_pl(self, pl, exp, node1, iface1, root):
         ns3_testbed_id = "ns3"
-        ns3_testbed_version = "3_9"
         
         # Add NS3 support in node1
         plnepi = pl.create("NepiDependency")
@@ -114,7 +111,7 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
         plns3.connector("node").connect(node1.connector("deps"))
 
         # Create NS3 testbed running in node1
-        ns3_provider = FactoriesProvider(ns3_testbed_id, ns3_testbed_version)
+        ns3_provider = FactoriesProvider(ns3_testbed_id)
         ns3_desc = exp.add_testbed_description(ns3_provider)
         ns3_desc.set_attribute_value("rootDirectory", root)
         ns3_desc.set_attribute_value("SimulatorImplementationType", "ns3::RealtimeSimulatorImpl")

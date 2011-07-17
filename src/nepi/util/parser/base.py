@@ -270,7 +270,10 @@ class ExperimentParser(object):
     def testbed_from_data(self, experiment_description, guid, data):
         from nepi.core.design import FactoriesProvider
         (testbed_id, testbed_version) = data.get_testbed_data(guid)
-        provider = FactoriesProvider(testbed_id, testbed_version)
+        provider = FactoriesProvider(testbed_id)
+        if provider.testbed_version != testbed_version:
+            raise RuntimeError("Bad testbed version on testbed %s. Asked for %s, got %s" % \
+                    (testbed_id, testbed_version, provider.testbed_version))
         experiment_description.add_testbed_description(provider, guid)
         testbed_description = experiment_description.testbed_description(guid)
         self.graphical_info_from_data(testbed_description, data)

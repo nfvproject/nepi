@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from constants import TESTBED_ID
+from constants import TESTBED_ID, TESTBED_VERSION
 from nepi.core import testbed_impl
 from nepi.util.constants import TIME_NOW
 import os
@@ -48,8 +48,8 @@ class TestbedController(testbed_impl.TestbedController):
             finally:
                 processcond.release()
     
-    def __init__(self, testbed_version):
-        super(TestbedController, self).__init__(TESTBED_ID, testbed_version)
+    def __init__(self):
+        super(TestbedController, self).__init__(TESTBED_ID, TESTBED_VERSION)
         self._netns = None
         self._home_directory = None
         self._traces = dict()

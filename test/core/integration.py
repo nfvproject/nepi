@@ -6,9 +6,9 @@ from nepi.util import proxy
 from nepi.util.constants import DeploymentConfiguration as DC
 import getpass
 import mock
-import mock.metadata_v01
+import mock.metadata
 import mock2
-import mock2.metadata_v01
+import mock2.metadata
 import os
 import shutil
 import sys
@@ -19,9 +19,9 @@ import unittest
 
 class ExecuteTestCase(unittest.TestCase):
     def setUp(self):
-        sys.modules["nepi.testbeds.mock.metadata_v01"] = mock.metadata_v01
+        sys.modules["nepi.testbeds.mock.metadata"] = mock.metadata
         sys.modules["nepi.testbeds.mock"] = mock
-        sys.modules["nepi.testbeds.mock2.metadata_v01"] = mock2.metadata_v01
+        sys.modules["nepi.testbeds.mock2.metadata"] = mock2.metadata
         sys.modules["nepi.testbeds.mock2"] = mock2
         self.root_dir = tempfile.mkdtemp()
 
@@ -33,8 +33,8 @@ class ExecuteTestCase(unittest.TestCase):
             time.sleep(0.1)
             shutil.rmtree(self.root_dir)
 
-    def make_testbed(self, exp_desc, testbed_id, testbed_version):
-        provider = FactoriesProvider(testbed_id, testbed_version)
+    def make_testbed(self, exp_desc, testbed_id):
+        provider = FactoriesProvider(testbed_id)
         desc = exp_desc.add_testbed_description(provider)
         desc.set_attribute_value("fake", True)
         node1 = desc.create("Node")
@@ -54,19 +54,17 @@ class ExecuteTestCase(unittest.TestCase):
 
     def make_test_experiment(self):
         exp_desc = ExperimentDescription()
-        testbed_version = "01"
         testbed_id = "mock"
-        return self.make_testbed(exp_desc, testbed_id, testbed_version)
+        return self.make_testbed(exp_desc, testbed_id)
 
     def make_cross_test_experiment(self):
         exp_desc = ExperimentDescription()
-        testbed_version = "01"
         testbed_id1 = "mock"
         testbed_id2 = "mock2"
         exp_desc, desc1, app1, node11, node12, iface11, iface12 = \
-                self.make_testbed(exp_desc, testbed_id1, testbed_version)
+                self.make_testbed(exp_desc, testbed_id1)
         exp_desc, desc2, app2, node21, node22, iface21, iface22 = \
-                 self.make_testbed(exp_desc, testbed_id2, testbed_version)
+                 self.make_testbed(exp_desc, testbed_id2)
         iface12.connector("cross").connect(iface21.connector("cross"))
 
         return exp_desc, desc1, desc2, iface12, iface21
@@ -103,7 +101,7 @@ class ExecuteTestCase(unittest.TestCase):
         self.assertTrue(fake_result.startswith(comp_result))
 
         self.assertEquals(controller.get_testbed_id(node1.guid), "mock")
-        self.assertEquals(controller.get_testbed_version(node1.guid), "01")
+        self.assertEquals(controller.get_testbed_version(node1.guid), "0.1")
         self.assertEquals(controller.get_factory_id(node1.guid), "Node")
 
         controller.stop()
@@ -129,7 +127,7 @@ class ExecuteTestCase(unittest.TestCase):
         self.assertTrue(fake_result.startswith(comp_result))
 
         self.assertEquals(controller.get_testbed_id(node1.guid), "mock")
-        self.assertEquals(controller.get_testbed_version(node1.guid), "01")
+        self.assertEquals(controller.get_testbed_version(node1.guid), "0.1")
         self.assertEquals(controller.get_factory_id(node1.guid), "Node")
 
         controller.stop()
@@ -157,7 +155,7 @@ class ExecuteTestCase(unittest.TestCase):
         self.assertTrue(fake_result.startswith(comp_result))
 
         self.assertEquals(controller.get_testbed_id(node1.guid), "mock")
-        self.assertEquals(controller.get_testbed_version(node1.guid), "01")
+        self.assertEquals(controller.get_testbed_version(node1.guid), "0.1")
         self.assertEquals(controller.get_factory_id(node1.guid), "Node")
 
         controller.stop()
@@ -190,7 +188,7 @@ class ExecuteTestCase(unittest.TestCase):
         self.assertTrue(fake_result.startswith(comp_result))
 
         self.assertEquals(controller.get_testbed_id(node1.guid), "mock")
-        self.assertEquals(controller.get_testbed_version(node1.guid), "01")
+        self.assertEquals(controller.get_testbed_version(node1.guid), "0.1")
         self.assertEquals(controller.get_factory_id(node1.guid), "Node")
 
         traces_info = controller.traces_info()
@@ -237,7 +235,7 @@ class ExecuteTestCase(unittest.TestCase):
         self.assertTrue(fake_result.startswith(comp_result))
 
         self.assertEquals(controller.get_testbed_id(node1.guid), "mock")
-        self.assertEquals(controller.get_testbed_version(node1.guid), "01")
+        self.assertEquals(controller.get_testbed_version(node1.guid), "0.1")
         self.assertEquals(controller.get_factory_id(node1.guid), "Node")
 
         # controller dies
@@ -293,7 +291,7 @@ class ExecuteTestCase(unittest.TestCase):
         addr.set_attribute_value("Address", "10.0.0.2")
 
         desc2 = exp_desc.add_testbed_description(
-            FactoriesProvider("mock2", "01") )
+            FactoriesProvider("mock2") )
         desc2.set_attribute_value(DC.DEPLOYMENT_HOST, "{#[some].addr[0].[Address]#}")
         # DC.DEPLOYMENT_HOST should be ignored if DC.DEPLOYMENT_CONNECTION is not set
         # But it should be resolved anyway

@@ -24,7 +24,6 @@ def pl_auth():
 
 class Roads09Ns3PLExample(object):
     testbed_id = "planetlab"
-    testbed_version = "01"
     slicename = "inria_nepi"
     plchost = "nepiplc.pl.sophia.inria.fr"
     
@@ -56,7 +55,6 @@ class Roads09Ns3PLExample(object):
 
     def make_experiment_desc(self):
         testbed_id = self.testbed_id
-        testbed_version = self.testbed_version
         slicename = self.slicename
         plchost = self.plchost
         pl_ssh_key = os.environ.get(
@@ -65,7 +63,7 @@ class Roads09Ns3PLExample(object):
         pl_user, pl_pwd = pl_auth()
 
         exp_desc = ExperimentDescription()
-        pl_provider = FactoriesProvider(testbed_id, testbed_version)
+        pl_provider = FactoriesProvider(testbed_id)
         pl_desc = exp_desc.add_testbed_description(pl_provider)
         pl_desc.set_attribute_value("homeDirectory", self.root_dir)
         pl_desc.set_attribute_value("slice", slicename)
@@ -78,7 +76,6 @@ class Roads09Ns3PLExample(object):
 
     def make_ns_in_pl(self, pl, exp, node1, iface1, root):
         ns3_testbed_id = "ns3"
-        ns3_testbed_version = "3_9_RC3"
         
         # Add NS3 support in node1
         plnepi = pl.create("NepiDependency")
@@ -87,7 +84,7 @@ class Roads09Ns3PLExample(object):
         plns3.connector("node").connect(node1.connector("deps"))
 
         # Create NS3 testbed running in node1
-        ns3_provider = FactoriesProvider(ns3_testbed_id, ns3_testbed_version)
+        ns3_provider = FactoriesProvider(ns3_testbed_id)
         ns3_desc = exp.add_testbed_description(ns3_provider)
         ns3_desc.set_attribute_value("rootDirectory", root)
         ns3_desc.set_attribute_value("SimulatorImplementationType", "ns3::RealtimeSimulatorImpl")

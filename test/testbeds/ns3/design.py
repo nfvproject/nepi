@@ -11,9 +11,8 @@ import uuid
 class Ns3DesignTestCase(unittest.TestCase):
     def test_design_if(self):
         exp_desc = ExperimentDescription()
-        testbed_version = "3_9"
         testbed_id = "ns3"
-        provider = FactoriesProvider(testbed_id, testbed_version)
+        provider = FactoriesProvider(testbed_id)
         tstbd_desc = exp_desc.add_testbed_description(provider)
 
         node1 = tstbd_desc.create("ns3::Node")

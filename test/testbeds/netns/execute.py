@@ -18,8 +18,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
     @test_util.skipUnless(os.getuid() == 0, "Test requires root privileges")
     def test_run_ping_if(self):
         user = getpass.getuser()
-        testbed_version = "01"
-        instance = netns.TestbedController(testbed_version)
+        instance = netns.TestbedController()
         instance.defer_configure("homeDirectory", self.root_dir)
         instance.defer_create(2, "Node")
         instance.defer_create(3, "Node")
@@ -64,8 +63,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
     @test_util.skipUnless(os.getuid() == 0, "Test requires root privileges")
     def test_run_ping_p2pif(self):
         user = getpass.getuser()
-        testbed_version = "01"
-        instance = netns.TestbedController(testbed_version)
+        instance = netns.TestbedController()
         instance.defer_configure("homeDirectory", self.root_dir)
         instance.defer_create(2, "Node")
         instance.defer_create(3, "Node")
@@ -107,8 +105,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
     @test_util.skipUnless(os.getuid() == 0, "Test requires root privileges")
     def test_run_ping_routing(self):
         user = getpass.getuser()
-        testbed_version = "01"
-        instance = netns.TestbedController(testbed_version)
+        instance = netns.TestbedController()
         instance.defer_configure("homeDirectory", self.root_dir)
         instance.defer_create(2, "Node")
         instance.defer_create(3, "Node")
@@ -169,8 +166,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
     @test_util.skipUnless(os.getuid() == 0, "Test requires root privileges")
     def test_node_pcap_trace(self):
         user = getpass.getuser()
-        testbed_version = "01"
-        instance = netns.TestbedController(testbed_version)
+        instance = netns.TestbedController()
         instance.defer_configure("homeDirectory", self.root_dir)
         instance.defer_create(2, "Node")
         instance.defer_add_trace(2, "pcap")

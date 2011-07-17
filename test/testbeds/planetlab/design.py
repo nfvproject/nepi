@@ -7,9 +7,8 @@ import unittest
 class PlanetlabDesignTestCase(unittest.TestCase):
     def make_test_design(self):
         exp_desc = ExperimentDescription()
-        testbed_version = "01"
         testbed_id = "planetlab"
-        provider = FactoriesProvider(testbed_id, testbed_version)
+        provider = FactoriesProvider(testbed_id)
         tstbd_desc = exp_desc.add_testbed_description(provider)
         tstbd_desc.set_attribute_value("slice", "inria_nepi")
         node1 = tstbd_desc.create("Node")

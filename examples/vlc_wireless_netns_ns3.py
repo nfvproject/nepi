@@ -119,9 +119,8 @@ class VlcWirelessNetnsNs3Example(object):
         exp_desc = ExperimentDescription()
 
         ## NS3 Testbed instance description ##
-        testbed_version = "3_9"
         testbed_id = "ns3"
-        ns3_provider = FactoriesProvider(testbed_id, testbed_version)
+        ns3_provider = FactoriesProvider(testbed_id)
         ns3_desc = exp_desc.add_testbed_description(ns3_provider)
         ns3_desc.set_attribute_value("homeDirectory", self.root_dir)
         ns3_desc.set_attribute_value("SimulatorImplementationType", "ns3::RealtimeSimulatorImpl")
@@ -147,9 +146,8 @@ class VlcWirelessNetnsNs3Example(object):
         phy2.connector("chan").connect(wifichan.connector("phys"))
 
         ## NETNS testbed description 1 ##
-        testbed_version = "01"
         testbed_id = "netns"
-        netns_provider = FactoriesProvider(testbed_id, testbed_version)
+        netns_provider = FactoriesProvider(testbed_id)
         netns_desc1 = exp_desc.add_testbed_description(netns_provider)
         netns_desc1.set_attribute_value("homeDirectory", self.root_dir)
         #netns_desc1.set_attribute_value("enableDebug", True)

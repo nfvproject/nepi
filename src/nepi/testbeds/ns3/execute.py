@@ -3,7 +3,7 @@
 
 from nepi.core import testbed_impl
 from nepi.core.attributes import Attribute
-from constants import TESTBED_ID
+from constants import TESTBED_ID, TESTBED_VERSION
 from nepi.util.constants import TIME_NOW, TestbedStatus as TS
 import os
 import sys
@@ -13,19 +13,34 @@ import socket
 import weakref
 
 def init():
-        if 'ns3' in sys.modules:
-            return
+    if 'ns3' in sys.modules:
+        return
 
-        import ctypes
-        import imp
+    import ctypes
+    import imp
 
-	bindings = os.environ["NEPI_NS3BINDINGS"] \
+    bindings = os.environ["NEPI_NS3BINDINGS"] \
 		if "NEPI_NS3BINDINGS" in os.environ else None
-	libfile = os.environ["NEPI_NS3LIBRARY"] \
+    libfile = os.environ["NEPI_NS3LIBRARY"] \
 		if "NEPI_NS3LIBRARY" in os.environ else None
 
-	if libfile:
-	    ctypes.CDLL(libfile, ctypes.RTLD_GLOBAL)
+    if libfile:
+        ctypes.CDLL(libfile, ctypes.RTLD_GLOBAL)
+        """
+        files = os.listdir(build_path)
+        regex = re.compile("(.*\.so)$")
+        libs = [m.group(1) for filename in files for m in [regex.search(filename)] if m]
+        i = 0
+        while len(libs) > 0:
+            i += 1
+            lib = libs[ i % len(libs)]
+            libfile = os.path.join(build_path, lib)
+            try:
+                ctypes.CDLL(libfile, ctypes.RTLD_GLOBAL)
+                libs.remove(lib)
+            except:
+                pass
+        """
 
 	path = [ os.path.dirname(__file__) ] + sys.path
 	if bindings:
@@ -57,8 +72,8 @@ class TestbedController(testbed_impl.TestbedController):
     
     LOCAL_TYPES = tuple(LOCAL_FACTORIES.values())
 
-    def __init__(self, testbed_version):
-        super(TestbedController, self).__init__(TESTBED_ID, testbed_version)
+    def __init__(self):
+        super(TestbedController, self).__init__(TESTBED_ID, TESTBED_VERSION)
         self._ns3 = None
         self._home_directory = None
         self._traces = dict()

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from constants import TESTBED_ID
+from constants import TESTBED_ID, TESTBED_VERSION
 from nepi.core import metadata
 from nepi.core.attributes import Attribute
 from nepi.util import validation, tags
@@ -192,7 +192,7 @@ testbed_attributes = dict({
             }),
     })
 
-class VersionedMetadataInfo(metadata.VersionedMetadataInfo):
+class MetadataInfo(metadata.MetadataInfo):
     @property
     def connector_types(self):
         return connector_types
@@ -224,4 +224,12 @@ class VersionedMetadataInfo(metadata.VersionedMetadataInfo):
     @property
     def testbed_attributes(self):
         return testbed_attributes
+
+    @property
+    def testbed_id(self):
+        return TESTBED_ID
+
+    @property
+    def testbed_version(self):
+        return TESTBED_VERSION
 

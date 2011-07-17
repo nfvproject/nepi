@@ -5,19 +5,17 @@ from nepi.util import tags
 from nepi.util.constants import ApplicationStatus as AS
 import getpass
 import mock
-import mock.metadata_v01 
+import mock.metadata 
 import sys
 import time
 import unittest
 
 class ExecuteTestCase(unittest.TestCase):
     def setUp(self):
-        sys.modules["nepi.testbeds.mock.metadata_v01"] = mock.metadata_v01
+        sys.modules["nepi.testbeds.mock.metadata"] = mock.metadata
 
     def test_execute(self):
-        testbed_version = "01"
-        testbed_id = "mock"
-        instance = mock.TestbedController(testbed_version)
+        instance = mock.TestbedController()
         instance.defer_configure("fake", True)
         instance.defer_create(2, "Node")
         instance.defer_create(3, "Node")

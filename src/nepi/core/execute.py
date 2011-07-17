@@ -749,8 +749,8 @@ class ExperimentController(object):
             # force recovery mode 
             deployment_config.set_attribute_value("recover",recover)
         
-        testbed = proxy.create_testbed_controller(testbed_id, 
-                testbed_version, deployment_config)
+        testbed = proxy.create_testbed_controller(testbed_id, testbed_version,
+                deployment_config)
         for (name, value) in data.get_attribute_data(guid):
             testbed.defer_configure(name, value)
         self._testbeds[guid] = testbed

@@ -15,7 +15,6 @@ import sys
 
 class PlanetLabExecuteTestCase(unittest.TestCase):
     testbed_id = "planetlab"
-    testbed_version = "01"
     slicename = "inria_nepi"
     plchost = "nepiplc.pl.sophia.inria.fr"
     
@@ -35,11 +34,10 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
 
     def make_instance(self):
         testbed_id = self.testbed_id
-        testbed_version = self.testbed_version
         slicename = self.slicename
         plchost = self.plchost
         
-        instance = planetlab.TestbedController(testbed_version)
+        instance = planetlab.TestbedController()
         pl_ssh_key = os.environ.get(
             "PL_SSH_KEY",
             "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'],) )

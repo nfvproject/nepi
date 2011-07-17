@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from constants import TESTBED_ID
+from constants import TESTBED_ID, TESTBED_VERSION
 from nepi.core import testbed_impl
 
 class TestbedController(testbed_impl.TestbedController):
-    def __init__(self, testbed_version):
-        super(TestbedController, self).__init__(TESTBED_ID, testbed_version)
+    def __init__(self):
+        super(TestbedController, self).__init__(TESTBED_ID, TESTBED_VERSION)
 
     def do_configure(self):
         pass

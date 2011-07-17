@@ -20,10 +20,9 @@ class NetnsIntegrationTestCase(unittest.TestCase):
     @test_util.skipUnless(os.getuid() == 0, "Test requires root privileges")
     def test_local_if(self):
         exp_desc = ExperimentDescription()
-        testbed_version = "01"
         testbed_id = "netns"
         user = getpass.getuser()
-        netns_provider = FactoriesProvider(testbed_id, testbed_version)
+        netns_provider = FactoriesProvider(testbed_id)
         netns_desc = exp_desc.add_testbed_description(netns_provider)
         netns_desc.set_attribute_value("homeDirectory", self.root_dir)
         #netns_desc.set_attribute_value("enableDebug", True)
@@ -67,10 +66,9 @@ class NetnsIntegrationTestCase(unittest.TestCase):
     @test_util.skipUnless(os.getuid() == 0, "Test requires root privileges")
     def test_all_daemonized_if(self):
         exp_desc = ExperimentDescription()
-        testbed_version = "01"
         testbed_id = "netns"
         user = getpass.getuser()
-        netns_provider = FactoriesProvider(testbed_id, testbed_version)
+        netns_provider = FactoriesProvider(testbed_id)
         netns_desc = exp_desc.add_testbed_description(netns_provider)
         netns_desc.set_attribute_value("homeDirectory", self.root_dir)
         #netns_desc.set_attribute_value("enableDebug", True)
@@ -126,11 +124,10 @@ class NetnsIntegrationTestCase(unittest.TestCase):
     @test_util.skipUnless(os.getuid() == 0, "Test requires root privileges")
     def test_all_ssh_daemonized_if(self):
         exp_desc = ExperimentDescription()
-        testbed_version = "01"
         testbed_id = "netns"
         env = test_util.test_environment()
         user = getpass.getuser()
-        netns_provider = FactoriesProvider(testbed_id, testbed_version)
+        netns_provider = FactoriesProvider(testbed_id)
         netns_desc = exp_desc.add_testbed_description(netns_provider)
         netns_desc.set_attribute_value("homeDirectory", self.root_dir)
         #netns_desc.set_attribute_value("enableDebug", True)

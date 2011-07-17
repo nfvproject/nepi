@@ -11,7 +11,7 @@ from nepi.util.constants import ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP, \
         DeploymentConfiguration as DC, \
         AttributeCategories as AC
 
-class VersionedMetadataInfo(object):
+class MetadataInfo(object):
     @property
     def connector_types(self):
         """ dictionary of dictionaries with allowed connection information.
@@ -153,6 +153,16 @@ class VersionedMetadataInfo(object):
              })
             ]
         """
+        raise NotImplementedError
+
+    @property
+    def testbed_id(self):
+        """ ID for the testbed """
+        raise NotImplementedError
+
+    @property
+    def testbed_version(self):
+        """ version for the testbed """
         raise NotImplementedError
 
 class Metadata(object):
@@ -406,11 +416,13 @@ class Metadata(object):
     
     STANDARD_TESTBED_ATTRIBUTES.update(DEPLOYMENT_ATTRIBUTES.copy())
 
-    def __init__(self, testbed_id, version):
-        self._version = version
+    def __init__(self, testbed_id):
         self._testbed_id = testbed_id
-        metadata_module = self._load_versioned_metadata_module()
-        self._metadata = metadata_module.VersionedMetadataInfo()
+        metadata_module = self._load_metadata_module()
+        self._metadata = metadata_module.MetadataInfo()
+        if testbed_id != self._metadata.testbed_id:
+            raise RuntimeError("Bad testbed id. Asked for %s, got %s" % \
+                    (testbed_id, self._metadata.testbed_id ))
 
     @property
     def create_order(self):
@@ -431,6 +443,14 @@ class Metadata(object):
     @property
     def start_order(self):
         return self._metadata.start_order
+
+    @property
+    def testbed_version(self):
+        return self._metadata.testbed_version
+
+    @property
+    def testbed_id(self):
+        return self._testbed_id
 
     def testbed_attributes(self):
         attributes = AttributesMap()
@@ -472,9 +492,8 @@ class Metadata(object):
             factories.append(factory)
         return factories
 
-    def _load_versioned_metadata_module(self):
-        mod_name = "nepi.testbeds.%s.metadata_v%s" % (self._testbed_id.lower(),
-                self._version)
+    def _load_metadata_module(self):
+        mod_name = "nepi.testbeds.%s.metadata" % (self._testbed_id.lower())
         if not mod_name in sys.modules:
             __import__(mod_name)
         return sys.modules[mod_name]

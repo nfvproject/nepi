@@ -16,7 +16,6 @@ import re
 
 class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
     testbed_id = "planetlab"
-    testbed_version = "01"
     
     slicename1 = "inria_nepi"
     plchost1 = "nepiplc.pl.sophia.inria.fr"
@@ -43,7 +42,6 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
 
     def make_experiment_desc(self):
         testbed_id = self.testbed_id
-        testbed_version = self.testbed_version
         
         slicename1 = self.slicename1
         plchost1 = self.plchost1
@@ -57,7 +55,7 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
         pl_user, pl_pwd = test_util.pl_auth()
 
         exp_desc = ExperimentDescription()
-        pl_provider = FactoriesProvider(testbed_id, testbed_version)
+        pl_provider = FactoriesProvider(testbed_id)
         pl_desc = exp_desc.add_testbed_description(pl_provider)
         pl_desc.set_attribute_value("homeDirectory", self.root_dir)
         pl_desc.set_attribute_value("slice", slicename1)

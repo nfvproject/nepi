@@ -21,9 +21,8 @@ class Ns3IntegrationTestCase(unittest.TestCase):
            "Test requires working ns-3 bindings")
     def test_local_if(self):
         exp_desc = ExperimentDescription()
-        testbed_version = "3_9"
         testbed_id = "ns3"
-        ns3_provider = FactoriesProvider(testbed_id, testbed_version)
+        ns3_provider = FactoriesProvider(testbed_id)
         ns3_desc = exp_desc.add_testbed_description(ns3_provider)
         ns3_desc.set_attribute_value("homeDirectory", self.root_dir)
 
@@ -83,9 +82,8 @@ class Ns3IntegrationTestCase(unittest.TestCase):
            "Test requires working ns-3 bindings")
     def test_all_daemonized_if(self):
         exp_desc = ExperimentDescription()
-        testbed_version = "3_9"
         testbed_id = "ns3"
-        ns3_provider = FactoriesProvider(testbed_id, testbed_version)
+        ns3_provider = FactoriesProvider(testbed_id)
         ns3_desc = exp_desc.add_testbed_description(ns3_provider)
         ns3_desc.set_attribute_value("homeDirectory", self.root_dir)
 

@@ -237,7 +237,11 @@ def _build_testbed_controller(testbed_id, testbed_version):
     if not mod_name in sys.modules:
         __import__(mod_name)
     module = sys.modules[mod_name]
-    return module.TestbedController(testbed_version)
+    tc = module.TestbedController()
+    if tc.testbed_version != testbed_version:
+        raise RuntimeError("Bad testbed version on testbed %s. Asked for %s, got %s" % \
+                (testbed_id, testbed_version, tc.testbed_version))
+    return tc
 
 # Just a namespace class
 class Marshalling:

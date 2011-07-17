@@ -16,7 +16,6 @@ import sys
 
 class PlanetLabIntegrationTestCase(unittest.TestCase):
     testbed_id = "planetlab"
-    testbed_version = "01"
     slicename = "inria_nepi"
     plchost = "nepiplc.pl.sophia.inria.fr"
     
@@ -39,7 +38,6 @@ class PlanetLabIntegrationTestCase(unittest.TestCase):
 
     def make_experiment_desc(self):
         testbed_id = self.testbed_id
-        testbed_version = self.testbed_version
         slicename = self.slicename
         plchost = self.plchost
         pl_ssh_key = os.environ.get(
@@ -48,7 +46,7 @@ class PlanetLabIntegrationTestCase(unittest.TestCase):
         pl_user, pl_pwd = test_util.pl_auth()
 
         exp_desc = ExperimentDescription()
-        pl_provider = FactoriesProvider(testbed_id, testbed_version)
+        pl_provider = FactoriesProvider(testbed_id)
         pl_desc = exp_desc.add_testbed_description(pl_provider)
         pl_desc.set_attribute_value("homeDirectory", self.root_dir)
         pl_desc.set_attribute_value("slice", slicename)

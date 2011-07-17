@@ -11,9 +11,8 @@ import uuid
 class NetnsDesignTestCase(unittest.TestCase):
     def test_design_if(self):
         exp_desc = ExperimentDescription()
-        testbed_version = "01"
         testbed_id = "netns"
-        provider = FactoriesProvider(testbed_id, testbed_version)
+        provider = FactoriesProvider(testbed_id)
         tstbd_desc = exp_desc.add_testbed_description(provider)
         tstbd_desc.set_attribute_value("enableDebug", True)
         node1 = tstbd_desc.create("Node")

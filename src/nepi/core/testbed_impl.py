@@ -40,7 +40,10 @@ class TestbedController(execute.TestbedController):
         # testbed element instances
         self._elements = dict()
 
-        self._metadata = Metadata(self._testbed_id, self._testbed_version)
+        self._metadata = Metadata(self._testbed_id)
+        if self._metadata.testbed_version != testbed_version:
+            raise RuntimeError("Bad testbed version on testbed %s. Asked for %s, got %s" % \
+                    (testbed_id, testbed_version, self._metadata.testbed_version))
         for factory in self._metadata.build_factories():
             self._factories[factory.factory_id] = factory
         self._attributes = self._metadata.testbed_attributes()

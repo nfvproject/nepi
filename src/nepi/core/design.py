@@ -249,15 +249,16 @@ class Box(AttributesMap, Taggable):
         self._connectors = self._traces = self._factory_attributes = None
 
 class FactoriesProvider(object):
-    def __init__(self, testbed_id, testbed_version):
+    def __init__(self, testbed_id):
         super(FactoriesProvider, self).__init__()
         self._testbed_id = testbed_id
-        self._testbed_version = testbed_version
         self._factories = dict()
 
-        metadata = Metadata(testbed_id, testbed_version) 
+        metadata = Metadata(testbed_id) 
         for factory in metadata.build_factories():
             self.add_factory(factory)
+
+        self._testbed_version = metadata.testbed_version
 
     @property
     def testbed_id(self):
@@ -289,7 +290,7 @@ class TestbedDescription(AttributesMap):
         self._boxes = dict()
         self.graphical_info = GraphicalInfo()
 
-        metadata = Metadata(provider.testbed_id, provider.testbed_version)
+        metadata = Metadata(provider.testbed_id)
         for attr in metadata.testbed_attributes().attributes:
             self.add_attribute(attr.name, attr.help, attr.type, attr.value, 
                     attr.range, attr.allowed, attr.flags, 

@@ -3,19 +3,18 @@
 
 from nepi.core.design import ExperimentDescription, FactoriesProvider
 from nepi.util import tags
-import mock.metadata_v01 
+import mock.metadata
 import sys
 import unittest
 
 class DesignTestCase(unittest.TestCase):
     def setUp(self):
-        sys.modules["nepi.testbeds.mock.metadata_v01"] = mock.metadata_v01
+        sys.modules["nepi.testbeds.mock.metadata"] = mock.metadata
 
     def test_design(self):
         exp_desc = ExperimentDescription()
-        testbed_version = "01"
         testbed_id = "mock"
-        provider = FactoriesProvider(testbed_id, testbed_version)
+        provider = FactoriesProvider(testbed_id)
         desc = exp_desc.add_testbed_description(provider)
         desc.set_attribute_value("fake", True)
         node1 = desc.create("Node")
