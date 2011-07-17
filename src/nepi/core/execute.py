@@ -360,6 +360,7 @@ class ExperimentController(object):
         self._clear_caches()
         
         # update execution xml with execution-specific values
+        # TODO: BUG! BUggy code! cant stand all serializing all attribute values (ej: tun_key which is non ascci)"
         self._update_execute_xml()
         self.persist_execute_xml()
 

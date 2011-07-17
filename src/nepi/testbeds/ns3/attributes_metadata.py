@@ -2412,7 +2412,8 @@ attributes = dict({
         "value": "WIFI_PHY_STANDARD_80211a",
         "flags": Attribute.ExecReadOnly | \
                 Attribute.ExecImmutable | \
-                Attribute.NoDefaultValue,
+                Attribute.NoDefaultValue |
+                Attribute.Metadata,
         "type": Attribute.ENUM,
         "allowed": wifi_standards.keys(),
         "help": "Wifi PHY standard"
