@@ -782,38 +782,40 @@ class ExperimentController(object):
         for guid in element_guids:
             (testbed_guid, factory_id) = data.get_box_data(guid)
             testbed = self._testbeds.get(testbed_guid)
-            # create
-            testbed.defer_create(guid, factory_id)
-            # set attributes
-            for (name, value) in data.get_attribute_data(guid):
-                value = resolve_create_netref(data, guid, name, value)
-                testbed.defer_create_set(guid, name, value)
+            if testbed is not None:
+                # create
+                testbed.defer_create(guid, factory_id)
+                # set attributes
+                for (name, value) in data.get_attribute_data(guid):
+                    value = resolve_create_netref(data, guid, name, value)
+                    testbed.defer_create_set(guid, name, value)
 
         for guid in element_guids:
             (testbed_guid, factory_id) = data.get_box_data(guid)
             testbed = self._testbeds.get(testbed_guid)
-            # traces
-            for trace_id in data.get_trace_data(guid):
-                testbed.defer_add_trace(guid, trace_id)
-            # addresses
-            for (address, netprefix, broadcast) in data.get_address_data(guid):
-                if address != None:
-                    testbed.defer_add_address(guid, address, netprefix, 
-                            broadcast)
-            # routes
-            for (destination, netprefix, nexthop, metric) in data.get_route_data(guid):
-                testbed.defer_add_route(guid, destination, netprefix, nexthop, metric)
-            # store connections data
-            for (connector_type_name, other_guid, other_connector_type_name) \
-                    in data.get_connection_data(guid):
-                (other_testbed_guid, other_factory_id) = data.get_box_data(
-                        other_guid)
-                if testbed_guid == other_testbed_guid:
-                    # each testbed should take care of enforcing internal
-                    # connection simmetry, so each connection is only
-                    # added in one direction
-                    testbed.defer_connect(guid, connector_type_name, 
-                            other_guid, other_connector_type_name)
+            if testbed is not None:
+                # traces
+                for trace_id in data.get_trace_data(guid):
+                    testbed.defer_add_trace(guid, trace_id)
+                # addresses
+                for (address, netprefix, broadcast) in data.get_address_data(guid):
+                    if address != None:
+                        testbed.defer_add_address(guid, address, netprefix, 
+                                broadcast)
+                # routes
+                for (destination, netprefix, nexthop, metric) in data.get_route_data(guid):
+                    testbed.defer_add_route(guid, destination, netprefix, nexthop, metric)
+                # store connections data
+                for (connector_type_name, other_guid, other_connector_type_name) \
+                        in data.get_connection_data(guid):
+                    (other_testbed_guid, other_factory_id) = data.get_box_data(
+                            other_guid)
+                    if testbed_guid == other_testbed_guid:
+                        # each testbed should take care of enforcing internal
+                        # connection simmetry, so each connection is only
+                        # added in one direction
+                        testbed.defer_connect(guid, connector_type_name, 
+                                other_guid, other_connector_type_name)
 
     def _program_testbed_cross_connections(self, data):
         data_guids = data.guids
@@ -821,25 +823,26 @@ class ExperimentController(object):
             if not data.is_testbed_data(guid):
                 (testbed_guid, factory_id) = data.get_box_data(guid)
                 testbed = self._testbeds.get(testbed_guid)
-                for (connector_type_name, cross_guid, cross_connector_type_name) \
-                        in data.get_connection_data(guid):
-                    (testbed_guid, factory_id) = data.get_box_data(guid)
-                    (cross_testbed_guid, cross_factory_id) = data.get_box_data(
-                            cross_guid)
-                    if testbed_guid != cross_testbed_guid:
-                        cross_testbed = self._testbeds[cross_testbed_guid]
-                        cross_testbed_id = cross_testbed.testbed_id
-                        testbed.defer_cross_connect(guid, connector_type_name, cross_guid, 
-                                cross_testbed_guid, cross_testbed_id, cross_factory_id, 
-                                cross_connector_type_name)
-                        # save cross data for later
-                        self._add_crossdata(testbed_guid, guid, cross_testbed_guid,
+                if testbed is not None:
+                    for (connector_type_name, cross_guid, cross_connector_type_name) \
+                            in data.get_connection_data(guid):
+                        (testbed_guid, factory_id) = data.get_box_data(guid)
+                        (cross_testbed_guid, cross_factory_id) = data.get_box_data(
                                 cross_guid)
+                        if testbed_guid != cross_testbed_guid:
+                            cross_testbed = self._testbeds[cross_testbed_guid]
+                            cross_testbed_id = cross_testbed.testbed_id
+                            testbed.defer_cross_connect(guid, connector_type_name, cross_guid, 
+                                    cross_testbed_guid, cross_testbed_id, cross_factory_id, 
+                                    cross_connector_type_name)
+                            # save cross data for later
+                            self._add_crossdata(testbed_guid, guid, cross_testbed_guid,
+                                    cross_guid)
 
     def _add_crossdata(self, testbed_guid, guid, cross_testbed_guid, cross_guid):
         if testbed_guid not in self._cross_data:
             self._cross_data[testbed_guid] = dict()
-        if cross_testbed_guid not in self._cross_data[testbed_guid]:
+        if cross_guid not in self._cross_data[testbed_guid]:
             self._cross_data[testbed_guid][cross_testbed_guid] = set()
         self._cross_data[testbed_guid][cross_testbed_guid].add(cross_guid)
 
