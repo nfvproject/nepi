@@ -793,7 +793,7 @@ class NS3Dependency(Dependency):
         # We have to download the sources, untar, build...
         pybindgen_source_url = "http://pybindgen.googlecode.com/files/pybindgen-0.15.0.zip"
         pygccxml_source_url = "http://leaseweb.dl.sourceforge.net/project/pygccxml/pygccxml/pygccxml-1.0/pygccxml-1.0.0.zip"
-        ns3_source_url = "http://yans.pl.sophia.inria.fr/code/hgwebdir.cgi/nepi-ns-3.9/archive/tip.tar.gz"
+        ns3_source_url = "http://yans.pl.sophia.inria.fr/code/hgwebdir.cgi/ns-3.9-nepi/archive/tip.tar.gz"
         passfd_source_url = "http://yans.pl.sophia.inria.fr/code/hgwebdir.cgi/python-passfd/archive/tip.tar.gz"
         self.build =(
             " ( "
@@ -854,6 +854,8 @@ class NS3Dependency(Dependency):
             "  test -f lib/libns3.so "
             " ) || ( "
                 # Not working, reinstall
+                    "test -d ${BUILD}/target && "
+                    "[[ \"x\" != \"x$(find ${BUILD}/target -mindepth 1 -print -quit)\" ]] &&"
                     "( for i in ${BUILD}/target/* ; do rm -rf ${SOURCES}/${i##*/} ; done ) && " # mv doesn't like unclean targets
                     "mv -f ${BUILD}/target/* ${SOURCES}"
             " )"
