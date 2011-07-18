@@ -405,6 +405,11 @@ class Client(object):
     def _read_reply(self):
         data = self._process.stdout.readline()
         encoded = data.rstrip() 
+        if not encoded:
+            # empty == eof == dead process, poll it to un-zombify
+            self._process.poll()
+            
+            raise RuntimeError, "Forwarder died while awaiting reply: %s" % (self._process.stderr.read(),)
         return base64.b64decode(encoded)
     
     def read_reply(self, which=None, transform=None):
