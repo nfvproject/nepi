@@ -475,6 +475,8 @@ class Node(object):
                 raise RuntimeError, "Route %s cannot be bound to any virtual interface " \
                     "- PL can only handle rules over virtual interfaces. Candidates are: %s" % (route,devs)
         
+        print >>sys.stderr, "Setting up routes for", self.hostname
+        
         (out,err),proc = server.popen_ssh_command(
             "( sudo -S bash -c 'cat /vsys/vroute.out >&2' & ) ; sudo -S bash -c 'cat > /vsys/vroute.in' ; sleep 0.1" % dict(
                 home = server.shell_escape(self.home_path)),
