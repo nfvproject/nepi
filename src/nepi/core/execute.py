@@ -331,7 +331,11 @@ class ExperimentController(object):
             
         # final netref step, fail if anything's left unresolved
         self.do_netrefs(data, fail_if_undefined=True)
-        
+       
+        # Only now, that netref dependencies have been solve, it is safe to
+        # program cross_connections
+        self._program_testbed_cross_connections(data)
+ 
         # perform do_configure in parallel for al testbeds
         # (it's internal configuration for each)
         self._parallel([testbed.do_configure
@@ -759,48 +763,6 @@ class ExperimentController(object):
             self._netreffed_testbeds.remove(guid)
 
     def _program_testbed_controllers(self, element_guids, data):
-        deferred = dict()
-
-        def add_deferred_testbed(deferred, testbed_guid):
-            if not testbed_guid in deferred:
-                deferred[testbed_guid] = dict()
-                deferred[testbed_guid]["connections"] = set()
-                deferred[testbed_guid]["cross_connections"] = set()
-
-        def add_deferred_connection(deferred, data, guid, connector_type_name,
-                other_guid, other_connector_type_name):
-
-            (testbed_guid, factory_id) = data.get_box_data(guid)
-            (other_testbed_guid, other_factory_id) = data.get_box_data(
-                    other_guid)
-            testbed = self._testbeds[testbed_guid]
-            testbed_id = testbed.testbed_id
-            add_deferred_testbed(deferred, testbed_guid)
-
-            if testbed_guid == other_testbed_guid:
-                # each testbed should take care of enforcing internal
-                # connection simmetry, so each connection is only
-                # added in one direction
-                c = (guid, connector_type_name, other_guid,
-                        other_connector_type_name)
-                deferred[testbed_guid]["connections"].add(c)
-            else:
-                # the controller takes care of cross_connection simmetry
-                # so cross_connections are added in both directions
-                other_testbed = self._testbeds[other_testbed_guid]
-                other_testbed_id = other_testbed.testbed_id
-                add_deferred_testbed(deferred, other_testbed_guid)
-                c1 = (testbed_guid, testbed_id, guid, factory_id,
-                        connector_type_name, other_testbed_guid,
-                        other_testbed_id, other_guid, other_factory_id,
-                        other_connector_type_name)
-                c2 = (other_testbed_guid, other_testbed_id, other_guid, 
-                        other_factory_id, other_connector_type_name,
-                        testbed_guid, testbed_id, guid, factory_id,
-                        connector_type_name)
-                deferred[testbed_guid]["cross_connections"].add(c1)
-                deferred[other_testbed_guid]["cross_connections"].add(c2)
-
         def resolve_create_netref(data, guid, name, value): 
             # Try to resolve create-time netrefs, if possible
             if isinstance(value, basestring) and ATTRIBUTE_PATTERN_BASE.search(value):
@@ -826,6 +788,10 @@ class ExperimentController(object):
             for (name, value) in data.get_attribute_data(guid):
                 value = resolve_create_netref(data, guid, name, value)
                 testbed.defer_create_set(guid, name, value)
+
+        for guid in element_guids:
+            (testbed_guid, factory_id) = data.get_box_data(guid)
+            testbed = self._testbeds.get(testbed_guid)
             # traces
             for trace_id in data.get_trace_data(guid):
                 testbed.defer_add_trace(guid, trace_id)
@@ -840,27 +806,35 @@ class ExperimentController(object):
             # store connections data
             for (connector_type_name, other_guid, other_connector_type_name) \
                     in data.get_connection_data(guid):
-                add_deferred_connection(deferred, data, guid,
-                        connector_type_name, other_guid,
-                        other_connector_type_name)
-
-        # connections        
-        for testbed_guid, data in deferred.iteritems():
-            testbed = self._testbeds.get(testbed_guid)
-            for (guid, connector_type_name, other_guid,
-                    other_connector_type_name) in data["connections"]:
-                testbed.defer_connect(guid, connector_type_name, 
-                        other_guid, other_connector_type_name)
-            for (testbed_guid, testbed_id, guid, factory_id,
-                        connector_type_name, other_testbed_guid,
-                        other_testbed_id, other_guid, other_factory_id,
-                        other_connector_type_name) in data["cross_connections"]:
-                testbed.defer_cross_connect(guid, connector_type_name, other_guid, 
-                        other_testbed_guid, other_testbed_id, other_factory_id, 
-                        other_connector_type_name)
-                # save cross data for later
-                self._add_crossdata(testbed_guid, guid, other_testbed_guid,
+                (other_testbed_guid, other_factory_id) = data.get_box_data(
                         other_guid)
+                if testbed_guid == other_testbed_guid:
+                    # each testbed should take care of enforcing internal
+                    # connection simmetry, so each connection is only
+                    # added in one direction
+                    testbed.defer_connect(guid, connector_type_name, 
+                            other_guid, other_connector_type_name)
+
+    def _program_testbed_cross_connections(self, data):
+        data_guids = data.guids
+        for guid in data_guids: 
+            if not data.is_testbed_data(guid):
+                (testbed_guid, factory_id) = data.get_box_data(guid)
+                testbed = self._testbeds.get(testbed_guid)
+                for (connector_type_name, cross_guid, cross_connector_type_name) \
+                        in data.get_connection_data(guid):
+                    (testbed_guid, factory_id) = data.get_box_data(guid)
+                    (cross_testbed_guid, cross_factory_id) = data.get_box_data(
+                            cross_guid)
+                    if testbed_guid != cross_testbed_guid:
+                        cross_testbed = self._testbeds[cross_testbed_guid]
+                        cross_testbed_id = cross_testbed.testbed_id
+                        testbed.defer_cross_connect(guid, connector_type_name, cross_guid, 
+                                cross_testbed_guid, cross_testbed_id, cross_factory_id, 
+                                cross_connector_type_name)
+                        # save cross data for later
+                        self._add_crossdata(testbed_guid, guid, cross_testbed_guid,
+                                cross_guid)
 
     def _add_crossdata(self, testbed_guid, guid, cross_testbed_guid, cross_guid):
         if testbed_guid not in self._cross_data:
