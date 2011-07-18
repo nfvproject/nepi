@@ -211,7 +211,7 @@ class TunIface(object):
         if (self.address or self.netprefix or self.netmask) is not None:
             raise RuntimeError, "Cannot add more than one address to %s interfaces" % (self._KIND,)
         if broadcast:
-            raise ValueError, "%s interfaces cannot broadcast in PlanetLab" % (self._KIND,)
+            raise ValueError, "%s interfaces cannot broadcast in PlanetLab (%s)" % (self._KIND,broadcast)
         
         self.address = address
         self.netprefix = netprefix

@@ -547,17 +547,17 @@ class TestbedControllerServer(BaseServer):
         self._testbed.defer_add_trace(guid, trace_id)
 
     @Marshalling.handles(ADD_ADDRESS)
-    @Marshalling.args(int, str, int, str)
+    @Marshalling.args(int, str, int, Marshalling.pickled_data)
     @Marshalling.retvoid
     def defer_add_address(self, guid, address, netprefix, broadcast):
         self._testbed.defer_add_address(guid, address, netprefix,
                 broadcast)
 
     @Marshalling.handles(ADD_ROUTE)
-    @Marshalling.args(int, str, int, str)
+    @Marshalling.args(int, str, int, str, int)
     @Marshalling.retvoid
-    def defer_add_route(self, guid, destination, netprefix, nexthop):
-        self._testbed.defer_add_route(guid, destination, netprefix, nexthop)
+    def defer_add_route(self, guid, destination, netprefix, nexthop, metric):
+        self._testbed.defer_add_route(guid, destination, netprefix, nexthop, metric)
 
     @Marshalling.handles(DO_SETUP)
     @Marshalling.args()
