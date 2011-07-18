@@ -244,29 +244,29 @@ class TestbedController(testbed_impl.TestbedController):
                 node.slicename = self.slicename
             
                 # Show the magic
-                print "PlanetLab Node", guid, "configured at", node.hostname
+                print >>sys.stderr, "PlanetLab Node", guid, "configured at", node.hostname
             
         try:
             for guid, node in self._elements.iteritems():
                 if isinstance(node, self._node.Node):
-                    print "Waiting for Node", guid, "configured at", node.hostname,
+                    print >>sys.stderr, "Waiting for Node", guid, "configured at", node.hostname,
                     sys.stdout.flush()
                     
                     node.wait_provisioning(
                         (20*60 if node._node_id in self._just_provisioned else 60)
                     )
                     
-                    print "READY"
+                    print >>sys.stderr, "READY"
         except self._node.UnresponsiveNodeError:
             # Uh... 
-            print "UNRESPONSIVE"
+            print >>sys.stderr, "UNRESPONSIVE"
             
             # Mark all dead nodes (which are unresponsive) on the blacklist
             # and re-raise
             for guid, node in self._elements.iteritems():
                 if isinstance(node, self._node.Node):
                     if not node.is_alive():
-                        print "Blacklisting", node.hostname, "for unresponsiveness"
+                        print >>sys.stderr, "Blacklisting", node.hostname, "for unresponsiveness"
                         self._blacklist.add(node._node_id)
                         node.unassign_node()
             

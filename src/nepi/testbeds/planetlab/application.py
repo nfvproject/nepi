@@ -212,7 +212,7 @@ class Dependency(object):
             buildscript = self._do_build_master()
             
         if buildscript is not None:
-            print "Building", self
+            print >>sys.stderr, "Building", self
             
             # upload build script
             try:
@@ -372,9 +372,9 @@ class Dependency(object):
                     if first:
                         print >>sys.stderr, "Waiting for", self, "to finish building",
                         if self._master is not None:
-                            print >>sys.stderr, "(build master)"
-                        else:
                             print >>sys.stderr, "(build slave)"
+                        else:
+                            print >>sys.stderr, "(build master)"
                         
                         first = False
                     time.sleep(delay*(0.5+random.random()))
