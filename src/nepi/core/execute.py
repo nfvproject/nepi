@@ -17,6 +17,13 @@ ATTRIBUTE_PATTERN_BASE = re.compile(r"\{#\[(?P<label>[-a-zA-Z0-9._]*)\](?P<expr>
 ATTRIBUTE_PATTERN_GUID_SUB = r"{#[%(guid)s]%(expr)s#}"
 COMPONENT_PATTERN = re.compile(r"(?P<kind>[a-z]*)\[(?P<index>.*)\]")
 
+def _undefer(deferred):
+    if hasattr(deferred, '_get'):
+        return deferred._get()
+    else:
+        return deferred
+
+
 class TestbedController(object):
     def __init__(self, testbed_id, testbed_version):
         self._testbed_id = testbed_id
@@ -453,12 +460,6 @@ class ExperimentController(object):
         #       - inject non-None values into new design
         # Generate execute xml from new design
 
-        def undefer(deferred):
-            if hasattr(deferred, '_get'):
-                return deferred._get()
-            else:
-                return deferred
-        
         attribute_lists = dict(
             (testbed_guid, collections.defaultdict(dict))
             for testbed_guid in self._testbeds
@@ -481,7 +482,7 @@ class ExperimentController(object):
         for testbed_guid, testbed_attribute_lists in attribute_lists.iteritems():
             testbed = self._testbeds[testbed_guid]
             for guid, attribute_list in testbed_attribute_lists.iteritems():
-                attribute_list = undefer(attribute_list)
+                attribute_list = _undefer(attribute_list)
                 attribute_values[testbed_guid][guid] = dict(
                     (attribute, testbed.get_deferred(guid, attribute))
                     for attribute in attribute_list
@@ -490,7 +491,7 @@ class ExperimentController(object):
         for testbed_guid, testbed_attribute_values in attribute_values.iteritems():
             for guid, attribute_values in testbed_attribute_values.iteritems():
                 for attribute, value in attribute_values.iteritems():
-                    value = undefer(value)
+                    value = _undefer(value)
                     if value is not None:
                         execute_data.add_attribute_data(guid, attribute, value)
         
@@ -850,6 +851,17 @@ class ExperimentController(object):
         cross_data = dict()
         if not testbed_guid in self._cross_data:
             return cross_data
+
+        # fetch attribute lists in one batch
+        attribute_lists = dict()
+        for cross_testbed_guid, guid_list in \
+                self._cross_data[testbed_guid].iteritems():
+            cross_testbed = self._testbeds[cross_testbed_guid]
+            for cross_guid in guid_list:
+                attribute_lists[(cross_testbed_guid, cross_guid)] = \
+                    cross_testbed.get_attribute_list_deferred(cross_guid)
+
+        # fetch attribute values in another batch
         for cross_testbed_guid, guid_list in \
                 self._cross_data[testbed_guid].iteritems():
             cross_data[cross_testbed_guid] = dict()
@@ -861,9 +873,16 @@ class ExperimentController(object):
                     _testbed_id = cross_testbed.testbed_id,
                     _testbed_version = cross_testbed.testbed_version)
                 cross_data[cross_testbed_guid][cross_guid] = elem_cross_data
-                attribute_list = cross_testbed.get_attribute_list(cross_guid)
+                attribute_list = attribute_lists[(cross_testbed_guid,cross_guid)]
                 for attr_name in attribute_list:
                     attr_value = cross_testbed.get_deferred(cross_guid, attr_name)
                     elem_cross_data[attr_name] = attr_value
+        
+        # undefer all values - we'll have to serialize them probably later
+        for cross_testbed_guid, testbed_cross_data in cross_data.iteritems():
+            for cross_guid, elem_cross_data in testbed_cross_data.iteritems():
+                for attr_name, attr_value in elem_cross_data.iteritems():
+                    elem_cross_data[attr_name] = _undefer(attr_value)
+        
         return cross_data
     
