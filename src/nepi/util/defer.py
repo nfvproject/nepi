@@ -28,3 +28,6 @@ class Defer:
             self.__ojet = self.__ojetwait()
         return self.__ojet
 
+    def __nonzero__(self):
+        return bool(self._get())
+    
