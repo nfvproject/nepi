@@ -32,6 +32,8 @@ class ParallelMap(object):
         self.workers = [ threading.Thread(target = self.worker) 
                          for x in xrange(maxthreads) ]
         
+        self.delayed_exceptions = []
+        
         if results:
             self.rvqueue = Queue.Queue()
         else:
@@ -56,6 +58,10 @@ class ParallelMap(object):
         for thread in self.workers:
             thread.join()
         
+        if self.delayed_exceptions:
+            typ,val,loc = self.delayed_exceptions[0]
+            raise typ,val,loc
+        
     def worker(self):
         while True:
             task = self.queue.get()
@@ -74,6 +80,7 @@ class ParallelMap(object):
                     self.queue.task_done()
             except:
                 traceback.print_exc(file = sys.stderr)
+                self.delayed_exceptions.apped(sys.exc_info())
 
     def __iter__(self):
         if self.rvqueue is not None:
@@ -112,6 +119,20 @@ class ParallelFilter(ParallelMap):
         for rv in super(ParallelFilter, self).__iter__():
             if rv is not self._FILTERED:
                 yield rv
+
+class ParallelRun(ParallelMap):
+    def __run(self, x):
+        fn, args, kwargs = x
+        return fn(*args, **kwargs)
+    
+    def __init__(self, maxthreads = None, maxqueue = None):
+        super(ParallelRun, self).__init__(maxthreads, maxqueue, True)
+
+    def put(self, what, *args, **kwargs):
+        super(ParallelRun, self).put(self.__run, (what, args, kwargs))
+    
+    def put_nowait(self, what, *args, **kwargs):
+        super(ParallelRun, self).put_nowait(self.__filter, (what, args, kwargs))
 
 
 def pmap(mapping, iterable, maxthreads = None, maxqueue = None):

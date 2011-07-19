@@ -2,12 +2,13 @@
 # -*- coding: utf-8 -*-
 
 from nepi.core import execute
-from nepi.core.metadata import Metadata
+from nepi.core.metadata import Metadata, Parallel
 from nepi.util import validation
 from nepi.util.constants import TIME_NOW, \
         ApplicationStatus as AS, \
         TestbedStatus as TS, \
         CONNECTION_DELAY
+from nepi.util.parallel import ParallelRun
 
 import collections
 import copy
@@ -216,18 +217,40 @@ class TestbedController(execute.TestbedController):
         # order guids (elements) according to factory_id
         for guid, factory_id in self._create.iteritems():
             guids[factory_id].append(guid)
+        
         # configure elements following the factory_id order
         for factory_id in order:
+            # Create a parallel runner if we're given a Parallel() wrapper
+            runner = None
+            if isinstance(factory_id, Parallel):
+                runner = ParallelRun(factory_id.maxthreads)
+                factory_id = factory_id.factory
+            
             # omit the factories that have no element to create
             if factory_id not in guids:
                 continue
+            
+            # configure action
             factory = self._factories[factory_id]
             if not getattr(factory, action):
                 continue
-            for guid in guids[factory_id]:
+            def perform_action(guid):
                 getattr(factory, action)(self, guid)
                 if postaction:
                     postaction(self, guid)
+
+            # perform the action on all elements, in parallel if so requested
+            if runner:
+                runner.start()
+            for guid in guids[factory_id]:
+                if runner:
+                    runner.put(perform_action, guid)
+                else:
+                    perform_action(guid)
+            if runner:
+                runner.join()
+            
+            # post hook
             if poststep:
                 for guid in guids[factory_id]:
                     poststep(self, guid)
