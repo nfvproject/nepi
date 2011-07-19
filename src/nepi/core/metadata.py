@@ -11,6 +11,11 @@ from nepi.util.constants import ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP, \
         DeploymentConfiguration as DC, \
         AttributeCategories as AC
 
+class Parallel(object):
+    def __init__(self, factory, maxthreads = 16):
+        self.factory = factory
+        self.maxthreads = maxthreads
+
 class MetadataInfo(object):
     @property
     def connector_types(self):
@@ -69,21 +74,24 @@ class MetadataInfo(object):
     @property
     def create_order(self):
         """ list of factory ids that indicates the order in which the elements
-        should be instantiated.
+        should be instantiated. If wrapped within a Parallel instance, they
+        will be instantiated in parallel.
         """
         raise NotImplementedError
 
     @property
     def configure_order(self):
         """ list of factory ids that indicates the order in which the elements
-        should be configured.
+        should be configured. If wrapped within a Parallel instance, they
+        will be configured in parallel.
         """
         raise NotImplementedError
 
     @property
     def preconfigure_order(self):
         """ list of factory ids that indicates the order in which the elements
-        should be preconfigured.
+        should be preconfigured. If wrapped within a Parallel instance, they
+        will be configured in parallel.
         
         Default: same as configure_order
         """
@@ -92,7 +100,8 @@ class MetadataInfo(object):
     @property
     def prestart_order(self):
         """ list of factory ids that indicates the order in which the elements
-        should be prestart-configured.
+        should be prestart-configured. If wrapped within a Parallel instance, they
+        will be configured in parallel.
         
         Default: same as configure_order
         """
@@ -101,7 +110,8 @@ class MetadataInfo(object):
     @property
     def start_order(self):
         """ list of factory ids that indicates the order in which the elements
-        should be started.
+        should be started. If wrapped within a Parallel instance, they
+        will be started in parallel.
         
         Default: same as configure_order
         """

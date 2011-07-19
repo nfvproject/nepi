@@ -7,6 +7,7 @@ from nepi.util.constants import TIME_NOW
 from nepi.util.graphtools import mst
 from nepi.util import ipaddr2
 from nepi.util import environ
+from nepi.util.parallel import ParallelRun
 import sys
 import os
 import os.path
@@ -467,14 +468,23 @@ class TestbedController(testbed_impl.TestbedController):
     def shutdown(self):
         for trace in self._traces.itervalues():
             trace.close()
+        
+        runner = ParallelRun(16)
+        runner.start()
         for element in self._elements.itervalues():
             # invoke cleanup hooks
             if hasattr(element, 'cleanup'):
-                element.cleanup()
+                runner.put(element.cleanup)
+        runner.join()
+        
+        runner = ParallelRun(16)
+        runner.start()
         for element in self._elements.itervalues():
             # invoke destroy hooks
             if hasattr(element, 'destroy'):
-                element.destroy()
+                runner.put(element.destroy)
+        runner.join()
+        
         self._elements.clear()
         self._traces.clear()
 
