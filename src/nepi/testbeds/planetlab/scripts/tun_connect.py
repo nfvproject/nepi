@@ -523,9 +523,6 @@ try:
 
     tun_fwd(tun, remote)
 
-    if tcpdump:
-        os.kill(tcpdump.pid, signal.SIGTERM)
-        tcpdump.wait()
 finally:
     try:
         print >>sys.stderr, "Shutting down..."
@@ -534,6 +531,14 @@ finally:
         pass
     
     # tidy shutdown in every case - swallow exceptions
+
+    try:
+        if tcpdump:
+            os.kill(tcpdump.pid, signal.SIGTERM)
+            tcpdump.wait()
+    except:
+        pass
+
     try:
         modeinfo['stop'](tun_path, tun_name)
     except:
