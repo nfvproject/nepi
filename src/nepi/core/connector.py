@@ -128,7 +128,8 @@ class ConnectorType(object):
             else:
                 # keep trying
                 continue
-            return not must_cross or can_cross
+            if must_cross == can_cross:
+                return True
         else:
             return False
 
