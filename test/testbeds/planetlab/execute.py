@@ -210,7 +210,6 @@ FIONREAD = 0x[0-9a-fA-F]{8}.*
         
         instance.defer_create(2, "Node")
         instance.defer_create_set(2, "hostname", self.host1)
-        instance.defer_create_set(2, "emulation", True) # require emulation
         instance.defer_create(3, "NodeInterface")
         instance.defer_connect(2, "devs", 3, "node")
         instance.defer_create(4, "Internet")
@@ -259,7 +258,6 @@ echo 'OKIDOKI'
         
         instance.defer_create(2, "Node")
         instance.defer_create_set(2, "hostname", self.host1)
-        instance.defer_create_set(2, "emulation", True) # require emulation
         instance.defer_create(3, "NodeInterface")
         instance.defer_connect(2, "devs", 3, "node")
         instance.defer_create(4, "Internet")
@@ -312,45 +310,13 @@ echo 'OKIDOKI'
         self.assertTrue(netpipe_stats, "Unavailable netpipe stats")
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
-    def test_tun_emulation_requirement(self):
-        instance = self.make_instance()
-        
-        instance.defer_create(2, "Node")
-        instance.defer_create_set(2, "hostname", self.host1)
-        instance.defer_create(3, "NodeInterface")
-        instance.defer_connect(2, "devs", 3, "node")
-        instance.defer_create(4, "Internet")
-        instance.defer_connect(3, "inet", 4, "devs")
-        instance.defer_create(5, "TunInterface")
-        instance.defer_add_address(5, "192.168.2.2", 24, False)
-        instance.defer_connect(2, "devs", 5, "node")
-        instance.defer_create(6, "Application")
-        instance.defer_create_set(6, "command", "false")
-        instance.defer_add_trace(6, "stdout")
-        instance.defer_add_trace(6, "stderr")
-        instance.defer_connect(6, "node", 2, "apps")
-
-        try:
-            instance.do_setup()
-            instance.do_create()
-            instance.do_connect_init()
-            instance.do_connect_compl()
-            instance.do_preconfigure()
-            instance.do_configure()
-            self.fail("Usage of TUN without emulation should fail")
-        except Exception,e:
-            pass
-
-    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def _pingtest(self, TunClass, ConnectionProto):
         instance = self.make_instance()
         
         instance.defer_create(2, "Node")
         instance.defer_create_set(2, "hostname", self.host1)
-        instance.defer_create_set(2, "emulation", True) # require emulation
         instance.defer_create(3, "Node")
         instance.defer_create_set(3, "hostname", self.host2)
-        instance.defer_create_set(3, "emulation", True) # require emulation
         instance.defer_create(4, "NodeInterface")
         instance.defer_connect(2, "devs", 4, "node")
         instance.defer_create(5, "Internet")
