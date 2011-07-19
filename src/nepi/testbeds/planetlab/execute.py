@@ -509,15 +509,7 @@ class TestbedController(testbed_impl.TestbedController):
         return app
 
     def _make_node(self, parameters):
-        node = self._make_generic(parameters, self._node.Node)
-
-        # If emulation is enabled, we automatically need
-        # some vsys interfaces and packages
-        if node.emulation:
-            node.required_vsys.add('ipfw-be')
-            node.required_packages.add('ipfwslice')
-
-        return node
+        return self._make_generic(parameters, self._node.Node)
 
     def _make_node_iface(self, parameters):
         return self._make_generic(parameters, self._interfaces.NodeIface)

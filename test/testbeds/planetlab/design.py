@@ -64,8 +64,6 @@ class PlanetlabDesignTestCase(unittest.TestCase):
     def test_design_emulation(self):
         exp_desc, tstbd_desc, node1, node2, iface1, iface2, app = self.make_test_design()
         
-        node1.set_attribute_value("emulation",True)
-        
         netpipe1 = tstbd_desc.create("NetPipe")
         netpipe1.set_attribute_value("mode","CLIENT")
         netpipe1.set_attribute_value("portList","80,443")

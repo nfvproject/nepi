@@ -64,7 +64,6 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
         node1 = pl.create("Node")
         node1.set_attribute_value("hostname", hostname or self.host1)
         node1.set_attribute_value("label", label)
-        node1.set_attribute_value("emulation", True) # require emulation
         iface1 = pl.create("NodeInterface")
         iface1.set_attribute_value("label", label+"iface")
         tap1 = []

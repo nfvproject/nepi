@@ -54,7 +54,6 @@ class Node(object):
         self.operatingSystem = None
         self.pl_distro = None
         self.site = None
-        self.emulation = None
         self.minReliability = None
         self.maxReliability = None
         self.minBandwidth = None

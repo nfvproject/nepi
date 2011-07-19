@@ -26,8 +26,8 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
     host1pl1 = "nepi1.pl.sophia.inria.fr"
     host2pl1 = "nepi2.pl.sophia.inria.fr"
 
-    host1pl2 = "onelab11.pl.sophia.inria.fr"
-    host2pl2 = "onelab10.pl.sophia.inria.fr"
+    host1pl2 = "planetlab1.utt.fr"
+    host2pl2 = "planetlab2.utt.fr"
 
     def setUp(self):
         self.root_dir = tempfile.mkdtemp()
@@ -78,7 +78,6 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
         node1 = pl.create("Node")
         node1.set_attribute_value("hostname", hostname)
         node1.set_attribute_value("label", label_prefix)
-        node1.set_attribute_value("emulation", True) # require emulation
         iface1 = pl.create("NodeInterface")
         iface1.set_attribute_value("label", label_prefix+"iface")
         tap1 = pl.create("TapInterface")

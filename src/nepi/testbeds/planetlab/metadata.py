@@ -93,10 +93,8 @@ def connect_node_iface_inet(testbed_instance, iface_guid, inet_guid):
 def connect_tun_iface_node(testbed_instance, node_guid, iface_guid):
     node = testbed_instance._elements[node_guid]
     iface = testbed_instance._elements[iface_guid]
-    if not node.emulation:
-        raise RuntimeError, "Use of TUN interfaces requires emulation"
     iface.node = node
-    node.required_vsys.update(('fd_tuntap', 'vif_up'))
+    node.required_vsys.update(('fd_tuntap', 'vif_up', 'vif_down'))
     node.required_packages.update(('python', 'python-crypto', 'python-setuptools', 'gcc'))
 
 def connect_tun_iface_peer(proto, testbed_instance, iface_guid, peer_iface_guid):
@@ -155,9 +153,9 @@ def connect_dep(testbed_instance, node_guid, app_guid):
 def connect_node_netpipe(testbed_instance, node_guid, netpipe_guid):
     node = testbed_instance._elements[node_guid]
     netpipe = testbed_instance._elements[netpipe_guid]
-    if not node.emulation:
-        raise RuntimeError, "Use of NetPipes requires emulation"
     netpipe.node = node
+    node.required_vsys.add('ipfw-be')
+    node.required_packages.add('ipfwslice')
     
 
 ### Creation functions ###
@@ -667,14 +665,6 @@ attributes = dict({
                             "PLJ"],
                 "validation_function": validation.is_enum,
             }),
-    "emulation": dict({      
-                "name": "emulation",
-                "help": "Enable emulation on this node. Enables NetfilterRoutes, bridges, and a host of other functionality.",
-                "type": Attribute.BOOL,
-                "value": False, 
-                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
-                "validation_function": validation.is_bool,
-            }),
     "min_reliability": dict({
                 "name": "minReliability",
                 "help": "Constrain reliability while picking PlanetLab nodes. Specifies a lower acceptable bound.",
@@ -965,7 +955,6 @@ factories_info = dict({
                 "architecture",
                 "operating_system",
                 "site",
-                "emulation",
                 "min_reliability",
                 "max_reliability",
                 "min_bandwidth",
