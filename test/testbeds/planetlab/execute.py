@@ -485,7 +485,7 @@ echo 'OKIDOKI'
         instance.defer_connect(6, "node", 2, "deps")
         instance.defer_create(12, "Application")
         instance.defer_connect(12, "node", 2, "apps")
-        instance.defer_create_set(12, "command", "python -c 'import nepi.testbeds.ns3.execute ; tb = nepi.testbeds.ns3.execute.TestbedController(\"3_9_RC3\") ; mod = tb._load_ns3_module()'")
+        instance.defer_create_set(12, "command", "python -c 'import nepi.testbeds.ns3.execute ; tb = nepi.testbeds.ns3.execute.TestbedController() ; mod = tb._load_ns3_module()'")
         instance.defer_add_trace(12, "stderr")
 
         try:
