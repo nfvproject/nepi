@@ -65,6 +65,11 @@ def eintr_retry(func):
                     continue
                 else:
                     raise 
+            except OSError, e:
+                if e.errno == errno.EINTR:
+                    continue
+                else:
+                    raise
         else:
             return func(*p, **kw)
     return rv
@@ -178,6 +183,7 @@ class Server(object):
                 try:
                     msg = self.recv_msg(conn)
                 except socket.timeout, e:
+                    self.log_error()
                     break
                     
                 if msg == STOP_MSG:
@@ -204,10 +210,12 @@ class Server(object):
         while '\n' not in chunk:
             try:
                 chunk = conn.recv(1024)
+            except socket.timeout:
+                continue
             except OSError, e:
                 if e.errno != errno.EINTR:
                     raise
-                if chunk == '':
+                else:
                     continue
             if chunk:
                 data.append(chunk)
