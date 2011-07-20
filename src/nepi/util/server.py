@@ -60,7 +60,7 @@ def eintr_retry(func):
         for i in xrange(0 if retry else 4):
             try:
                 return func(*p, **kw)
-            except select.error, args:
+            except (select.error, socket.error), args:
                 if args[0] == errno.EINTR:
                     continue
                 else:
@@ -210,10 +210,8 @@ class Server(object):
         while '\n' not in chunk:
             try:
                 chunk = conn.recv(1024)
-            except socket.timeout:
-                continue
-            except OSError, e:
-                if e.errno != errno.EINTR:
+            except (OSError, socket.error), e:
+                if e[0] != errno.EINTR:
                     raise
                 else:
                     continue
@@ -289,8 +287,8 @@ class Forwarder(object):
     def send_to_server(self, data):
         try:
             self._ctrl_sock.send(data)
-        except IOError, e:
-            if e.errno == errno.EPIPE:
+        except (IOError, socket.error), e:
+            if e[0] == errno.EPIPE:
                 self.connect()
                 self._ctrl_sock.send(data)
             else:
@@ -306,11 +304,10 @@ class Forwarder(object):
         while '\n' not in chunk:
             try:
                 chunk = self._ctrl_sock.recv(1024)
-            except OSError, e:
-                if e.errno != errno.EINTR:
+            except (OSError, socket.error), e:
+                if e[0] != errno.EINTR:
                     raise
-                if chunk == '':
-                    continue
+                continue
             if chunk:
                 data.append(chunk)
             else:
