@@ -80,7 +80,7 @@ class ParallelMap(object):
                     self.queue.task_done()
             except:
                 traceback.print_exc(file = sys.stderr)
-                self.delayed_exceptions.apped(sys.exc_info())
+                self.delayed_exceptions.append(sys.exc_info())
 
     def __iter__(self):
         if self.rvqueue is not None:
