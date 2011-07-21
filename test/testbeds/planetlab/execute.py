@@ -20,9 +20,12 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
     
     host1 = "nepi1.pl.sophia.inria.fr"
     host2 = "nepi2.pl.sophia.inria.fr"
-
+    
+    port_base = 2000 + (os.getpid() % 1000) * 13
+    
     def setUp(self):
         self.root_dir = tempfile.mkdtemp()
+        self.port_base = self.port_base + 100
         
     def tearDown(self):
         try:
