@@ -1121,6 +1121,18 @@ testbed_attributes = dict({
             "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable | Attribute.NoDefaultValue,
             "validation_function": validation.is_string
         }),
+        "pl_log_level": dict({      
+            "name": "plLogLevel",
+            "help": "Verbosity of logging of planetlab events.",
+            "value": "ERROR",
+            "type": Attribute.ENUM, 
+            "allowed": ["DEBUG",
+                        "INFO",
+                        "WARNING",
+                        "ERROR",
+                        "CRITICAL"],
+            "validation_function": validation.is_enum,
+        }),
     })
 
 class MetadataInfo(metadata.MetadataInfo):

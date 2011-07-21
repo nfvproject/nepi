@@ -12,6 +12,7 @@ import cStringIO
 import resourcealloc
 import socket
 import sys
+import logging
 
 from nepi.util import server
 from nepi.util import parallel
@@ -77,6 +78,9 @@ class Node(object):
         
         # Those are filled when an actual node is allocated
         self._node_id = None
+
+        # Logging
+        self._logger = logging.getLogger('nepi.testbeds.planetlab')
     
     @property
     def _nepi_testbed_environment_setup(self):
@@ -109,7 +113,7 @@ class Node(object):
         )
     
     def find_candidates(self, filter_slice_id=None):
-        print >>sys.stderr, "Finding candidates for", self.make_filter_description()
+        self._logger.info("Finding candidates for %s", self.make_filter_description())
         
         fields = ('node_id',)
         replacements = {'timeframe':self.timeframe}
@@ -197,7 +201,7 @@ class Node(object):
         
         # make sure hostnames are resolvable
         if candidates:
-            print >>sys.stderr, "  Found", len(candidates), "candidates. Checking for reachability..."
+            self._logger.info("  Found %s candidates. Checking for reachability...", len(candidates))
             
             hostnames = dict(map(operator.itemgetter('node_id','hostname'),
                 self._api.GetNodes(list(candidates), ['node_id','hostname'])
@@ -211,7 +215,7 @@ class Node(object):
             candidates = set(parallel.pfilter(resolvable, candidates,
                 maxthreads = 16))
 
-            print >>sys.stderr, "  Found", len(candidates), "reachable candidates."
+            self._logger.info("  Found %s reachable candidates.", len(candidates))
             
         return candidates
     
@@ -474,7 +478,7 @@ class Node(object):
                 raise RuntimeError, "Route %s cannot be bound to any virtual interface " \
                     "- PL can only handle rules over virtual interfaces. Candidates are: %s" % (route,devs)
         
-        print >>sys.stderr, "Setting up routes for", self.hostname
+        self._logger.info("Setting up routes for %s", self.hostname)
         
         (out,err),proc = server.popen_ssh_command(
             "( sudo -S bash -c 'cat /vsys/vroute.out >&2' & ) ; sudo -S bash -c 'cat > /vsys/vroute.in' ; sleep 0.1" % dict(

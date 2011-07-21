@@ -15,6 +15,7 @@ import random
 import time
 import socket
 import threading
+import logging
 
 from nepi.util.constants import ApplicationStatus as AS
 
@@ -81,6 +82,9 @@ class Dependency(object):
         self._build_pid = None
         self._build_ppid = None
         
+        # Logging
+        self._logger = logging.getLogger('nepi.testbeds.planetlab')
+        
     
     def __str__(self):
         return "%s<%s>" % (
@@ -138,7 +142,7 @@ class Dependency(object):
         return local_path
 
     def setup(self):
-        print >>sys.stderr, "Setting up", self
+        self._logger.info("Setting up %s", self)
         self._make_home()
         self._launch_build()
         self._finish_build()
@@ -158,7 +162,7 @@ class Dependency(object):
     
     def async_setup_wait(self):
         if not self._setup:
-            print >>sys.stderr, "Waiting for", self, "to be setup"
+            self._logger.info("Waiting for %s to be setup", self)
             if self._setuper:
                 self._setuper.join()
                 if not self._setup:
@@ -212,7 +216,7 @@ class Dependency(object):
             buildscript = self._do_build_master()
             
         if buildscript is not None:
-            print >>sys.stderr, "Building", self
+            self._logger.info("Building %s", self)
             
             # upload build script
             try:
@@ -345,7 +349,7 @@ class Dependency(object):
         else:
             raise RuntimeError, "Failed to set up build slave %s: cannot get pid" % (self.home_path,)
 
-        print >>sys.stderr, "Deploying", self
+        self._logger.info("Deploying %s", self)
         
     def _do_wait_build(self):
         pid = self._build_pid
@@ -370,11 +374,8 @@ class Dependency(object):
                     break
                 else:
                     if first:
-                        print >>sys.stderr, "Waiting for", self, "to finish building",
-                        if self._master is not None:
-                            print >>sys.stderr, "(build slave)"
-                        else:
-                            print >>sys.stderr, "(build master)"
+                        self._logger.info("Waiting for %s to finish building %s", self,
+                            "(build slave)" if self._master is not None else "(build master)")
                         
                         first = False
                     time.sleep(delay*(0.5+random.random()))
@@ -407,14 +408,14 @@ class Dependency(object):
                         "(expected %r, got %r), see buildlog: %s" % (
                     self.home_path, pid, ppid, self._master_token, slave_token, buildlog)
 
-            print >>sys.stderr, "Built", self
+            self._logger.info("Built %s", self)
 
     def _do_kill_build(self):
         pid = self._build_pid
         ppid = self._build_ppid
         
         if pid and ppid:
-            print >>sys.stderr, "Killing build of", self
+            self._logger.info("Killing build of %s", self)
             rspawn.remote_kill(
                 pid, ppid,
                 host = self.node.hostname,
@@ -477,7 +478,7 @@ class Dependency(object):
 
     def _do_install(self):
         if self.install:
-            print >>sys.stderr, "Installing", self
+            self._logger.info("Installing %s", self)
             
             # Install application
             try:
@@ -606,7 +607,7 @@ class Application(Dependency):
         )
     
     def start(self):
-        print >>sys.stderr, "Starting", self
+        self._logger.info("Starting %s", self)
         
         # Create shell script with the command
         # This way, complex commands and scripts can be ran seamlessly
@@ -717,7 +718,7 @@ class Application(Dependency):
                 ident_key = self.node.ident_path,
                 server_key = self.node.server_key
                 )
-            print >>sys.stderr, "Killed", self
+            self._logger.info("Killed %s", self)
 
 
 class NepiDependency(Dependency):

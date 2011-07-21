@@ -22,6 +22,7 @@ import tempfile
 import subprocess
 import random
 import shutil
+import logging
 
 class TempKeyError(Exception):
     pass
@@ -42,6 +43,8 @@ class TestbedController(testbed_impl.TestbedController):
         self._just_provisioned = set()
         
         self._load_blacklist()
+        
+        self._logger = logging.getLogger('nepi.testbeds.planetlab')
 
     @property
     def home_directory(self):
@@ -118,6 +121,11 @@ class TestbedController(testbed_impl.TestbedController):
             get_attribute_value("plcHost")
         self.plcUrl = self._attributes.\
             get_attribute_value("plcUrl")
+        self.logLevel = self._attributes.\
+            get_attribute_value("plLogLevel")
+        
+        self._logger.setLevel(getattr(logging,self.logLevel))
+        
         super(TestbedController, self).do_setup()
 
     def do_post_asynclaunch(self, guid):
@@ -245,29 +253,28 @@ class TestbedController(testbed_impl.TestbedController):
                 node.slicename = self.slicename
             
                 # Show the magic
-                print >>sys.stderr, "PlanetLab Node", guid, "configured at", node.hostname
+                self._logger.info("PlanetLab Node %s configured at %s", guid, node.hostname)
             
         try:
             for guid, node in self._elements.iteritems():
                 if isinstance(node, self._node.Node):
-                    print >>sys.stderr, "Waiting for Node", guid, "configured at", node.hostname,
-                    sys.stdout.flush()
+                    self._logger.info("Waiting for Node %s configured at %s", guid, node.hostname)
                     
                     node.wait_provisioning(
                         (20*60 if node._node_id in self._just_provisioned else 60)
                     )
                     
-                    print >>sys.stderr, "READY"
+                    self._logger.info("READY Node %s at %s", guid, node.hostname)
         except self._node.UnresponsiveNodeError:
             # Uh... 
-            print >>sys.stderr, "UNRESPONSIVE"
+            self._logger.warn("UNRESPONSIVE Node %s", node.hostname)
             
             # Mark all dead nodes (which are unresponsive) on the blacklist
             # and re-raise
             for guid, node in self._elements.iteritems():
                 if isinstance(node, self._node.Node):
                     if not node.is_alive():
-                        print >>sys.stderr, "Blacklisting", node.hostname, "for unresponsiveness"
+                        self._logger.warn("Blacklisting %s for unresponsiveness", node.hostname)
                         self._blacklist.add(node._node_id)
                         node.unassign_node()
             
