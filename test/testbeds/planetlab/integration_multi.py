@@ -29,8 +29,11 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
     host1pl2 = "planetlab1.utt.fr"
     host2pl2 = "planetlab2.utt.fr"
 
+    port_base = 2000 + (os.getpid() % 1000) * 13
+    
     def setUp(self):
         self.root_dir = tempfile.mkdtemp()
+        self.port_base = self.port_base + 100
 
     def tearDown(self):
         try:

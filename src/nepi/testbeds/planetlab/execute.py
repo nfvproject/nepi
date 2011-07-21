@@ -123,6 +123,8 @@ class TestbedController(testbed_impl.TestbedController):
             get_attribute_value("plcUrl")
         self.logLevel = self._attributes.\
             get_attribute_value("plLogLevel")
+        self.tapPortBase = self._attributes.\
+            get_attribute_value("tapPortBase")
         
         self._logger.setLevel(getattr(logging,self.logLevel))
         

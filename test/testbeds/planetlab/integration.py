@@ -25,8 +25,11 @@ class PlanetLabIntegrationTestCase(unittest.TestCase):
     host3 = "nepi3.pl.sophia.inria.fr"
     host4 = "nepi5.pl.sophia.inria.fr"
 
+    port_base = 2000 + (os.getpid() % 1000) * 13
+    
     def setUp(self):
         self.root_dir = tempfile.mkdtemp()
+        self.port_base = self.port_base + 100
 
     def tearDown(self):
         try:

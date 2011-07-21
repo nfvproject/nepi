@@ -328,7 +328,7 @@ def preconfigure_tuniface(testbed_instance, guid):
     # Set standard TUN attributes
     if (not element.tun_addr or not element.tun_port) and element.external_iface:
         element.tun_addr = element.external_iface.address
-        element.tun_port = 15000 + int(guid)
+        element.tun_port = testbed_instance.tapPortBase + int(guid)
 
     # Set enabled traces
     traces = testbed_instance._get_traces(guid)
@@ -1132,6 +1132,14 @@ testbed_attributes = dict({
                         "ERROR",
                         "CRITICAL"],
             "validation_function": validation.is_enum,
+        }),
+        "tap_port_base":  dict({
+            "name": "tapPortBase", 
+            "help": "Base port to use when connecting TUN/TAPs. Effective port will be BASE + GUID.",
+            "type": Attribute.INTEGER,
+            "value": 15000,
+            "range": (2000,30000),
+            "validation_function": validation.is_integer_range(2000,30000)
         }),
     })
 
