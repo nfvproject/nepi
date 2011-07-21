@@ -29,7 +29,6 @@ class PlanetLabIntegrationTestCase(unittest.TestCase):
         self.root_dir = tempfile.mkdtemp()
 
     def tearDown(self):
-        return
         try:
             shutil.rmtree(self.root_dir)
         except:
@@ -58,7 +57,7 @@ class PlanetLabIntegrationTestCase(unittest.TestCase):
         
         return pl_desc, exp_desc
     
-    def _test_simple(self, daemonize_testbed, controller_access_configuration):
+    def _test_simple(self, daemonize_testbed, controller_access_configuration, environ = None):
         pl, exp = self.make_experiment_desc()
         
         node1 = pl.create("Node")
@@ -84,6 +83,11 @@ class PlanetLabIntegrationTestCase(unittest.TestCase):
             os.mkdir(inst_root_dir)
             pl.set_attribute_value(DC.ROOT_DIRECTORY, inst_root_dir)
             pl.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
+
+            if environ:
+                pl.set_attribute_value(DC.DEPLOYMENT_ENVIRONMENT_SETUP, environ)
+
+        xml = exp.to_xml()
 
         if controller_access_configuration:
             controller = proxy.create_experiment_controller(xml, 
@@ -193,7 +197,10 @@ FIONREAD = 0x[0-9a-fA-F]{8}.*
             controller_access_configuration = access_config)
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
-    def test_simple_ssh(self):
+    def test_z_simple_ssh(self): # _z_ cause we want it last - it messes up the process :(
+        # Recreate environment
+        environ = ' ; '.join( map("export %s=%r".__mod__, os.environ.iteritems()) )
+
         env = test_util.test_environment()
 
         access_config = proxy.AccessConfiguration({
@@ -203,11 +210,13 @@ FIONREAD = 0x[0-9a-fA-F]{8}.*
             DC.DEPLOYMENT_COMMUNICATION : DC.ACCESS_SSH,
             DC.DEPLOYMENT_PORT : env.port,
             DC.USE_AGENT : True,
+            DC.DEPLOYMENT_ENVIRONMENT_SETUP : environ,
         })
 
         self._test_simple(
             daemonize_testbed = False,
-            controller_access_configuration = access_config)
+            controller_access_configuration = access_config,
+            environ = environ)
         
 
 if __name__ == '__main__':
