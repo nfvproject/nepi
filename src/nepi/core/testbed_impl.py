@@ -12,6 +12,7 @@ from nepi.util.parallel import ParallelRun
 
 import collections
 import copy
+import logging
 
 class TestbedController(execute.TestbedController):
     def __init__(self, testbed_id, testbed_version):
@@ -49,6 +50,9 @@ class TestbedController(execute.TestbedController):
             self._factories[factory.factory_id] = factory
         self._attributes = self._metadata.testbed_attributes()
         self._root_directory = None
+        
+        # Logging
+        self._logger = logging.getLogger("nepi.core.testbed_impl")
     
     @property
     def root_directory(self):
@@ -213,6 +217,8 @@ class TestbedController(execute.TestbedController):
         self._status = TS.STATUS_CONNECTED
 
     def _do_in_factory_order(self, action, order, postaction = None, poststep = None):
+        logger = self._logger
+        
         guids = collections.defaultdict(list)
         # order guids (elements) according to factory_id
         for guid, factory_id in self._create.iteritems():
@@ -241,19 +247,31 @@ class TestbedController(execute.TestbedController):
 
             # perform the action on all elements, in parallel if so requested
             if runner:
+                logger.debug("Starting parallel %s", action)
                 runner.start()
+
             for guid in guids[factory_id]:
                 if runner:
+                    logger.debug("Scheduling %s on %s", action, guid)
                     runner.put(perform_action, guid)
                 else:
+                    logger.debug("Performing %s on %s", action, guid)
                     perform_action(guid)
-            if runner:
-                runner.join()
             
             # post hook
             if poststep:
                 for guid in guids[factory_id]:
-                    poststep(self, guid)
+                    if runner:
+                        logger.debug("Scheduling post-%s on %s", action, guid)
+                        runner.put(poststep, self, guid)
+                    else:
+                        logger.debug("Performing post-%s on %s", action, guid)
+                        poststep(self, guid)
+
+            # sync
+            if runner:
+                runner.join()
+                logger.debug("Finished parallel %s", action)
 
     @staticmethod
     def do_poststep_preconfigure(self, guid):
