@@ -843,7 +843,7 @@ class ExperimentController(object):
     def _add_crossdata(self, testbed_guid, guid, cross_testbed_guid, cross_guid):
         if testbed_guid not in self._cross_data:
             self._cross_data[testbed_guid] = dict()
-        if cross_guid not in self._cross_data[testbed_guid]:
+        if cross_testbed_guid not in self._cross_data[testbed_guid]:
             self._cross_data[testbed_guid][cross_testbed_guid] = set()
         self._cross_data[testbed_guid][cross_testbed_guid].add(cross_guid)
 
