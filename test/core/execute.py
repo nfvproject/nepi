@@ -13,9 +13,8 @@ import unittest
 class ExecuteTestCase(unittest.TestCase):
     def setUp(self):
         sys.modules["nepi.testbeds.mock.metadata"] = mock.metadata
-
-    def test_execute(self):
-        instance = mock.TestbedController()
+    
+    def make_mock_test(self, instance):
         instance.defer_configure("fake", True)
         instance.defer_create(2, "Node")
         instance.defer_create(3, "Node")
@@ -30,12 +29,22 @@ class ExecuteTestCase(unittest.TestCase):
         instance.defer_create(7, "Application")
         instance.defer_add_trace(7, "fake")
         instance.defer_connect(7, "node", 2, "apps")
-
+    
+    def do_presteps(self, instance):
         instance.do_setup()
         instance.do_create()
         instance.do_connect_init()
         instance.do_connect_compl()
+        instance.do_preconfigure()
         instance.do_configure()
+        instance.do_prestart()
+
+    def test_execute(self):
+        instance = mock.TestbedController()
+        
+        self.make_mock_test(instance)
+        self.do_presteps(instance)
+
         instance.start()
         attr_list = instance.get_attribute_list(5)
         self.assertEquals(attr_list, ["test", "fake", "cross", "maxAddresses", "label"])
