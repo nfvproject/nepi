@@ -257,6 +257,10 @@ class TestbedController(execute.TestbedController):
                 else:
                     logger.debug("Performing %s on %s", action, guid)
                     perform_action(guid)
+
+            # sync
+            if runner:
+                runner.sync()
             
             # post hook
             if poststep:

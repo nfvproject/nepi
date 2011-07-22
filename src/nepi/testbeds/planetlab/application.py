@@ -483,7 +483,7 @@ class Dependency(object):
             # Install application
             try:
                 self._popen_ssh_command(
-                    "cd %(home)s && cd build && ( %(command)s ) > ${HOME}/%(home)s/installlog 2>&1 || ( tail ${HOME}/%(home)s/installlog >&2 && false )" % \
+                    "cd %(home)s && cd build && ( %(command)s ) > ${HOME}/%(home)s/installlog 2>&1 || ( tail ${HOME}/%(home)s/{install,build}log >&2 && false )" % \
                         {
                         'command' : self._replace_paths(self.install),
                         'home' : server.shell_escape(self.home_path),
@@ -804,10 +804,21 @@ class NS3Dependency(Dependency):
             "  test -f lib/libns3.so "
             " ) || ( "
                 # Not working, rebuild
-                     "wget -q -c -O pybindgen-src.zip %(pybindgen_source_url)s && " # continue, to exploit the case when it has already been dl'ed
-                     "wget -q -c -O pygccxml-1.0.0.zip %(pygccxml_source_url)s && " 
-                     "wget -q -c -O passfd-src.tar.gz %(passfd_source_url)s && "
-                     "wget -q -c -O ns3-src.tar.gz %(ns3_source_url)s && "  
+                     # Archive SHA1 sums to check
+                     "echo '7158877faff2254e6c094bf18e6b4283cac19137  pygccxml-1.0.0.zip' > archive_sums.txt && "
+                     "echo 'ddc7c5d288e1bacb1307114878956762c5146fac  pybindgen-src.zip' >> archive_sums.txt && "
+                     " ( " # check existing files
+                     " sha1sum -c archive_sums.txt && "
+                     " test -f passfd-src.tar.gz && "
+                     " test -f ns3-src.tar.gz "
+                     " ) || ( " # nope? re-download
+                     " rm -f pybindgen-src.zip pygccxml-1.0.0.zip passfd-src.tar.gz ns3-src.tar.gz && "
+                     " wget -q -c -O pybindgen-src.zip %(pybindgen_source_url)s && " # continue, to exploit the case when it has already been dl'ed
+                     " wget -q -c -O pygccxml-1.0.0.zip %(pygccxml_source_url)s && " 
+                     " wget -q -c -O passfd-src.tar.gz %(passfd_source_url)s && "
+                     " wget -q -c -O ns3-src.tar.gz %(ns3_source_url)s && "  
+                     " sha1sum -c archive_sums.txt " # Check SHA1 sums when applicable
+                     " ) && "
                      "unzip -n pybindgen-src.zip && " # Do not overwrite files, to exploit the case when it has already been built
                      "unzip -n pygccxml-1.0.0.zip && "
                      "mkdir -p ns3-src && "
