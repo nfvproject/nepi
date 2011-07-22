@@ -28,7 +28,7 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
     
     def setUp(self):
         self.root_dir = tempfile.mkdtemp()
-        self.port_base = self.port_base + 100
+        self.__class__.port_base = self.port_base + 100
 
     def tearDown(self):
         try:
@@ -56,6 +56,7 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
         pl_desc.set_attribute_value("authUser", pl_user)
         pl_desc.set_attribute_value("authPass", pl_pwd)
         pl_desc.set_attribute_value("plcHost", plchost)
+        pl_desc.set_attribute_value("tapPortBase", self.port_base)
         
         return pl_desc, exp_desc
     

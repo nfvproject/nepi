@@ -25,7 +25,7 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
     
     def setUp(self):
         self.root_dir = tempfile.mkdtemp()
-        self.port_base = self.port_base + 100
+        self.__class__.port_base = self.port_base + 100
         
     def tearDown(self):
         try:
@@ -52,6 +52,7 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
         instance.defer_configure("authUser", pl_user)
         instance.defer_configure("authPass", pl_pwd)
         instance.defer_configure("plcHost", plchost)
+        instance.defer_configure("tapPortBase", self.port_base)
         
         return instance
 
