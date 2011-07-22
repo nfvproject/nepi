@@ -162,7 +162,7 @@ def wimaxpcap_trace(testbed_instance, guid, trace_id):
 
 def rtt_trace(testbed_instance, guid, trace_id):
     element = testbed_instance._elements[guid]
-    helper = testbed_instance.ns3.PlotHelper()
+    helper = testbed_instance.ns3.ScalarTraceHelper()
     prefix = "trace-app-%d" % (guid, )
     filename = helper.GetFilenameFromSource(prefix, element, trace_id)
     filepath = _follow_trace(testbed_instance, guid, trace_id, filename)

@@ -31,28 +31,14 @@ def ns3_library_path():
     return None
 
 def ns3_usable():
-    if ns3_library_path():
-        try:
-            ctypes.CDLL(ns3_library_path(), ctypes.RTLD_GLOBAL)
-        except:
-            return False
-
-    if ns3_bindings_path():
-        sys.path.insert(0, ns3_bindings_path())
-
     try:
-        found = imp.find_module('ns3')
-        module = imp.load_module('ns3', *found)
-    except ImportError:
-        try:
-            found = imp.find_module('_ns3')
-            module = imp.load_module('_ns3', *found)
-        except ImportError:
-            return False
-    finally:
-        if ns3_bindings_path():
-            del sys.path[0]
-
+        from nepi.testbeds.ns3 import execute
+        execute.load_ns3_module()
+    except:
+        import traceback
+        import sys
+        traceback.print_exc(file = sys.stderr)
+        return False
     return True
 
 def pl_auth():
