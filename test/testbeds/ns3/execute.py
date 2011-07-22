@@ -75,18 +75,18 @@ class Ns3ExecuteTestCase(unittest.TestCase):
         ping_result = instance.trace(14, "P2PAsciiTrace")
         ping_rtt = instance.trace(17, "Rtt")
         comp_result = "- 9.021 /NodeList/1/DeviceList/0/$ns3::PointToPointNetDevice/TxQueue/Dequeue ns3::PppHeader (Point-to-Point Protocol: IP (0x0021)) ns3::Ipv4Header (tos 0x0 ttl 64 id 9 protocol 1 offset 0 flags [none] length: 84 10.0.0.2 > 10.0.0.1) ns3::Icmpv4Header (type=0, code=0) ns3::Icmpv4Echo (identifier=0, sequence=9)"
-        comp_rtt_result = """41992186ns	41992186ns
-1041992186ns	41992186ns
-2041992186ns	41992186ns
-3041992186ns	41992186ns
-4041992186ns	41992186ns
-5041992186ns	41992186ns
-6041992186ns	41992186ns
-7041992186ns	41992186ns
-8041992186ns	41992186ns
-9041992186ns	41992186ns"""
+        comp_rtt_result = """+41992186.0ns\t+41992186.0ns
++1041992186.0ns\t+41992186.0ns
++2041992186.0ns\t+41992186.0ns
++3041992186.0ns\t+41992186.0ns
++4041992186.0ns\t+41992186.0ns
++5041992186.0ns\t+41992186.0ns
++6041992186.0ns\t+41992186.0ns
++7041992186.0ns\t+41992186.0ns
++8041992186.0ns\t+41992186.0ns
++9041992186.0ns\t+41992186.0ns"""
         self.assertNotEqual(ping_result.find(comp_result), -1)
-        self.assertEqual(ping_rtt.strip(), comp_rtt_result, -1)
+        self.assertEqual(ping_rtt.strip(), comp_rtt_result.strip())
         instance.stop()
         instance.shutdown()
 

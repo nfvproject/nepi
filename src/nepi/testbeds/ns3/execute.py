@@ -12,56 +12,47 @@ import random
 import socket
 import weakref
 
-def init():
+def load_ns3_module():
+    import sys
     if 'ns3' in sys.modules:
         return
 
     import ctypes
     import imp
+    import re
 
     bindings = os.environ["NEPI_NS3BINDINGS"] \
 		if "NEPI_NS3BINDINGS" in os.environ else None
-    libfile = os.environ["NEPI_NS3LIBRARY"] \
+    libdir = os.environ["NEPI_NS3LIBRARY"] \
 		if "NEPI_NS3LIBRARY" in os.environ else None
 
-    if libfile:
-        ctypes.CDLL(libfile, ctypes.RTLD_GLOBAL)
-        """
-        files = os.listdir(build_path)
+    if libdir:
+        files = os.listdir(libdir)
         regex = re.compile("(.*\.so)$")
         libs = [m.group(1) for filename in files for m in [regex.search(filename)] if m]
-        i = 0
+
+        libscp = list(libs)
         while len(libs) > 0:
-            i += 1
-            lib = libs[ i % len(libs)]
-            libfile = os.path.join(build_path, lib)
-            try:
-                ctypes.CDLL(libfile, ctypes.RTLD_GLOBAL)
-                libs.remove(lib)
-            except:
-                pass
-        """
+            for lib in libscp:
+                libfile = os.path.join(libdir, lib)
+                try:
+                    ctypes.CDLL(libfile, ctypes.RTLD_GLOBAL)
+                    libs.remove(lib)
+                except:
+                    pass
+            # if did not load any libraries in the last iteration
+            if len(libscp) == len(libs):
+                raise RuntimeError("Imposible to load shared libraries %s" % str(libs))
+            libscp = list(libs)
 
-	path = [ os.path.dirname(__file__) ] + sys.path
-	if bindings:
-	    path = [ bindings ] + path
-
-	try:
-	    module = imp.find_module ('ns3', path)
-	    mod = imp.load_module ('ns3', *module)
-	except ImportError:
-	    # In some environments, ns3 per-se does not exist,
-	    # only the low-level _ns3
-	    module = imp.find_module ('_ns3', path)
-	    mod = imp.load_module ('_ns3', *module)
-	    sys.modules["ns3"] = mod # install it as ns3 too
-	    
-	    # When using _ns3, we have to make sure we destroy
-	    # the simulator when the process finishes
-	    import atexit
-	    atexit.register(mod.Simulator.Destroy)
-
- 
+    if not bindings:
+        import ns3
+        sys.modules["ns3"] = ns3
+        return
+    
+    sys.path.append(bindings)
+    import ns3_bindings_import as mod
+    sys.modules["ns3"] = mod
 
 class TestbedController(testbed_impl.TestbedController):
     from nepi.util.tunchannel_impl import TunChannel
@@ -91,7 +82,7 @@ class TestbedController(testbed_impl.TestbedController):
     def do_setup(self):
         self._home_directory = self._attributes.\
             get_attribute_value("homeDirectory")
-        self._ns3 = self._load_ns3_module()
+        self._ns3 = self._configure_ns3_module()
         
         # create home...
         home = os.path.normpath(self.home_directory)
@@ -289,13 +280,13 @@ class TestbedController(testbed_impl.TestbedController):
         ns3_value.DeserializeFromString(str_value, checker)
         return ns3_value
 
-    def _load_ns3_module(self):
+    def _configure_ns3_module(self):
         simu_impl_type = self._attributes.get_attribute_value(
                 "SimulatorImplementationType")
         checksum = self._attributes.get_attribute_value("ChecksumEnabled")
         stop_time = self._attributes.get_attribute_value("StopTime")
 
-        init()
+        load_ns3_module()
 
         import ns3 as mod
  
