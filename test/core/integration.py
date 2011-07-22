@@ -318,7 +318,7 @@ class ExecuteTestCase(unittest.TestCase):
         controller.stop()
         controller.shutdown()
 
-    def TODO_test_ssh_daemonized_all_integration(self):
+    def test_ssh_daemonized_integration(self):
         # TODO: This test doesn't run because
         # sys.modules["nepi.testbeds.mock"] = mock
         # is not set in the ssh process
@@ -329,9 +329,11 @@ class ExecuteTestCase(unittest.TestCase):
         inst_root_dir = os.path.join(self.root_dir, "instance")
         os.mkdir(inst_root_dir)
         desc.set_attribute_value(DC.ROOT_DIRECTORY, inst_root_dir)
-        desc.set_attribute_value(DC.DEPLOYMENT_COMMUNICATION, DC.ACCESS_SSH)
-        desc.set_attribute_value(DC.DEPLOYMENT_PORT, env.port)
-        desc.set_attribute_value(DC.USE_AGENT, True)
+        desc.set_attribute_value(DC.DEPLOYMENT_ENVIRONMENT_SETUP, 
+            "export PYTHONPATH=%r:%r:$PYTHONPATH ; "
+            "export NEPI_TESTBEDS='mock:mock mock2:mock2' ; " % (
+                os.path.dirname(os.path.dirname(mock.__file__)),
+                os.path.dirname(os.path.dirname(mock2.__file__)),))
         
         xml = exp_desc.to_xml()
         
@@ -343,18 +345,20 @@ class ExecuteTestCase(unittest.TestCase):
         access_config.set_attribute_value(DC.USE_AGENT, True)
         controller = proxy.create_experiment_controller(xml, access_config)
 
-        controller.start()
-        while not controller.is_finished(app.guid):
-            time.sleep(0.5)
-        fake_result = controller.trace(app.guid, "fake")
-        comp_result = """PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
+        try:
+            controller.start()
+            while not controller.is_finished(app.guid):
+                time.sleep(0.5)
+            fake_result = controller.trace(app.guid, "fake")
+            comp_result = """PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
 
 --- 10.0.0.2 ping statistics ---
 1 packets transmitted, 1 received, 0% packet loss, time 0ms
 """
-        self.assertTrue(fake_result.startswith(comp_result))
-        controller.stop()
-        controller.shutdown()
+            self.assertTrue(fake_result.startswith(comp_result))
+        finally:
+            controller.stop()
+            controller.shutdown()
  
 if __name__ == '__main__':
     unittest.main()

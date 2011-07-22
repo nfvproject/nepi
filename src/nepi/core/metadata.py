@@ -6,6 +6,7 @@ from nepi.core.connector import ConnectorType
 from nepi.core.factory import Factory
 import sys
 import getpass
+import nepi.util.environ
 from nepi.util import tags, validation
 from nepi.util.constants import ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP, \
         DeploymentConfiguration as DC, \
@@ -503,7 +504,7 @@ class Metadata(object):
         return factories
 
     def _load_metadata_module(self):
-        mod_name = "nepi.testbeds.%s.metadata" % (self._testbed_id.lower())
+        mod_name = nepi.util.environ.find_testbed(self._testbed_id) + ".metadata"
         if not mod_name in sys.modules:
             __import__(mod_name)
         return sys.modules[mod_name]

@@ -3,6 +3,7 @@
 
 import base64
 import nepi.core.execute
+import nepi.util.environ
 from nepi.core.attributes import AttributesMap, Attribute
 from nepi.util import server, validation
 from nepi.util.constants import TIME_NOW, ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP, DeploymentConfiguration as DC
@@ -13,6 +14,7 @@ import time
 import tempfile
 import shutil
 import functools
+import os
 
 # PROTOCOL REPLIES
 OK = 0
@@ -233,9 +235,14 @@ def create_testbed_controller(testbed_id, testbed_version, access_config):
     raise RuntimeError("Unsupported access configuration '%s'" % mode)
 
 def _build_testbed_controller(testbed_id, testbed_version):
-    mod_name = "nepi.testbeds.%s" % (testbed_id.lower())
+    mod_name = nepi.util.environ.find_testbed(testbed_id)
+    
     if not mod_name in sys.modules:
-        __import__(mod_name)
+        try:
+            __import__(mod_name)
+        except ImportError:
+            raise ImportError, "Cannot find module %s in %r" % (mod_name, sys.path)
+    
     module = sys.modules[mod_name]
     tc = module.TestbedController()
     if tc.testbed_version != testbed_version:
@@ -443,8 +450,9 @@ class BaseServer(server.Server):
         return reply
 
 class TestbedControllerServer(BaseServer):
-    def __init__(self, root_dir, log_level, testbed_id, testbed_version):
-        super(TestbedControllerServer, self).__init__(root_dir, log_level)
+    def __init__(self, root_dir, log_level, testbed_id, testbed_version, environment_setup):
+        super(TestbedControllerServer, self).__init__(root_dir, log_level, 
+            environment_setup = environment_setup )
         self._testbed_id = testbed_id
         self._testbed_version = testbed_version
         self._testbed = None
@@ -666,8 +674,9 @@ class TestbedControllerServer(BaseServer):
         return self._testbed.get_factory_id(guid)
 
 class ExperimentControllerServer(BaseServer):
-    def __init__(self, root_dir, log_level, experiment_xml):
-        super(ExperimentControllerServer, self).__init__(root_dir, log_level)
+    def __init__(self, root_dir, log_level, experiment_xml, environment_setup):
+        super(ExperimentControllerServer, self).__init__(root_dir, log_level, 
+            environment_setup = environment_setup )
         self._experiment_xml = experiment_xml
         self._experiment = None
 
@@ -1001,7 +1010,7 @@ class TestbedControllerProxy(BaseProxy):
             raise RuntimeError("To launch a TesbedControllerServer a "
                     "testbed_id and testbed_version are required")
         super(TestbedControllerProxy,self).__init__(
-            ctor_args = (root_dir, log_level, testbed_id, testbed_version),
+            ctor_args = (root_dir, log_level, testbed_id, testbed_version, environment_setup),
             root_dir = root_dir,
             launch = launch, host = host, port = port, user = user,
             ident_key = ident_key, agent = agent, 
@@ -1030,7 +1039,7 @@ class ExperimentControllerProxy(BaseProxy):
             raise RuntimeError("To launch a ExperimentControllerServer a \
                     xml description of the experiment is required")
         super(ExperimentControllerProxy,self).__init__(
-            ctor_args = (root_dir, log_level, experiment_xml),
+            ctor_args = (root_dir, log_level, experiment_xml, environment_setup),
             root_dir = root_dir,
             launch = launch, host = host, port = port, user = user,
             ident_key = ident_key, agent = agent, 
