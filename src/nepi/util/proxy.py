@@ -149,7 +149,7 @@ def get_access_config_params(access_config):
     environment_setup = (
         access_config.get_attribute_value(DC.DEPLOYMENT_ENVIRONMENT_SETUP)
         if access_config.has_attribute(DC.DEPLOYMENT_ENVIRONMENT_SETUP)
-        else None
+        else ""
     )
     if communication == DC.ACCESS_SSH:
         user = access_config.get_attribute_value(DC.DEPLOYMENT_USER)
@@ -210,10 +210,22 @@ def create_experiment_controller(xml, access_config = None):
     elif mode == DC.MODE_DAEMON:
         (root_dir, log_level, user, host, port, key, agent, environment_setup) = \
                 get_access_config_params(access_config)
-        return ExperimentControllerProxy(root_dir, log_level,
+        try:
+            return ExperimentControllerProxy(root_dir, log_level,
                 experiment_xml = xml, host = host, port = port, user = user, ident_key = key,
                 agent = agent, launch = launch,
                 environment_setup = environment_setup)
+        except:
+            if not launch:
+                # Maybe controller died, recover from persisted testbed information if possible
+                controller = ExperimentControllerProxy(root_dir, log_level,
+                    experiment_xml = xml, host = host, port = port, user = user, ident_key = key,
+                    agent = agent, launch = True,
+                    environment_setup = environment_setup)
+                controller.recover()
+                return controller
+            else:
+                raise
     raise RuntimeError("Unsupported access configuration '%s'" % mode)
 
 def create_testbed_controller(testbed_id, testbed_version, access_config):
@@ -1035,9 +1047,6 @@ class ExperimentControllerProxy(BaseProxy):
     def __init__(self, root_dir, log_level, experiment_xml = None, 
             launch = True, host = None, port = None, user = None, 
             ident_key = None, agent = None, environment_setup = ""):
-        if launch and experiment_xml is None:
-            raise RuntimeError("To launch a ExperimentControllerServer a \
-                    xml description of the experiment is required")
         super(ExperimentControllerProxy,self).__init__(
             ctor_args = (root_dir, log_level, experiment_xml, environment_setup),
             root_dir = root_dir,
