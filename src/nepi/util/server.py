@@ -75,7 +75,7 @@ def eintr_retry(func):
     return rv
 
 class Server(object):
-    def __init__(self, root_dir = ".", log_level = ERROR_LEVEL, environment_setup = None):
+    def __init__(self, root_dir = ".", log_level = ERROR_LEVEL, environment_setup = ""):
         self._root_dir = root_dir
         self._stop = False
         self._ctrl_sock = None
@@ -178,15 +178,16 @@ class Server(object):
             out,err = envproc.communicate()
 
             # parse new environment
-            environment = dict(map(lambda x:x.split("\x02"), out.split("\x01")))
+            if out:
+                environment = dict(map(lambda x:x.split("\x02"), out.split("\x01")))
             
-            # apply to current environment
-            for name, value in environment.iteritems():
-                os.environ[name] = value
-            
-            # apply pythonpath
-            if 'PYTHONPATH' in environment:
-                sys.path = environment['PYTHONPATH'].split(':') + sys.path
+                # apply to current environment
+                for name, value in environment.iteritems():
+                    os.environ[name] = value
+                
+                # apply pythonpath
+                if 'PYTHONPATH' in environment:
+                    sys.path = environment['PYTHONPATH'].split(':') + sys.path
 
         # create control socket
         self._ctrl_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
