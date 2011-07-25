@@ -405,10 +405,11 @@ class ExperimentController(object):
     
     def _load_testbed_proxies(self):
         TYPEMAP = {
-            STRING : 'get',
-            INTEGER : 'getint',
-            FLOAT : 'getfloat',
-            BOOLEAN : 'getboolean',
+            Attribute.STRING : 'get',
+            Attribute.BOOL : 'getboolean',
+            Attribute.ENUM : 'get',
+            Attribute.DOUBLE : 'getfloat',
+            Attribute.INTEGER : 'getint',
         }
         
         # deferred import because proxy needs
@@ -419,19 +420,14 @@ class ExperimentController(object):
         conf.read(os.path.join(self._root_dir, 'deployment_config.ini'))
         for testbed_guid in conf.sections():
             testbed_config = proxy.AccessConfiguration()
-            for attr in conf.options(testbed_guid):
-                testbed_config.set_attribute_value(attr, 
-                    conf.get(testbed_guid, attr) )
-                
             testbed_guid = str(testbed_guid)
-            conf.add_section(testbed_guid)
             for attr in testbed_config.get_attribute_list():
                 if attr not in TRANSIENT:
                     getter = getattr(conf, TYPEMAP.get(
                         testbed_config.get_attribute_type(attr),
                         'get') )
                     testbed_config.set_attribute_value(
-                        testbed_guid, attr, getter(attr))
+                        attr, getter(testbed_guid, attr))
     
     def _unpersist_testbed_proxies(self):
         try:
