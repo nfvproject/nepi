@@ -57,13 +57,16 @@ def backticks(cmd):
         raise RuntimeError("Error executing `%s': %s" % (" ".join(cmd), err))
     return out
 
-def homepath(path, app='.nepi', mode = 0500):
+def homepath(path, app='.nepi', mode = 0500, directory = False):
     home = os.environ.get('HOME')
     if home is None:
         home = os.path.join(os.sep, 'home', os.getlogin())
     
     path = os.path.join(home, app, path)
-    dirname = os.path.dirname(path)
+    if directory:
+        dirname = path
+    else:
+        dirname = os.path.dirname(path)
     if not os.path.exists(dirname):
         os.makedirs(dirname)
     
