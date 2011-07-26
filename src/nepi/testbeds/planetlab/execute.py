@@ -125,6 +125,8 @@ class TestbedController(testbed_impl.TestbedController):
             get_attribute_value("plLogLevel")
         self.tapPortBase = self._attributes.\
             get_attribute_value("tapPortBase")
+        self.p2pDeployment = self._attributes.\
+            get_attribute_value("p2pDeployment")
         
         self._logger.setLevel(getattr(logging,self.logLevel))
         
@@ -160,8 +162,9 @@ class TestbedController(testbed_impl.TestbedController):
                 # Oh... retry...
                 pass
         
-        # Plan application deployment
-        self.do_spanning_deployment_plan()
+        if self.p2pDeployment:
+            # Plan application deployment
+            self.do_spanning_deployment_plan()
 
         # Configure elements per XML data
         super(TestbedController, self).do_preconfigure()
@@ -267,6 +270,9 @@ class TestbedController(testbed_impl.TestbedController):
                     )
                     
                     self._logger.info("READY Node %s at %s", guid, node.hostname)
+                    
+                    # Prepare dependency installer now
+                    node.prepare_dependencies()
         except self._node.UnresponsiveNodeError:
             # Uh... 
             self._logger.warn("UNRESPONSIVE Node %s", node.hostname)
@@ -310,6 +316,10 @@ class TestbedController(testbed_impl.TestbedController):
         for element in self._elements.itervalues():
             if isinstance(element, self._app.Dependency):
                 depgroups[dephash(element)].append(element)
+            elif isinstance(element, self._node.Node):
+                deps = element._yum_dependencies
+                if deps:
+                    depgroups[dephash(deps)].append(deps)
         
         # Set up spanning deployment for those applications that
         # have been deployed in several nodes.

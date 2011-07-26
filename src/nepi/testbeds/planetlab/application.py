@@ -905,4 +905,61 @@ class NS3Dependency(Dependency):
                 
         return self._tarball
 
+class YumDependency(Dependency):
+    """
+    This dependency is an internal helper class used to
+    efficiently distribute yum-downloaded rpms.
+    
+    It temporarily sets the yum cache as persistent in the
+    build master, and installs all the required packages.
+    
+    The rpm packages left in the yum cache are gathered and
+    distributed by the underlying Dependency in an efficient
+    manner. Build slaves will then install those rpms back in
+    the cache before issuing the install command.
+    
+    When packages have been installed already, nothing but an
+    empty tar is distributed.
+    """
+    
+    # Class attribute holding a *weak* reference to the shared NEPI tar file
+    # so that they may share it. Don't operate on the file itself, it would
+    # be a mess, just use its path.
+    _shared_nepi_tar = None
+    
+    def _build_get(self):
+        # canonical representation of dependencies
+        depends = ' '.join( sorted( (self.depends or "").split(' ') ) )
+        
+        # download rpms and pack into a tar archive
+        return (
+            "sudo -S sed -i -r 's/keepcache *= *0/keepcache=1/' /etc/yum.conf && "
+            " ( ( "
+                "sudo -S yum -y install %s ; "
+                "rm -f ${BUILD}/packages.tar ; "
+                "tar -C /var/cache/yum -rf ${BUILD}/packages.tar $(find /var/cache/yum -iname '*.rpm')"
+            " ) || /bin/true ) && "
+            "sudo -S sed -i -r 's/keepcache *= *1/keepcache=0/' /etc/yum.conf && "
+            "sudo -S yum -y clean packages "
+        ) % ( depends, )
+    def _build_set(self, value):
+        # ignore
+        return
+    build = property(_build_get, _build_set)
+    
+    def _install_get(self):
+        # canonical representation of dependencies
+        depends = ' '.join( sorted( (self.depends or "").split(' ') ) )
+        
+        # unpack cached rpms into yum cache, install, and cleanup
+        return (
+            "tar -k --keep-newer-files -C /var/cache/yum xzf packages.tar && "
+            "yum -y install %s && "
+            "yum -y clean packages "
+        ) % ( depends, )
+    def _install_set(self, value):
+        # ignore
+        return
+    isntall = property(_install_get, _install_set)
+        
 

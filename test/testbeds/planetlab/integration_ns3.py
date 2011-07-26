@@ -57,6 +57,7 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
         pl_desc.set_attribute_value("authPass", pl_pwd)
         pl_desc.set_attribute_value("plcHost", plchost)
         pl_desc.set_attribute_value("tapPortBase", self.port_base)
+        pl_desc.set_attribute_value("p2pDeployment", False) # it's interactive, we don't want it in tests
         
         return pl_desc, exp_desc
     

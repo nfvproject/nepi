@@ -58,6 +58,7 @@ class PlanetLabIntegrationTestCase(unittest.TestCase):
         pl_desc.set_attribute_value("authPass", pl_pwd)
         pl_desc.set_attribute_value("plcHost", plchost)
         pl_desc.set_attribute_value("tapPortBase", self.port_base)
+        pl_desc.set_attribute_value("p2pDeployment", False) # it's interactive, we don't want it in tests
         
         return pl_desc, exp_desc
     
@@ -117,8 +118,12 @@ class PlanetLabIntegrationTestCase(unittest.TestCase):
             controller.shutdown()
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    @test_util.skipUnless(os.environ.get('NEPI_FULL_TESTS','').lower() in ('1','yes','true','on'),
+        "Test is interactive, requires NEPI_FULL_TESTS=yes")
     def test_spanning_deployment(self):
         pl, exp = self.make_experiment_desc()
+
+        pl.set_attribute_value("p2pDeployment", True) # we do want it here - even if interactive
         
         from nepi.testbeds import planetlab as plpackage
         
