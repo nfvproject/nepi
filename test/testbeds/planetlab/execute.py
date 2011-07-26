@@ -53,6 +53,7 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
         instance.defer_configure("authPass", pl_pwd)
         instance.defer_configure("plcHost", plchost)
         instance.defer_configure("tapPortBase", self.port_base)
+        instance.defer_configure("p2pDeployment", False) # it's interactive, we don't want it in tests
         
         return instance
 

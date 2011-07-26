@@ -1110,6 +1110,23 @@ testbed_attributes = dict({
             "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
             "validation_function": validation.is_string
         }),
+        "p2p_deployment": dict({
+            "name": "p2pDeployment",
+            "help": "Enable peer-to-peer deployment of applications and dependencies. "
+                    "When enabled, dependency packages and applications are "
+                    "deployed in a P2P fashion, picking a single node to do "
+                    "the building or repo download, while all the others "
+                    "cooperatively exchange resulting binaries or rpms. "
+                    "When deploying to many nodes, this is a far more efficient "
+                    "use of resources. It does require re-encrypting and distributing "
+                    "the slice's private key. Though it is implemented in a secure "
+                    "fashion, if they key's sole purpose is not PlanetLab, then this "
+                    "feature should be disabled.",
+            "type": Attribute.BOOL,
+            "value": True,
+            "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+            "validation_function": validation.is_bool
+        }),
         "slice_ssh_key": dict({
             "name": "sliceSSHKey",
             "help": "The controller-local path to the slice user's ssh private key. "
