@@ -17,6 +17,8 @@ import logging
 from nepi.util import server
 from nepi.util import parallel
 
+import application
+
 class UnresponsiveNodeError(RuntimeError):
     pass
 
@@ -78,6 +80,7 @@ class Node(object):
         
         # Those are filled when an actual node is allocated
         self._node_id = None
+        self._yum_dependencies = None
 
         # Logging
         self._logger = logging.getLogger('nepi.testbeds.planetlab')
@@ -315,10 +318,6 @@ class Node(object):
 
     def install_dependencies(self):
         if self.required_packages:
-            # TODO: make dependant on the experiment somehow...
-            pidfile = self.DEPENDS_PIDFILE
-            logfile = self.DEPENDS_LOGFILE
-            
             # If we need rpmfusion, we must install the repo definition and the gpg keys
             if self.rpmFusion:
                 if self.operatingSystem == 'f12':
@@ -336,31 +335,25 @@ class Node(object):
             else:
                 rpmFusion = ''
             
-            # Start process in a "daemonized" way, using nohup and heavy
-            # stdin/out redirection to avoid connection issues
-            (out,err),proc = rspawn.remote_spawn(
-                "( %(rpmfusion)s yum -y install %(packages)s && echo SUCCESS || echo FAILURE )" % {
-                    'packages' : ' '.join(self.required_packages),
-                    'rpmfusion' : rpmFusion,
-                },
-                pidfile = pidfile,
-                stdout = logfile,
-                stderr = rspawn.STDOUT,
+            if rpmFusion:
+                (out,err),proc = server.popen_ssh_command(
+                    rpmFusion,
+                    host = self.hostname,
+                    port = None,
+                    user = self.slicename,
+                    agent = None,
+                    ident_key = self.ident_path,
+                    server_key = self.server_key
+                    )
                 
-                host = self.hostname,
-                port = None,
-                user = self.slicename,
-                agent = None,
-                ident_key = self.ident_path,
-                server_key = self.server_key,
-                sudo = True
-                )
+                if proc.wait():
+                    raise RuntimeError, "Failed to set up application: %s %s" % (out,err,)
             
-            if proc.wait():
-                raise RuntimeError, "Failed to set up application: %s %s" % (out,err,)
+            # Launch p2p yum dependency installer
+            self._yum_dependencies.async_setup()
     
     def wait_provisioning(self, timeout = 20*60):
-        # recently provisioned nodes may not be up yet
+        # Wait for the p2p installer
         sleeptime = 1.0
         totaltime = 0.0
         while not self.is_alive():
@@ -375,61 +368,9 @@ class Node(object):
                 raise UnresponsiveNodeError, "Unresponsive host %s" % (self.hostname,)
     
     def wait_dependencies(self, pidprobe=1, probe=0.5, pidmax=10, probemax=10):
-        if self.required_packages:
-            pidfile = self.DEPENDS_PIDFILE
-            
-            # get PID
-            pid = ppid = None
-            for probenum in xrange(pidmax):
-                pidtuple = rspawn.remote_check_pid(
-                    pidfile = pidfile,
-                    host = self.hostname,
-                    port = None,
-                    user = self.slicename,
-                    agent = None,
-                    ident_key = self.ident_path,
-                    server_key = self.server_key
-                    )
-                if pidtuple:
-                    pid, ppid = pidtuple
-                    break
-                else:
-                    time.sleep(pidprobe)
-            else:
-                raise RuntimeError, "Failed to obtain pidfile for dependency installer"
-        
-            # wait for it to finish
-            while rspawn.RUNNING is rspawn.remote_status(
-                    pid, ppid,
-                    host = self.hostname,
-                    port = None,
-                    user = self.slicename,
-                    agent = None,
-                    ident_key = self.ident_path,
-                    server_key = self.server_key
-                    ):
-                time.sleep(probe)
-                probe = min(probemax, 1.5*probe)
-            
-            # check results
-            logfile = self.DEPENDS_LOGFILE
-            
-            (out,err),proc = server.popen_ssh_command(
-                "cat %s" % (server.shell_escape(logfile),),
-                host = self.hostname,
-                port = None,
-                user = self.slicename,
-                agent = None,
-                ident_key = self.ident_path,
-                server_key = self.server_key
-                )
-            
-            if proc.wait():
-                raise RuntimeError, "Failed to install dependencies: %s %s" % (out,err,)
-            
-            success = out.strip().rsplit('\n',1)[-1].strip() == 'SUCCESS'
-            if not success:
-                raise RuntimeError, "Failed to install dependencies - buildlog:\n%s\n%s" % (out,err,)
+        # Wait for the p2p installer
+        if self._yum_dependencies:
+            self._yum_dependencies.async_setup_wait()
         
     def is_alive(self):
         # Make sure all the paths are created where 
@@ -451,6 +392,13 @@ class Node(object):
         else:
             return False
     
+    def prepare_dependencies(self):
+        # Configure p2p yum dependency installer
+        if self.required_packages:
+            self._yum_dependencies = application.YumDependency(self._api)
+            self._yum_dependencies.node = self
+            self._yum_dependencies.home_path = "nepi-yumdep"
+            self._yum_dependencies.depends = ' '.join(self.required_packages)
 
     def configure_routes(self, routes, devs):
         """

@@ -267,6 +267,9 @@ class TestbedController(testbed_impl.TestbedController):
                     )
                     
                     self._logger.info("READY Node %s at %s", guid, node.hostname)
+                    
+                    # Prepare dependency installer now
+                    node.prepare_dependencies()
         except self._node.UnresponsiveNodeError:
             # Uh... 
             self._logger.warn("UNRESPONSIVE Node %s", node.hostname)
@@ -310,6 +313,10 @@ class TestbedController(testbed_impl.TestbedController):
         for element in self._elements.itervalues():
             if isinstance(element, self._app.Dependency):
                 depgroups[dephash(element)].append(element)
+            elif isinstance(element, self._node.Node):
+                deps = element._yum_dependencies
+                if deps:
+                    depgroups[dephash(deps)].append(deps)
         
         # Set up spanning deployment for those applications that
         # have been deployed in several nodes.
