@@ -57,16 +57,44 @@ def backticks(cmd):
         raise RuntimeError("Error executing `%s': %s" % (" ".join(cmd), err))
     return out
 
-def homepath(path, app='.nepi', mode = 0500):
+def homepath(path, app='.nepi', mode = 0500, directory = False):
     home = os.environ.get('HOME')
     if home is None:
         home = os.path.join(os.sep, 'home', os.getlogin())
     
     path = os.path.join(home, app, path)
-    dirname = os.path.dirname(path)
+    if directory:
+        dirname = path
+    else:
+        dirname = os.path.dirname(path)
     if not os.path.exists(dirname):
         os.makedirs(dirname)
     
     return path
 
+def find_testbed(testbed_id):
+    mod_name = None
     
+    # look for environment-specified testbeds
+    if 'NEPI_TESTBEDS' in os.environ:
+        try:
+            # parse testbed map
+            #   split space-separated items, filter empty items
+            testbed_map = filter(bool,os.environ['NEPI_TESTBEDS'].strip().split(' '))
+            #   split items, keep pairs only, build map
+            testbed_map = dict([map(str.strip,i.split(':',1)) for i in testbed_map if ':' in i])
+        except:
+            import traceback, sys
+            traceback.print_exc(file=sys.stderr)
+            
+            # ignore malformed environment
+            testbed_map = {}
+        
+        mod_name = testbed_map.get(testbed_id)
+    
+    if mod_name is None:
+        # no explicit map, load built-in testbeds
+        mod_name = "nepi.testbeds.%s" % (testbed_id.lower())
+
+    return mod_name
+

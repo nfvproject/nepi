@@ -33,7 +33,7 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
     
     def setUp(self):
         self.root_dir = tempfile.mkdtemp()
-        self.port_base = self.port_base + 100
+        self.__class__.port_base = self.port_base + 100
 
     def tearDown(self):
         try:
@@ -66,6 +66,7 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
         pl_desc.set_attribute_value("authUser", pl_user)
         pl_desc.set_attribute_value("authPass", pl_pwd)
         pl_desc.set_attribute_value("plcHost", plchost1)
+        pl_desc.set_attribute_value("tapPortBase", self.port_base)
 
         pl_desc2 = exp_desc.add_testbed_description(pl_provider)
         pl_desc2.set_attribute_value("homeDirectory", self.root_dir+"v2")
@@ -74,6 +75,7 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
         pl_desc2.set_attribute_value("authUser", pl_user)
         pl_desc2.set_attribute_value("authPass", pl_pwd)
         pl_desc2.set_attribute_value("plcHost", plchost2)
+        pl_desc.set_attribute_value("tapPortBase", self.port_base+100)
         
         return pl_desc, pl_desc2, exp_desc
     

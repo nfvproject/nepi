@@ -61,6 +61,9 @@ class ParallelMap(object):
         if self.delayed_exceptions:
             typ,val,loc = self.delayed_exceptions[0]
             raise typ,val,loc
+    
+    def sync(self):
+        self.queue.join()
         
     def worker(self):
         while True:

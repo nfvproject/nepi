@@ -215,8 +215,13 @@ class ExperimentController(object):
         self._root_dir = root_dir
         self._netreffed_testbeds = set()
         self._guids_in_testbed_cache = dict()
-
-        self.persist_experiment_xml()
+        
+        if experiment_xml is None and root_dir is not None:
+            # Recover
+            self.load_experiment_xml()
+            self.load_execute_xml()
+        else:
+            self.persist_experiment_xml()
 
     @property
     def experiment_design_xml(self):
@@ -245,6 +250,18 @@ class ExperimentController(object):
         xml_path = os.path.join(self._root_dir, "experiment-execute.xml")
         f = open(xml_path, "w")
         f.write(self._experiment_execute_xml)
+        f.close()
+
+    def load_experiment_xml(self):
+        xml_path = os.path.join(self._root_dir, "experiment-design.xml")
+        f = open(xml_path, "r")
+        self._experiment_design_xml = f.read()
+        f.close()
+
+    def load_execute_xml(self):
+        xml_path = os.path.join(self._root_dir, "experiment-execute.xml")
+        f = open(xml_path, "r")
+        self._experiment_execute_xml = f.read()
         f.close()
 
     def trace(self, guid, trace_id, attribute='value'):
@@ -405,11 +422,14 @@ class ExperimentController(object):
     
     def _load_testbed_proxies(self):
         TYPEMAP = {
-            STRING : 'get',
-            INTEGER : 'getint',
-            FLOAT : 'getfloat',
-            BOOLEAN : 'getboolean',
+            Attribute.STRING : 'get',
+            Attribute.BOOL : 'getboolean',
+            Attribute.ENUM : 'get',
+            Attribute.DOUBLE : 'getfloat',
+            Attribute.INTEGER : 'getint',
         }
+        
+        TRANSIENT = ('Recover',)
         
         # deferred import because proxy needs
         # our class definitions to define proxies
@@ -419,19 +439,14 @@ class ExperimentController(object):
         conf.read(os.path.join(self._root_dir, 'deployment_config.ini'))
         for testbed_guid in conf.sections():
             testbed_config = proxy.AccessConfiguration()
-            for attr in conf.options(testbed_guid):
-                testbed_config.set_attribute_value(attr, 
-                    conf.get(testbed_guid, attr) )
-                
             testbed_guid = str(testbed_guid)
-            conf.add_section(testbed_guid)
             for attr in testbed_config.get_attribute_list():
                 if attr not in TRANSIENT:
                     getter = getattr(conf, TYPEMAP.get(
                         testbed_config.get_attribute_type(attr),
                         'get') )
                     testbed_config.set_attribute_value(
-                        testbed_guid, attr, getter(attr))
+                        attr, getter(testbed_guid, attr))
     
     def _unpersist_testbed_proxies(self):
         try:
@@ -506,11 +521,17 @@ class ExperimentController(object):
         # reload perviously persisted testbed access configurations
         self._load_testbed_proxies()
         
+        # Parse experiment xml
+        parser = XmlExperimentParser()
+        data = parser.from_xml_to_data(self._experiment_design_xml)
+        
         # recreate testbed proxies by reconnecting only
-        self._init_testbed_controllers(recover = True)
+        self._init_testbed_controllers(data, recover = True)
         
         # another time, for netrefs
-        self._init_testbed_controllers(recover = True)
+        self._init_testbed_controllers(data, recover = True)
+        
+        print >>sys.stderr, "RECOVERED"
 
     def is_finished(self, guid):
         testbed = self._testbed_for_guid(guid)
