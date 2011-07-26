@@ -936,6 +936,7 @@ class YumDependency(Dependency):
             "sudo -S sed -i -r 's/keepcache *= *0/keepcache=1/' /etc/yum.conf && "
             " ( ( "
                 "sudo -S yum -y install %s ; "
+                "rm -f ${BUILD}/packages.tar ; "
                 "tar -C /var/cache/yum -rf ${BUILD}/packages.tar $(find /var/cache/yum -iname '*.rpm')"
             " ) || /bin/true ) && "
             "sudo -S sed -i -r 's/keepcache *= *1/keepcache=0/' /etc/yum.conf && "
