@@ -283,6 +283,8 @@ class TestbedController(testbed_impl.TestbedController):
     def _configure_ns3_module(self):
         simu_impl_type = self._attributes.get_attribute_value(
                 "SimulatorImplementationType")
+        sched_impl_type = self._attributes.get_attribute_value(
+                "SchedulerType")
         checksum = self._attributes.get_attribute_value("ChecksumEnabled")
         stop_time = self._attributes.get_attribute_value("StopTime")
 
@@ -293,6 +295,9 @@ class TestbedController(testbed_impl.TestbedController):
         if simu_impl_type:
             value = mod.StringValue(simu_impl_type)
             mod.GlobalValue.Bind ("SimulatorImplementationType", value)
+        if sched_impl_type:
+            value = mod.StringValue(sched_impl_type)
+            mod.GlobalValue.Bind ("SchedulerType", value)
         if checksum:
             value = mod.BooleanValue(checksum)
             mod.GlobalValue.Bind ("ChecksumEnabled", value)

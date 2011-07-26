@@ -11,9 +11,28 @@ testbed_attributes = dict({
     "simu_impl_type": dict({
             "name": "SimulatorImplementationType",
             "help": "The object class to use as the simulator implementation",
-            "type": Attribute.STRING,
+            "value": "ns3::DefaultSimulatorImpl",
+            "type": Attribute.ENUM,
             "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
-            "validation_function": validation.is_string
+            "allowed": [
+                "ns3::DefaultSimulatorImpl",
+                "ns3::RealtimeSimulatorImpl",
+            ],
+            "validation_function": validation.is_enum
+        }),
+    "sched_impl_type": dict({
+            "name": "SchedulerType",
+            "help": "The object class to use as the scheduler implementation. Make sure to pick a thread-safe variant.",
+            "value": "ns3::ThreadsafeMapScheduler",
+            "type": Attribute.ENUM,
+            "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+            "allowed": [
+                "ns3::ThreadsafeMapScheduler",
+                "ns3::ThreadsafeHeapScheduler",
+                "ns3::ThreadsafeListScheduler",
+                "ns3::ThreadsafeCalendarScheduler",
+            ],
+            "validation_function": validation.is_enum
         }),
     "checksum": dict({
             "name": "ChecksumEnabled",
