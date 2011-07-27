@@ -47,6 +47,7 @@ class TestbedStatus:
     STATUS_CONFIGURED = 5
     STATUS_STARTED = 6
     STATUS_STOPPED = 7
+    STATUS_FAILED = 8
 
 class DeploymentConfiguration:
     MODE_SINGLE_PROCESS = "SINGLE"
@@ -55,6 +56,9 @@ class DeploymentConfiguration:
     ACCESS_LOCAL = "LOCAL"
     ERROR_LEVEL = "Error"
     DEBUG_LEVEL = "Debug"
+    POLICY_FAIL = "Fail"
+    POLICY_RECOVER = "Recover"
+    POLICY_RESTART = "Restart"
     
     DEPLOYMENT_MODE = "deployment_mode"
     DEPLOYMENT_COMMUNICATION = "deployment_communication"
@@ -70,4 +74,6 @@ class DeploymentConfiguration:
     USE_AGENT = "useAgent"
     LOG_LEVEL = "logLevel"
     RECOVER = "recover"
+    RECOVER_POLICY = "recoverPolicy"
+
 
