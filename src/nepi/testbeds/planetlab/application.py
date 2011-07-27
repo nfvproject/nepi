@@ -792,39 +792,43 @@ class NS3Dependency(Dependency):
         self.buildDepends = 'make waf gcc gcc-c++ gccxml unzip'
         
         # We have to download the sources, untar, build...
-        pybindgen_source_url = "http://pybindgen.googlecode.com/files/pybindgen-0.15.0.zip"
+        pybindgen_source_url = "http://yans.pl.sophia.inria.fr/trac/nepi/raw-attachment/wiki/WikiStart/pybindgen-r794.tar.gz"
         pygccxml_source_url = "http://leaseweb.dl.sourceforge.net/project/pygccxml/pygccxml/pygccxml-1.0/pygccxml-1.0.0.zip"
-        ns3_source_url = "http://yans.pl.sophia.inria.fr/code/hgwebdir.cgi/ns-3.9-nepi/archive/tip.tar.gz"
+        ns3_source_url = "http://yans.pl.sophia.inria.fr/code/hgwebdir.cgi/ns-3.11-nepi/archive/tip.tar.gz"
         passfd_source_url = "http://yans.pl.sophia.inria.fr/code/hgwebdir.cgi/python-passfd/archive/tip.tar.gz"
         self.build =(
             " ( "
             "  cd .. && "
             "  python -c 'import pygccxml, pybindgen, passfd' && "
-            "  test -f lib/_ns3.so && "
-            "  test -f lib/libns3.so "
+            "  test -f lib/ns/_core.so && "
+            "  test -f lib/ns/__init__.py && "
+            "  test -f lib/ns/core.py && "
+            "  test -f lib/libns3-core.so && "
+            "  LD_LIBRARY_PATH=lib PYTHONPATH=lib python -c 'import ns.core' "
             " ) || ( "
                 # Not working, rebuild
                      # Archive SHA1 sums to check
                      "echo '7158877faff2254e6c094bf18e6b4283cac19137  pygccxml-1.0.0.zip' > archive_sums.txt && "
-                     "echo 'ddc7c5d288e1bacb1307114878956762c5146fac  pybindgen-src.zip' >> archive_sums.txt && "
+                     "echo 'a18c2ccffd0df517bc37e2f3a2475092517c43f2  pybindgen-src.tar.gz' >> archive_sums.txt && "
                      " ( " # check existing files
                      " sha1sum -c archive_sums.txt && "
                      " test -f passfd-src.tar.gz && "
                      " test -f ns3-src.tar.gz "
                      " ) || ( " # nope? re-download
                      " rm -f pybindgen-src.zip pygccxml-1.0.0.zip passfd-src.tar.gz ns3-src.tar.gz && "
-                     " wget -q -c -O pybindgen-src.zip %(pybindgen_source_url)s && " # continue, to exploit the case when it has already been dl'ed
+                     " wget -q -c -O pybindgen-src.tar.gz %(pybindgen_source_url)s && " # continue, to exploit the case when it has already been dl'ed
                      " wget -q -c -O pygccxml-1.0.0.zip %(pygccxml_source_url)s && " 
                      " wget -q -c -O passfd-src.tar.gz %(passfd_source_url)s && "
                      " wget -q -c -O ns3-src.tar.gz %(ns3_source_url)s && "  
                      " sha1sum -c archive_sums.txt " # Check SHA1 sums when applicable
                      " ) && "
-                     "unzip -n pybindgen-src.zip && " # Do not overwrite files, to exploit the case when it has already been built
                      "unzip -n pygccxml-1.0.0.zip && "
+                     "mkdir -p pybindgen-src && "
                      "mkdir -p ns3-src && "
                      "mkdir -p passfd-src && "
                      "tar xzf ns3-src.tar.gz --strip-components=1 -C ns3-src && "
                      "tar xzf passfd-src.tar.gz --strip-components=1 -C passfd-src && "
+                     "tar xzf pybindgen-src.tar.gz --strip-components=1 -C pybindgen-src && "
                      "rm -rf target && "    # mv doesn't like unclean targets
                      "mkdir -p target && "
                      "cd pygccxml-1.0.0 && "
@@ -832,7 +836,7 @@ class NS3Dependency(Dependency):
                      "python setup.py build && "
                      "python setup.py install --install-lib ${BUILD}/target && "
                      "python setup.py clean && "
-                     "cd ../pybindgen-0.15.0 && "
+                     "cd ../pybindgen-src && "
                      "export PYTHONPATH=$PYTHONPATH:${BUILD}/target && "
                      "./waf configure --prefix=${BUILD}/target -d release && "
                      "./waf && "
@@ -845,10 +849,13 @@ class NS3Dependency(Dependency):
                      "python setup.py install --install-lib ${BUILD}/target && "
                      "python setup.py clean && "
                      "cd ../ns3-src && "
-                     "./waf configure --prefix=${BUILD}/target -d release --disable-examples --high-precision-as-double && "
+                     "./waf configure --prefix=${BUILD}/target --with-pybindgen=../pybindgen-src -d release --disable-examples --disable-tests --enable-threading && "
                      "./waf &&"
                      "./waf install && "
-                     "./waf clean"
+                     "rm -f ${BUILD}/target/lib/*.so && "
+                     "cp -a ${BUILD}/ns3-src/build/release/libns3*.so ${BUILD}/target/lib && "
+                     "cp -a ${BUILD}/ns3-src/build/release/bindings/python/ns ${BUILD}/target/lib &&"
+                     "./waf clean "
              " )"
                      % dict(
                         pybindgen_source_url = server.shell_escape(pybindgen_source_url),
@@ -862,8 +869,11 @@ class NS3Dependency(Dependency):
             " ( "
             "  cd .. && "
             "  python -c 'import pygccxml, pybindgen, passfd' && "
-            "  test -f lib/_ns3.so && "
-            "  test -f lib/libns3.so "
+            "  test -f lib/ns/_core.so && "
+            "  test -f lib/ns/__init__.py && "
+            "  test -f lib/ns/core.py && "
+            "  test -f lib/libns3-core.so && "
+            "  LD_LIBRARY_PATH=lib PYTHONPATH=lib python -c 'import ns.core' "
             " ) || ( "
                 # Not working, reinstall
                     "test -d ${BUILD}/target && "
@@ -875,7 +885,7 @@ class NS3Dependency(Dependency):
         
         # Set extra environment paths
         self.env['NEPI_NS3BINDINGS'] = "${SOURCES}/lib"
-        self.env['NEPI_NS3LIBRARY'] = "${SOURCES}/lib/libns3.so"
+        self.env['NEPI_NS3LIBRARY'] = "${SOURCES}/lib"
     
     @property
     def tarball(self):
