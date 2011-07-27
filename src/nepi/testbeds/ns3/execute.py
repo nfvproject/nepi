@@ -45,12 +45,9 @@ def load_ns3_module():
                 raise RuntimeError("Imposible to load shared libraries %s" % str(libs))
             libscp = list(libs)
 
-    if not bindings:
-        import ns3
-        sys.modules["ns3"] = ns3
-        return
-    
-    sys.path.append(bindings)
+    if bindings:
+        sys.path.append(bindings)
+
     import ns3_bindings_import as mod
     sys.modules["ns3"] = mod
 
