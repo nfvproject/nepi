@@ -191,9 +191,6 @@ def create_experiment_controller(xml, access_config = None):
     launch = True if not access_config \
             else not access_config.get_attribute_value(DC.RECOVER)
     if not mode or mode == DC.MODE_SINGLE_PROCESS:
-        if not launch:
-            raise ValueError, "Unsupported instantiation mode: %s with lanch=False" % (mode,)
-        
         from nepi.core.execute import ExperimentController
         
         if not access_config or not access_config.has_attribute(DC.ROOT_DIRECTORY):
@@ -205,6 +202,10 @@ def create_experiment_controller(xml, access_config = None):
         # inject reference to temporary dir, so that it gets cleaned
         # up at destruction time.
         controller._tempdir = root_dir
+        
+        if not launch:
+            # try to recover
+            controller.recover()
         
         return controller
     elif mode == DC.MODE_DAEMON:
