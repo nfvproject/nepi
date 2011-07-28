@@ -61,6 +61,7 @@ GET_TESTBED_ID = 39
 GET_TESTBED_VERSION = 40
 TRACES_INFO = 41
 EXEC_XML = 42
+TESTBED_STATUS  = 43
 
 instruction_text = dict({
     OK:     "OK",
@@ -673,6 +674,12 @@ class TestbedControllerServer(BaseServer):
     @Marshalling.retval(int)
     def status(self, guid):
         return self._testbed.status(guid)
+
+    @Marshalling.handles(TESTBED_STATUS)
+    @Marshalling.args()
+    @Marshalling.retval(int)
+    def testbed_status(self):
+        return self._testbed.testbed_status()
 
     @Marshalling.handles(GET_ATTRIBUTE_LIST)
     @Marshalling.args(int, Marshalling.nullint, Marshalling.bool)

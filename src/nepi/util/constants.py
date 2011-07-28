@@ -48,6 +48,7 @@ class TestbedStatus:
     STATUS_STARTED = 6
     STATUS_STOPPED = 7
     STATUS_FAILED = 8
+    STATUS_UNRESPONSIVE = 9
 
 class DeploymentConfiguration:
     MODE_SINGLE_PROCESS = "SINGLE"
