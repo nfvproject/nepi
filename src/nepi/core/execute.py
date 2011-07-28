@@ -3,7 +3,7 @@
 
 from nepi.core.attributes import Attribute, AttributesMap
 from nepi.util import validation
-from nepi.util.constants import ApplicationStatus as AS, TIME_NOW
+from nepi.util.constants import ApplicationStatus as AS, TIME_NOW, DeploymentConfiguration as DC
 from nepi.util.parser._xml import XmlExperimentParser
 import sys
 import re
@@ -144,6 +144,9 @@ class TestbedController(object):
         raise NotImplementedError
 
     def stop(self):
+        raise NotImplementedError
+
+    def recover(self):
         raise NotImplementedError
 
     def set(self, guid, name, value, time = TIME_NOW):
@@ -301,14 +304,29 @@ class ExperimentController(object):
             raise eTyp, eVal, eLoc
 
     def start(self):
+        self._start()
+
+    def _start(self, recover = False):
         parser = XmlExperimentParser()
-        data = parser.from_xml_to_data(self._experiment_design_xml)
+        
+        if recover:
+            xml = self._experiment_execute_xml
+        else:
+            xml = self._experiment_design_xml
+        data = parser.from_xml_to_data(xml)
 
         # instantiate testbed controllers
-        self._init_testbed_controllers(data)
+        to_recover, to_restart = self._init_testbed_controllers(data, recover)
+        all_restart = set(to_restart)
         
-        # persist testbed connection data, for potential recovery
-        self._persist_testbed_proxies()
+        if not recover:
+            # persist testbed connection data, for potential recovery
+            self._persist_testbed_proxies()
+        else:
+            # recover recoverable controllers
+            for guid in to_recover:
+                self._testbeds[guid].do_setup()
+                self._testbeds[guid].recover()
         
         def steps_to_configure(self, allowed_guids):
             # perform setup in parallel for all test beds,
@@ -336,7 +354,7 @@ class ExperimentController(object):
                             if guid in allowed_guids])
             self._clear_caches()
 
-        steps_to_configure(self, self._testbeds)
+        steps_to_configure(self, to_restart)
 
         if self._netreffed_testbeds:
             # initally resolve netrefs
@@ -345,13 +363,22 @@ class ExperimentController(object):
             # rinse and repeat, for netreffed testbeds
             netreffed_testbeds = set(self._netreffed_testbeds)
 
-            self._init_testbed_controllers(data)
+            to_recover, to_restart = self._init_testbed_controllers(data, recover)
+            all_restart.update(to_restart)
             
-            # persist testbed connection data, for potential recovery
-            self._persist_testbed_proxies()
+            if not recover:
+                # persist testbed connection data, for potential recovery
+                self._persist_testbed_proxies()
+            else:
+                # recover recoverable controllers
+                for guid in to_recover:
+                    self._testbeds[guid].do_setup()
+                    self._testbeds[guid].recover()
 
             # configure dependant testbeds
-            steps_to_configure(self, netreffed_testbeds)
+            steps_to_configure(self, to_restart)
+        
+        all_restart = [ self._testbeds[guid] for guid in all_restart ]
             
         # final netref step, fail if anything's left unresolved
         self.do_netrefs(data, fail_if_undefined=True)
@@ -363,7 +390,7 @@ class ExperimentController(object):
         # perform do_configure in parallel for al testbeds
         # (it's internal configuration for each)
         self._parallel([testbed.do_configure
-                        for testbed in self._testbeds.itervalues()])
+                        for testbed in all_restart])
 
         self._clear_caches()
 
@@ -383,18 +410,19 @@ class ExperimentController(object):
 
         # Last chance to configure (parallel on all testbeds)
         self._parallel([testbed.do_prestart
-                        for testbed in self._testbeds.itervalues()])
+                        for testbed in all_restart])
 
         self._clear_caches()
         
-        # update execution xml with execution-specific values
-        # TODO: BUG! BUggy code! cant stand all serializing all attribute values (ej: tun_key which is non ascci)"
-        self._update_execute_xml()
-        self.persist_execute_xml()
+        if not recover:
+            # update execution xml with execution-specific values
+            # TODO: BUG! BUggy code! cant stand all serializing all attribute values (ej: tun_key which is non ascci)"
+            self._update_execute_xml()
+            self.persist_execute_xml()
 
         # start experiment (parallel start on all testbeds)
         self._parallel([testbed.start
-                        for testbed in self._testbeds.itervalues()])
+                        for testbed in all_restart])
 
         self._clear_caches()
 
@@ -403,7 +431,7 @@ class ExperimentController(object):
         self._guids_in_testbed_cache = dict()
 
     def _persist_testbed_proxies(self):
-        TRANSIENT = ('Recover',)
+        TRANSIENT = (DC.RECOVER,)
         
         # persist access configuration for all testbeds, so that
         # recovery mode can reconnect to them if it becomes necessary
@@ -429,7 +457,7 @@ class ExperimentController(object):
             Attribute.INTEGER : 'getint',
         }
         
-        TRANSIENT = ('Recover',)
+        TRANSIENT = (DC.RECOVER,)
         
         # deferred import because proxy needs
         # our class definitions to define proxies
@@ -520,23 +548,19 @@ class ExperimentController(object):
     def recover(self):
         # reload perviously persisted testbed access configurations
         self._load_testbed_proxies()
-        
-        # Parse experiment xml
-        parser = XmlExperimentParser()
-        data = parser.from_xml_to_data(self._experiment_design_xml)
-        
-        # recreate testbed proxies by reconnecting only
-        self._init_testbed_controllers(data, recover = True)
-        
-        # another time, for netrefs
-        self._init_testbed_controllers(data, recover = True)
-        
-        print >>sys.stderr, "RECOVERED"
+
+        self._start(recover = True)
 
     def is_finished(self, guid):
         testbed = self._testbed_for_guid(guid)
         if testbed != None:
             return testbed.status(guid) == AS.STATUS_FINISHED
+        raise RuntimeError("No element exists with guid %d" % guid)    
+
+    def status(self, guid):
+        testbed = self._testbed_for_guid(guid)
+        if testbed != None:
+            return testbed.status(guid)
         raise RuntimeError("No element exists with guid %d" % guid)    
 
     def set(self, guid, name, value, time = TIME_NOW):
@@ -691,29 +715,67 @@ class ExperimentController(object):
         element_guids = list()
         label_guids = dict()
         data_guids = data.guids
+        to_recover = set()
+        to_restart = set()
+
+        # gather label associations
+        for guid in data_guids:
+            if not data.is_testbed_data(guid):
+                (testbed_guid, factory_id) = data.get_box_data(guid)
+                label = data.get_attribute_data(guid, "label")
+                if label is not None:
+                    if label in label_guids:
+                        raise RuntimeError, "Label %r is not unique" % (label,)
+                    label_guids[label] = guid
 
         # create testbed controllers
         for guid in data_guids:
             if data.is_testbed_data(guid):
                 if guid not in self._testbeds:
-                    self._create_testbed_controller(guid, data, element_guids,
-                            recover)
-            else:
+                    try:
+                        self._create_testbed_controller(
+                            guid, data, element_guids, recover)
+                        if recover:
+                            # Already programmed
+                            blacklist_testbeds.add(guid)
+                        else:
+                            to_restart.add(guid)
+                    except:
+                        if recover:
+                            policy = data.get_attribute_data(guid, DC.RECOVERY_POLICY)
+                            if policy == DC.POLICY_FAIL:
+                                raise
+                            elif policy == DC.POLICY_RECOVER:
+                                self._create_testbed_controller(
+                                    guid, data, element_guids, False)
+                                to_recover.add(guid)
+                            elif policy == DC.POLICY_RESTART:
+                                self._create_testbed_controller(
+                                    guid, data, element_guids, False)
+                                to_restart.add(guid)
+                            else:
+                                raise
+                        else:
+                            raise
+        
+        # queue programmable elements
+        #  - that have not been programmed already (blacklist_testbeds)
+        #  - including recovered or restarted testbeds
+        #  - but those that have no unresolved netrefs
+        for guid in data_guids:
+            if not data.is_testbed_data(guid):
                 (testbed_guid, factory_id) = data.get_box_data(guid)
                 if testbed_guid not in blacklist_testbeds:
                     element_guids.append(guid)
-                    label = data.get_attribute_data(guid, "label")
-                    if label is not None:
-                        if label in label_guids:
-                            raise RuntimeError, "Label %r is not unique" % (label,)
-                        label_guids[label] = guid
 
         # replace references to elements labels for its guid
         self._resolve_labels(data, data_guids, label_guids)
     
         # program testbed controllers
-        if not recover:
+        if element_guids:
             self._program_testbed_controllers(element_guids, data)
+        
+        return to_recover, to_restart
 
     def _resolve_labels(self, data, data_guids, label_guids):
         netrefs = self._netrefs

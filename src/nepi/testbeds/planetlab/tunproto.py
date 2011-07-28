@@ -237,6 +237,12 @@ class TunProtoBase(object):
         
         self._started = True
     
+    def recover(self):
+        # Tunnel should be still running in its node
+        # Just check its pidfile and we're done
+        self._started = True
+        self.checkpid()
+    
     def _launch_and_wait(self, *p, **kw):
         try:
             self.__launch_and_wait(*p, **kw)
@@ -312,7 +318,7 @@ class TunProtoBase(object):
         return self._if_name
     
     def async_launch(self, check_proto, listen, extra_args=[]):
-        if not self._launcher:
+        if not self._started and not self._launcher:
             self._launcher = threading.Thread(
                 target = self._launch_and_wait,
                 args = (check_proto, listen, extra_args))

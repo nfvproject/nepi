@@ -140,6 +140,11 @@ class Dependency(object):
                     % (e.args[0], e.args[1],)
         
         return local_path
+    
+    def recover(self):
+        # We assume a correct deployment, so recovery only
+        # means we mark this dependency as deployed
+        self._setup = True
 
     def setup(self):
         self._logger.info("Setting up %s", self)
@@ -660,6 +665,13 @@ class Application(Dependency):
             raise RuntimeError, "Failed to set up application: %s %s" % (out,err,)
 
         self._started = True
+    
+    def recover(self):
+        # Assuming the application is running on PlanetLab,
+        # proper pidfiles should be present at the app's home path.
+        # So we mark this application as started, and check the pidfiles
+        self._started = True
+        self.checkpid()
 
     def checkpid(self):            
         # Get PID/PPID

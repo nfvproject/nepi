@@ -238,10 +238,13 @@ class TestbedController(execute.TestbedController):
             
             # configure action
             factory = self._factories[factory_id]
-            if not getattr(factory, action):
+            if isinstance(action, basestring) and not getattr(factory, action):
                 continue
             def perform_action(guid):
-                getattr(factory, action)(self, guid)
+                if isinstance(action, basestring):
+                    getattr(factory, action)(self, guid)
+                else:
+                    action(self, guid)
                 if postaction:
                     postaction(self, guid)
 

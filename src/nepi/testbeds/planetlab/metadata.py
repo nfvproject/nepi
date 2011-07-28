@@ -10,7 +10,8 @@ from nepi.core.attributes import Attribute
 from nepi.util import tags, validation
 from nepi.util.constants import ApplicationStatus as AS, \
         FactoryCategories as FC, \
-        ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP
+        ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP, \
+        DeploymentConfiguration as DC
 
 import functools
 import os
@@ -1160,6 +1161,12 @@ testbed_attributes = dict({
         }),
     })
 
+supported_recovery_policies = [
+        DC.POLICY_FAIL,
+        DC.POLICY_RESTART,
+        DC.POLICY_RECOVER,
+    ]
+
 class MetadataInfo(metadata.MetadataInfo):
     @property
     def connector_types(self):
@@ -1208,4 +1215,9 @@ class MetadataInfo(metadata.MetadataInfo):
     @property
     def testbed_version(self):
         return TESTBED_VERSION
+
+    @property
+    def supported_recovery_policies(self):
+        return supported_recovery_policies
+
 

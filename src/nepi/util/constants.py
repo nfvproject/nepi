@@ -74,6 +74,6 @@ class DeploymentConfiguration:
     USE_AGENT = "useAgent"
     LOG_LEVEL = "logLevel"
     RECOVER = "recover"
-    RECOVER_POLICY = "recoverPolicy"
+    RECOVERY_POLICY = "recoveryPolicy"
 
 

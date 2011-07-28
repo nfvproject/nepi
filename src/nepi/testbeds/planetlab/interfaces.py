@@ -231,6 +231,12 @@ class TunIface(object):
         impl.port = self.tun_port
         return impl
     
+    def recover(self):
+        self.peer_proto_impl = self._impl_instance(
+            self._home_path,
+            False) # no way to know, no need to know
+        self.peer_proto_impl.recover()
+    
     def prepare(self, home_path, listening):
         if not self.peer_iface and (self.peer_proto and (listening or (self.peer_addr and self.peer_port))):
             # Ad-hoc peer_iface
@@ -343,6 +349,10 @@ class NetPipe(object):
         options = ' '.join(options)
         
         return (scope,options)
+    
+    def recover(self):
+        # Rules are safe on their nodes
+        self.configured = True
 
     def configure(self):
         # set up rule
