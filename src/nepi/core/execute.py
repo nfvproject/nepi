@@ -147,6 +147,17 @@ class TestbedController(object):
         raise NotImplementedError
 
     def recover(self):
+        """
+        On testbed recovery (if recovery is a supported policy), the controller
+        instance will be re-created and the following sequence invoked:
+        
+            do_setup
+            *recover*
+            <cross-connection methods>
+            
+        Start will not be called, and after cross connection invocations,
+        the testbed is supposed to be fully functional again.
+        """
         raise NotImplementedError
 
     def set(self, guid, name, value, time = TIME_NOW):
