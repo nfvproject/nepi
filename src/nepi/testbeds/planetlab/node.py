@@ -49,10 +49,17 @@ class Node(object):
         'architecture' : ('arch','value'),
         'operatingSystem' : ('fcdistro','value'),
         'pl_distro' : ('pldistro','value'),
+        'city' : ('city','value'),
+        'country' : ('country','value'),
+        'region' : ('region','value'),
         'minReliability' : ('reliability%(timeframe)s', ']value'),
         'maxReliability' : ('reliability%(timeframe)s', '[value'),
         'minBandwidth' : ('bw%(timeframe)s', ']value'),
         'maxBandwidth' : ('bw%(timeframe)s', '[value'),
+        'minLoad' : ('load%(timeframe)s', ']value'),
+        'maxLoad' : ('load%(timeframe)s', '[value'),
+        'minCpu' : ('cpu%(timeframe)s', ']value'),
+        'maxCpu' : ('cpu%(timeframe)s', '[value'),
     }    
     
     DEPENDS_PIDFILE = '/tmp/nepi-depends.pid'
@@ -64,6 +71,10 @@ class Node(object):
     maxReliability = _castproperty(float, '_maxReliability')
     minBandwidth = _castproperty(float, '_minBandwidth')
     maxBandwidth = _castproperty(float, '_maxBandwidth')
+    minCpu = _castproperty(float, '_minCpu')
+    maxCpu = _castproperty(float, '_maxCpu')
+    minLoad = _castproperty(float, '_minLoad')
+    maxLoad = _castproperty(float, '_maxLoad')
     
     def __init__(self, api=None):
         if not api:
@@ -76,10 +87,17 @@ class Node(object):
         self.operatingSystem = None
         self.pl_distro = None
         self.site = None
+        self.city = None
+        self.country = None
+        self.region = None
         self.minReliability = None
         self.maxReliability = None
         self.minBandwidth = None
         self.maxBandwidth = None
+        self.minCpu = None
+        self.maxCpu = None
+        self.minLoad = None
+        self.maxLoad = None
         self.min_num_external_ifaces = None
         self.max_num_external_ifaces = None
         self.timeframe = 'm'
@@ -348,7 +366,11 @@ class Node(object):
         self.minReliability = \
         self.maxReliability = \
         self.minBandwidth = \
-        self.maxBandwidth = None
+        self.maxBandwidth = \
+        self.minCpu = \
+        self.maxCpu = \
+        self.minLoad = \
+        self.maxLoad = None
 
     def install_dependencies(self):
         if self.required_packages and not self._installed:
