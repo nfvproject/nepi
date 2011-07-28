@@ -3,7 +3,7 @@
 
 from nepi.core.attributes import Attribute, AttributesMap
 from nepi.util import validation
-from nepi.util.constants import ApplicationStatus as AS, TIME_NOW, DeploymentConfiguration as DC
+from nepi.util.constants import ApplicationStatus as AS, TestbedStatus as TS, TIME_NOW, DeploymentConfiguration as DC
 from nepi.util.parser._xml import XmlExperimentParser
 import sys
 import re
@@ -200,6 +200,9 @@ class TestbedController(object):
 
     def status(self, guid):
         raise NotImplementedError
+    
+    def testbed_status(self):
+        raise NotImplementedError
 
     def trace(self, guid, trace_id, attribute='value'):
         raise NotImplementedError
@@ -232,6 +235,7 @@ class ExperimentController(object):
         self._root_dir = root_dir
         self._netreffed_testbeds = set()
         self._guids_in_testbed_cache = dict()
+        self._failed_testbeds = set()
         
         if experiment_xml is None and root_dir is not None:
             # Recover
@@ -339,9 +343,13 @@ class ExperimentController(object):
         else:
             # recover recoverable controllers
             for guid in to_recover:
-                self._testbeds[guid].do_setup()
-                self._testbeds[guid].recover()
-        
+                try:
+                    self._testbeds[guid].do_setup()
+                    self._testbeds[guid].recover()
+                except:
+                    # Mark failed
+                    self._failed_testbeds.add(guid)
+    
         def steps_to_configure(self, allowed_guids):
             # perform setup in parallel for all test beds,
             # wait for all threads to finish
@@ -386,8 +394,12 @@ class ExperimentController(object):
             else:
                 # recover recoverable controllers
                 for guid in to_recover:
-                    self._testbeds[guid].do_setup()
-                    self._testbeds[guid].recover()
+                    try:
+                        self._testbeds[guid].do_setup()
+                        self._testbeds[guid].recover()
+                    except:
+                        # Mark failed
+                        self._failed_testbeds.add(guid)
 
             # configure dependant testbeds
             steps_to_configure(self, to_restart)
@@ -561,8 +573,10 @@ class ExperimentController(object):
    
     def recover(self):
         # reload perviously persisted testbed access configurations
+        self._failed_testbeds.clear()
         self._load_testbed_proxies()
 
+        # re-program testbeds that need recovery
         self._start(recover = True)
 
     def is_finished(self, guid):
@@ -570,12 +584,32 @@ class ExperimentController(object):
         if testbed != None:
             return testbed.status(guid) == AS.STATUS_FINISHED
         raise RuntimeError("No element exists with guid %d" % guid)    
+    
+    def _testbed_recovery_policy(self, guid, data = None):
+        if data is None:
+            parser = XmlExperimentParser()
+            data = parser.from_xml_to_data(self._experiment_design_xml)
+        
+        return data.get_attribute_data(guid, DC.RECOVERY_POLICY)
 
     def status(self, guid):
-        testbed = self._testbed_for_guid(guid)
-        if testbed != None:
-            return testbed.status(guid)
-        raise RuntimeError("No element exists with guid %d" % guid)    
+        if guid in self._testbeds:
+            # guid is a testbed
+            # report testbed status
+            if guid in self._failed_testbeds:
+                return TS.STATUS_FAILED
+            else:
+                try:
+                    return self._testbeds[guid].status()
+                except:
+                    return TS.STATUS_UNRESPONSIVE
+        else:
+            # guid is an element
+            testbed = self._testbed_for_guid(guid)
+            if testbed is not None:
+                return testbed.status(guid)
+            else:
+                return AS.STATUS_UNDETERMINED
 
     def set(self, guid, name, value, time = TIME_NOW):
         testbed = self._testbed_for_guid(guid)
@@ -627,6 +661,8 @@ class ExperimentController(object):
     def _testbed_for_guid(self, guid):
         for testbed_guid in self._testbeds.keys():
             if guid in self._guids_in_testbed(testbed_guid):
+                if testbed_guid in self._failed_testbeds:
+                    return None
                 return self._testbeds[testbed_guid]
         return None
 
@@ -756,10 +792,8 @@ class ExperimentController(object):
                             to_restart.add(guid)
                     except:
                         if recover:
-                            policy = data.get_attribute_data(guid, DC.RECOVERY_POLICY)
-                            if policy == DC.POLICY_FAIL:
-                                raise
-                            elif policy == DC.POLICY_RECOVER:
+                            policy = self._testbed_recovery_policy(guid, data=data)
+                            if policy == DC.POLICY_RECOVER:
                                 self._create_testbed_controller(
                                     guid, data, element_guids, False)
                                 to_recover.add(guid)
@@ -768,7 +802,8 @@ class ExperimentController(object):
                                     guid, data, element_guids, False)
                                 to_restart.add(guid)
                             else:
-                                raise
+                                # Mark failed
+                                self._failed_testbeds.add(guid)
                         else:
                             raise
         

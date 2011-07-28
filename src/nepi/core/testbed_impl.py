@@ -457,6 +457,9 @@ class TestbedController(execute.TestbedController):
         if status_function:
             return status_function(self, guid)
         return AS.STATUS_UNDETERMINED
+    
+    def testbed_status(self):
+        return self._status
 
     def trace(self, guid, trace_id, attribute='value'):
         if attribute == 'value':
