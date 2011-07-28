@@ -152,6 +152,9 @@ class TestbedController(object):
         instance will be re-created and the following sequence invoked:
         
             do_setup
+            defer_X - programming the testbed with persisted execution values
+                (not design values). Execution values (ExecImmutable attributes)
+                should be enough to recreate the testbed's state.
             *recover*
             <cross-connection methods>
             
