@@ -13,7 +13,7 @@ from nepi.util.constants import ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP, \
         AttributeCategories as AC
 
 class Parallel(object):
-    def __init__(self, factory, maxthreads = 16):
+    def __init__(self, factory, maxthreads = 64):
         self.factory = factory
         self.maxthreads = maxthreads
 
