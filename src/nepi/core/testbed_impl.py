@@ -556,7 +556,7 @@ class TestbedController(execute.TestbedController):
 
     def _validate_testbed_value(self, name, value):
         if not self._attributes.is_attribute_value_valid(name, value):
-            raise AttributeError("Invalid value %s for testbed attribute %s" % \
+            raise AttributeError("Invalid value %r for testbed attribute %s" % \
                 (value, name))
 
     def _validate_box_attribute(self, guid, name):
@@ -568,7 +568,7 @@ class TestbedController(execute.TestbedController):
     def _validate_box_value(self, guid, name, value):
         factory = self._get_factory(guid)
         if not factory.box_attributes.is_attribute_value_valid(name, value):
-            raise AttributeError("Invalid value %s for attribute %s" % \
+            raise AttributeError("Invalid value %r for attribute %s" % \
                 (value, name))
 
     def _validate_factory_attribute(self, guid, name):
@@ -580,7 +580,7 @@ class TestbedController(execute.TestbedController):
     def _validate_factory_value(self, guid, name, value):
         factory = self._get_factory(guid)
         if not factory.is_attribute_value_valid(name, value):
-            raise AttributeError("Invalid value %s for attribute %s" % \
+            raise AttributeError("Invalid value %r for attribute %s" % \
                 (value, name))
 
     def _validate_trace(self, guid, trace_name):
