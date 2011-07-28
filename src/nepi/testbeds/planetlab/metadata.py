@@ -673,7 +673,7 @@ attributes = dict({
                 "type": Attribute.DOUBLE,
                 "range": (0,100),
                 "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
-                "validation_function": validation.is_double,
+                "validation_function": validation.is_number,
             }),
     "max_reliability": dict({
                 "name": "maxReliability",
@@ -681,7 +681,7 @@ attributes = dict({
                 "type": Attribute.DOUBLE,
                 "range": (0,100),
                 "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
-                "validation_function": validation.is_double,
+                "validation_function": validation.is_number,
             }),
     "min_bandwidth": dict({
                 "name": "minBandwidth",
@@ -689,7 +689,7 @@ attributes = dict({
                 "type": Attribute.DOUBLE,
                 "range": (0,2**31),
                 "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
-                "validation_function": validation.is_double,
+                "validation_function": validation.is_number,
             }),
     "max_bandwidth": dict({
                 "name": "maxBandwidth",
@@ -697,7 +697,7 @@ attributes = dict({
                 "type": Attribute.DOUBLE,
                 "range": (0,2**31),
                 "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
-                "validation_function": validation.is_double,
+                "validation_function": validation.is_number,
             }),
             
     "up": dict({
@@ -872,25 +872,25 @@ attributes = dict({
                 "name": "bwIn", 
                 "help": "Inbound bandwidth limit (in Mbit/s)",
                 "type": Attribute.DOUBLE,
-                "validation_function": validation.is_double,
+                "validation_function": validation.is_number,
             }),
     "bw_out":  dict({
                 "name": "bwOut", 
                 "help": "Outbound bandwidth limit (in Mbit/s)",
                 "type": Attribute.DOUBLE,
-                "validation_function": validation.is_double,
+                "validation_function": validation.is_number,
             }),
     "plr_in":  dict({
                 "name": "plrIn", 
                 "help": "Inbound packet loss rate (0 = no loss, 1 = 100% loss)",
                 "type": Attribute.DOUBLE,
-                "validation_function": validation.is_double,
+                "validation_function": validation.is_number,
             }),
     "plr_out":  dict({
                 "name": "plrOut", 
                 "help": "Outbound packet loss rate (0 = no loss, 1 = 100% loss)",
                 "type": Attribute.DOUBLE,
-                "validation_function": validation.is_double,
+                "validation_function": validation.is_number,
             }),
     "delay_in":  dict({
                 "name": "delayIn", 
