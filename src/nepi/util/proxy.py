@@ -165,9 +165,9 @@ class AccessConfiguration(AttributesMap):
         
         from nepi.core.metadata import Metadata
         
-        for _,attr_info in Metadata.DEPLOYMENT_ATTRIBUTES.iteritems():
+        for _,attr_info in Metadata.PROXY_ATTRIBUTES.iteritems():
             self.add_attribute(**attr_info)
-        
+
         if params:
             for attr_name, attr_value in params.iteritems():
                 parser = Attribute.type_parsers[self.get_attribute_type(attr_name)]
@@ -686,6 +686,13 @@ class TestbedControllerServer(BaseServer):
     def get_factory_id(self, guid):
         return self._testbed.get_factory_id(guid)
 
+    @Marshalling.handles(RECOVER)
+    @Marshalling.args()
+    @Marshalling.retvoid
+    def recover(self):
+        self._testbed.recover()
+
+
 class ExperimentControllerServer(BaseServer):
     def __init__(self, root_dir, log_level, experiment_xml, environment_setup):
         super(ExperimentControllerServer, self).__init__(root_dir, log_level, 
@@ -732,6 +739,12 @@ class ExperimentControllerServer(BaseServer):
     @Marshalling.args(int)
     @Marshalling.retval(Marshalling.bool)
     def is_finished(self, guid):
+        return self._experiment.is_finished(guid)
+
+    @Marshalling.handles(STATUS)
+    @Marshalling.args(int)
+    @Marshalling.retval(int)
+    def status(self, guid):
         return self._experiment.is_finished(guid)
 
     @Marshalling.handles(GET)

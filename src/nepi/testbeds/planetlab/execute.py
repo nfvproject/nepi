@@ -3,6 +3,7 @@
 
 from constants import TESTBED_ID, TESTBED_VERSION
 from nepi.core import testbed_impl
+from nepi.core.metadata import Parallel
 from nepi.util.constants import TIME_NOW
 from nepi.util.graphtools import mst
 from nepi.util import ipaddr2
@@ -23,6 +24,7 @@ import subprocess
 import random
 import shutil
 import logging
+import metadata
 
 class TempKeyError(Exception):
     pass
@@ -169,7 +171,7 @@ class TestbedController(testbed_impl.TestbedController):
         # Configure elements per XML data
         super(TestbedController, self).do_preconfigure()
 
-    def do_resource_discovery(self):
+    def do_resource_discovery(self, recover = False):
         to_provision = self._to_provision = set()
         
         reserved = set(self._blacklist)
@@ -221,6 +223,9 @@ class TestbedController(testbed_impl.TestbedController):
                 nodes.append(node)
         
         if nodes and reqs:
+            if recover:
+                raise RuntimeError, "Impossible to recover: unassigned host for Nodes %r" % (nodes,)
+            
             try:
                 solution = resourcealloc.alloc(reqs)
             except resourcealloc.ResourceAllocationError:
@@ -526,6 +531,88 @@ class TestbedController(testbed_impl.TestbedController):
 
     def follow_trace(self, trace_id, trace):
         self._traces[trace_id] = trace
+
+    def recover(self):
+        # Create and connect do not perform any real tasks against
+        # the nodes, it only sets up the object hierarchy,
+        # so we can run them normally
+        self.do_create()
+        self.do_connect_init()
+        self.do_connect_compl()
+        
+        # Assign nodes - since we're working off exeucte XML, nodes
+        # have specific hostnames assigned and we don't need to do
+        # real assignment, only find out node ids and check liveliness
+        self.do_resource_discovery(recover = True)
+        self.do_wait_nodes()
+        
+        # Pre/post configure, however, tends to set up tunnels
+        # Execute configuration steps only for those object
+        # kinds that do not have side effects
+        
+        # Manually recover nodes, to mark dependencies installed
+        self._do_in_factory_order(
+            lambda self, guid : self._elements[guid].recover(), 
+            [
+                metadata.NODE,
+            ])
+        
+        # Do the ones without side effects,
+        # including nodes that need to set up home 
+        # folders and all that
+        self._do_in_factory_order(
+            "preconfigure_function", 
+            [
+                metadata.INTERNET,
+                Parallel(metadata.NODE),
+                metadata.NODEIFACE,
+            ])
+        
+        # Tunnels require a home path that is configured
+        # at this step. Since we cannot run the step itself,
+        # we need to inject this homepath ourselves
+        for guid, element in self._elements.iteritems():
+            if isinstance(element, self._interfaces.TunIface):
+                element._home_path = "tun-%s" % (guid,)
+        
+        # Manually recover tunnels, applications and
+        # netpipes, negating the side effects
+        self._do_in_factory_order(
+            lambda self, guid : self._elements[guid].recover(), 
+            [
+                Parallel(metadata.TAPIFACE),
+                Parallel(metadata.TUNIFACE),
+                metadata.NETPIPE,
+                Parallel(metadata.NEPIDEPENDENCY),
+                Parallel(metadata.NS3DEPENDENCY),
+                Parallel(metadata.DEPENDENCY),
+                Parallel(metadata.APPLICATION),
+            ])
+
+        # Tunnels are not harmed by configuration after
+        # recovery, and some attributes get set this way
+        # like external_iface
+        self._do_in_factory_order(
+            "preconfigure_function", 
+            [
+                Parallel(metadata.TAPIFACE),
+                Parallel(metadata.TUNIFACE),
+            ])
+
+        # Post-do the ones without side effects
+        self._do_in_factory_order(
+            "configure_function", 
+            [
+                metadata.INTERNET,
+                Parallel(metadata.NODE),
+                metadata.NODEIFACE,
+                Parallel(metadata.TAPIFACE),
+                Parallel(metadata.TUNIFACE),
+            ])
+        
+        # There are no required prestart steps
+        # to call upon recovery, so we're done
+        
     
     def _make_generic(self, parameters, kind):
         app = kind(self.plapi)

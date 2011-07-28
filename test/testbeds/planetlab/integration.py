@@ -226,6 +226,117 @@ FIONREAD = 0x[0-9a-fA-F]{8}.*
             daemonize_testbed = False,
             controller_access_configuration = access_config,
             environ = environ)
+
+
+    def _test_recover(self, daemonize_testbed, controller_access_configuration, environ = None):
+        pl, exp = self.make_experiment_desc()
+        
+        pl.set_attribute_value(DC.RECOVERY_POLICY, DC.POLICY_RECOVER)
+        
+        node1 = pl.create("Node")
+        node2 = pl.create("Node")
+        node1.set_attribute_value("hostname", self.host1)
+        node2.set_attribute_value("hostname", self.host2)
+        
+        iface1 = pl.create("NodeInterface")
+        iface2 = pl.create("NodeInterface")
+        inet = pl.create("Internet")
+        node1.connector("devs").connect(iface1.connector("node"))
+        node2.connector("devs").connect(iface2.connector("node"))
+        iface1.connector("inet").connect(inet.connector("devs"))
+        iface2.connector("inet").connect(inet.connector("devs"))
+        
+        tap1 = pl.create("TapInterface")
+        tap2 = pl.create("TapInterface")
+        node1.connector("devs").connect(tap1.connector("node"))
+        node2.connector("devs").connect(tap2.connector("node"))
+        tap1.connector("udp").connect(tap2.connector("udp"))
+        
+        tap1ip = tap1.add_address()
+        tap1ip.set_attribute_value("Address", "192.168.2.2")
+        tap1ip.set_attribute_value("NetPrefix", 24)
+        tap1ip.set_attribute_value("Broadcast", False)
+
+        tap2ip = tap2.add_address()
+        tap2ip.set_attribute_value("Address", "192.168.2.3")
+        tap2ip.set_attribute_value("NetPrefix", 24)
+        tap2ip.set_attribute_value("Broadcast", False)
+        
+        app = pl.create("Application")
+        app.set_attribute_value("command", "ping -qc10 192.168.2.3")
+        app.enable_trace("stdout")
+        app.connector("node").connect(node1.connector("apps"))
+
+        if daemonize_testbed:
+            pl.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
+            inst_root_dir = os.path.join(self.root_dir, "instance")
+            os.mkdir(inst_root_dir)
+            pl.set_attribute_value(DC.ROOT_DIRECTORY, inst_root_dir)
+            pl.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
+
+            if environ:
+                pl.set_attribute_value(DC.DEPLOYMENT_ENVIRONMENT_SETUP, environ)
+
+        xml = exp.to_xml()
+
+        if controller_access_configuration:
+            controller = proxy.create_experiment_controller(xml, 
+                controller_access_configuration)
+        else:
+            controller = ExperimentController(xml, self.root_dir)
+        
+        try:
+            controller.start()
+            
+            # purposedly break connection
+            controller = None
+            
+            # recover
+            if controller_access_configuration:
+                controller_access_configuration.set_attribute_value(
+                    DC.RECOVER, True)
+                controller = proxy.create_experiment_controller(None, 
+                    controller_access_configuration)
+            else:
+                controller = ExperimentController(None, self.root_dir)
+                controller.recover()
+            
+            while not controller.is_finished(app.guid):
+                time.sleep(0.5)
+            ping_result = controller.trace(app.guid, "stdout")
+            comp_result = r"""PING .* \(.*\) \d*\(\d*\) bytes of data.
+
+--- .* ping statistics ---
+10 packets transmitted, 10 received, 0% packet loss, time \d*ms.*
+"""
+            self.assertTrue(re.match(comp_result, ping_result, re.MULTILINE),
+                "Unexpected trace:\n" + ping_result)
+        
+        finally:
+            if controller is not None:
+                try:
+                    controller.stop()
+                    controller.shutdown()
+                except:
+                    import traceback
+                    traceback.print_exc()
+
+    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    def test_recover(self):
+        self._test_recover(
+            daemonize_testbed = False,
+            controller_access_configuration = None)
+
+    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    def test_recover_daemonized(self):
+        access_config = proxy.AccessConfiguration({
+            DC.DEPLOYMENT_MODE : DC.MODE_DAEMON,
+            DC.ROOT_DIRECTORY : self.root_dir,
+        })
+
+        self._test_recover(
+            daemonize_testbed = False,
+            controller_access_configuration = access_config)
         
 
 if __name__ == '__main__':

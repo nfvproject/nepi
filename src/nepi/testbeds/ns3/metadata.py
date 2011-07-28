@@ -3,6 +3,12 @@
 
 from constants import TESTBED_ID, TESTBED_VERSION
 from nepi.core import metadata
+from nepi.util.constants import DeploymentConfiguration as DC
+
+supported_recovery_policies = [
+        DC.POLICY_FAIL,
+        DC.POLICY_RESTART,
+    ]
 
 class MetadataInfo(metadata.MetadataInfo):
     @property
@@ -52,4 +58,9 @@ class MetadataInfo(metadata.MetadataInfo):
     @property
     def testbed_version(self):
         return TESTBED_VERSION
+
+    @property
+    def supported_recovery_policies(self):
+        return supported_recovery_policies
+
 

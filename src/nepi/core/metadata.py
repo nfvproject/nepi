@@ -356,6 +356,24 @@ class Metadata(object):
             "validation_function" : validation.is_enum,
             "category" : AC.CATEGORY_DEPLOYMENT,
             }),
+        DC.RECOVERY_POLICY : dict({
+            "name" : DC.RECOVERY_POLICY,
+            "help" : "Specifies what action to take in the event of a failure.", 
+            "type" : Attribute.ENUM,
+            "value" : DC.POLICY_FAIL,
+            "allowed" : [
+                    DC.POLICY_FAIL,
+                    DC.POLICY_RECOVER,
+                    DC.POLICY_RESTART,
+                ],
+            "flags" : Attribute.ExecReadOnly |\
+                    Attribute.ExecImmutable |\
+                    Attribute.Metadata,
+            "validation_function" : validation.is_enum,
+            "category" : AC.CATEGORY_DEPLOYMENT,
+            }),
+        })
+    PROXY_ATTRIBUTES = dict({
         DC.RECOVER : dict({
             "name" : DC.RECOVER,
             "help" : "Do not intantiate testbeds, rather, reconnect to already-running instances. Used to recover from a dead controller.", 
@@ -368,6 +386,7 @@ class Metadata(object):
             "category" : AC.CATEGORY_DEPLOYMENT,
             }),
         })
+    PROXY_ATTRIBUTES.update(DEPLOYMENT_ATTRIBUTES)
   
     # These attributes could appear in the boxes attribute list
     STANDARD_BOX_ATTRIBUTE_DEFINITIONS = dict({
@@ -462,6 +481,10 @@ class Metadata(object):
     @property
     def testbed_id(self):
         return self._testbed_id
+    
+    @property
+    def supported_recovery_policies(self):
+        return self._metadata.supported_recovery_policies
 
     def testbed_attributes(self):
         attributes = AttributesMap()

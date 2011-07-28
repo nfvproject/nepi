@@ -6,7 +6,7 @@ from nepi.core import metadata
 from nepi.core.attributes import Attribute
 from nepi.util import tags, validation
 from nepi.util.constants import ApplicationStatus as AS, \
-        FactoryCategories as FC
+        FactoryCategories as FC, DeploymentConfiguration as DC
 
 from nepi.util.tunchannel_impl import \
     preconfigure_tunchannel, postconfigure_tunchannel, \
@@ -550,6 +550,10 @@ testbed_attributes = dict({
             }),
     })
 
+supported_recovery_policies = [
+        DC.POLICY_FAIL,
+    ]
+
 class MetadataInfo(metadata.MetadataInfo):
     @property
     def connector_types(self):
@@ -590,4 +594,8 @@ class MetadataInfo(metadata.MetadataInfo):
     @property
     def testbed_version(self):
         return TESTBED_VERSION
+    
+    @property
+    def supported_recover_policies(self):
+        return supported_recovery_policies
 

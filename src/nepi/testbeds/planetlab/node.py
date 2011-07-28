@@ -81,12 +81,12 @@ class Node(object):
         # Those are filled when an actual node is allocated
         self._node_id = None
         self._yum_dependencies = None
+        self._installed = False
 
         # Logging
         self._logger = logging.getLogger('nepi.testbeds.planetlab')
     
-    @property
-    def _nepi_testbed_environment_setup(self):
+    def _nepi_testbed_environment_setup_get(self):
         command = cStringIO.StringIO()
         command.write('export PYTHONPATH=$PYTHONPATH:%s' % (
             ':'.join(["${HOME}/"+server.shell_escape(s) for s in self.pythonpath])
@@ -99,6 +99,11 @@ class Node(object):
                 for envval in envvals:
                     command.write(' ; export %s=%s' % (envkey, envval))
         return command.getvalue()
+    def _nepi_testbed_environment_setup_set(self, value):
+        pass
+    _nepi_testbed_environment_setup = property(
+        _nepi_testbed_environment_setup_get,
+        _nepi_testbed_environment_setup_set)
     
     def build_filters(self, target_filters, filter_map):
         for attr, tag in filter_map.iteritems():
@@ -316,8 +321,12 @@ class Node(object):
         if self.slicename is None:
             raise AssertionError, "Misconfigured node: unspecified slice"
 
+    def recover(self):
+        # Just mark dependencies installed
+        self._installed = True
+
     def install_dependencies(self):
-        if self.required_packages:
+        if self.required_packages and not self._installed:
             # If we need rpmfusion, we must install the repo definition and the gpg keys
             if self.rpmFusion:
                 if self.operatingSystem == 'f12':
@@ -369,8 +378,9 @@ class Node(object):
     
     def wait_dependencies(self, pidprobe=1, probe=0.5, pidmax=10, probemax=10):
         # Wait for the p2p installer
-        if self._yum_dependencies:
+        if self._yum_dependencies and not self._installed:
             self._yum_dependencies.async_setup_wait()
+            self._installed = True
         
     def is_alive(self):
         # Make sure all the paths are created where 
@@ -394,7 +404,7 @@ class Node(object):
     
     def prepare_dependencies(self):
         # Configure p2p yum dependency installer
-        if self.required_packages:
+        if self.required_packages and not self._installed:
             self._yum_dependencies = application.YumDependency(self._api)
             self._yum_dependencies.node = self
             self._yum_dependencies.home_path = "nepi-yumdep"
