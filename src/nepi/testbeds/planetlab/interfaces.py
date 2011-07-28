@@ -147,6 +147,7 @@ class TunIface(object):
         self.peer_addr = None
         self.peer_port = None
         self.peer_proto_impl = None
+        self._delay_recover = False
 
         # same as peer proto, but for execute-time standard attribute lookups
         self.tun_proto = None 
@@ -232,10 +233,13 @@ class TunIface(object):
         return impl
     
     def recover(self):
-        self.peer_proto_impl = self._impl_instance(
-            self._home_path,
-            False) # no way to know, no need to know
-        self.peer_proto_impl.recover()
+        if self.peer_proto:
+            self.peer_proto_impl = self._impl_instance(
+                self._home_path,
+                False) # no way to know, no need to know
+            self.peer_proto_impl.recover()
+        else:
+            self._delay_recover = True
     
     def prepare(self, home_path, listening):
         if not self.peer_iface and (self.peer_proto and (listening or (self.peer_addr and self.peer_port))):
@@ -247,7 +251,10 @@ class TunIface(object):
         if self.peer_iface:
             if not self.peer_proto_impl:
                 self.peer_proto_impl = self._impl_instance(home_path, listening)
-            self.peer_proto_impl.prepare()
+            if self._delay_recover:
+                self.peer_proto_impl.recover()
+            else:
+                self.peer_proto_impl.prepare()
     
     def setup(self):
         if self.peer_proto_impl:

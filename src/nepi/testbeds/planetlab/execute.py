@@ -540,6 +540,14 @@ class TestbedController(testbed_impl.TestbedController):
         self.do_connect_init()
         self.do_connect_compl()
         
+        # Manually recover nodes, to mark dependencies installed
+        # and clean up mutable attributes
+        self._do_in_factory_order(
+            lambda self, guid : self._elements[guid].recover(), 
+            [
+                metadata.NODE,
+            ])
+        
         # Assign nodes - since we're working off exeucte XML, nodes
         # have specific hostnames assigned and we don't need to do
         # real assignment, only find out node ids and check liveliness
@@ -549,13 +557,6 @@ class TestbedController(testbed_impl.TestbedController):
         # Pre/post configure, however, tends to set up tunnels
         # Execute configuration steps only for those object
         # kinds that do not have side effects
-        
-        # Manually recover nodes, to mark dependencies installed
-        self._do_in_factory_order(
-            lambda self, guid : self._elements[guid].recover(), 
-            [
-                metadata.NODE,
-            ])
         
         # Do the ones without side effects,
         # including nodes that need to set up home 

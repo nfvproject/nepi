@@ -102,8 +102,12 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
         
         return node1, iface1, tap1, tap1ip, inet
     
-    def _test_plpl_crossconnect(self, proto):
+    def _test_plpl_crossconnect(self, proto, recover = False):
         pl, pl2, exp = self.make_experiment_desc()
+        
+        if recover:
+            pl.set_attribute_value(DC.RECOVERY_POLICY, DC.POLICY_RECOVER)
+            pl2.set_attribute_value(DC.RECOVERY_POLICY, DC.POLICY_RECOVER)
         
         # Create PL node, ifaces, assign addresses
         node1, iface1, tap1, tap1ip, inet1 = self.make_pl_tapnode(pl, 
@@ -129,18 +133,26 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
 
         xml = exp.to_xml()
 
-        controller = ExperimentController(xml, self.root_dir)
-        controller.start()
+        try:
+            controller = ExperimentController(xml, self.root_dir)
+            controller.start()
+            
+            if recover:
+                controller = None
+                controller = ExperimentController(None, self.root_dir)
+                controller.recover()
 
-        while not controller.is_finished(ping.guid):
-            time.sleep(0.5)
-          
-        ping_result = controller.trace(ping.guid, "stdout")
-        tap_trace = controller.trace(tap1.guid, "packets")
-        tap2_trace = controller.trace(tap2.guid, "packets")
-
-        controller.stop()
-        controller.shutdown()
+            while not controller.is_finished(ping.guid):
+                time.sleep(0.5)
+              
+            ping_result = controller.trace(ping.guid, "stdout")
+            tap_trace = controller.trace(tap1.guid, "packets")
+            tap2_trace = controller.trace(tap2.guid, "packets")
+        
+        finally:
+            if controller is not None:
+                controller.stop()
+                controller.shutdown()
 
         # asserts at the end, to make sure there's proper cleanup
         self.assertTrue(re.match(comp_result, ping_result, re.MULTILINE),
@@ -158,6 +170,12 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
         "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_plpl_crossconnect_tcp(self):
         self._test_plpl_crossconnect("tcp")
+
+    @test_util.skipUnless(test_util.pl_auth() is not None, 
+        "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    def test_plpl_crossconnect_udp_recover(self):
+        self._test_plpl_crossconnect("udp", 
+            recover = True)
 
 
 if __name__ == '__main__':

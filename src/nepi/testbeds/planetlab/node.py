@@ -22,6 +22,20 @@ import application
 class UnresponsiveNodeError(RuntimeError):
     pass
 
+def _castproperty(typ, propattr):
+    def _get(self):
+        return getattr(self, propattr)
+    def _set(self, value):
+        if value is not None or (isinstance(value, basestring) and not value):
+            value = typ(value)
+        return setattr(self, propattr, value)
+    def _del(self, value):
+        return delattr(self, propattr)
+    _get.__name__ = propattr + '_get'
+    _set.__name__ = propattr + '_set'
+    _del.__name__ = propattr + '_del'
+    return property(_get, _set, _del)
+
 class Node(object):
     BASEFILTERS = {
         # Map Node attribute to plcapi filter name
@@ -45,6 +59,11 @@ class Node(object):
     DEPENDS_LOGFILE = '/tmp/nepi-depends.log'
     RPM_FUSION_URL = 'http://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-stable.noarch.rpm'
     RPM_FUSION_URL_F12 = 'http://download1.rpmfusion.org/free/fedora/releases/12/Everything/x86_64/os/rpmfusion-free-release-12-1.noarch.rpm'
+    
+    minReliability = _castproperty(float, '_minReliability')
+    maxReliability = _castproperty(float, '_maxReliability')
+    minBandwidth = _castproperty(float, '_minBandwidth')
+    maxBandwidth = _castproperty(float, '_maxBandwidth')
     
     def __init__(self, api=None):
         if not api:
@@ -322,8 +341,14 @@ class Node(object):
             raise AssertionError, "Misconfigured node: unspecified slice"
 
     def recover(self):
-        # Just mark dependencies installed
+        # Mark dependencies installed
         self._installed = True
+        
+        # Clear load attributes, they impair re-discovery
+        self.minReliability = \
+        self.maxReliability = \
+        self.minBandwidth = \
+        self.maxBandwidth = None
 
     def install_dependencies(self):
         if self.required_packages and not self._installed:
