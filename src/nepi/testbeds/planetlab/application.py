@@ -975,13 +975,13 @@ class YumDependency(Dependency):
         
         # unpack cached rpms into yum cache, install, and cleanup
         return (
-            "tar -k --keep-newer-files -C /var/cache/yum xzf packages.tar && "
-            "yum -y install %s && "
-            "yum -y clean packages "
+            "tar -k --keep-newer-files -C /var/cache/yum -xf packages.tar && "
+            "sudo -S yum -y install %s && "
+            "sudo -S yum -y clean packages "
         ) % ( depends, )
     def _install_set(self, value):
         # ignore
         return
-    isntall = property(_install_get, _install_set)
+    install = property(_install_get, _install_set)
         
 
