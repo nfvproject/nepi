@@ -173,10 +173,11 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
         crypto_mode = False
         crypter = None
 
-    if crypto_mode:
-        print >>stderr, "Packets are transmitted in CIPHER"
-    else:
-        print >>stderr, "Packets are transmitted in PLAINTEXT"
+    if stderr is not None:
+        if crypto_mode:
+            print >>stderr, "Packets are transmitted in CIPHER"
+        else:
+            print >>stderr, "Packets are transmitted in PLAINTEXT"
     
     # Limited frame parsing, to preserve packet boundaries.
     # Which is needed, since /dev/net/tun is unbuffered
@@ -213,14 +214,17 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
                 if not udp:
                     # in UDP mode, we ignore errors - packet loss man...
                     raise
-            print >>stderr, '>', formatPacket(packet, ether_mode)
+            if stderr is not None:
+                print >>stderr, '>', formatPacket(packet, ether_mode)
         if tun in wrdy and packetReady(bkbuf, ether_mode):
             packet, bkbuf = pullPacket(bkbuf, ether_mode)
-            formatted = formatPacket(packet, ether_mode)
+            if stderr is not None:
+                formatted = formatPacket(packet, ether_mode)
             if with_pi:
                 packet = piWrap(packet, ether_mode)
             os.write(tun.fileno(), packet)
-            print >>stderr, '<', formatted
+            if stderr is not None:
+                print >>stderr, '<', formatted
         
         # check incoming data packets
         if tun in rdrdy:

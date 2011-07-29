@@ -359,7 +359,7 @@ def tun_fwd(tun, remote):
         cipher_key = options.cipher_key,
         udp = options.udp,
         TERMINATE = TERMINATE,
-        stderr = open("/dev/null","w")
+        stderr = None
     )
 
 
@@ -520,6 +520,14 @@ try:
             + ["-w",options.pcap_capture,"-U"] * bool(options.pcap_capture) )
     
     print >>sys.stderr, "Connected"
+    
+    # Try to give us high priority
+    try:
+        os.nice(-20)
+    except:
+        # Ignore errors, we might not have enough privileges,
+        # or perhaps there is no os.nice support in the system
+        pass
 
     tun_fwd(tun, remote)
 
