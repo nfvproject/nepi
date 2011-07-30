@@ -108,7 +108,7 @@ class Roads09Ns3PLExample(object):
     
 
     def add_ns3_fdnd(self, node, ns3_desc):
-        fdnd = ns3_desc.create("ns3::FileDescriptorNetDevice")
+        fdnd = ns3_desc.create("ns3::FdNetDevice")
         node.connector("devs").connect(fdnd.connector("node"))
         fdnd.enable_trace("FileDescriptorPcapTrace")
         return fdnd

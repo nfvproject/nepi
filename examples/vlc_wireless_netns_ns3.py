@@ -34,9 +34,9 @@ class VlcWirelessNetnsNs3Example(object):
         return tap
 
     def add_ns3_fdnd(self, node, ns3_desc):
-        fdnd = ns3_desc.create("ns3::FileDescriptorNetDevice")
+        fdnd = ns3_desc.create("ns3::FdNetDevice")
         node.connector("devs").connect(fdnd.connector("node"))
-        fdnd.enable_trace("FileDescriptorPcapTrace")
+        fdnd.enable_trace("FdPcapTrace")
         return fdnd
 
     def add_ns3_node(self, ns3_desc):
@@ -59,9 +59,9 @@ class VlcWirelessNetnsNs3Example(object):
         error = ns3_desc.create("ns3::NistErrorRateModel")
         manager = ns3_desc.create("ns3::ArfWifiManager")
         if access_point:
-            mac = ns3_desc.create("ns3::QapWifiMac")
+            mac = ns3_desc.create("ns3::ApWifiMac")
         else:
-            mac = ns3_desc.create("ns3::QstaWifiMac")
+            mac = ns3_desc.create("ns3::StaWifiMac")
 
         phy.set_attribute_value("Standard", "WIFI_PHY_STANDARD_80211a")
         mac.set_attribute_value("Standard", "WIFI_PHY_STANDARD_80211a")

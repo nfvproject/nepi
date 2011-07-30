@@ -159,7 +159,7 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
         ns1.connector("protos").connect(ipv41.connector("node"))
         ns1.connector("protos").connect(arp1.connector("node"))
         ns1.connector("protos").connect(icmp1.connector("node"))
-        ns1if = ns3.create("ns3::FileDescriptorNetDevice")
+        ns1if = ns3.create("ns3::FdNetDevice")
         ns1if.enable_trace("FileDescriptorPcapTrace")
         ns1if.set_attribute_value("label", "ns1if")
         ns1tc = ns3.create("ns3::Nepi::TunChannel")

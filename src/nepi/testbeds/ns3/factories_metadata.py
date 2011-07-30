@@ -126,7 +126,7 @@ def fdpcap_trace(testbed_instance, guid, trace_id):
     element = testbed_instance._elements[guid]
     filename = "trace-fd-node-%d-dev-%d.pcap" % (node_guid, interface_number)
     filepath = _follow_trace(testbed_instance, guid, trace_id, filename)
-    helper = testbed_instance.ns3.FileDescriptorHelper()
+    helper = testbed_instance.ns3.FdNetDeviceHelper()
     helper.EnablePcap(filepath, element, explicitFilename = True)
 
 def yanswifipcap_trace(testbed_instance, guid, trace_id):
@@ -174,7 +174,7 @@ trace_functions = dict({
     "P2PAsciiTrace": p2pascii_trace,
     "CsmaPcapTrace": csmapcap_trace,
     "CsmaPcapPromiscTrace": csmapcap_promisc_trace,
-    "FileDescriptorPcapTrace": fdpcap_trace,
+    "FdPcapTrace": fdpcap_trace,
     "YansWifiPhyPcapTrace": yanswifipcap_trace,
     "WimaxPcapTrace": wimaxpcap_trace,
     "WimaxAsciiTrace": wimaxascii_trace,
@@ -566,8 +566,8 @@ factories_order = ["ns3::BasicEnergySource",
     "ns3::SingleModelSpectrumChannel",
     "ns3::MsduStandardAggregator",
     "ns3::EdcaTxopN",
-    "ns3::QstaWifiMac",
-    "ns3::QapWifiMac",
+    "ns3::StaWifiMac",
+    "ns3::ApWifiMac",
     "ns3::QadhocWifiMac",
     "ns3::MinstrelWifiManager",
     "ns3::CaraWifiManager",
@@ -579,8 +579,6 @@ factories_order = ["ns3::BasicEnergySource",
     "ns3::AarfWifiManager",
     "ns3::ArfWifiManager",
     "ns3::WifiNetDevice",
-    "ns3::NqstaWifiMac",
-    "ns3::NqapWifiMac",
     "ns3::AdhocWifiMac",
     "ns3::DcaTxop",
     "ns3::WifiMacQueue",
@@ -610,7 +608,7 @@ factories_order = ["ns3::BasicEnergySource",
     "ns3::PacketSink",
     "ns3::OnOffApplication",
     "ns3::VirtualNetDevice",
-    "ns3::FileDescriptorNetDevice",
+    "ns3::FdNetDevice",
     "ns3::Nepi::TunChannel",
     "ns3::TapBridge",
     "ns3::BridgeChannel",
@@ -1031,7 +1029,7 @@ factories_info = dict({
             "WaypointList"],
         "tags": [tags.MOBILE],
     }),
-     "ns3::FileDescriptorNetDevice": dict({
+     "ns3::FdNetDevice": dict({
         "category": FC.CATEGORY_DEVICES,
         "create_function": create_element,
         "configure_function": configure_device,
@@ -1049,7 +1047,7 @@ factories_info = dict({
         "preconfigure_function": preconfigure_tunchannel,
         "configure_function": postconfigure_tunchannel,
         "prestart_function": wait_tunchannel,
-        "help": "Channel to forward FileDescriptorNetDevice data to "
+        "help": "Channel to forward FdNetDevice data to "
                 "other TAP interfaces supporting the NEPI tunneling protocol.",
         "connector_types": ["fd->", "udp", "tcp"],
         "allow_addresses": False,
@@ -1077,26 +1075,6 @@ factories_info = dict({
         "help": "",
         "connector_types": [],
         "box_attributes": ["SpreadCoef"],
-    }),
-     "ns3::NqstaWifiMac": dict({
-        "category": FC.CATEGORY_MAC_MODELS,
-        "create_function": create_wifi_standard_model,
-        "configure_function": configure_element,
-        "help": "",
-        "connector_types": ["dev"],
-        "box_attributes": ["ProbeRequestTimeout",
-            "AssocRequestTimeout",
-            "MaxMissedBeacons",
-            "CtsTimeout",
-            "AckTimeout",
-            "BasicBlockAckTimeout",
-            "CompressedBlockAckTimeout",
-            "Sifs",
-            "EifsNoDifs",
-            "Slot",
-            "Pifs",
-            "MaxPropagationDelay",
-            "Ssid"],
     }),
      "ns3::Icmpv6L4Protocol": dict({
         "category": FC.CATEGORY_PROTOCOLS,
@@ -1338,25 +1316,6 @@ factories_info = dict({
         "box_attributes": ["X",
            "Y"],
         "tags": [tags.MOBILE],
-    }),
-     "ns3::NqapWifiMac": dict({
-        "category": FC.CATEGORY_MAC_MODELS,
-        "create_function": create_wifi_standard_model,
-        "configure_function": configure_element,
-        "help": "",
-        "connector_types": ["dev"],
-        "box_attributes": ["BeaconInterval",
-            "BeaconGeneration",
-            "CtsTimeout",
-            "AckTimeout",
-            "BasicBlockAckTimeout",
-            "CompressedBlockAckTimeout",
-            "Sifs",
-            "EifsNoDifs",
-            "Slot",
-            "Pifs",
-            "MaxPropagationDelay",
-            "Ssid"],
     }),
      "ns3::HierarchicalMobilityModel": dict({
         "category": FC.CATEGORY_MOBILITY_MODELS,
@@ -1611,7 +1570,7 @@ factories_info = dict({
         "connector_types": [],
         "box_attributes": ["ExtensionNumber"],
     }),
-     "ns3::QstaWifiMac": dict({
+     "ns3::StaWifiMac": dict({
         "category": FC.CATEGORY_MAC_MODELS,
         "create_function": create_wifi_standard_model,
         "configure_function": configure_element,
@@ -1780,7 +1739,7 @@ factories_info = dict({
         "connector_types": [],
         "box_attributes": ["OptionNumber"],
     }),
-     "ns3::QapWifiMac": dict({
+     "ns3::ApWifiMac": dict({
         "category": FC.CATEGORY_MAC_MODELS,
         "create_function": create_wifi_standard_model,
         "configure_function": configure_element,

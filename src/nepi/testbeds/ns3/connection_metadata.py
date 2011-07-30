@@ -115,7 +115,7 @@ def connect_classifier_sflow(testbed_instance, classifier_guid, sflow_guid):
 def connect_fd(testbed_instance, fdnd_guid, cross_data):
     fdnd = testbed_instance._elements[fdnd_guid]
     endpoint = fdnd.GetEndpoint()
-    # XXX: check the method StringToBuffer of ns3::FileDescriptorNetDevice
+    # XXX: check the method StringToBuffer of ns3::FdNetDevice
     # to see how the address should be decoded
     address = endpoint.replace(":", "").decode('hex')[2:]
     testbed_instance.set(fdnd_guid, "LinuxSocketAddress", address)
@@ -134,7 +134,7 @@ def connect_tunchannel_fd(testbed_instance, tun_guid, fdnd_guid):
     fdnd = testbed_instance._elements[fdnd_guid]
     tun = testbed_instance._elements[tun_guid]
 
-    # XXX: check the method StringToBuffer of ns3::FileDescriptorNetDevice
+    # XXX: check the method StringToBuffer of ns3::FdNetDevice
     # to see how the address should be decoded
     endpoint = fdnd.GetEndpoint()
     address = endpoint.replace(":", "").decode('hex')[2:]
@@ -364,7 +364,7 @@ connections = [
     }),
     dict({
             "from": ( "ns3", "ns3::Node", "devs" ),
-            "to":   ( "ns3", "ns3::FileDescriptorNetDevice", "node" ),
+            "to":   ( "ns3", "ns3::FdNetDevice", "node" ),
             "init_code": connect_node_device,
             "can_cross": False
     }),
@@ -483,25 +483,13 @@ connections = [
             "can_cross": False
     }),
     dict({
-            "from": ( "ns3", "ns3::QapWifiMac", "dev" ),
+            "from": ( "ns3", "ns3::ApWifiMac", "dev" ),
             "to":   ( "ns3", "ns3::WifiNetDevice", "mac" ),
             "init_code": connect_mac_device,
             "can_cross": False
     }),
     dict({
-            "from": ( "ns3", "ns3::QstaWifiMac", "dev" ),
-            "to":   ( "ns3", "ns3::WifiNetDevice", "mac" ),
-            "init_code": connect_mac_device,
-            "can_cross": False
-    }),
-    dict({
-            "from": ( "ns3", "ns3::NqapWifiMac", "dev" ),
-            "to":   ( "ns3", "ns3::WifiNetDevice", "mac" ),
-            "init_code": connect_mac_device,
-            "can_cross": False
-    }),
-    dict({
-            "from": ( "ns3", "ns3::NqstaWifiMac", "dev" ),
+            "from": ( "ns3", "ns3::StaWifiMac", "dev" ),
             "to":   ( "ns3", "ns3::WifiNetDevice", "mac" ),
             "init_code": connect_mac_device,
             "can_cross": False
@@ -770,14 +758,14 @@ connections = [
         "can_cross": False
     }),
     dict({
-        "from": ( "ns3", "ns3::FileDescriptorNetDevice", "->fd" ),
+        "from": ( "ns3", "ns3::FdNetDevice", "->fd" ),
         "to":   ( None, None, "fd->" ),
         "init_code": connect_fd,
         "can_cross": True
     }),
     dict({
         "from": ( "ns3", "ns3::Nepi::TunChannel", "fd->" ),
-        "to":   ( "ns3", "ns3::FileDescriptorNetDevice", "->fd" ),
+        "to":   ( "ns3", "ns3::FdNetDevice", "->fd" ),
         "init_code": connect_tunchannel_fd,
         "can_cross": False
     }),

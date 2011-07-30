@@ -23,14 +23,14 @@ testbed_attributes = dict({
     "sched_impl_type": dict({
             "name": "SchedulerType",
             "help": "The object class to use as the scheduler implementation. Make sure to pick a thread-safe variant.",
-            "value": "ns3::ThreadsafeMapScheduler",
+            "value": "ns3::MapScheduler",
             "type": Attribute.ENUM,
             "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
             "allowed": [
-                "ns3::ThreadsafeMapScheduler",
-                "ns3::ThreadsafeHeapScheduler",
-                "ns3::ThreadsafeListScheduler",
-                "ns3::ThreadsafeCalendarScheduler",
+                "ns3::MapScheduler",
+                "ns3::HeapScheduler",
+                "ns3::ListScheduler",
+                "ns3::CalendarScheduler",
             ],
             "validation_function": validation.is_enum
         }),

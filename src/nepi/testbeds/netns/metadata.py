@@ -26,7 +26,7 @@ APPLICATION = "Application"
 TUNCHANNEL = "TunChannel"
 
 NS3_TESTBED_ID = "ns3"
-FDNETDEV = "ns3::FileDescriptorNetDevice"
+FDNETDEV = "ns3::FdNetDevice"
 
 def _follow_trace(testbed_instance, guid, trace_id, filename):
     filepath = testbed_instance.trace_filepath(guid, trace_id, filename)
