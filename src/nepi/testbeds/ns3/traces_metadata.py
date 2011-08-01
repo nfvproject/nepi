@@ -22,6 +22,10 @@ traces = dict({
                 "name": "FdPcapTrace",
                 "help": "Trace to sniff packets from a file descriptor network device"
               }),
+    "fdascii": dict({
+                "name": "FdAsciiTrace",
+                "help": "Ascii trace from a file descriptor network device"
+              }),
     "yanswifipcap": dict({
                 "name": "YansWifiPhyPcapTrace",
                 "help": "Trace to sniff packets from a Wifi network device"

@@ -129,6 +129,17 @@ def fdpcap_trace(testbed_instance, guid, trace_id):
     helper = testbed_instance.ns3.FdNetDeviceHelper()
     helper.EnablePcap(filepath, element, explicitFilename = True)
 
+def fdascii_trace(testbed_instance, guid, trace_id):
+    node_guid = _get_node_guid(testbed_instance, guid)
+    interface_number = _get_dev_number(testbed_instance, guid)
+    element = testbed_instance._elements[guid]
+    filename = "trace-fd-node-%d-dev-%d.tr" % (node_guid, interface_number)
+    filepath = _follow_trace(testbed_instance, guid, trace_id, filename)
+    helper = testbed_instance.ns3.FdNetDeviceHelper()
+    asciiHelper = testbed_instance.ns3.AsciiTraceHelper()
+    stream = asciiHelper.CreateFileStream(filepath)
+    helper.EnableAscii(stream, element)
+
 def yanswifipcap_trace(testbed_instance, guid, trace_id):
     dev_guid = testbed_instance.get_connected(guid, "dev", "phy")[0]
     node_guid = _get_node_guid(testbed_instance, dev_guid)
@@ -175,6 +186,7 @@ trace_functions = dict({
     "CsmaPcapTrace": csmapcap_trace,
     "CsmaPcapPromiscTrace": csmapcap_promisc_trace,
     "FdPcapTrace": fdpcap_trace,
+    "FdAsciiTrace": fdascii_trace,
     "YansWifiPhyPcapTrace": yanswifipcap_trace,
     "WimaxPcapTrace": wimaxpcap_trace,
     "WimaxAsciiTrace": wimaxascii_trace,
@@ -1037,7 +1049,7 @@ factories_info = dict({
         "connector_types": ["node", "->fd"],
         "box_attributes": ["Address", 
             "tun_proto", "tun_addr", "tun_port", "tun_key"],
-        "traces": ["fdpcap"],
+        "traces": ["fdpcap", "fdascii"],
         "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
     }),
      "ns3::Nepi::TunChannel": dict({
