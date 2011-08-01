@@ -99,7 +99,7 @@ def pullPacket(buf, ether_mode):
 def etherStrip(buf):
     if len(buf) < 14:
         return ""
-    if buf[12:14] == '\x08\x10' and buf[16:18] in '\x08\x00':
+    if buf[12:14] == '\x08\x10' and buf[16:18] == '\x08\x00':
         # tagged ethernet frame
         return buf[18:]
     elif buf[12:14] == '\x08\x00':
