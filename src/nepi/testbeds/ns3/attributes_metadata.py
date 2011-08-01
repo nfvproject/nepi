@@ -2437,18 +2437,6 @@ attributes = dict({
         "allowed": wifi_standards.keys(),
         "help": "Wifi PHY standard"
     }),
-    "LinuxSocketAddress": dict({
-        "name": "LinuxSocketAddress",
-        "validation_function": None,
-        "value": "",
-        "flags": Attribute.DesignInvisible | \
-                Attribute.ExecInvisible | \
-                Attribute.ExecReadOnly | \
-                Attribute.ExecImmutable | \
-                Attribute.Metadata,
-        "type": Attribute.STRING,
-        "help": "Socket address assigned to the Linux socket created to recive file descriptor"
-    }),
     "ClassifierSrcAddress": dict({
         "name": "SrcAddress",
         "validation_function": validation.is_string, # TODO:! Address + Netref

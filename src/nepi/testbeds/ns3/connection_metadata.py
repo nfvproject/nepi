@@ -113,47 +113,38 @@ def connect_classifier_sflow(testbed_instance, classifier_guid, sflow_guid):
     sflow.SetConvergenceSublayerParam (csparam); 
 
 def connect_fd(testbed_instance, fdnd_guid, cross_data):
-    fdnd = testbed_instance._elements[fdnd_guid]
-    endpoint = fdnd.GetEndpoint()
-    # XXX: check the method StringToBuffer of ns3::FdNetDevice
-    # to see how the address should be decoded
-    address = endpoint.replace(":", "").decode('hex')[2:]
-    testbed_instance.set(fdnd_guid, "LinuxSocketAddress", address)
+    def recvfd(sock, fdnd):
+        (fd, msg) = passfd.recvfd(sock)
+        # Store a reference to the endpoint to keep the socket alive
+        fdnd.SetFileDescriptor(fd)
     
-    # If it's a non-abstract socket, add the path
-    if not address.startswith('\x00'):
-        address = os.path.join( testbed_instance.root_directory, address )
-    
+    import threading
+    import passfd
+    import socket
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    sock.bind("")
+    address = sock.getsockname()
     # Set tun standard contract attributes
-    testbed_instance.set(fdnd_guid, "tun_addr", address )
+    testbed_instance.set(fdnd_guid, "tun_addr", address)
     testbed_instance.set(fdnd_guid, "tun_proto", "fd")
     testbed_instance.set(fdnd_guid, "tun_port", 0)
     testbed_instance.set(fdnd_guid, "tun_key", ("\xfa"*32).encode("base64")) # unimportant, fds aren't encrypted
+    fdnd = testbed_instance._elements[fdnd_guid]
+    t = threading.Thread(target=recvfd, args=(sock,fdnd))
+    t.start()
 
 def connect_tunchannel_fd(testbed_instance, tun_guid, fdnd_guid):
     fdnd = testbed_instance._elements[fdnd_guid]
     tun = testbed_instance._elements[tun_guid]
 
-    # XXX: check the method StringToBuffer of ns3::FdNetDevice
-    # to see how the address should be decoded
-    endpoint = fdnd.GetEndpoint()
-    address = endpoint.replace(":", "").decode('hex')[2:]
-    testbed_instance.set(fdnd_guid, "LinuxSocketAddress", address)
-    
     # Create socket pair to connect the FDND and the TunChannel with it
     import socket
     sock1, sock2 = socket.socketpair(
         socket.AF_UNIX, socket.SOCK_SEQPACKET)
 
-    # Send one endpoint to the FDND
-    import passfd
-    import socket
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-    sock.connect(address)
-    passfd.sendfd(sock, sock1.fileno(), '0')
-    
     # Store a reference to the endpoint to keep the socket alive
     fdnd._endpoint_socket = sock1
+    fdnd.SetFileDescriptor(sock1.fileno())
     
     # Send the other endpoint to the TUN channel
     tun.tun_socket = sock2
@@ -162,7 +153,6 @@ def connect_tunchannel_fd(testbed_instance, tun_guid, fdnd_guid):
     # (sockets don't support the TUNGETIFF ioctl, so it will assume
     # the default presence of PI headers)
     tun.with_pi = True
-
 
 ### Connector information ###
 
