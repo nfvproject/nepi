@@ -580,6 +580,19 @@ def popen_scp(source, dest,
         if TRACE:
             print "scp", source, dest
         
+        if isinstance(source, file) and source.tell() == 0:
+            source = source.name
+        elif hasattr(source, 'read'):
+            tmp = tempfile.NamedTemporaryFile()
+            while True:
+                buf = source.read(65536)
+                if buf:
+                    tmp.write(buf)
+                else:
+                    break
+            tmp.seek(0)
+            source = tmp.name
+        
         if isinstance(source, file) or isinstance(dest, file) \
                 or hasattr(source, 'read')  or hasattr(dest, 'write'):
             assert not recursive
