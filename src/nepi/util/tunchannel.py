@@ -140,7 +140,7 @@ def piStrip(buf, len=len):
     if len(buf) < 4:
         return buf
     else:
-        return buf[4:]
+        return buffer(buf,4)
     
 def piWrap(buf, ether_mode, etherProto=etherProto):
     if ether_mode:
@@ -189,7 +189,8 @@ def nonblock(fd):
         return False
 
 def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr=sys.stderr, reconnect=None, rwrite=None, rread=None, tunqueue=1000, tunkqueue=1000,
-        len=len, max=max, OSError=OSError, cipher='AES'):
+        cipher='AES',
+        len=len, max=max, OSError=OSError, select=select.select, selecterror=select.error, piWrap=piWrap, piStrip=piStrip, os=os, socket=socket):
     crypto_mode = False
     try:
         if cipher_key:
@@ -246,6 +247,8 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
     tunfd = tun.fileno()
     os_read = os.read
     os_write = os.write
+    encrypt_ = encrypt
+    decrypt_ = decrypt
     while not TERMINATE:
         wset = []
         if packetReady(bkbuf):
@@ -260,8 +263,8 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
             rset.append(remote)
         
         try:
-            rdrdy, wrdy, errs = select.select(rset,wset,(tun,remote),1)
-        except select.error, e:
+            rdrdy, wrdy, errs = select(rset,wset,(tun,remote),1)
+        except selecterror, e:
             if e.args[0] == errno.EINTR:
                 # just retry
                 continue
@@ -283,11 +286,11 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
         if remote in wrdy:
             try:
                 try:
-                    while True:
+                    while 1:
                         packet = pullPacket(fwbuf)
 
                         if crypto_mode:
-                            enpacket = encrypt(packet, crypter)
+                            enpacket = encrypt_(packet, crypter)
                         else:
                             enpacket = packet
                         
@@ -298,9 +301,6 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
                         except socket.error:
                             rwrite(remote, enpacket)
                         #wr += 1
-                        
-                        if stderr is not None:
-                            print >>stderr, '>', formatPacket(packet, ether_mode)
                         
                         if not rnonblock or not packetReady(fwbuf):
                             break
@@ -326,16 +326,12 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
                 traceback.print_exc(file=sys.stderr)
         if tun in wrdy:
             try:
-                while True:
+                while 1:
                     packet = pullPacket(bkbuf)
-                    if stderr is not None:
-                        formatted = formatPacket(packet, ether_mode)
                     if with_pi:
                         packet = piWrap(packet, ether_mode)
                     os_write(tunfd, packet)
                     #wt += 1
-                    if stderr is not None:
-                        print >>stderr, '<', formatted
                     
                     # Do not inject packets into the TUN faster than they arrive, unless we're falling
                     # behind. TUN devices discard packets if their queue is full (tunkqueue), but they
@@ -356,7 +352,7 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
         # check incoming data packets
         if tun in rdrdy:
             try:
-                while True:
+                while 1:
                     packet = os_read(tunfd,2000) # tun.read blocks until it gets 2k!
                     #rt += 1
                     if with_pi:
@@ -374,7 +370,7 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
         if remote in rdrdy:
             try:
                 try:
-                    while True:
+                    while 1:
                         # Try twice, sometimes it barks the first time, 
                         # due to ICMP Port Unreachable packets from previous writes
                         try:
@@ -384,7 +380,7 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
                         #rr += 1
                         
                         if crypto_mode:
-                            packet = decrypt(packet, crypter)
+                            packet = decrypt_(packet, crypter)
                         bkbuf.append(packet)
                         
                         if not rnonblock or len(bkbuf) >= maxbkbuf:
