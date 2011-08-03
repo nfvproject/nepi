@@ -803,9 +803,10 @@ attributes = dict({
                 "validation_function": validation.is_string
             }),
     "txqueuelen":  dict({
-                "name": "mask", 
+                "name": "txqueuelen", 
                 "help": "Transmission queue length (in packets)",
                 "type": Attribute.INTEGER,
+                "value": 1000,
                 "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "range" : (1,10000),
                 "validation_function": validation.is_integer
