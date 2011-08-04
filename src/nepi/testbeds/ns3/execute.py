@@ -98,7 +98,6 @@ class TestbedController(testbed_impl.TestbedController):
 
     def stop(self, time = TIME_NOW):
         super(TestbedController, self).stop(time)
-        #self.ns3.Simulator.Stop()
         self._stop_simulation(time)
 
     def set(self, guid, name, value, time = TIME_NOW):

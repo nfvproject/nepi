@@ -128,7 +128,7 @@ def connect_fd(testbed_instance, fdnd_guid, cross_data):
     testbed_instance.set(fdnd_guid, "tun_addr", address)
     testbed_instance.set(fdnd_guid, "tun_proto", "fd")
     testbed_instance.set(fdnd_guid, "tun_port", 0)
-    testbed_instance.set(fdnd_guid, "tun_key", ("\xfa"*32).encode("base64")) # unimportant, fds aren't encrypted
+    testbed_instance.set(fdnd_guid, "tun_key", ("\xfa"*32).encode("base64").strip()) # unimportant, fds aren't encrypted
     fdnd = testbed_instance._elements[fdnd_guid]
     t = threading.Thread(target=recvfd, args=(sock,fdnd))
     t.start()
