@@ -11,7 +11,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <unistd.h>
 #include <sys/socket.h>
+#include <sys/fcntl.h>
+#include <sys/ioctl.h>
+#include <linux/ioctl.h>
 #include <linux/if.h>
 #include <linux/if_tun.h>
 
@@ -91,5 +95,13 @@ int tun_alloc(int iftype, char *if_name)
     }
 
     remotefd = receive_vif_fd(control_fd, if_name);
+    
+    /* set "safe" (non-breaking) queueing mode IFF_ONE_QUEUE */
+    struct ifreq ifr;
+    if (0 == fcntl(remotefd, TUNGETIFF, &ifr)) {
+        ifr.ifr_flags |= IFF_ONE_QUEUE;
+        fcntl(remotefd, TUNSETIFF, &ifr);
+    }
+    
     return remotefd;
 }

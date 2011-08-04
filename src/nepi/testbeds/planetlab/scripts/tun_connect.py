@@ -348,8 +348,11 @@ def pl_vif_stop(tun_path, tun_name):
     del lock, lockfile
 
 
-def tun_fwd(tun, remote):
+def tun_fwd(tun, remote, reconnect = None):
     global TERMINATE
+    
+    tunqueue = options.vif_txqueuelen or 1000
+    tunkqueue = 500
     
     # in PL mode, we cannot strip PI structs
     # so we'll have to handle them
@@ -359,7 +362,10 @@ def tun_fwd(tun, remote):
         cipher_key = options.cipher_key,
         udp = options.udp,
         TERMINATE = TERMINATE,
-        stderr = open("/dev/null","w")
+        stderr = None,
+        reconnect = reconnect,
+        tunqueue = tunqueue,
+        tunkqueue = tunkqueue
     )
 
 
@@ -421,6 +427,7 @@ signal.signal(signal.SIGTERM, _finalize)
 
 try:
     tcpdump = None
+    reconnect = None
     
     if options.pass_fd:
         if options.pass_fd.startswith("base64:"):
@@ -520,8 +527,17 @@ try:
             + ["-w",options.pcap_capture,"-U"] * bool(options.pcap_capture) )
     
     print >>sys.stderr, "Connected"
+    
+    # Try to give us high priority
+    try:
+        os.nice(-20)
+    except:
+        # Ignore errors, we might not have enough privileges,
+        # or perhaps there is no os.nice support in the system
+        pass
 
-    tun_fwd(tun, remote)
+    tun_fwd(tun, remote,
+        reconnect = reconnect)
 
 finally:
     try:
