@@ -7,6 +7,17 @@ from xml.dom import minidom
 
 import sys
 
+def xmlencode(s):
+    if isinstance(s, str):
+        return s.decode("latin1")
+    elif not isinstance(s, unicode):
+        return unicode(s)
+    else:
+        return s
+
+def xmldecode(s):
+    return s.encode("utf8")
+
 class XmlExperimentParser(ExperimentParser):
     def to_xml(self, experiment_description=None, data=None):
         if experiment_description is not None:
@@ -37,10 +48,10 @@ class XmlExperimentParser(ExperimentParser):
 
     def testbed_data_to_xml(self, doc, parent_tag, guid, data):
         testbed_tag = doc.createElement("testbed") 
-        testbed_tag.setAttribute("guid", str(guid))
+        testbed_tag.setAttribute("guid", xmlencode(guid))
         (testbed_id, testbed_version) = data.get_testbed_data(guid)
-        testbed_tag.setAttribute("testbed_id", str(testbed_id))
-        testbed_tag.setAttribute("testbed_version", str(testbed_version))
+        testbed_tag.setAttribute("testbed_id", xmlencode(testbed_id))
+        testbed_tag.setAttribute("testbed_version", xmlencode(testbed_version))
         parent_tag.appendChild(testbed_tag)
         self.graphical_info_data_to_xml(doc, testbed_tag, guid, data)
         self.attributes_data_to_xml(doc, testbed_tag, guid, data)
@@ -54,7 +65,7 @@ class XmlExperimentParser(ExperimentParser):
         parent_tag = elements_tags[testbed_guid]
         parent_tag.appendChild(element_tag)
         element_tag.setAttribute("factory_id", factory_id)
-        element_tag.setAttribute("guid", str(guid))
+        element_tag.setAttribute("guid", xmlencode(guid))
         self.graphical_info_data_to_xml(doc, element_tag, guid, data)
         self.factory_attributes_data_to_xml(doc, element_tag, guid, data)
         self.attributes_data_to_xml(doc, element_tag, guid, data)
@@ -67,10 +78,10 @@ class XmlExperimentParser(ExperimentParser):
         graphical_info_tag = doc.createElement("graphical_info") 
         parent_tag.appendChild(graphical_info_tag)
         (x, y, width, height) = data.get_graphical_info_data(guid)
-        graphical_info_tag.setAttribute("x", str(x))
-        graphical_info_tag.setAttribute("y", str(y))
-        graphical_info_tag.setAttribute("width", str(width))
-        graphical_info_tag.setAttribute("height", str(height))
+        graphical_info_tag.setAttribute("x", xmlencode(x))
+        graphical_info_tag.setAttribute("y", xmlencode(y))
+        graphical_info_tag.setAttribute("width", xmlencode(width))
+        graphical_info_tag.setAttribute("height", xmlencode(height))
 
     def factory_attributes_data_to_xml(self, doc, parent_tag, guid, data):
         factory_attributes_tag = doc.createElement("factory_attributes")
@@ -79,7 +90,7 @@ class XmlExperimentParser(ExperimentParser):
                 factory_attribute_tag = doc.createElement("factory_attribute") 
                 factory_attributes_tag.appendChild(factory_attribute_tag)
                 factory_attribute_tag.setAttribute("name", name)
-                factory_attribute_tag.setAttribute("value", str(value))
+                factory_attribute_tag.setAttribute("value", xmlencode(value))
                 factory_attribute_tag.setAttribute("type", self.type_to_standard(value))
         if factory_attributes_tag.hasChildNodes():
             parent_tag.appendChild(factory_attributes_tag)
@@ -91,7 +102,7 @@ class XmlExperimentParser(ExperimentParser):
                 attribute_tag = doc.createElement("attribute") 
                 attributes_tag.appendChild(attribute_tag)
                 attribute_tag.setAttribute("name", name)
-                attribute_tag.setAttribute("value", str(value))
+                attribute_tag.setAttribute("value", xmlencode(value))
                 attribute_tag.setAttribute("type", self.type_to_standard(value))
         if attributes_tag.hasChildNodes():
             parent_tag.appendChild(attributes_tag)
@@ -111,10 +122,10 @@ class XmlExperimentParser(ExperimentParser):
             address_tag = doc.createElement("address") 
             addresses_tag.appendChild(address_tag)
             if address:
-                address_tag.setAttribute("Address", str(address))
-            address_tag.setAttribute("NetPrefix", str(netprefix))
+                address_tag.setAttribute("Address", xmlencode(address))
+            address_tag.setAttribute("NetPrefix", xmlencode(netprefix))
             if broadcast:
-                address_tag.setAttribute("Broadcast", str(broadcast))
+                address_tag.setAttribute("Broadcast", xmlencode(broadcast))
         if addresses_tag.hasChildNodes():
             parent_tag.appendChild(addresses_tag)
 
@@ -124,10 +135,10 @@ class XmlExperimentParser(ExperimentParser):
                 in data.get_route_data(guid):
             route_tag = doc.createElement("route") 
             routes_tag.appendChild(route_tag)
-            route_tag.setAttribute("Destination", str(destination))
-            route_tag.setAttribute("NetPrefix", str(netprefix))
-            route_tag.setAttribute("NextHop", str(nexthop))
-            route_tag.setAttribute("Metric", str(metric))
+            route_tag.setAttribute("Destination", xmlencode(destination))
+            route_tag.setAttribute("NetPrefix", xmlencode(netprefix))
+            route_tag.setAttribute("NextHop", xmlencode(nexthop))
+            route_tag.setAttribute("Metric", xmlencode(metric))
         if routes_tag.hasChildNodes():
             parent_tag.appendChild(routes_tag)
 
@@ -138,7 +149,7 @@ class XmlExperimentParser(ExperimentParser):
                 connection_tag = doc.createElement("connection") 
                 connections_tag.appendChild(connection_tag)
                 connection_tag.setAttribute("connector", connector_type_name)
-                connection_tag.setAttribute("other_guid", str(other_guid))
+                connection_tag.setAttribute("other_guid", xmlencode(other_guid))
                 connection_tag.setAttribute("other_connector",
                         other_connector_type_name)
         if connections_tag.hasChildNodes():
@@ -167,15 +178,15 @@ class XmlExperimentParser(ExperimentParser):
 
     def testbed_data_from_xml(self, tag, data):
         testbed_guid = int(tag.getAttribute("guid"))
-        testbed_id = str(tag.getAttribute("testbed_id"))
-        testbed_version = str(tag.getAttribute("testbed_version"))
+        testbed_id = xmldecode(tag.getAttribute("testbed_id"))
+        testbed_version = xmldecode(tag.getAttribute("testbed_version"))
         data.add_testbed_data(testbed_guid, testbed_id, testbed_version)
         self.graphical_info_data_from_xml(tag, testbed_guid, data)
         self.attributes_data_from_xml(tag, testbed_guid, data)
 
     def box_data_from_xml(self, tag, testbed_guid, data):
         guid = int(tag.getAttribute("guid"))
-        factory_id = str(tag.getAttribute("factory_id"))
+        factory_id = xmldecode(tag.getAttribute("factory_id"))
         data.add_box_data(guid, testbed_guid, factory_id)
         self.graphical_info_data_from_xml(tag, guid, data)
         self.factory_attributes_data_from_xml(tag, guid, data)
@@ -209,9 +220,9 @@ class XmlExperimentParser(ExperimentParser):
                 getElementsByTagName("factory_attribute")
         for factory_attribute_tag in factory_attribute_tag_list:
              if factory_attribute_tag.nodeType == tag.ELEMENT_NODE:
-                name = str(factory_attribute_tag.getAttribute("name"))
-                value = factory_attribute_tag.getAttribute("value")
-                std_type = factory_attribute_tag.getAttribute("type")
+                name = xmldecode(factory_attribute_tag.getAttribute("name"))
+                value = xmldecode(factory_attribute_tag.getAttribute("value"))
+                std_type = xmldecode(factory_attribute_tag.getAttribute("type"))
                 value = self.type_from_standard(std_type, value)
                 data.add_factory_attribute_data(guid, name, value)
 
@@ -224,9 +235,9 @@ class XmlExperimentParser(ExperimentParser):
                 getElementsByTagName("attribute")
         for attribute_tag in attribute_tag_list:
              if attribute_tag.nodeType == tag.ELEMENT_NODE:
-                name = str(attribute_tag.getAttribute("name"))
-                value = attribute_tag.getAttribute("value")
-                std_type = attribute_tag.getAttribute("type")
+                name = xmldecode(attribute_tag.getAttribute("name"))
+                value = xmldecode(attribute_tag.getAttribute("value"))
+                std_type = xmldecode(attribute_tag.getAttribute("type"))
                 value = self.type_from_standard(std_type, value)
                 data.add_attribute_data(guid, name, value)
 
@@ -239,7 +250,7 @@ class XmlExperimentParser(ExperimentParser):
                 "trace")
         for trace_tag in trace_tag_list:
              if trace_tag.nodeType == tag.ELEMENT_NODE:
-                name = str(trace_tag.getAttribute("name"))
+                name = xmldecode(trace_tag.getAttribute("name"))
                 data.add_trace_data(guid, name)
 
     def addresses_data_from_xml(self, tag, guid, data):
@@ -251,11 +262,11 @@ class XmlExperimentParser(ExperimentParser):
                 getElementsByTagName("address")
         for address_tag in address_tag_list:
             if address_tag.nodeType == tag.ELEMENT_NODE:
-                address = str(address_tag.getAttribute("Address")) \
+                address = xmldecode(address_tag.getAttribute("Address")) \
                        if address_tag.hasAttribute("Address") else None
                 netprefix = int(address_tag.getAttribute("NetPrefix")) \
                        if address_tag.hasAttribute("NetPrefix") else None
-                broadcast = str(address_tag.getAttribute("Broadcast")) \
+                broadcast = xmldecode(address_tag.getAttribute("Broadcast")) \
                        if address_tag.hasAttribute("Broadcast") else None
                 data.add_address_data(guid, address, netprefix, broadcast)
 
@@ -267,9 +278,9 @@ class XmlExperimentParser(ExperimentParser):
         route_tag_list = routes_tag_list[0].getElementsByTagName("route")
         for route_tag in route_tag_list:
             if route_tag.nodeType == tag.ELEMENT_NODE:
-                destination = str(route_tag.getAttribute("Destination"))
+                destination = xmldecode(route_tag.getAttribute("Destination"))
                 netprefix = int(route_tag.getAttribute("NetPrefix"))
-                nexthop = str(route_tag.getAttribute("NextHop"))
+                nexthop = xmldecode(route_tag.getAttribute("NextHop"))
                 metric = int(route_tag.getAttribute("Metric")) \
                         if route_tag.hasAttribute("Metric") else 0
                 data.add_route_data(guid, destination, netprefix, 
@@ -284,9 +295,9 @@ class XmlExperimentParser(ExperimentParser):
                 "connection")
         for connection_tag in connection_tag_list:
              if connection_tag.nodeType == tag.ELEMENT_NODE:
-                 connector_type_name = str(connection_tag.getAttribute(
+                 connector_type_name = xmldecode(connection_tag.getAttribute(
                      "connector"))
-                 other_connector_type_name = str(connection_tag.getAttribute(
+                 other_connector_type_name = xmldecode(connection_tag.getAttribute(
                          "other_connector"))
                  other_guid = int(connection_tag.getAttribute("other_guid"))
                  data.add_connection_data(guid, connector_type_name, 

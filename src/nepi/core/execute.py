@@ -698,33 +698,40 @@ class ExperimentController(object):
     }
     
     def resolve_netref_value(self, value, failval = None):
-        match = ATTRIBUTE_PATTERN_BASE.search(value)
-        if match:
-            label = match.group("label")
-            if label.startswith('GUID-'):
-                ref_guid = int(label[5:])
-                if ref_guid:
-                    expr = match.group("expr")
-                    component = (match.group("component") or "")[1:] # skip the dot
-                    attribute = match.group("attribute")
-                    
-                    # split compound components into component kind and index
-                    # eg: 'addr[0]' -> ('addr', '0')
-                    component, component_index = self._netref_component_split(component)
+        rv = failval
+        while True:
+            for match in ATTRIBUTE_PATTERN_BASE.finditer(value):
+                label = match.group("label")
+                if label.startswith('GUID-'):
+                    ref_guid = int(label[5:])
+                    if ref_guid:
+                        expr = match.group("expr")
+                        component = (match.group("component") or "")[1:] # skip the dot
+                        attribute = match.group("attribute")
+                        
+                        # split compound components into component kind and index
+                        # eg: 'addr[0]' -> ('addr', '0')
+                        component, component_index = self._netref_component_split(component)
 
-                    # find object and resolve expression
-                    for ref_testbed_guid, ref_testbed in self._testbeds.iteritems():
-                        if component not in self._NETREF_COMPONENT_GETTERS:
-                            raise ValueError, "Malformed netref: %r - unknown component" % (expr,)
-                        elif ref_guid not in self._guids_in_testbed(ref_testbed_guid):
-                            pass
+                        # find object and resolve expression
+                        for ref_testbed_guid, ref_testbed in self._testbeds.iteritems():
+                            if component not in self._NETREF_COMPONENT_GETTERS:
+                                raise ValueError, "Malformed netref: %r - unknown component" % (expr,)
+                            elif ref_guid not in self._guids_in_testbed(ref_testbed_guid):
+                                pass
+                            else:
+                                ref_value = self._NETREF_COMPONENT_GETTERS[component](
+                                    ref_testbed, ref_guid, component_index, attribute)
+                                if ref_value:
+                                    value = rv = value.replace(match.group(), ref_value)
+                                    break
                         else:
-                            ref_value = self._NETREF_COMPONENT_GETTERS[component](
-                                ref_testbed, ref_guid, component_index, attribute)
-                            if ref_value:
-                                return value.replace(match.group(), ref_value)
-        # couldn't find value
-        return failval
+                            # unresolvable netref
+                            return failval
+                        break
+            else:
+                break
+        return rv
     
     def do_netrefs(self, data, fail_if_undefined = False):
         # element netrefs
@@ -832,29 +839,33 @@ class ExperimentController(object):
         for guid in data_guids:
             for name, value in data.get_attribute_data(guid):
                 if isinstance(value, basestring):
-                    match = ATTRIBUTE_PATTERN_BASE.search(value)
-                    if match:
-                        label = match.group("label")
-                        if not label.startswith('GUID-'):
-                            ref_guid = label_guids.get(label)
-                            if ref_guid is not None:
-                                value = ATTRIBUTE_PATTERN_BASE.sub(
-                                    ATTRIBUTE_PATTERN_GUID_SUB % dict(
-                                        guid = 'GUID-%d' % (ref_guid,),
-                                        expr = match.group("expr"),
-                                        label = label), 
-                                    value)
-                                data.set_attribute_data(guid, name, value)
-                                
-                                # memorize which guid-attribute pairs require
-                                # postprocessing, to avoid excessive controller-testbed
-                                # communication at configuration time
-                                # (which could require high-latency network I/O)
-                                if not data.is_testbed_data(guid):
-                                    (testbed_guid, factory_id) = data.get_box_data(guid)
-                                    netrefs[(testbed_guid, guid)].add(name)
-                                else:
-                                    testbed_netrefs[guid].add(name)
+                    while True:
+                        for match in ATTRIBUTE_PATTERN_BASE.finditer(value):
+                            label = match.group("label")
+                            if not label.startswith('GUID-'):
+                                ref_guid = label_guids.get(label)
+                                if ref_guid is not None:
+                                    value = ATTRIBUTE_PATTERN_BASE.sub(
+                                        ATTRIBUTE_PATTERN_GUID_SUB % dict(
+                                            guid = 'GUID-%d' % (ref_guid,),
+                                            expr = match.group("expr"),
+                                            label = label), 
+                                        value)
+                                    data.set_attribute_data(guid, name, value)
+                                    
+                                    # memorize which guid-attribute pairs require
+                                    # postprocessing, to avoid excessive controller-testbed
+                                    # communication at configuration time
+                                    # (which could require high-latency network I/O)
+                                    if not data.is_testbed_data(guid):
+                                        (testbed_guid, factory_id) = data.get_box_data(guid)
+                                        netrefs[(testbed_guid, guid)].add(name)
+                                    else:
+                                        testbed_netrefs[guid].add(name)
+                                    
+                                    break
+                        else:
+                            break
 
     def _create_testbed_controller(self, guid, data, element_guids, recover):
         (testbed_id, testbed_version) = data.get_testbed_data(guid)
