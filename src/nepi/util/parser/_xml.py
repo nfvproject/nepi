@@ -9,14 +9,15 @@ import sys
 
 def xmlencode(s):
     if isinstance(s, str):
-        return s.decode("latin1")
+        rv = s.decode("latin1")
     elif not isinstance(s, unicode):
-        return unicode(s)
+        rv = unicode(s)
     else:
-        return s
+        rv = s
+    return rv.replace(u'\x00',u'&#0000;')
 
 def xmldecode(s):
-    return s.encode("utf8")
+    return s.replace(u'&#0000',u'\x00').encode("utf8")
 
 class XmlExperimentParser(ExperimentParser):
     def to_xml(self, experiment_description=None, data=None):
