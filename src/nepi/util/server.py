@@ -200,7 +200,18 @@ class Server(object):
         return 1
 
     def post_daemonize(self):
-        pass
+        # QT, for some strange reason, redefines the SIGCHILD handler to write
+        # a \0 to a fd (lets say fileno 'x'), when ever a SIGCHILD is received.
+        # Server dameonization closes all file descriptors from fileno '3',
+        # but the overloaded handler (inherited by the forked process) will
+        # keep trying to write the \0 to fileno 'x', which might have been reused 
+        # after closing, for other operations. This is bad bad bad when fileno 'x'
+        # is in use for communication pouroses, because unexpected \0 start
+        # appearing in the communication messages... this is exactly what happens 
+        # when using netns in daemonized form. Thus, be have no other alternative than
+        # restoring the SIGCHLD handler to the default here.
+        import signal
+        signal.signal(signal.SIGCHLD, signal.SIG_DFL)
 
     def loop(self):
         while not self._stop:
