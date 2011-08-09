@@ -129,6 +129,8 @@ class TestbedController(testbed_impl.TestbedController):
             get_attribute_value("tapPortBase")
         self.p2pDeployment = self._attributes.\
             get_attribute_value("p2pDeployment")
+        self.dedicatedSlice = self._attributes.\
+            get_attribute_value("dedicatedSlice")
         
         self._logger.setLevel(getattr(logging,self.logLevel))
         
@@ -493,22 +495,19 @@ class TestbedController(testbed_impl.TestbedController):
         for trace in self._traces.itervalues():
             trace.close()
         
-        runner = ParallelRun(16)
-        runner.start()
-        for element in self._elements.itervalues():
-            # invoke cleanup hooks
-            if hasattr(element, 'cleanup'):
-                runner.put(element.cleanup)
-        runner.join()
+        def invokeif(action, testbed, guid):
+            element = self._elements[guid]
+            if hasattr(element, action):
+                getattr(element, action)()
         
-        runner = ParallelRun(16)
-        runner.start()
-        for element in self._elements.itervalues():
-            # invoke destroy hooks
-            if hasattr(element, 'destroy'):
-                runner.put(element.destroy)
-        runner.join()
-        
+        self._do_in_factory_order(
+            functools.partial(invokeif, 'cleanup'),
+            metadata.shutdown_order)
+
+        self._do_in_factory_order(
+            functools.partial(invokeif, 'destroy'),
+            metadata.shutdown_order)
+            
         self._elements.clear()
         self._traces.clear()
 
@@ -626,7 +625,9 @@ class TestbedController(testbed_impl.TestbedController):
         return app
 
     def _make_node(self, parameters):
-        return self._make_generic(parameters, self._node.Node)
+        node = self._make_generic(parameters, self._node.Node)
+        node.enable_cleanup = self.dedicatedSlice
+        return node
 
     def _make_node_iface(self, parameters):
         return self._make_generic(parameters, self._interfaces.NodeIface)
