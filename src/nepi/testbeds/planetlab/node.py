@@ -114,6 +114,7 @@ class Node(object):
         self.ident_path = None
         self.server_key = None
         self.home_path = None
+        self.enable_cleanup = False
         
         # Those are filled when an actual node is allocated
         self._node_id = None
@@ -422,6 +423,10 @@ class Node(object):
                 # If we're above that delay, the unresponsiveness is not due
                 # to this delay.
                 raise UnresponsiveNodeError, "Unresponsive host %s" % (self.hostname,)
+        
+        # Ensure the node is clean (no apps running that could interfere with operations)
+        if self.enable_cleanup:
+            self.do_cleanup()
     
     def wait_dependencies(self, pidprobe=1, probe=0.5, pidmax=10, probemax=10):
         # Wait for the p2p installer
@@ -448,6 +453,28 @@ class Node(object):
             return True
         else:
             return False
+    
+    def destroy(self):
+        if self.enable_cleanup:
+            self.do_cleanup()
+    
+    def do_cleanup(self):
+        self._logger.info("Cleaning up %s", self.hostname)
+
+        (out,err),proc = server.popen_ssh_command(
+            # Some apps need two kills
+            "sudo -S killall -u %(slicename)s ; sudo -S killall -u root ; "
+            "sudo -S killall -u %(slicename)s ; sudo -S killall -u root" % {
+                'slicename' : self.slicename ,
+            },
+            host = self.hostname,
+            port = None,
+            user = self.slicename,
+            agent = None,
+            ident_key = self.ident_path,
+            server_key = self.server_key
+            )
+        proc.wait()
     
     def prepare_dependencies(self):
         # Configure p2p yum dependency installer
@@ -484,9 +511,10 @@ class Node(object):
                     "- PL can only handle rules over virtual interfaces. Candidates are: %s" % (route,devs)
         
         self._logger.info("Setting up routes for %s", self.hostname)
+        self._logger.debug("Routes for %s:\n\t%s", self.hostname, '\n\t'.join(rules))
         
         (out,err),proc = server.popen_ssh_command(
-            "( sudo -S bash -c 'cat /vsys/vroute.out >&2' & ) ; sudo -S bash -c 'cat > /vsys/vroute.in' ; sleep 0.1" % dict(
+            "( sudo -S bash -c 'cat /vsys/vroute.out >&2' & ) ; sudo -S bash -c 'cat > /vsys/vroute.in' ; sleep 0.5" % dict(
                 home = server.shell_escape(self.home_path)),
             host = self.hostname,
             port = None,
@@ -499,6 +527,8 @@ class Node(object):
         
         if proc.wait() or err:
             raise RuntimeError, "Could not set routes (%s) errors: %s%s" % (rules,out,err)
+        elif out or err:
+            logger.debug("Routes said: %s%s", out, err)
         
         
 
