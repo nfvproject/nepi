@@ -84,6 +84,17 @@ class NetnsIntegrationTestCase(unittest.TestCase):
             controller_access_configuration = None)
 
     @test_util.skipUnless(os.getuid() == 0, "Test requires root privileges")
+    def test_all_daemonized_controller(self):
+        access_config = proxy.AccessConfiguration()
+        access_config.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
+        access_config.set_attribute_value(DC.ROOT_DIRECTORY, self.root_dir)
+        access_config.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
+        
+        self._test_if(
+            daemonize_testbed = False,
+            controller_access_configuration = access_config)
+
+    @test_util.skipUnless(os.getuid() == 0, "Test requires root privileges")
     def test_all_daemonized_if(self):
         access_config = proxy.AccessConfiguration()
         access_config.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)

@@ -98,7 +98,6 @@ class TestbedController(testbed_impl.TestbedController):
 
     def stop(self, time = TIME_NOW):
         super(TestbedController, self).stop(time)
-        #self.ns3.Simulator.Stop()
         self._stop_simulation(time)
 
     def set(self, guid, name, value, time = TIME_NOW):
@@ -210,12 +209,14 @@ class TestbedController(testbed_impl.TestbedController):
         # bool flag, a list is used as wrapper
         has_event_occurred = [False]
         condition.acquire()
-        if not self.ns3.Simulator.IsFinished():
-            self.ns3.Simulator.ScheduleWithContext(contextId, delay, execute_event,
-                 condition, has_event_occurred, func, *args)
-            while not has_event_occurred[0] and not self.ns3.Simulator.IsFinished():
-                condition.wait()
-                condition.release()
+        try:
+            if not self.ns3.Simulator.IsFinished():
+                self.ns3.Simulator.ScheduleWithContext(contextId, delay, execute_event,
+                     condition, has_event_occurred, func, *args)
+                while not has_event_occurred[0] and not self.ns3.Simulator.IsFinished():
+                    condition.wait()
+        finally:
+            condition.release()
 
     def _set_attribute(self, name, ns3_value, element):
         if self.status() == TS.STATUS_STARTED:
