@@ -393,7 +393,12 @@ def pl_vif_stop(tun_path, tun_name):
         out.append(stdout.read())
         stdout.close()
         
-        while True:
+        if options.mode.startswith('pl-gre'):
+            lim = 120
+        else:
+            lim = 2
+        
+        for i in xrange(lim):
             ifaces = set(map(str.strip,os.popen("ip a | grep -o '%s'" % (tun_name,)).read().strip().split('\n')))
             if tun_name in ifaces:
                 time.sleep(1)
