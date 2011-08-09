@@ -315,7 +315,7 @@ echo 'OKIDOKI'
         self.assertTrue(netpipe_stats, "Unavailable netpipe stats")
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
-    def _pingtest(self, TunClass, ConnectionProto):
+    def _pingtest(self, TunClass, ConnectionProto, Cipher):
         instance = self.make_instance()
         
         instance.defer_create(2, "Node")
@@ -330,10 +330,12 @@ echo 'OKIDOKI'
         instance.defer_connect(3, "devs", 6, "node")
         instance.defer_connect(6, "inet", 5, "devs")
         instance.defer_create(7, TunClass)
+        instance.defer_create_set(7, "tun_cipher", Cipher)
         instance.defer_add_trace(7, "packets")
         instance.defer_add_address(7, "192.168.2.2", 24, False)
         instance.defer_connect(2, "devs", 7, "node")
         instance.defer_create(8, TunClass)
+        instance.defer_create_set(8, "tun_cipher", Cipher)
         instance.defer_add_trace(8, "packets")
         instance.defer_add_address(8, "192.168.2.3", 24, False)
         instance.defer_connect(3, "devs", 8, "node")
@@ -386,27 +388,27 @@ echo 'OKIDOKI'
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_tun_ping(self):
-        self._pingtest("TunInterface", "tcp")
+        self._pingtest("TunInterface", "tcp", "AES")
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_tun_ping_udp(self):
-        self._pingtest("TunInterface", "udp")
+        self._pingtest("TunInterface", "udp", "AES")
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_tun_ping_gre(self):
-        self._pingtest("TunInterface", "gre")
+        self._pingtest("TunInterface", "gre", "PLAIN")
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_tap_ping(self):
-        self._pingtest("TapInterface", "tcp")
+        self._pingtest("TapInterface", "tcp", "AES")
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_tap_ping_udp(self):
-        self._pingtest("TapInterface", "udp")
+        self._pingtest("TapInterface", "udp", "AES")
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_tap_ping_gre(self):
-        self._pingtest("TapInterface", "gre")
+        self._pingtest("TapInterface", "gre", "PLAIN")
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_nepi_depends(self):
