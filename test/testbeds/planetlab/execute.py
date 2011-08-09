@@ -393,12 +393,20 @@ echo 'OKIDOKI'
         self._pingtest("TunInterface", "udp")
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    def test_tun_ping_gre(self):
+        self._pingtest("TunInterface", "gre")
+
+    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_tap_ping(self):
         self._pingtest("TapInterface", "tcp")
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_tap_ping_udp(self):
         self._pingtest("TapInterface", "udp")
+
+    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    def test_tap_ping_gre(self):
+        self._pingtest("TapInterface", "gre")
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_nepi_depends(self):

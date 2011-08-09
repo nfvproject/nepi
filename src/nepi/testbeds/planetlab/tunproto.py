@@ -107,7 +107,17 @@ class TunProtoBase(object):
         local.node.wait_dependencies()
 
         cmd = ( (
-            "cd %(home)s && gcc -fPIC -shared tunalloc.c -o tunalloc.so"
+            "cd %(home)s && "
+            "gcc -fPIC -shared tunalloc.c -o tunalloc.so && "
+            
+            "wget -q -c -O python-iovec-src.tar.gz %(iovec_url)s && "
+            "mkdir -p python-iovec && "
+            "cd python-iovec && "
+            "tar xzf ../python-iovec-src.tar.gz --strip-components=1 && "
+            "python setup.py build && "
+            "python setup.py install --install-lib .. && "
+            "cd .. "
+            
             + ( " && "
                 "wget -q -c -O python-passfd-src.tar.gz %(passfd_url)s && "
                 "mkdir -p python-passfd && "
@@ -117,10 +127,12 @@ class TunProtoBase(object):
                 "python setup.py install --install-lib .. "
                 
                 if local.tun_proto == "fd" else ""
-            ) )
+            ) 
+          )
         % {
             'home' : server.shell_escape(self.home_path),
             'passfd_url' : "http://yans.pl.sophia.inria.fr/code/hgwebdir.cgi/python-passfd/archive/2a6472c64c87.tar.gz",
+            'iovec_url' : "http://yans.pl.sophia.inria.fr/code/hgwebdir.cgi/python-iovec/archive/tip.tar.gz",
         } )
         (out,err),proc = server.popen_ssh_command(
             cmd,
@@ -185,6 +197,10 @@ class TunProtoBase(object):
                 passfd_arg = '$HOME/'+server.shell_escape(passfd_arg)
             args.extend([
                 "--pass-fd", passfd_arg
+            ])
+        elif check_proto == 'gre':
+            args.extend([
+                "-K", str(min(local_port, peer_port))
             ])
         else:
             args.extend([
@@ -312,9 +328,14 @@ class TunProtoBase(object):
                     
                     out = out.strip()
                     
-                    match = re.match(r"Using +tun: +([-a-zA-Z0-9]*) +.*",out)
+                    match = re.match(r"Using +tun: +([-a-zA-Z0-9]*).*",out)
                     if match:
                         self._if_name = match.group(1)
+                    elif out:
+                        self._logger.debug("if_name: %r does not match expected pattern", out)
+                        time.sleep(1)
+                else:
+                    pself._logger.warn("if_name: Could not get interface name")
         return self._if_name
     
     def async_launch(self, check_proto, listen, extra_args=[]):
@@ -540,6 +561,27 @@ class TunProtoFD(TunProtoBase):
     def launch(self, check_proto='fd', listen=False, extra_args=[]):
         super(TunProtoFD, self).launch(check_proto, listen, extra_args)
 
+class TunProtoGRE(TunProtoBase):
+    def __init__(self, local, peer, home_path, key, listening):
+        super(TunProtoGRE, self).__init__(local, peer, home_path, key)
+        self.listening = listening
+        self.mode = 'pl-gre-ip'
+    
+    def prepare(self):
+        pass
+    
+    def setup(self):
+        self.async_launch('gre', False)
+    
+    def shutdown(self):
+        self.kill()
+
+    def destroy(self):
+        self.waitkill()
+
+    def launch(self, check_proto='gre', listen=False, extra_args=[]):
+        super(TunProtoGRE, self).launch(check_proto, listen, extra_args)
+
 class TunProtoTCP(TunProtoBase):
     def __init__(self, local, peer, home_path, key, listening):
         super(TunProtoTCP, self).__init__(local, peer, home_path, key)
@@ -587,18 +629,25 @@ class TapProtoFD(TunProtoFD):
         super(TapProtoFD, self).__init__(local, peer, home_path, key, listening)
         self.mode = 'pl-tap'
 
+class TapProtoGRE(TunProtoGRE):
+    def __init__(self, local, peer, home_path, key, listening):
+        super(TapProtoGRE, self).__init__(local, peer, home_path, key, listening)
+        self.mode = 'pl-gre-eth'
+
 
 
 TUN_PROTO_MAP = {
     'tcp' : TunProtoTCP,
     'udp' : TunProtoUDP,
     'fd'  : TunProtoFD,
+    'gre' : TunProtoGRE,
 }
 
 TAP_PROTO_MAP = {
     'tcp' : TapProtoTCP,
     'udp' : TapProtoUDP,
     'fd'  : TapProtoFD,
+    'gre' : TapProtoGRE,
 }
 
 

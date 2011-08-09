@@ -16,6 +16,7 @@ import re
 import functools
 import time
 import base64
+import traceback
 
 import tunchannel
 
@@ -51,7 +52,7 @@ parser.add_option(
     "-m", "--mode", dest="mode", metavar="MODE",
     default = "none",
     help = 
-        "Set mode. One of none, tun, tap, pl-tun, pl-tap. In any mode except none, a TUN/TAP will be created "
+        "Set mode. One of none, tun, tap, pl-tun, pl-tap, pl-gre-ip, pl-gre-eth. In any mode except none, a TUN/TAP will be created "
         "by using the proper interface (tunctl for tun/tap, /vsys/fd_tuntap.control for pl-tun/pl-tap), "
         "and it will be brought up (with ifconfig for tun/tap, with /vsys/vif_up for pl-tun/pl-tap). You have "
         "to specify an VIF_ADDRESS and VIF_MASK in any case (except for none).")
@@ -96,6 +97,11 @@ parser.add_option(
     help = 
         "Specify a symmetric encryption key with which to protect packets across "
         "the tunnel. python-crypto must be installed on the system." )
+parser.add_option(
+    "-K", "--gre-key", dest="gre_key", metavar="KEY", type="int",
+    default = None,
+    help = 
+        "Specify a demultiplexing 32-bit numeric key for GRE." )
 parser.add_option(
     "-N", "--no-capture", dest="no_capture", 
     action = "store_true",
@@ -144,7 +150,14 @@ class HostLock(object):
             processcond.release()
         
         self.lockfile = lockfile
-        fcntl.flock(self.lockfile, fcntl.LOCK_EX)
+        
+        while True:
+            try:
+                fcntl.flock(self.lockfile, fcntl.LOCK_EX)
+                break
+            except (OSError, IOError), e:
+                if e.args[0] != os.errno.EINTR:
+                    raise
     
     def __del__(self):
         processcond = self.__class__.processcond
@@ -195,6 +208,12 @@ def tunclose(tun_path, tun_name, tun):
     else:
         # close TUN object
         tun.close()
+
+def noopen(tun_path, tun_name):
+    print >>sys.stderr, "Using tun:", tun_name
+    return None
+def noclose(tun_path, tun_name, tun):
+    pass
 
 def tuntap_alloc(kind, tun_path, tun_name):
     args = ["tunctl"]
@@ -285,7 +304,39 @@ def pl_tuntap_alloc(kind, tun_path, tun_name):
     name = c_tun_name.value
     return str(fd), name
 
+_name_reservation = None
+def pl_tuntap_namealloc(kind, tun_path, tun_name):
+    global _name_reservation
+    # Serialize access
+    lockfile = open("/tmp/nepi-tun-connect.lock", "a")
+    _name_reservation = lock = HostLock(lockfile)
+    
+    # We need to do this, fd_tuntap is the only one who can
+    # tell us our slice id (this script runs as root, so no uid),
+    # and the pattern of device names accepted by vsys scripts
+    tunalloc_so = ctypes.cdll.LoadLibrary("./tunalloc.so")
+    c_tun_name = ctypes.c_char_p("\x00"*IFNAMSIZ) # the string will be mutated!
+    nkind= {"tun":IFF_TUN,
+            "tap":IFF_TAP}[kind]
+    fd = tunalloc_so.tun_alloc(nkind, c_tun_name)
+    name = c_tun_name.value
+    os.close(fd)
+
+    base = name[:name.index('-')+1]
+    existing = set(map(str.strip,os.popen("ip a | grep -o '%s[0-9]*'" % (base,)).read().strip().split('\n')))
+    
+    for i in xrange(9000,10000):
+        name = base + str(i)
+        if name not in existing:
+            break
+    else:
+        raise RuntimeError, "Could not assign interface name"
+    
+    return None, name
+
 def pl_vif_start(tun_path, tun_name):
+    global _name_reservation
+
     out = []
     def outreader():
         stdout = open("/vsys/vif_up.out","r")
@@ -295,8 +346,9 @@ def pl_vif_start(tun_path, tun_name):
 
     # Serialize access to vsys
     lockfile = open("/tmp/nepi-tun-connect.lock", "a")
-    lock = HostLock(lockfile)
-
+    lock = _name_reservation or HostLock(lockfile)
+    _name_reservation = None
+    
     stdin = open("/vsys/vif_up.in","w")
 
     t = threading.Thread(target=outreader)
@@ -311,6 +363,9 @@ def pl_vif_start(tun_path, tun_name):
         stdin.write("pointopoint=%s\n" % (options.vif_pointopoint,))
     if options.vif_txqueuelen is not None:
         stdin.write("txqueuelen=%d\n" % (options.vif_txqueuelen,))
+    if options.mode.startswith('pl-gre'):
+        stdin.write("gre=%d\n" % (options.gre_key,))
+        stdin.write("remote=%s\n" % (remaining_args[0],))
     stdin.close()
     
     t.join()
@@ -326,7 +381,13 @@ def pl_vif_stop(tun_path, tun_name):
         stdout = open("/vsys/vif_down.out","r")
         out.append(stdout.read())
         stdout.close()
-        time.sleep(1)
+        
+        while True:
+            ifaces = set(map(str.strip,os.popen("ip a | grep -o '%s'" % (tun_name,)).read().strip().split('\n')))
+            if tun_name in ifaces:
+                time.sleep(1)
+            else:
+                break
 
     # Serialize access to vsys
     lockfile = open("/tmp/nepi-tun-connect.lock", "a")
@@ -397,6 +458,16 @@ MODEINFO = {
                   dealloc=nop,
                   start=pl_vif_start,
                   stop=pl_vif_stop),
+    'pl-gre-ip' : dict(alloc=functools.partial(pl_tuntap_namealloc, "tun"),
+                  tunopen=noopen, tunclose=tunclose,
+                  dealloc=nop,
+                  start=pl_vif_start,
+                  stop=pl_vif_stop),
+    'pl-gre-eth': dict(alloc=functools.partial(pl_tuntap_namealloc, "tap"),
+                  tunopen=noopen, tunclose=noclose,
+                  dealloc=nop,
+                  start=pl_vif_start,
+                  stop=pl_vif_stop),
 }
     
 tun_path = options.tun_path
@@ -456,10 +527,16 @@ try:
         passfd.sendfd(sock, tun.fileno(), '0')
         
         # just wait forever
-        def tun_fwd(tun, remote):
+        def tun_fwd(tun, remote, **kw):
             while not TERMINATE:
                 time.sleep(1)
         remote = None
+    elif options.mode.startswith('pl-gre'):
+        # just wait forever
+        def tun_fwd(tun, remote, **kw):
+            while not TERMINATE:
+                time.sleep(1)
+        remote = remaining_args[0]
     elif options.udp:
         # connect to remote endpoint
         if remaining_args and not remaining_args[0].startswith('-'):
@@ -558,17 +635,17 @@ finally:
     try:
         modeinfo['stop'](tun_path, tun_name)
     except:
-        pass
+        traceback.print_exc()
 
     try:
         modeinfo['tunclose'](tun_path, tun_name, tun)
     except:
-        pass
+        traceback.print_exc()
         
     try:
         modeinfo['dealloc'](tun_path, tun_name)
     except:
-        pass
+        traceback.print_exc()
     
     print >>sys.stderr, "TERMINATED GRACEFULLY"
 
