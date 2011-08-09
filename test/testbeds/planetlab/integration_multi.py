@@ -118,6 +118,11 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
         # Connect the two
         tap1.connector(proto).connect(tap2.connector(proto))
         
+        # Disable encryption for GRE
+        if proto == "gre":
+            tap1.set_attribute_value("tun_cipher", "PLAIN")
+            tap2.set_attribute_value("tun_cipher", "PLAIN")
+        
         # Create PlanetLab ping application, pinging the from one PL to another
         ping = pl.create("Application")
         ping.set_attribute_value("command", "ping -qc10 {#[node2tap].addr[0].[Address]#}")
