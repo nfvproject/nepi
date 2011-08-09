@@ -99,10 +99,10 @@ class Ns3IntegrationTestCase(unittest.TestCase):
             while not controller.is_finished(app.guid):
                 time.sleep(0.5)
             ping_result = controller.trace(iface2.guid, "FdAsciiTrace")
-            ping_exp_result = r"""r \d+\.\d+ /NodeList/0/DeviceList/0/\$ns3::FdNetDevice/Rx Payload \(size=42\)
-r \d+\.\d+ /NodeList/0/DeviceList/0/\$ns3::FdNetDevice/Rx Payload \(size=98\)
-r \d+\.\d+ /NodeList/0/DeviceList/0/\$ns3::FdNetDevice/Rx Payload \(size=42\)
-r \d+\.\d+ /NodeList/0/DeviceList/0/\$ns3::FdNetDevice/Rx Payload \(size=98\)
+            ping_exp_result = r"""r [-+0-9.e]+ /NodeList/0/DeviceList/0/\$ns3::FdNetDevice/Rx Payload \(size=42\)
+r [-+0-9.e]+ /NodeList/0/DeviceList/0/\$ns3::FdNetDevice/Rx Payload \(size=98\)
+r [-+0-9.e]+ /NodeList/0/DeviceList/0/\$ns3::FdNetDevice/Rx Payload \(size=42\)
+r [-+0-9.e]+ /NodeList/0/DeviceList/0/\$ns3::FdNetDevice/Rx Payload \(size=98\)
 """
             if not re.match(ping_exp_result, ping_result):
                 self.fail("Unexpected trace: %s" % (ping_result,))
