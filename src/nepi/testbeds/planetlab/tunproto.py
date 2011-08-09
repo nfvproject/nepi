@@ -162,6 +162,7 @@ class TunProtoBase(object):
         peer_port = peer.tun_port
         peer_addr = peer.tun_addr
         peer_proto= peer.tun_proto
+        peer_cipher=peer.tun_cipher
         
         local_port = self.port
         local_cap  = local.capture
@@ -170,6 +171,7 @@ class TunProtoBase(object):
         local_snat = local.snat
         local_txq  = local.txqueuelen
         local_p2p  = local.pointopoint
+        local_cipher=local.tun_cipher
         
         if not local_p2p and hasattr(peer, 'address'):
             local_p2p = peer.address
@@ -177,16 +179,23 @@ class TunProtoBase(object):
         if check_proto != peer_proto:
             raise RuntimeError, "Peering protocol mismatch: %s != %s" % (check_proto, peer_proto)
         
+        if local_cipher != peer_cipher:
+            raise RuntimeError, "Peering cipher mismatch: %s != %s" % (local_cipher, peer_cipher)
+        
         if not listen and ((peer_proto != 'fd' and not peer_port) or not peer_addr):
             raise RuntimeError, "Misconfigured peer: %s" % (peer,)
         
         if listen and ((peer_proto != 'fd' and not local_port) or not local_addr or not local_mask):
             raise RuntimeError, "Misconfigured TUN: %s" % (local,)
+
+        if check_proto == 'gre' and local_cipher.lower() != 'plain':
+            raise RuntimeError, "Misconfigured TUN: %s - GRE tunnels do not support encryption. Got %s, you MUST use PLAIN" % (local, local_cipher,)
         
         args = ["python", "tun_connect.py", 
             "-m", str(self.mode),
             "-A", str(local_addr),
-            "-M", str(local_mask)]
+            "-M", str(local_mask),
+            "-C", str(local_cipher)]
         
         if check_proto == 'fd':
             passfd_arg = str(peer_addr)
@@ -335,7 +344,7 @@ class TunProtoBase(object):
                         self._logger.debug("if_name: %r does not match expected pattern", out)
                         time.sleep(1)
                 else:
-                    pself._logger.warn("if_name: Could not get interface name")
+                    self._logger.warn("if_name: Could not get interface name")
         return self._if_name
     
     def async_launch(self, check_proto, listen, extra_args=[]):

@@ -103,6 +103,10 @@ parser.add_option(
     help = 
         "Specify a demultiplexing 32-bit numeric key for GRE." )
 parser.add_option(
+    "-C", "--cipher", dest="cipher", metavar="CIPHER",
+    default = 'AES',
+    help = "One of PLAIN, AES, Blowfish, DES, DES3. " )
+parser.add_option(
     "-N", "--no-capture", dest="no_capture", 
     action = "store_true",
     default = False,
@@ -116,6 +120,13 @@ parser.add_option(
 
 (options, remaining_args) = parser.parse_args(sys.argv[1:])
 
+options.cipher = {
+    'aes' : 'AES',
+    'des' : 'DES',
+    'des3' : 'DES3',
+    'blowfish' : 'Blowfish',
+    'plain' : None,
+}[options.cipher.lower()]
 
 ETH_P_ALL = 0x00000003
 ETH_P_IP = 0x00000800
@@ -426,7 +437,8 @@ def tun_fwd(tun, remote, reconnect = None):
         stderr = None,
         reconnect = reconnect,
         tunqueue = tunqueue,
-        tunkqueue = tunkqueue
+        tunkqueue = tunkqueue,
+        cipher = options.cipher
     )
 
 

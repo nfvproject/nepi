@@ -1062,7 +1062,7 @@ factories_info = dict({
                 "other TAP interfaces supporting the NEPI tunneling protocol.",
         "connector_types": ["fd->", "udp", "tcp"],
         "allow_addresses": False,
-        "box_attributes": ["tun_proto", "tun_addr", "tun_port", "tun_key"],
+        "box_attributes": ["tun_proto", "tun_addr", "tun_port", "tun_key","tun_cipher"],
         "tags": [tags.TUNNEL],
  
     }),

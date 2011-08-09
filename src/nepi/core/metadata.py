@@ -432,6 +432,21 @@ class Metadata(object):
                     Attribute.Metadata,
             "validation_function" : validation.is_integer,
             }),
+        "tun_cipher" : dict({
+            "name" : "tun_cipher", 
+            "help" : "Cryptographic cipher used for tunnelling",
+            "type" : Attribute.ENUM,
+            "value" : "AES",
+            "allowed" : [
+                "AES",
+                "Blowfish",
+                "DES3",
+                "DES",
+                "PLAIN",
+            ],
+            "flags" : Attribute.ExecImmutable,
+            "validation_function" : validation.is_enum,
+            }),
         ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP : dict({
             "name" : ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP,
             "help" : "Commands to set up the environment needed to run NEPI testbeds",

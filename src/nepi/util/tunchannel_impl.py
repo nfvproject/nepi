@@ -18,13 +18,13 @@ class TunChannel(object):
     testbed controller process. It takes several parameters that
     can be given by directly setting attributes:
     
-        tun_port/addr/proto: information about the local endpoint.
+        tun_port/addr/proto/cipher: information about the local endpoint.
             The addresses here should be externally-reachable,
             since when listening or when using the UDP protocol,
             connections to this address/port will be attempted
             by remote endpoitns.
         
-        peer_port/addr/proto: information about the remote endpoint.
+        peer_port/addr/proto/cipher: information about the remote endpoint.
             Usually, you set these when the cross connection 
             initializer/completion functions are invoked (both).
         
@@ -65,11 +65,13 @@ class TunChannel(object):
         # They're part of the TUN standard attribute set
         self.tun_port = None
         self.tun_addr = None
+        self.tun_cipher = None
         
         # These get initialized when the channel is connected to its peer
         self.peer_proto = None
         self.peer_addr = None
         self.peer_port = None
+        self.peer_cipher = None
         
         # These get initialized when the channel is connected to its iface
         self.tun_socket = None
@@ -98,12 +100,13 @@ class TunChannel(object):
         
 
     def __str__(self):
-        return "%s<%s %s:%s %s %s:%s>" % (
+        return "%s<%s %s:%s %s %s:%s %s>" % (
             self.__class__.__name__,
             self.tun_proto, 
             self.tun_addr, self.tun_port,
             self.peer_proto, 
             self.peer_addr, self.peer_port,
+            self.tun_cipher,
         )
 
     def Prepare(self):
@@ -166,10 +169,12 @@ class TunChannel(object):
         peer_port = self.peer_port
         peer_addr = self.peer_addr
         peer_proto= self.peer_proto
+        peer_cipher=self.peer_cipher
 
         local_port = self.tun_port
         local_addr = self.tun_addr
         local_proto = self.tun_proto
+        local_cipher= self.tun_cipher
         
         stderr = self.stderr
         ether_mode = self.ethernet_mode
@@ -177,6 +182,9 @@ class TunChannel(object):
         
         if local_proto != peer_proto:
             raise RuntimeError, "Peering protocol mismatch: %s != %s" % (local_proto, peer_proto)
+
+        if local_cipher != peer_cipher:
+            raise RuntimeError, "Peering cipher mismatch: %s != %s" % (local_cipher, peer_cipher)
         
         udp = local_proto == 'udp'
         listen = self.listen
@@ -249,7 +257,8 @@ class TunChannel(object):
             cipher_key = cipher_key, 
             udp = udp, 
             TERMINATE = TERMINATE,
-            stderr = stderr
+            stderr = stderr,
+            cipher = local_cipher
         )
         
         tun.close()
@@ -340,6 +349,7 @@ def crossconnect_tunchannel_peer_init(proto, testbed_instance, tun_guid, peer_da
     tun.peer_addr = peer_data.get("tun_addr")
     tun.peer_proto = peer_data.get("tun_proto") or proto
     tun.peer_port = peer_data.get("tun_port")
+    tun.peer_cipher = peer_data.get("tun_cipher")
     tun.tun_key = min(tun.tun_key, peer_data.get("tun_key"))
     tun.tun_proto = proto
     
@@ -362,6 +372,7 @@ def crossconnect_tunchannel_peer_compl(proto, testbed_instance, tun_guid, peer_d
     tun.peer_addr = peer_data.get("tun_addr")
     tun.peer_proto = peer_data.get("tun_proto") or proto
     tun.peer_port = peer_data.get("tun_port")
+    tun.peer_cipher = peer_data.get("tun_cipher")
     
     postconfigure_tunchannel(testbed_instance, tun_guid)
 
