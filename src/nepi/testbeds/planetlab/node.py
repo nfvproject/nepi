@@ -463,8 +463,10 @@ class Node(object):
 
         (out,err),proc = server.popen_ssh_command(
             # Some apps need two kills
-            "sudo -S killall -u %(slicename)s ; sudo -S killall -u root ; "
-            "sudo -S killall -u %(slicename)s ; sudo -S killall -u root" % {
+            "sudo -S killall -u %(slicename)s ; "
+            "sudo -S killall -u %(slicename)s ; "
+            "sudo -S killall -u root ; "
+            "sudo -S killall -u root " % {
                 'slicename' : self.slicename ,
             },
             host = self.hostname,

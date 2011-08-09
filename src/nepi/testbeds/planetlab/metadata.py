@@ -113,6 +113,7 @@ def crossconnect_tun_iface_peer_init(proto, testbed_instance, iface_guid, peer_i
     iface.peer_addr = peer_iface_data.get("tun_addr")
     iface.peer_proto = peer_iface_data.get("tun_proto") or proto
     iface.peer_port = peer_iface_data.get("tun_port")
+    iface.peer_cipher = peer_iface_data.get("tun_cipher")
     iface.tun_key = min(iface.tun_key, peer_iface_data.get("tun_key"))
     iface.tun_proto = proto
     
@@ -124,6 +125,7 @@ def crossconnect_tun_iface_peer_compl(proto, testbed_instance, iface_guid, peer_
     iface.peer_addr = peer_iface_data.get("tun_addr")
     iface.peer_proto = peer_iface_data.get("tun_proto") or proto
     iface.peer_port = peer_iface_data.get("tun_port")
+    iface.peer_cipher = peer_iface_data.get("tun_cipher")
     
     postconfigure_tuniface(testbed_instance, iface_guid)
 
@@ -1076,7 +1078,7 @@ factories_info = dict({
             "box_attributes": [
                 "up", "device_name", "mtu", "snat", "pointopoint",
                 "txqueuelen",
-                "tun_proto", "tun_addr", "tun_port", "tun_key"
+                "tun_proto", "tun_addr", "tun_port", "tun_key", "tun_cipher",
             ],
             "traces": ["packets", "pcap"],
             "connector_types": ["node","udp","tcp","fd->","gre"],
@@ -1092,7 +1094,7 @@ factories_info = dict({
             "box_attributes": [
                 "up", "device_name", "mtu", "snat", "pointopoint",
                 "txqueuelen",
-                "tun_proto", "tun_addr", "tun_port", "tun_key"
+                "tun_proto", "tun_addr", "tun_port", "tun_key", "tun_cipher",
             ],
             "traces": ["packets", "pcap"],
             "connector_types": ["node","udp","tcp","fd->","gre"],

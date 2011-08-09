@@ -88,10 +88,11 @@ class NodeIface(object):
     
 
 class _CrossIface(object):
-    def __init__(self, proto, addr, port):
+    def __init__(self, proto, addr, port, cipher):
         self.tun_proto = proto
         self.tun_addr = addr
         self.tun_port = port
+        self.tun_cipher = cipher
         
         # Cannot access cross peers
         self.peer_proto_impl = None
@@ -101,7 +102,8 @@ class _CrossIface(object):
             self.__class__.__name__,
             ( self.tun_proto,
               self.tun_addr,
-              self.tun_port ) 
+              self.tun_port,
+              self.tun_cipher ) 
         )
     
     __repr__ = __str__
@@ -140,6 +142,7 @@ class TunIface(object):
         # They're part of the TUN standard attribute set
         self.tun_port = None
         self.tun_addr = None
+        self.tun_cipher = "AES"
         
         # These get initialized when the iface is connected to its peer
         self.peer_iface = None
@@ -247,7 +250,8 @@ class TunIface(object):
             self.peer_iface = _CrossIface(
                 self.peer_proto,
                 self.peer_addr,
-                self.peer_port)
+                self.peer_port,
+                self.peer_cipher)
         if self.peer_iface:
             if not self.peer_proto_impl:
                 self.peer_proto_impl = self._impl_instance(home_path, listening)
