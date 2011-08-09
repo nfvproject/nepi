@@ -9,6 +9,8 @@ import fcntl
 import traceback
 import functools
 import collections
+import ctypes
+import time
 
 def ipfmt(ip):
     ipbytes = map(ord,ip.decode("hex"))
@@ -24,7 +26,7 @@ tagtype = {
 }
 def etherProto(packet, len=len):
     if len(packet) > 14:
-        if packet[12:14] == "\x81\x00":
+        if packet[12] == "\x81" and packet[13] == "\x00":
             # tagged
             return packet[16:18]
         else:
@@ -190,7 +192,8 @@ def nonblock(fd):
 
 def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr=sys.stderr, reconnect=None, rwrite=None, rread=None, tunqueue=1000, tunkqueue=1000,
         cipher='AES',
-        len=len, max=max, OSError=OSError, select=select.select, selecterror=select.error, piWrap=piWrap, piStrip=piStrip, os=os, socket=socket):
+        len=len, max=max, OSError=OSError, select=select.select, selecterror=select.error, os=os, socket=socket,
+        retrycodes=(os.errno.EWOULDBLOCK, os.errno.EAGAIN, os.errno.EINTR) ):
     crypto_mode = False
     try:
         if cipher_key:
@@ -232,18 +235,48 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
     rnonblock = nonblock(remote)
     tnonblock = nonblock(tun)
     
+    # Pick up TUN/TAP writing method
+    if with_pi:
+        try:
+            import iovec
+            
+            # We have iovec, so we can skip PI injection
+            # and use iovec which does it natively
+            if ether_mode:
+                twrite = iovec.ethpiwrite
+                tread = iovec.piread2
+            else:
+                twrite = iovec.ippiwrite
+                tread = iovec.piread2
+        except ImportError:
+            # We have to inject PI headers pythonically
+            def twrite(fd, packet, oswrite=os.write, piWrap=piWrap, ether_mode=ether_mode):
+                return oswrite(fd, piWrap(packet, ether_mode))
+            
+            # For reading, we strip PI headers with buffer slicing and that's it
+            def tread(fd, maxlen, osread=os.read, piStrip=piStrip):
+                return piStrip(osread(fd, maxlen))
+    else:
+        # No need to inject PI headers
+        twrite = os.write
+        tread = os.read
+    
     # Limited frame parsing, to preserve packet boundaries.
     # Which is needed, since /dev/net/tun is unbuffered
     maxbkbuf = maxfwbuf = max(10,tunqueue-tunkqueue)
     tunhurry = max(0,maxbkbuf/2)
     fwbuf = collections.deque()
     bkbuf = collections.deque()
+    nfwbuf = 0
+    nbkbuf = 0
     if ether_mode:
         packetReady = bool
         pullPacket = collections.deque.popleft
+        reschedule = collections.deque.appendleft
     else:
         packetReady = _packetReady
         pullPacket = _pullPacket
+        reschedule = collections.deque.appendleft
     tunfd = tun.fileno()
     os_read = os.read
     os_write = os.write
@@ -290,16 +323,9 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
                         packet = pullPacket(fwbuf)
 
                         if crypto_mode:
-                            enpacket = encrypt_(packet, crypter)
-                        else:
-                            enpacket = packet
+                            packet = encrypt_(packet, crypter)
                         
-                        # try twice - sometimes it barks the first time,
-                        # due to ICMP Port Unreachable packets from previous writes
-                        try:
-                            rwrite(remote, enpacket)
-                        except socket.error:
-                            rwrite(remote, enpacket)
+                        rwrite(remote, packet)
                         #wr += 1
                         
                         if not rnonblock or not packetReady(fwbuf):
@@ -308,9 +334,9 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
                     # This except handles the entire While block on PURPOSE
                     # as an optimization (setting a try/except block is expensive)
                     # The only operation that can raise this exception is rwrite
-                    if e.errno == os.errno.EWOULDBLOCK:
+                    if e.errno in retrycodes:
                         # re-schedule packet
-                        fwbuf.insert(0, packet)
+                        reschedule(fwbuf, packet)
                     else:
                         raise
             except:
@@ -323,14 +349,12 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
                 elif not udp:
                     # in UDP mode, we ignore errors - packet loss man...
                     raise
-                traceback.print_exc(file=sys.stderr)
+                #traceback.print_exc(file=sys.stderr)
         if tun in wrdy:
             try:
-                while 1:
+                for x in xrange(50):
                     packet = pullPacket(bkbuf)
-                    if with_pi:
-                        packet = piWrap(packet, ether_mode)
-                    os_write(tunfd, packet)
+                    twrite(tunfd, packet)
                     #wt += 1
                     
                     # Do not inject packets into the TUN faster than they arrive, unless we're falling
@@ -339,13 +363,16 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
                     # we'll have high packet loss.
                     if not tnonblock or len(bkbuf) < tunhurry or not packetReady(bkbuf):
                         break
+                else:
+                    # Give some time for the kernel to process the packets
+                    time.sleep(0)
             except OSError,e:
                 # This except handles the entire While block on PURPOSE
                 # as an optimization (setting a try/except block is expensive)
                 # The only operation that can raise this exception is os_write
-                if e.errno == os.errno.EWOULDBLOCK:
+                if e.errno in retrycodes:
                     # re-schedule packet
-                    bkbuf.insert(0, packet)
+                    reschedule(bkbuf, packet)
                 else:
                     raise
         
@@ -353,10 +380,8 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
         if tun in rdrdy:
             try:
                 while 1:
-                    packet = os_read(tunfd,2000) # tun.read blocks until it gets 2k!
+                    packet = tread(tunfd,2000) # tun.read blocks until it gets 2k!
                     #rt += 1
-                    if with_pi:
-                        packet = piStrip(packet)
                     fwbuf.append(packet)
                     
                     if not tnonblock or len(fwbuf) >= maxfwbuf:
@@ -365,18 +390,13 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
                 # This except handles the entire While block on PURPOSE
                 # as an optimization (setting a try/except block is expensive)
                 # The only operation that can raise this exception is os_read
-                if e.errno != os.errno.EWOULDBLOCK:
+                if e.errno not in retrycodes:
                     raise
         if remote in rdrdy:
             try:
                 try:
                     while 1:
-                        # Try twice, sometimes it barks the first time, 
-                        # due to ICMP Port Unreachable packets from previous writes
-                        try:
-                            packet = rread(remote,2000)
-                        except socket.error:
-                            packet = rread(remote,2000)
+                        packet = rread(remote,2000)
                         #rr += 1
                         
                         if crypto_mode:
@@ -389,7 +409,7 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
                     # This except handles the entire While block on PURPOSE
                     # as an optimization (setting a try/except block is expensive)
                     # The only operation that can raise this exception is rread
-                    if e.errno != os.errno.EWOULDBLOCK:
+                    if e.errno not in retrycodes:
                         raise
             except Exception, e:
                 if reconnect is not None:
@@ -401,7 +421,7 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
                 elif not udp:
                     # in UDP mode, we ignore errors - packet loss man...
                     raise
-                traceback.print_exc(file=sys.stderr)
+                #traceback.print_exc(file=sys.stderr)
         
         #print >>sys.stderr, "rr:%d\twr:%d\trt:%d\twt:%d" % (rr,wr,rt,wt)
 

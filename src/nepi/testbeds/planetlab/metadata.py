@@ -491,6 +491,12 @@ connector_types = dict({
                 "max": 1, 
                 "min": 0
             }),
+    "gre": dict({
+                "help": "IP or Ethernet tunneling using the GRE protocol", 
+                "name": "gre",
+                "max": 1, 
+                "min": 0
+            }),
     "fd->": dict({
                 "help": "TUN device file descriptor provider", 
                 "name": "fd->",
@@ -567,6 +573,12 @@ connections = [
         "can_cross": False
     }),
     dict({
+        "from": (TESTBED_ID, TUNIFACE, "gre"),
+        "to":   (TESTBED_ID, TUNIFACE, "gre"),
+        "init_code": functools.partial(connect_tun_iface_peer,"gre"),
+        "can_cross": False
+    }),
+    dict({
         "from": (TESTBED_ID, TAPIFACE, "tcp"),
         "to":   (TESTBED_ID, TAPIFACE, "tcp"),
         "init_code": functools.partial(connect_tun_iface_peer,"tcp"),
@@ -576,6 +588,12 @@ connections = [
         "from": (TESTBED_ID, TAPIFACE, "udp"),
         "to":   (TESTBED_ID, TAPIFACE, "udp"),
         "init_code": functools.partial(connect_tun_iface_peer,"udp"),
+        "can_cross": False
+    }),
+    dict({
+        "from": (TESTBED_ID, TAPIFACE, "gre"),
+        "to":   (TESTBED_ID, TAPIFACE, "gre"),
+        "init_code": functools.partial(connect_tun_iface_peer,"gre"),
         "can_cross": False
     }),
     dict({
@@ -599,6 +617,12 @@ connections = [
         "can_cross": True
     }),
     dict({
+        "from": (TESTBED_ID, TUNIFACE, "gre"),
+        "to":   (None, None, "gre"),
+        "compl_code": functools.partial(crossconnect_tun_iface_peer_both,"gre"),
+        "can_cross": True
+    }),
+    dict({
         "from": (TESTBED_ID, TAPIFACE, "tcp"),
         "to":   (None, None, "tcp"),
         "init_code": functools.partial(crossconnect_tun_iface_peer_init,"tcp"),
@@ -616,6 +640,14 @@ connections = [
         "from": (TESTBED_ID, TAPIFACE, "fd->"),
         "to":   (None, None, "->fd"),
         "compl_code": functools.partial(crossconnect_tun_iface_peer_both,"fd"),
+        "can_cross": True
+    }),
+    # EGRE is an extension of PlanetLab, so we can't connect externally
+    # if the other testbed isn't another PlanetLab
+    dict({
+        "from": (TESTBED_ID, TAPIFACE, "gre"),
+        "to":   (TESTBED_ID, None, "gre"),
+        "compl_code": functools.partial(crossconnect_tun_iface_peer_both,"gre"),
         "can_cross": True
     }),
 ]
@@ -998,6 +1030,9 @@ configure_order = [ INTERNET, Parallel(NODE), NODEIFACE, Parallel(TAPIFACE), Par
 # Start (and prestart) node after ifaces, because the node needs the ifaces in order to set up routes
 start_order = [ INTERNET, NODEIFACE, Parallel(TAPIFACE), Parallel(TUNIFACE), Parallel(NODE), NETPIPE, Parallel(NEPIDEPENDENCY), Parallel(NS3DEPENDENCY), Parallel(DEPENDENCY), Parallel(APPLICATION) ]
 
+# cleanup order
+shutdown_order = [ Parallel(APPLICATION), Parallel(TAPIFACE), Parallel(TUNIFACE), Parallel(NETPIPE), Parallel(NEPIDEPENDENCY), Parallel(NS3DEPENDENCY), Parallel(DEPENDENCY), NODEIFACE, Parallel(NODE) ]
+
 factories_info = dict({
     NODE: dict({
             "help": "Virtualized Node (V-Server style)",
@@ -1044,7 +1079,7 @@ factories_info = dict({
                 "tun_proto", "tun_addr", "tun_port", "tun_key"
             ],
             "traces": ["packets", "pcap"],
-            "connector_types": ["node","udp","tcp","fd->"],
+            "connector_types": ["node","udp","tcp","fd->","gre"],
             "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
         }),
     TAPIFACE: dict({
@@ -1060,7 +1095,7 @@ factories_info = dict({
                 "tun_proto", "tun_addr", "tun_port", "tun_key"
             ],
             "traces": ["packets", "pcap"],
-            "connector_types": ["node","udp","tcp","fd->"],
+            "connector_types": ["node","udp","tcp","fd->","gre"],
             "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
         }),
     APPLICATION: dict({
@@ -1212,6 +1247,16 @@ testbed_attributes = dict({
             "value": 15000,
             "range": (2000,30000),
             "validation_function": validation.is_integer_range(2000,30000)
+        }),
+        "dedicated_slice": dict({
+            "name": "dedicatedSlice",
+            "help": "Set to True if the slice will be dedicated to this experiment. "
+                    "NEPI will perform node and slice cleanup, making sure slices are "
+                    "in a clean, repeatable state before running the experiment.",
+            "type": Attribute.BOOL,
+            "value": False,
+            "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+            "validation_function": validation.is_bool
         }),
     })
 

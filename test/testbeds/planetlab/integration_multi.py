@@ -173,6 +173,11 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
 
     @test_util.skipUnless(test_util.pl_auth() is not None, 
         "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    def test_plpl_crossconnect_gre(self):
+        self._test_plpl_crossconnect("gre")
+
+    @test_util.skipUnless(test_util.pl_auth() is not None, 
+        "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_plpl_crossconnect_udp_recover(self):
         self._test_plpl_crossconnect("udp", 
             recover = True)
