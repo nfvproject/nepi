@@ -53,10 +53,6 @@ class TestbedController(object):
         """Instructs setting an initial attribute on an element"""
         raise NotImplementedError
 
-    def defer_factory_set(self, guid, name, value):
-        """Instructs setting an attribute on a factory"""
-        raise NotImplementedError
-
     def defer_connect(self, guid1, connector_type_name1, guid2, 
             connector_type_name2): 
         """Instructs creation of a connection between the given connectors"""

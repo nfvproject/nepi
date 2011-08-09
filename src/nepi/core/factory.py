@@ -9,8 +9,6 @@ class AddressableMixin(object):
     def __init__(self, guid, factory, testbed_guid, container = None):
         super(AddressableMixin, self).__init__(guid, factory, testbed_guid, 
                 container)
-        max_addr = self._factory_attributes["maxAddresses"]
-        self.set_attribute_value("maxAddresses", max_addr)
         self._addresses = list()
 
     @property
@@ -125,7 +123,6 @@ class Factory(AttributesMap, Taggable):
         self._category = category
         self._connector_types = dict()
         self._traces = dict()
-        self._box_attributes = AttributesMap()
         self._factory = None
 
     @property
@@ -208,10 +205,6 @@ class Factory(AttributesMap, Taggable):
         return self._traces.keys()
 
     @property
-    def box_attributes(self):
-        return self._box_attributes
-
-    @property
     def create_function(self):
         return self._create_function
 
@@ -247,12 +240,6 @@ class Factory(AttributesMap, Taggable):
 
     def add_trace(self, name, help, enabled = False):
         self._traces[name] = (name, help, enabled)
-
-    def add_box_attribute(self, name, help, type, value = None, range = None,
-        allowed = None, flags = Attribute.NoFlags, validation_function = None,
-        category = None):
-        self._box_attributes.add_attribute(name, help, type, value, range,
-                allowed, flags, validation_function, category)
 
     def create(self, guid, testbed_description):
         return self.factory(guid, self, testbed_description.guid)
