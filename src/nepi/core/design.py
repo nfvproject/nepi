@@ -182,13 +182,10 @@ class Box(AttributesMap, Taggable):
             self._traces[name] = trace
         for tag_id in factory.tags:
             self.add_tag(tag_id)
-        for attr in factory.box_attributes.attributes:
+        for attr in factory.attributes:
             self.add_attribute(attr.name, attr.help, attr.type, attr.value, 
                     attr.range, attr.allowed, attr.flags, 
                     attr.validation_function, attr.category)
-        for attr in factory.attributes:
-            if attr.modified or attr.is_metadata:
-                self._factory_attributes[attr.name] = attr.value
 
     def __str__(self):
         return "Box(%s, %s, %s)" % (self.guid, self.factory_id, self.testbed_guid)
@@ -378,5 +375,4 @@ class ExperimentDescription(object):
     def destroy(self):
         for testbed_description in self.testbed_descriptions:
             testbed_description.destroy()
-
 

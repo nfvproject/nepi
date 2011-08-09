@@ -139,8 +139,7 @@ class MetadataInfo(object):
                     that require connection/cross-connection state before
                     being created.
                     After this point, all applications should be able to run.
-                "factory_attributes": list of references to attribute_ids,
-                "box_attributes": list of regerences to attribute_ids,
+                "attributes": list of regerences to attribute_ids,
                 "traces": list of references to trace_id
                 "tags": list of references to tag_id
                 "connector_types": list of references to connector_types
@@ -212,7 +211,7 @@ class Metadata(object):
 
     # These attributes should be added to all testbeds
     STANDARD_TESTBED_ATTRIBUTES = dict({
-        "home_directory" : dict({
+        "homeDirectory" : dict({
             "name" : "homeDirectory",
             "validation_function" : validation.is_string,
             "help" : "Path to the directory where traces and other files will be stored",
@@ -514,12 +513,9 @@ class Metadata(object):
                     prestart_function,
                     help,
                     category)
-                    
-            factory_attributes = self._factory_attributes(info)
-            self._add_attributes(factory.add_attribute, factory_attributes)
-            box_attributes = self._box_attributes(info)
-            self._add_attributes(factory.add_box_attribute, box_attributes)
-            
+                  
+            attributes = self._attributes(info)
+            self._add_attributes(factory.add_attribute, attributes)
             self._add_traces(factory, info)
             self._add_tags(factory, info)
             self._add_connector_types(factory, info)
@@ -539,30 +535,17 @@ class Metadata(object):
         attributes.update(self._metadata.testbed_attributes.copy())
         return attributes
         
-    def _factory_attributes(self, info):
+    def _attributes(self, info):
         tagged_attributes = self._tagged_attributes(info)
-        if "factory_attributes" in info:
-            definitions = self._metadata.attributes.copy()
-            # filter attributes corresponding to the factory_id
-            factory_attributes = self._filter_attributes(info["factory_attributes"], 
-                definitions)
-        else:
-            factory_attributes = dict()
-        attributes = dict(tagged_attributes.items() + \
-                factory_attributes.items())
-        return attributes
-
-    def _box_attributes(self, info):
-        tagged_attributes = self._tagged_attributes(info)
-        if "box_attributes" in info:
+        if "attributes" in info:
             definitions = self.STANDARD_BOX_ATTRIBUTE_DEFINITIONS.copy()
             definitions.update(self._metadata.attributes)
-            box_attributes = self._filter_attributes(info["box_attributes"], 
+            attributes = self._filter_attributes(info["attributes"], 
                 definitions)
         else:
-            box_attributes = dict()
+            attributes = dict()
         attributes = dict(tagged_attributes.items() + \
-                box_attributes.items())
+                attributes.items())
         attributes.update(self.STANDARD_BOX_ATTRIBUTES.copy())
         return attributes
 
@@ -577,12 +560,12 @@ class Metadata(object):
         return tagged_attributes
 
     def _filter_attributes(self, attr_list, definitions):
-        # filter attributes not corresponding to the factory
+        # filter attributes not corresponding to the element
         attributes = dict((attr_id, definitions[attr_id]) \
            for attr_id in attr_list)
         return attributes
 
-    def _add_attributes(self, add_attr_func, attributes):
+    def _add_attributes(self, function, attributes):
         for attr_id, attr_info in attributes.iteritems():
             name = attr_info["name"]
             help = attr_info["help"]
@@ -593,8 +576,8 @@ class Metadata(object):
             flags = attr_info.get("flags")
             validation_function = attr_info["validation_function"]
             category = attr_info.get("category")
-            add_attr_func(name, help, type, value, range, allowed, flags, 
-                    validation_function, category)
+            function(name, help, type, value, range, allowed,
+                    flags, validation_function, category)
 
     def _add_traces(self, factory, info):
         for trace_id in info.get("traces", []):

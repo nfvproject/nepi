@@ -68,7 +68,6 @@ class XmlExperimentParser(ExperimentParser):
         element_tag.setAttribute("factory_id", factory_id)
         element_tag.setAttribute("guid", xmlencode(guid))
         self.graphical_info_data_to_xml(doc, element_tag, guid, data)
-        self.factory_attributes_data_to_xml(doc, element_tag, guid, data)
         self.attributes_data_to_xml(doc, element_tag, guid, data)
         self.traces_data_to_xml(doc, element_tag, guid, data)
         self.addresses_data_to_xml(doc, element_tag, guid, data)
@@ -83,18 +82,6 @@ class XmlExperimentParser(ExperimentParser):
         graphical_info_tag.setAttribute("y", xmlencode(y))
         graphical_info_tag.setAttribute("width", xmlencode(width))
         graphical_info_tag.setAttribute("height", xmlencode(height))
-
-    def factory_attributes_data_to_xml(self, doc, parent_tag, guid, data):
-        factory_attributes_tag = doc.createElement("factory_attributes")
-        for (name, value) in data.get_factory_attribute_data(guid):
-            if value is not None:
-                factory_attribute_tag = doc.createElement("factory_attribute") 
-                factory_attributes_tag.appendChild(factory_attribute_tag)
-                factory_attribute_tag.setAttribute("name", name)
-                factory_attribute_tag.setAttribute("value", xmlencode(value))
-                factory_attribute_tag.setAttribute("type", self.type_to_standard(value))
-        if factory_attributes_tag.hasChildNodes():
-            parent_tag.appendChild(factory_attributes_tag)
 
     def attributes_data_to_xml(self, doc, parent_tag, guid, data):
         attributes_tag = doc.createElement("attributes") 
@@ -190,7 +177,6 @@ class XmlExperimentParser(ExperimentParser):
         factory_id = xmldecode(tag.getAttribute("factory_id"))
         data.add_box_data(guid, testbed_guid, factory_id)
         self.graphical_info_data_from_xml(tag, guid, data)
-        self.factory_attributes_data_from_xml(tag, guid, data)
         self.attributes_data_from_xml(tag, guid, data)
         self.traces_data_from_xml(tag, guid, data)
         self.addresses_data_from_xml(tag, guid, data)
@@ -210,22 +196,6 @@ class XmlExperimentParser(ExperimentParser):
             width = float(graphical_info_tag.getAttribute("width"))
             height = float(graphical_info_tag.getAttribute("height"))
             data.add_graphical_info_data(guid, x, y, width, height)
-
-    def factory_attributes_data_from_xml(self, tag, guid, data):
-        factory_attributes_tag_list = tag.getElementsByTagName(
-                "factory_attributes")
-        if len(factory_attributes_tag_list) == 0:
-            return
-
-        factory_attribute_tag_list = factory_attributes_tag_list[0].\
-                getElementsByTagName("factory_attribute")
-        for factory_attribute_tag in factory_attribute_tag_list:
-             if factory_attribute_tag.nodeType == tag.ELEMENT_NODE:
-                name = xmldecode(factory_attribute_tag.getAttribute("name"))
-                value = xmldecode(factory_attribute_tag.getAttribute("value"))
-                std_type = xmldecode(factory_attribute_tag.getAttribute("type"))
-                value = self.type_from_standard(std_type, value)
-                data.add_factory_attribute_data(guid, name, value)
 
     def attributes_data_from_xml(self, tag, guid, data):
         attributes_tag_list= tag.getElementsByTagName("attributes")

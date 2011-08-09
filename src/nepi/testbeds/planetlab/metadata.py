@@ -1040,7 +1040,7 @@ factories_info = dict({
             "create_function": create_node,
             "preconfigure_function": configure_node,
             "prestart_function": configure_node_routes,
-            "box_attributes": [
+            "attributes": [
                 "forward_X11",
                 "hostname",
                 "architecture",
@@ -1062,7 +1062,7 @@ factories_info = dict({
             "category": FC.CATEGORY_DEVICES,
             "create_function": create_nodeiface,
             "preconfigure_function": configure_nodeiface,
-            "box_attributes": [ ],
+            "attributes": [ ],
             "connector_types": ["node", "inet"],
             "tags": [tags.INTERFACE, tags.HAS_ADDRESSES],
         }),
@@ -1073,7 +1073,7 @@ factories_info = dict({
             "preconfigure_function": preconfigure_tuniface,
             "configure_function": postconfigure_tuniface,
             "prestart_function": wait_tuniface,
-            "box_attributes": [
+            "attributes": [
                 "up", "device_name", "mtu", "snat", "pointopoint",
                 "txqueuelen",
                 "tun_proto", "tun_addr", "tun_port", "tun_key"
@@ -1089,7 +1089,7 @@ factories_info = dict({
             "preconfigure_function": preconfigure_tuniface,
             "configure_function": postconfigure_tuniface,
             "prestart_function": wait_tuniface,
-            "box_attributes": [
+            "attributes": [
                 "up", "device_name", "mtu", "snat", "pointopoint",
                 "txqueuelen",
                 "tun_proto", "tun_addr", "tun_port", "tun_key"
@@ -1106,7 +1106,7 @@ factories_info = dict({
             "status_function": status_application,
             "stop_function": stop_application,
             "configure_function": configure_application,
-            "box_attributes": ["command", "sudo", "stdin",
+            "attributes": ["command", "sudo", "stdin",
                                "depends", "build-depends", "build", "install",
                                "sources", "rpm-fusion" ],
             "connector_types": ["node"],
@@ -1118,7 +1118,7 @@ factories_info = dict({
             "category": FC.CATEGORY_APPLICATIONS,
             "create_function": create_dependency,
             "preconfigure_function": configure_dependency,
-            "box_attributes": ["depends", "build-depends", "build", "install",
+            "attributes": ["depends", "build-depends", "build", "install",
                                "sources", "rpm-fusion" ],
             "connector_types": ["node"],
             "traces": ["buildlog"],
@@ -1128,7 +1128,7 @@ factories_info = dict({
             "category": FC.CATEGORY_APPLICATIONS,
             "create_function": create_nepi_dependency,
             "preconfigure_function": configure_dependency,
-            "box_attributes": [],
+            "attributes": [],
             "connector_types": ["node"],
             "traces": ["buildlog"],
         }),
@@ -1137,7 +1137,7 @@ factories_info = dict({
             "category": FC.CATEGORY_APPLICATIONS,
             "create_function": create_ns3_dependency,
             "preconfigure_function": configure_dependency,
-            "box_attributes": [ ],
+            "attributes": [ ],
             "connector_types": ["node"],
             "traces": ["buildlog"],
         }),
@@ -1153,7 +1153,7 @@ factories_info = dict({
             "category": FC.CATEGORY_CHANNELS,
             "create_function": create_netpipe,
             "configure_function": configure_netpipe,
-            "box_attributes": ["netpipe_mode",
+            "attributes": ["netpipe_mode",
                                "addr_list", "port_list",
                                "bw_in","plr_in","delay_in",
                                "bw_out","plr_out","delay_out"],

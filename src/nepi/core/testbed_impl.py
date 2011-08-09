@@ -26,7 +26,6 @@ class TestbedController(execute.TestbedController):
         # experiment construction instructions
         self._create = dict()
         self._create_set = dict()
-        self._factory_set = dict()
         self._connect = dict()
         self._cross_connect = dict()
         self._add_trace = dict()
@@ -84,14 +83,6 @@ class TestbedController(execute.TestbedController):
         if guid not in self._create_set:
             self._create_set[guid] = dict()
         self._create_set[guid][name] = value
-
-    def defer_factory_set(self, guid, name, value):
-        self._validate_guid(guid)
-        self._validate_factory_attribute(guid, name)
-        self._validate_factory_value(guid, name, value)
-        if guid not in self._factory_set:
-            self._factory_set[guid] = dict()
-        self._factory_set[guid][name] = value
 
     def defer_connect(self, guid1, connector_type_name1, guid2, 
             connector_type_name2):
@@ -367,7 +358,7 @@ class TestbedController(execute.TestbedController):
             return self._create_set[guid][name]
         # if nothing else found, returns the factory default value
         factory = self._get_factory(guid)
-        return factory.box_attributes.get_attribute_value(name)
+        return factory.get_attribute_value(name)
 
     def get_route(self, guid, index, attribute):
         """
@@ -428,7 +419,7 @@ class TestbedController(execute.TestbedController):
     def get_attribute_list(self, guid, filter_flags = None, exclude = False):
         factory = self._get_factory(guid)
         attribute_list = list()
-        return factory.box_attributes.get_attribute_list(filter_flags, exclude)
+        return factory.get_attribute_list(filter_flags, exclude)
 
     def get_factory_id(self, guid):
         factory = self._get_factory(guid)
@@ -564,23 +555,11 @@ class TestbedController(execute.TestbedController):
 
     def _validate_box_attribute(self, guid, name):
         factory = self._get_factory(guid)
-        if not factory.box_attributes.has_attribute(name):
-            raise AttributeError("Invalid attribute %s for element type %s" %
-                    (name, factory.factory_id))
-
-    def _validate_box_value(self, guid, name, value):
-        factory = self._get_factory(guid)
-        if not factory.box_attributes.is_attribute_value_valid(name, value):
-            raise AttributeError("Invalid value %r for attribute %s" % \
-                (value, name))
-
-    def _validate_factory_attribute(self, guid, name):
-        factory = self._get_factory(guid)
         if not factory.has_attribute(name):
             raise AttributeError("Invalid attribute %s for element type %s" %
                     (name, factory.factory_id))
 
-    def _validate_factory_value(self, guid, name, value):
+    def _validate_box_value(self, guid, name, value):
         factory = self._get_factory(guid)
         if not factory.is_attribute_value_valid(name, value):
             raise AttributeError("Invalid value %r for attribute %s" % \
@@ -602,7 +581,7 @@ class TestbedController(execute.TestbedController):
             max_addresses = self._create_set[guid][attr_name]
         else:
             factory = self._get_factory(guid)
-            max_addresses = factory.box_attributes.get_attribute_value(attr_name)
+            max_addresses = factory.get_attribute_value(attr_name)
         if guid in self._add_address:
             count_addresses = len(self._add_address[guid])
             if max_addresses == count_addresses:
@@ -636,7 +615,7 @@ class TestbedController(execute.TestbedController):
     def _validate_modify_box_value(self, guid, name):
         factory = self._get_factory(guid)
         if self._status > TS.STATUS_STARTED and \
-                (factory.box_attributes.is_attribute_exec_read_only(name) or \
-                factory.box_attributes.is_attribute_exec_immutable(name)):
+                (factory.is_attribute_exec_read_only(name) or \
+                factory.is_attribute_exec_immutable(name)):
             raise AttributeError("Attribute %s can only be modified during experiment design" % name)
 
