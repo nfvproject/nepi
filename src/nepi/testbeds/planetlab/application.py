@@ -728,7 +728,8 @@ class Application(Dependency):
                 user = self.node.slicename,
                 agent = None,
                 ident_key = self.node.ident_path,
-                server_key = self.node.server_key
+                server_key = self.node.server_key,
+                sudo = self.sudo
                 )
             self._logger.info("Killed %s", self)
 
