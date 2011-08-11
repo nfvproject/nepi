@@ -320,10 +320,11 @@ class TunProtoBase(object):
             # Inspect the trace to check the assigned iface
             local = self.local()
             if local:
+                cmd = "cd %(home)s ; grep 'Using tun:' capture | head -1" % dict(
+                            home = server.shell_escape(self.home_path))
                 for spin in xrange(30):
                     (out,err),proc = server.eintr_retry(server.popen_ssh_command)(
-                        "cd %(home)s ; grep 'Using tun:' capture | head -1" % dict(
-                            home = server.shell_escape(self.home_path)),
+                        cmd,
                         host = local.node.hostname,
                         port = None,
                         user = local.node.slicename,
@@ -333,16 +334,21 @@ class TunProtoBase(object):
                         )
                     
                     if proc.wait():
-                        return
+                        self._logger.debug("if_name: failed cmd %s", cmd)
+                        time.sleep(1)
+                        continue
                     
                     out = out.strip()
                     
                     match = re.match(r"Using +tun: +([-a-zA-Z0-9]*).*",out)
                     if match:
                         self._if_name = match.group(1)
+                        break
                     elif out:
-                        self._logger.debug("if_name: %r does not match expected pattern", out)
-                        time.sleep(1)
+                        self._logger.debug("if_name: %r does not match expected pattern from cmd %s", out, cmd)
+                    else:
+                        self._logger.debug("if_name: empty output from cmd %s", cmd)
+                    time.sleep(1)
                 else:
                     self._logger.warn("if_name: Could not get interface name")
         return self._if_name

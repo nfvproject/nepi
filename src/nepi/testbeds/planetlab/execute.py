@@ -80,6 +80,20 @@ class TestbedController(testbed_impl.TestbedController):
                 return None
         return self._slice_id
     
+    @property
+    def vsys_vnet(self):
+        if not hasattr(self, '_vsys_vnet'):
+            slicetags = self.plapi.GetSliceTags(
+                name = self.slicename,
+                tagname = 'vsys_vnet',
+                fields=('value',))
+            if slicetags:
+                self._vsys_vnet = slicetags[0]['value']
+            else:
+                # If it wasn't found, don't remember this failure, keep trying
+                return None
+        return self._vsys_vnet
+    
     def _load_blacklist(self):
         blpath = environ.homepath('plblacklist')
         

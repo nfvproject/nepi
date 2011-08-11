@@ -181,7 +181,9 @@ def create_node(testbed_instance, guid):
     # require vroute vsys if we have routes to set up
     routes = testbed_instance._add_route.get(guid)
     if routes:
-        element.required_vsys.add("vroute")
+        vsys = element.routing_method(routes,
+            testbed_instance.vsys_vnet)
+        element.required_vsys.add(vsys)
     
     testbed_instance.elements[guid] = element
 
@@ -401,8 +403,10 @@ def configure_node_routes(testbed_instance, guid):
             for dev_guid in testbed_instance.get_connected(guid, "devs", "node")
             for dev in ( testbed_instance._elements.get(dev_guid) ,)
             if dev and isinstance(dev, testbed_instance._interfaces.TunIface) ]
+    
+        vsys = testbed_instance.vsys_vnet
         
-        node.configure_routes(routes, devs)
+        node.configure_routes(routes, devs, vsys)
 
 def configure_application(testbed_instance, guid):
     app = testbed_instance._elements[guid]
