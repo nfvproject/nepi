@@ -204,13 +204,15 @@ def remote_kill(pid, ppid, sudo = False,
     """
     
     cmd = """
-%(sudo)s kill %(pid)d
+%(sudo)s kill -- -%(pid)d || /bin/true
+%(sudo)s kill %(pid)d || /bin/true
 for x in 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 ; do 
     sleep 0.2 
     if [ `ps --ppid %(ppid)d -o pid | grep -c %(pid)d` == '0' ]; then
         break
     else
-        %(sudo)s kill %(pid)d
+        %(sudo)s kill -- -%(pid)d || /bin/true
+        %(sudo)s kill %(pid)d || /bin/true
     fi
     sleep 1.8
 done
