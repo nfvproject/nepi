@@ -221,6 +221,18 @@ class PLCAPI(object):
             filters = kw.pop('filters',{})
             filters.update(kw)
             return self.api.GetNodeTags(self.auth, filters, *fieldstuple)
+
+    def GetSliceTags(self, sliceTagId=None, fields=None, **kw):
+        if fields is not None:
+            fieldstuple = (fields,)
+        else:
+            fieldstuple = ()
+        if sliceTagId is not None:
+            return self.api.GetSliceTags(self.auth, sliceTagId, *fieldstuple)
+        else:
+            filters = kw.pop('filters',{})
+            filters.update(kw)
+            return self.api.GetSliceTags(self.auth, filters, *fieldstuple)
         
     
     def GetInterfaces(self, interfaceIdOrIp=None, fields=None, **kw):
