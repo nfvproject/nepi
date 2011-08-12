@@ -16,6 +16,7 @@ from nepi.util.constants import ApplicationStatus as AS, \
 import functools
 import os
 import os.path
+import weakref
 
 NODE = "Node"
 NODEIFACE = "NodeInterface"
@@ -27,6 +28,7 @@ NEPIDEPENDENCY = "NepiDependency"
 NS3DEPENDENCY = "NS3Dependency"
 INTERNET = "Internet"
 NETPIPE = "NetPipe"
+TUNFILTER = "TunFilter"
 
 PL_TESTBED_ID = "planetlab"
 
@@ -103,9 +105,41 @@ def connect_tun_iface_peer(proto, testbed_instance, iface_guid, peer_iface_guid)
     iface = testbed_instance._elements[iface_guid]
     peer_iface = testbed_instance._elements[peer_iface_guid]
     iface.peer_iface = peer_iface
+    peer_iface.peer_iface = iface
     iface.peer_proto = \
-    iface.tun_proto = proto
+    iface.tun_proto = \
+    peer_iface.peer_proto = \
+    peer_iface.tun_proto = proto
     iface.tun_key = peer_iface.tun_key
+
+def connect_tun_iface_filter(testbed_instance, iface_guid, filter_guid):
+    iface = testbed_instance._elements[iface_guid]
+    filt = testbed_instance._elements[filter_guid]
+    iface.filter_module = filt
+    filt.iface_guid = iface_guid
+    filt.iface = weakref.ref(iface)
+    if filt.peer_guid:
+        connect_tun_iface_peer(filt.peer_proto, testbed_instance, filt.iface_guid, filt.peer_guid)
+
+def connect_filter_peer(proto, testbed_instance, filter_guid, peer_guid):
+    peer = testbed_instance._elements[peer_guid]
+    filt = testbed_instance._elements[filter_guid]
+    filt.peer_proto = proto
+    filt.peer_guid = peer_guid
+    if filt.iface_guid:
+        connect_tun_iface_peer(filt.peer_proto, testbed_instance, filt.iface_guid, filt.peer_guid)
+
+def connect_filter_filter(proto, testbed_instance, filter_guid, peer_guid):
+    peer = testbed_instance._elements[peer_guid]
+    filt = testbed_instance._elements[filter_guid]
+    filt.peer_proto = proto
+    peer.peer_proto = proto
+    if filt.iface_guid:
+        peer.peer_guid = filt.iface_guid
+    if peer.iface_guid:
+        filt.peer_guid = peer.iface_guid
+    if filt.iface_guid and filt.peer_guid:
+        connect_tun_iface_peer(filt.peer_proto, testbed_instance, filt.iface_guid, filt.peer_guid)
 
 def crossconnect_tun_iface_peer_init(proto, testbed_instance, iface_guid, peer_iface_data):
     iface = testbed_instance._elements[iface_guid]
@@ -132,6 +166,21 @@ def crossconnect_tun_iface_peer_compl(proto, testbed_instance, iface_guid, peer_
 def crossconnect_tun_iface_peer_both(proto, testbed_instance, iface_guid, peer_iface_data):
     crossconnect_tun_iface_peer_init(proto, testbed_instance, iface_guid, peer_iface_data)
     crossconnect_tun_iface_peer_compl(proto, testbed_instance, iface_guid, peer_iface_data)
+
+def crossconnect_filter_peer_init(proto, testbed_instance, filter_guid, peer_data):
+    filt = testbed_instance._elements[filter_guid]
+    filt.peer_proto = proto
+    crossconnect_tun_iface_peer_init(filt.peer_proto, testbed_instance, filt.iface_guid, peer_data)
+
+def crossconnect_filter_peer_compl(proto, testbed_instance, filter_guid, peer_data):
+    filt = testbed_instance._elements[filter_guid]
+    filt.peer_proto = proto
+    crossconnect_tun_iface_peer_compl(filt.peer_proto, testbed_instance, filt.iface_guid, peer_data)
+
+def crossconnect_filter_peer_both(proto, testbed_instance, filter_guid, peer_data):
+    crossconnect_filter_peer_init(proto, testbed_instance, iface_guid, peer_iface_data)
+    crossconnect_filter_peer_compl(proto, testbed_instance, iface_guid, peer_iface_data)
+
 
 def connect_dep(testbed_instance, node_guid, app_guid):
     node = testbed_instance._elements[node_guid]
@@ -219,6 +268,12 @@ def create_tapiface(testbed_instance, guid):
             element.add_address(address, netprefix, broadcast)
     
     testbed_instance.elements[guid] = element
+
+def create_tunfilter(testbed_instance, guid):
+    parameters = testbed_instance._get_parameters(guid)
+    element = testbed_instance._make_tun_filter(parameters)
+    testbed_instance.elements[guid] = element
+
 
 def create_application(testbed_instance, guid):
     parameters = testbed_instance._get_parameters(guid)
@@ -509,6 +564,12 @@ connector_types = dict({
                 "max": 1, 
                 "min": 0
             }),
+    "->fd": dict({
+                "help": "TUN device file descriptor slot", 
+                "name": "->fd",
+                "max": 1, 
+                "min": 0
+            }),
    })
 
 connections = [
@@ -585,6 +646,24 @@ connections = [
         "can_cross": False
     }),
     dict({
+        "from": (TESTBED_ID, TUNIFACE, "fd->"),
+        "to":   (TESTBED_ID, TUNFILTER, "->fd"),
+        "init_code": connect_tun_iface_filter,
+        "can_cross": False
+    }),
+    dict({
+        "from": (TESTBED_ID, TUNFILTER, "tcp"),
+        "to":   (TESTBED_ID, TUNIFACE, "tcp"),
+        "init_code": functools.partial(connect_filter_peer,"tcp"),
+        "can_cross": False
+    }),
+    dict({
+        "from": (TESTBED_ID, TUNFILTER, "udp"),
+        "to":   (TESTBED_ID, TUNIFACE, "udp"),
+        "init_code": functools.partial(connect_filter_peer,"udp"),
+        "can_cross": False
+    }),
+    dict({
         "from": (TESTBED_ID, TAPIFACE, "tcp"),
         "to":   (TESTBED_ID, TAPIFACE, "tcp"),
         "init_code": functools.partial(connect_tun_iface_peer,"tcp"),
@@ -600,6 +679,36 @@ connections = [
         "from": (TESTBED_ID, TAPIFACE, "gre"),
         "to":   (TESTBED_ID, TAPIFACE, "gre"),
         "init_code": functools.partial(connect_tun_iface_peer,"gre"),
+        "can_cross": False
+    }),
+    dict({
+        "from": (TESTBED_ID, TAPIFACE, "fd->"),
+        "to":   (TESTBED_ID, TUNFILTER, "->fd"),
+        "init_code": connect_tun_iface_filter,
+        "can_cross": False
+    }),
+    dict({
+        "from": (TESTBED_ID, TUNFILTER, "tcp"),
+        "to":   (TESTBED_ID, TAPIFACE, "tcp"),
+        "init_code": functools.partial(connect_filter_peer,"tcp"),
+        "can_cross": False
+    }),
+    dict({
+        "from": (TESTBED_ID, TUNFILTER, "udp"),
+        "to":   (TESTBED_ID, TAPIFACE, "udp"),
+        "init_code": functools.partial(connect_filter_peer,"udp"),
+        "can_cross": False
+    }),
+    dict({
+        "from": (TESTBED_ID, TUNFILTER, "tcp"),
+        "to":   (TESTBED_ID, TUNFILTER, "tcp"),
+        "init_code": functools.partial(connect_filter_filter,"tcp"),
+        "can_cross": False
+    }),
+    dict({
+        "from": (TESTBED_ID, TUNFILTER, "udp"),
+        "to":   (TESTBED_ID, TUNFILTER, "udp"),
+        "init_code": functools.partial(connect_filter_filter,"udp"),
         "can_cross": False
     }),
     dict({
@@ -654,6 +763,20 @@ connections = [
         "from": (TESTBED_ID, TAPIFACE, "gre"),
         "to":   (TESTBED_ID, None, "gre"),
         "compl_code": functools.partial(crossconnect_tun_iface_peer_both,"gre"),
+        "can_cross": True
+    }),
+    dict({
+        "from": (TESTBED_ID, TUNFILTER, "tcp"),
+        "to":   (None, None, "tcp"),
+        "init_code": functools.partial(crossconnect_filter_peer_init,"tcp"),
+        "compl_code": functools.partial(crossconnect_filter_peer_compl,"tcp"),
+        "can_cross": True
+    }),
+    dict({
+        "from": (TESTBED_ID, TUNFILTER, "udp"),
+        "to":   (None, None, "udp"),
+        "init_code": functools.partial(crossconnect_filter_peer_init,"udp"),
+        "compl_code": functools.partial(crossconnect_filter_peer_compl,"udp"),
         "can_cross": True
     }),
 ]
@@ -998,6 +1121,13 @@ attributes = dict({
                 "range": (0,60000),
                 "validation_function": validation.is_integer,
             }),
+    "module": dict({
+                "name": "module",
+                "help": "Path to a .c or .py source for a filter module, or a binary .so",
+                "type": Attribute.STRING,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+                "validation_function": validation.is_string
+            }),
     })
 
 traces = dict({
@@ -1029,7 +1159,7 @@ traces = dict({
               }),
     })
 
-create_order = [ INTERNET, NODE, NODEIFACE, TAPIFACE, TUNIFACE, NETPIPE, NEPIDEPENDENCY, NS3DEPENDENCY, DEPENDENCY, APPLICATION ]
+create_order = [ INTERNET, NODE, NODEIFACE, TUNFILTER, TAPIFACE, TUNIFACE, NETPIPE, NEPIDEPENDENCY, NS3DEPENDENCY, DEPENDENCY, APPLICATION ]
 
 configure_order = [ INTERNET, Parallel(NODE), NODEIFACE, Parallel(TAPIFACE), Parallel(TUNIFACE), NETPIPE, Parallel(NEPIDEPENDENCY), Parallel(NS3DEPENDENCY), Parallel(DEPENDENCY), Parallel(APPLICATION) ]
 
@@ -1103,6 +1233,16 @@ factories_info = dict({
             "traces": ["packets", "pcap"],
             "connector_types": ["node","udp","tcp","fd->","gre"],
             "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
+        }),
+    TUNFILTER: dict({
+            "help": "TUN/TAP stream filter",
+            "category": FC.CATEGORY_CHANNELS,
+            "create_function": create_tunfilter,
+            "box_attributes": [
+                "module",
+                "tun_proto", "tun_addr", "tun_port", "tun_key", "tun_cipher",
+            ],
+            "connector_types": ["->fd","udp","tcp"],
         }),
     APPLICATION: dict({
             "help": "Generic executable command line application",

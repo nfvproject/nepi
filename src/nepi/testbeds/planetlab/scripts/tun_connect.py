@@ -117,6 +117,45 @@ parser.add_option(
     default = None,
     help = "If specified, packets won't be logged to standard output, "
            "but dumped to a pcap-formatted trace in the specified file. " )
+parser.add_option(
+    "--filter", dest="filter_module", metavar="PATH",
+    default = None,
+    help = "If specified, it should be either a .py or .so module. "
+           "It will be loaded, and all incoming and outgoing packets "
+           "will be routed through it. The module will not be responsible "
+           "for buffering, packet queueing is performed in tun_connect "
+           "already, so it should not concern itself with it. It should "
+           "not, however, block in one direction if the other is congested.\n"
+           "\n"
+           "Modules are expected to have the following methods:\n"
+           "\taccept_packet(packet, direction):\n"
+           "\t\tDecide whether to drop the packet. Direction is 0 for packets "
+               "coming from the local side to the remote, and 1 is for packets "
+               "coming from the remote side to the local. Return a boolean, "
+               "true if the packet is not to be dropped.\n"
+           "\tfilter_init():\n"
+           "\t\tInitializes a filtering pipe (filter_run). It should "
+               "return two file descriptors to use as a bidirectional "
+               "pipe: local and remote. 'local' is where packets from the "
+               "local side will be written to. After filtering, those packets "
+               "should be written to 'remote', where tun_connect will read "
+               "from, and it will forward them to the remote peer. "
+               "Packets from the remote peer will be written to 'remote', "
+               "where the filter is expected to read from, and eventually "
+               "forward them to the local side. If the file descriptors are "
+               "not nonblocking, they will be set to nonblocking. So it's "
+               "better to set them from the start like that.\n"
+           "\tfilter_run(local, remote):\n"
+           "\t\tIf filter_init is provided, it will be called repeatedly, "
+               "in a separate thread until the process is killed. It should "
+               "sleep at most for a second.\n"
+           "\tfilter_close(local, remote):\n"
+           "\t\tCalled then the process is killed, if filter_init was provided. "
+               "It should, among other things, close the file descriptors.\n"
+           "\n"
+           "Python modules are expected to return a tuple in filter_init, "
+           "either of file descriptors or file objects, while native ones "
+           "will receive two int*.\n" )
 
 (options, remaining_args) = parser.parse_args(sys.argv[1:])
 
@@ -425,7 +464,7 @@ def pl_vif_stop(tun_path, tun_name):
     del lock, lockfile
 
 
-def tun_fwd(tun, remote, reconnect = None):
+def tun_fwd(tun, remote, reconnect = None, accept_local = None, accept_remote = None, slowlocal = True):
     global TERMINATE
     
     tunqueue = options.vif_txqueuelen or 1000
@@ -443,7 +482,10 @@ def tun_fwd(tun, remote, reconnect = None):
         reconnect = reconnect,
         tunqueue = tunqueue,
         tunkqueue = tunkqueue,
-        cipher = options.cipher
+        cipher = options.cipher,
+        accept_local = accept_local,
+        accept_remote = accept_remote,
+        slowlocal = slowlocal
     )
 
 
@@ -492,6 +534,40 @@ tun_name = options.tun_name
 
 modeinfo = MODEINFO[options.mode]
 
+# Try to load filter module
+filter_thread = None
+if options.filter_module:
+    if options.filter_module.endswith('.py'):
+        sys.path.append(os.path.dirname(options.filter_module))
+        filter_module = __import__(os.path.basename(options.filter_module).rsplit('.',1)[0])
+    elif options.filter_module.endswith('.so'):
+        filter_module = ctypes.cdll.LoadLibrary(options.filter_module)
+    
+    try:
+        accept_packet = filter_module.accept_packet
+    except:
+        accept_packet = None
+    
+    try:
+        _filter_init = filter_module.filter_init
+        filter_run = filter_module.filter_run
+        filter_close = filter_module.filter_close
+        
+        def filter_init():
+            filter_local = ctypes.c_int(0)
+            filter_remote = ctypes.c_int(0)
+            _filter_init(filter_local, filter_remote)
+            return filter_local, filter_remote
+    except:
+        filter_init = None
+        filter_run = None
+        filter_close = None
+else:
+    accept_packet = None
+    filter_init = None
+    filter_run = None
+    filter_close = None
+
 # be careful to roll back stuff on exceptions
 tun_path, tun_name = modeinfo['alloc'](tun_path, tun_name)
 try:
@@ -518,6 +594,9 @@ try:
     reconnect = None
     
     if options.pass_fd:
+        if accept_packet or filter_init:
+            raise NotImplementedError, "--pass-fd and --filter are not compatible"
+        
         if options.pass_fd.startswith("base64:"):
             options.pass_fd = base64.b64decode(
                 options.pass_fd[len("base64:"):])
@@ -545,13 +624,20 @@ try:
         
         # just wait forever
         def tun_fwd(tun, remote, **kw):
-            while not TERMINATE:
+            global TERMINATE
+            TERM = TERMINATE
+            while not TERM:
                 time.sleep(1)
         remote = None
     elif options.mode.startswith('pl-gre'):
+        if accept_packet or filter_init:
+            raise NotImplementedError, "--mode %s and --filter are not compatible" % (options.mode,)
+        
         # just wait forever
         def tun_fwd(tun, remote, **kw):
-            while not TERMINATE:
+            global TERMINATE
+            TERM = TERMINATE
+            while not TERM:
                 time.sleep(1)
         remote = remaining_args[0]
     elif options.udp:
@@ -620,6 +706,22 @@ try:
             ["tcpdump","-l","-n","-i",tun_name, "-s", "4096"]
             + ["-w",options.pcap_capture,"-U"] * bool(options.pcap_capture) )
     
+    if filter_init:
+        filter_local, filter_remote = filter_init()
+        
+        def filter_loop():
+            global TERMINATE
+            TERM = TERMINATE
+            run = filter_run
+            local = filter_local
+            remote = filter_remote
+            while not TERM:
+                run(local, remote)
+            filter_close(local, remote)
+            
+        filter_thread = threading.Thread(target=filter_loop)
+        filter_thread.start()
+    
     print >>sys.stderr, "Connected"
     
     # Try to give us high priority
@@ -630,8 +732,43 @@ try:
         # or perhaps there is no os.nice support in the system
         pass
 
-    tun_fwd(tun, remote,
-        reconnect = reconnect)
+    if not filter_init:
+        tun_fwd(tun, remote,
+            reconnect = reconnect,
+            accept_local = accept_packet,
+            accept_remote = accept_packet,
+            slowlocal = True)
+    else:
+        # Hm...
+        # ...ok, we need to:
+        #  1. Forward packets from tun to filter
+        #  2. Forward packets from remote to filter
+        #
+        # 1. needs TUN rate-limiting, while 
+        # 2. needs reconnection
+        #
+        # 1. needs ONLY TUN-side acceptance checks, while
+        # 2. needs ONLY remote-side acceptance checks
+        if isinstance(filter_local, ctypes.c_int):
+            filter_local_fd = filter_local.value
+        else:
+            filter_local_fd = filter_local
+        if isinstance(filter_remote, ctypes.c_int):
+            filter_remote_fd = filter_remote.value
+        else:
+            filter_remote_fd = filter_remote
+
+        def localside():
+            tun_fwd(tun, filter_local_fd,
+                accept_local = accept_packet,
+                slowlocal = True)
+        
+        def remoteside():
+            tun_fwd(filter_remote_fd, remote,
+                reconnect = reconnect,
+                accept_remote = accept_packet,
+                slowlocal = False)
+        
 
 finally:
     try:
@@ -641,6 +778,13 @@ finally:
         pass
     
     # tidy shutdown in every case - swallow exceptions
+    TERMINATE.append(None)
+    
+    if filter_thread:
+        try:
+            filter_thread.join()
+        except:
+            pass
 
     try:
         if tcpdump:

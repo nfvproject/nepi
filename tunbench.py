@@ -21,7 +21,13 @@ def rread(remote, maxlen, remote_fd = remote.fileno(), os_read=os.read):
     bytes += len(rv)
     return rv
 
-def test(cipher, passphrase):
+def test(cipher, passphrase, plr=None):
+   if plr:
+        import random
+        def accept(packet, direction, rng=random.random):
+            return rng() > 0.5
+   else:
+        accept = None
    TERMINATE = []
    def stopme():
        time.sleep(100)
@@ -29,7 +35,8 @@ def test(cipher, passphrase):
    t = threading.Thread(target=stopme)
    t.start()
    tunchannel.tun_fwd(tun, remote, True, True, passphrase, True, TERMINATE, None, tunkqueue=500,
-        rwrite = rwrite, rread = rread, cipher=cipher)
+        rwrite = rwrite, rread = rread, cipher=cipher,
+        accept_local = accept, accept_remote = accept)
 
 # Swallow exceptions on decryption
 def decrypt(packet, crypter, super=tunchannel.decrypt):
@@ -39,6 +46,7 @@ def decrypt(packet, crypter, super=tunchannel.decrypt):
         return packet
 tunchannel.decrypt = decrypt
 
+"""
 for cipher in (None, 'AES', 'Blowfish', 'DES', 'DES3'):
     if cipher is None:
         passphrase = None
@@ -51,5 +59,14 @@ for cipher in (None, 'AES', 'Blowfish', 'DES', 'DES3'):
     pstats.Stats('tunchannel.%s.profile' % cipher).strip_dirs().sort_stats('time').print_stats()
     
     print "Bandwidth (%s): %.4fMb/s" % ( cipher, bytes / 200.0 * 8 / 2**20, )
+"""
+
+bytes = 0
+cProfile.runctx('test(None,None,0.5)',globals(),locals(),'tunchannel.plr.profile')
+
+print "Profile (50% PLR):"
+pstats.Stats('tunchannel.plr.profile').strip_dirs().sort_stats('time').print_stats()
+
+print "Bandwidth (50%% PLR): %.4fMb/s" % ( bytes / 200.0 * 8 / 2**20, )
 
 

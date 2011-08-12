@@ -670,3 +670,6 @@ class TestbedController(testbed_impl.TestbedController):
     def _make_ns3_dependency(self, parameters):
         return self._make_generic(parameters, self._app.NS3Dependency)
 
+    def _make_tun_filter(self, parameters):
+        return self._make_generic(parameters, self._interfaces.TunFilter)
+

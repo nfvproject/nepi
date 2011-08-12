@@ -191,7 +191,7 @@ def nonblock(fd):
         return False
 
 def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr=sys.stderr, reconnect=None, rwrite=None, rread=None, tunqueue=1000, tunkqueue=1000,
-        cipher='AES',
+        cipher='AES', accept_local=None, accept_remote=None, slowlocal=True,
         len=len, max=max, OSError=OSError, select=select.select, selecterror=select.error, os=os, socket=socket,
         retrycodes=(os.errno.EWOULDBLOCK, os.errno.EAGAIN, os.errno.EINTR) ):
     crypto_mode = False
@@ -260,6 +260,22 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
         # No need to inject PI headers
         twrite = os.write
         tread = os.read
+    
+    if accept_local is not None:
+        def tread(fd, maxlen, _tread=tread, accept=accept_local):
+            packet = _tread(fd, maxlen)
+            if accept(packet, 0):
+                return packet
+            else:
+                return None
+
+    if accept_remote is not None:
+        def rread(fd, maxlen, _rread=rread, accept=accept_remote):
+            packet = _rread(fd, maxlen)
+            if accept(packet, 1):
+                return packet
+            else:
+                return None
     
     # Limited frame parsing, to preserve packet boundaries.
     # Which is needed, since /dev/net/tun is unbuffered
@@ -361,11 +377,12 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
                     # behind. TUN devices discard packets if their queue is full (tunkqueue), but they
                     # don't block either (they're always ready to write), so if we flood the device 
                     # we'll have high packet loss.
-                    if not tnonblock or len(bkbuf) < tunhurry or not packetReady(bkbuf):
+                    if not tnonblock or (slowlocal and len(bkbuf) < tunhurry) or not packetReady(bkbuf):
                         break
                 else:
-                    # Give some time for the kernel to process the packets
-                    time.sleep(0)
+                    if slowlocal:
+                        # Give some time for the kernel to process the packets
+                        time.sleep(0)
             except OSError,e:
                 # This except handles the entire While block on PURPOSE
                 # as an optimization (setting a try/except block is expensive)
@@ -381,6 +398,8 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
             try:
                 while 1:
                     packet = tread(tunfd,2000) # tun.read blocks until it gets 2k!
+                    if packet is None:
+                        continue
                     #rt += 1
                     fwbuf.append(packet)
                     
@@ -397,6 +416,8 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
                 try:
                     while 1:
                         packet = rread(remote,2000)
+                        if packet is None:
+                            continue
                         #rr += 1
                         
                         if crypto_mode:
