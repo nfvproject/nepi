@@ -10,6 +10,7 @@ import os
 import os.path
 import random
 import ipaddr
+import functools
 
 import tunproto
 
@@ -135,6 +136,9 @@ class TunIface(object):
         # These get initialized when the iface is connected to its node
         self.node = None
         
+        # These get initialized when the iface is connected to any filter
+        self.filter_module = None
+        
         # These get initialized when the iface is configured
         self.external_iface = None
         
@@ -228,6 +232,10 @@ class TunIface(object):
             raise RuntimeError, "Unsupported tunnelling protocol: %s" % (self.peer_proto,)
         if not self.address or not self.netprefix or not self.netmask:
             raise RuntimeError, "Misconfigured %s iface - missing address" % (self._KIND,)
+        if self.filter_module and self.peer_proto not in ('udp','tcp',None):
+            raise RuntimeError, "Miscofnigured TUN: %s - filtered tunnels only work with udp or tcp links" % (self,)
+        if self.tun_cipher != 'PLAIN' and self.peer_proto not in ('udp','tcp',None):
+            raise RuntimeError, "Miscofnigured TUN: %s - ciphered tunnels only work with udp or tcp links" % (self,)
     
     def _impl_instance(self, home_path, listening):
         impl = self._PROTO_MAP[self.peer_proto](
@@ -462,3 +470,54 @@ class NetPipe(object):
         
         return local_path
     
+class TunFilter(object):
+    def __init__(self, api=None):
+        if not api:
+            api = plcapi.PLCAPI()
+        self._api = api
+        
+        # Attributes
+        self.module = None
+
+        # These get initialised when the filter is connected
+        self.peer_guid = None
+        self.peer_proto = None
+        self.iface_guid = None
+        self.peer = None
+        self.iface = None
+    
+    def _get(what, self):
+        wref = self.iface
+        if wref:
+            wref = wref()
+        if wref:
+            return getattr(wref, what)
+        else:
+            return None
+
+    def _set(what, self, val):
+        wref = self.iface
+        if wref:
+            wref = wref()
+        if wref:
+            setattr(wref, what, val)
+    
+    tun_proto = property(
+        functools.partial(_get, 'tun_proto'),
+        functools.partial(_set, 'tun_proto') )
+    tun_addr = property(
+        functools.partial(_get, 'tun_addr'),
+        functools.partial(_set, 'tun_addr') )
+    tun_port = property(
+        functools.partial(_get, 'tun_port'),
+        functools.partial(_set, 'tun_port') )
+    tun_key = property(
+        functools.partial(_get, 'tun_key'),
+        functools.partial(_set, 'tun_key') )
+    tun_cipher = property(
+        functools.partial(_get, 'tun_cipher'),
+        functools.partial(_set, 'tun_cipher') )
+    
+    del _get
+    del _set
+

@@ -23,6 +23,15 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
     
     port_base = 2000 + (os.getpid() % 1000) * 13
     
+    PLR50_PY = os.path.join(
+        os.path.dirname(planetlab.__file__), 
+        'scripts',
+        'plr50.py')
+    PLR50_C = os.path.join(
+        os.path.dirname(planetlab.__file__), 
+        'scripts',
+        'plr50.c')
+    
     def setUp(self):
         self.root_dir = tempfile.mkdtemp()
         self.__class__.port_base = self.port_base + 100
@@ -315,7 +324,7 @@ echo 'OKIDOKI'
         self.assertTrue(netpipe_stats, "Unavailable netpipe stats")
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
-    def _pingtest(self, TunClass, ConnectionProto, Cipher):
+    def _pingtest(self, TunClass, ConnectionProto, Cipher, Filter1=None, Filter2=None):
         instance = self.make_instance()
         
         instance.defer_create(2, "Node")
@@ -339,18 +348,38 @@ echo 'OKIDOKI'
         instance.defer_add_trace(8, "packets")
         instance.defer_add_address(8, "192.168.2.3", 24, False)
         instance.defer_connect(3, "devs", 8, "node")
-        instance.defer_connect(7, ConnectionProto, 8, ConnectionProto)
         instance.defer_create(9, "Application")
-        instance.defer_create_set(9, "command", "ping -qc1 {#[GUID-8].addr[0].[Address]#}")
+        instance.defer_create_set(9, "command", "ping -qc10 {#[GUID-8].addr[0].[Address]#}")
         instance.defer_add_trace(9, "stdout")
         instance.defer_add_trace(9, "stderr")
         instance.defer_connect(9, "node", 2, "apps")
+        
+        if Filter1:
+            instance.defer_create(10, "TunFilter")
+            instance.defer_create_set(10, "module", Filter1)
+            instance.defer_connect(7, "fd->", 10, "->fd")
+            
+        if Filter2:
+            instance.defer_create(11, "TunFilter")
+            instance.defer_create_set(11, "module", Filter2)
+            instance.defer_connect(8, "fd->", 11, "->fd")
+
+        if Filter1 and Filter2:
+            plr = "[5-9][0-9]"
+        elif Filter1 or Filter2:
+            plr = "[3-9][0-9]"
+        else:
+            plr = "0"
+       
+        instance.defer_connect(
+            (10 if Filter1 else 7), ConnectionProto, 
+            (11 if Filter2 else 8), ConnectionProto)
 
         comp_result = r"""PING .* \(.*\) \d*\(\d*\) bytes of data.
 
 --- .* ping statistics ---
-1 packets transmitted, 1 received, 0% packet loss, time \d*ms.*
-"""
+10 packets transmitted, [0-9]+ received, %s%% packet loss, time \d*ms.*
+""" % (plr,)
 
         try:
             instance.do_setup()
@@ -409,6 +438,22 @@ echo 'OKIDOKI'
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_tap_ping_gre(self):
         self._pingtest("TapInterface", "gre", "PLAIN")
+
+    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    def test_tap_ping_udp_loss1_py(self):
+        self._pingtest("TapInterface", "udp", "AES", self.PLR50_PY)
+
+    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    def test_tap_ping_udp_loss2_py(self):
+        self._pingtest("TapInterface", "udp", "AES", self.PLR50_PY, self.PLR50_PY)
+
+    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    def test_tap_ping_udp_loss1_c(self):
+        self._pingtest("TapInterface", "udp", "AES", self.PLR50_C)
+
+    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    def test_tap_ping_udp_loss2_c(self):
+        self._pingtest("TapInterface", "udp", "AES", self.PLR50_C, self.PLR50_C)
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_nepi_depends(self):

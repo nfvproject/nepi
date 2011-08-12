@@ -58,7 +58,7 @@ class TunProtoBase(object):
         # they have to be created for deployment
         # Also remove pidfile, if there is one.
         # Old pidfiles from previous runs can be troublesome.
-        cmd = "mkdir -p %(home)s ; rm -f %(home)s/pid" % {
+        cmd = "mkdir -p %(home)s ; rm -f %(home)s/pid %(home)s/*.so" % {
             'home' : server.shell_escape(self.home_path)
         }
         (out,err),proc = server.eintr_retry(server.popen_ssh_command)(
@@ -90,6 +90,13 @@ class TunProtoBase(object):
             os.path.join(os.path.dirname(__file__), 'scripts', 'tunalloc.c'),
             re.sub(r"([.]py)[co]$", r'\1', tunchannel.__file__, 1), # pyc/o files are version-specific
         ]
+        if local.filter_module:
+            filter_sources = filter(bool,map(str.strip,local.filter_module.module.split()))
+            filter_module = filter_sources[0]
+            sources.extend(set(filter_sources))
+        else:
+            filter_module = None
+            filter_sources = None
         dest = "%s@%s:%s" % (
             local.node.slicename, local.node.hostname, 
             os.path.join(self.home_path,'.'),)
@@ -119,6 +126,16 @@ class TunProtoBase(object):
             "cd .. "
             
             + ( " && "
+                "gcc -fPIC -shared %(sources)s -o %(module)s.so " % {
+                   'module' : os.path.basename(filter_module).rsplit('.',1)[0],
+                   'sources' : ' '.join(map(os.path.basename,filter_sources))
+                }
+                
+                if filter_module is not None and filter_module.endswith('.c')
+                else ""
+            )
+            
+            + ( " && "
                 "wget -q -c -O python-passfd-src.tar.gz %(passfd_url)s && "
                 "mkdir -p python-passfd && "
                 "cd python-passfd && "
@@ -126,7 +143,8 @@ class TunProtoBase(object):
                 "python setup.py build && "
                 "python setup.py install --install-lib .. "
                 
-                if local.tun_proto == "fd" else ""
+                if local.tun_proto == "fd" 
+                else ""
             ) 
           )
         % {
@@ -190,6 +208,16 @@ class TunProtoBase(object):
 
         if check_proto == 'gre' and local_cipher.lower() != 'plain':
             raise RuntimeError, "Misconfigured TUN: %s - GRE tunnels do not support encryption. Got %s, you MUST use PLAIN" % (local, local_cipher,)
+
+        if local.filter_module:
+            if check_proto not in ('udp', 'tcp'):
+                raise RuntimeError, "Miscofnigured TUN: %s - filtered tunnels only work with udp or tcp links" % (local,)
+            filter_module = filter(bool,map(str.strip,local.filter_module.module.split()))
+            filter_module = os.path.join('.',os.path.basename(filter_module[0]))
+            if filter_module.endswith('.c'):
+                filter_module = filter_module.rsplit('.',1)[0] + '.so'
+        else:
+            filter_module = None
         
         args = ["python", "tun_connect.py", 
             "-m", str(self.mode),
@@ -231,6 +259,8 @@ class TunProtoBase(object):
             args.extend(map(str,extra_args))
         if not listen and check_proto != 'fd':
             args.append(str(peer_addr))
+        if filter_module:
+            args.extend(("--filter", filter_module))
 
         self._logger.info("Starting %s", self)
         
@@ -353,6 +383,31 @@ class TunProtoBase(object):
                     self._logger.warn("if_name: Could not get interface name")
         return self._if_name
     
+    def if_alive(self):
+        name = self.if_name
+        if name:
+            local = self.local()
+            for i in xrange(30):
+                (out,err),proc = server.eintr_retry(server.popen_ssh_command)(
+                    "ip show %s >/dev/null 2>&1 && echo ALIVE || echo DEAD" % (name,),
+                    host = local.node.hostname,
+                    port = None,
+                    user = local.node.slicename,
+                    agent = None,
+                    ident_key = local.node.ident_path,
+                    server_key = local.node.server_key
+                    )
+                
+                if proc.wait():
+                    time.sleep(1)
+                    continue
+                
+                if out.strip() == 'DEAD':
+                    return False
+                elif out.strip() == 'ALIVE':
+                    return True
+        return False
+    
     def async_launch(self, check_proto, listen, extra_args=[]):
         if not self._started and not self._launcher:
             self._launcher = threading.Thread(
@@ -450,6 +505,14 @@ class TunProtoBase(object):
                 break
             time.sleep(interval)
             interval = min(30.0, interval * 1.1)
+
+        if self.if_name:
+            for i in xrange(30):
+                if not self.if_alive():
+                    self._logger.info("Device down %s", self)
+                    break
+                time.sleep(interval)
+                interval = min(30.0, interval * 1.1)
     
     _TRACEMAP = {
         # tracename : (remotename, localname)
