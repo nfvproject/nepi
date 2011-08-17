@@ -122,12 +122,16 @@ parser.add_option(
     default = None,
     help = "If specified, it should be either a .py or .so module. "
            "It will be loaded, and all incoming and outgoing packets "
-           "will be routed through it. The module will not be responsible "
+           "will be routed through it. The filter will not be responsible "
            "for buffering, packet queueing is performed in tun_connect "
            "already, so it should not concern itself with it. It should "
            "not, however, block in one direction if the other is congested.\n"
            "\n"
            "Modules are expected to have the following methods:\n"
+           "\tinit(**args)\n"
+           "\t\tIf arguments are given, this method will be called with the\n"
+           "\t\tgiven arguments (as keyword args in python modules, or a single\n"
+           "\t\tstring in c modules).\n"
            "\taccept_packet(packet, direction):\n"
            "\t\tDecide whether to drop the packet. Direction is 0 for packets "
                "coming from the local side to the remote, and 1 is for packets "
@@ -155,7 +159,21 @@ parser.add_option(
            "\n"
            "Python modules are expected to return a tuple in filter_init, "
            "either of file descriptors or file objects, while native ones "
-           "will receive two int*.\n" )
+           "will receive two int*.\n"
+           "\n"
+           "Python modules can additionally contain a custom queue class "
+           "that will replace the FIFO used by default. The class should "
+           "be named 'queueclass' and contain an interface compatible with "
+           "collections.deque. That is, indexing (especiall for q[0]), "
+           "bool(q), popleft, appendleft, pop (right), append (right), "
+           "len(q) and clear. When using a custom queue, queue size will "
+           "have no effect, pass an effective queue size to the module "
+           "by using filter_args" )
+parser.add_option(
+    "--filter-args", dest="filter_args", metavar="FILE",
+    default = None,
+    help = "If specified, packets won't be logged to standard output, "
+           "but dumped to a pcap-formatted trace in the specified file. " )
 
 (options, remaining_args) = parser.parse_args(sys.argv[1:])
 
@@ -542,13 +560,28 @@ if options.filter_module:
     if options.filter_module.endswith('.py'):
         sys.path.append(os.path.dirname(options.filter_module))
         filter_module = __import__(os.path.basename(options.filter_module).rsplit('.',1)[0])
+        if options.filter_args:
+            try:
+                filter_args = dict(map(lambda x:x.split('=',1),options.filter_args.split(',')))
+                filter_module.init(**filter_args)
+            except:
+                pass
     elif options.filter_module.endswith('.so'):
         filter_module = ctypes.cdll.LoadLibrary(options.filter_module)
-    
+        if options.filter_args:
+            try:
+                filter_module.init(options.filter_args)
+            except:
+                pass
     try:
         accept_packet = filter_module.accept_packet
     except:
         accept_packet = None
+    
+    try:
+        queueclass = filter_module.queueclass
+    except:
+        queueclass = None
     
     try:
         _filter_init = filter_module.filter_init

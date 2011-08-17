@@ -348,7 +348,7 @@ echo 'OKIDOKI'
         self.assertTrue(netpipe_stats, "Unavailable netpipe stats")
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
-    def _pingtest(self, TunClass, ConnectionProto, Cipher, Filter1=None, Filter2=None):
+    def _pingtest(self, TunClass, ConnectionProto, Cipher, Filter1=None, Filter2=None, Filter1args=None, Filter2args=None):
         instance = self.make_instance()
         
         instance.defer_create(2, "Node")
@@ -381,11 +381,15 @@ echo 'OKIDOKI'
         if Filter1:
             instance.defer_create(10, "TunFilter")
             instance.defer_create_set(10, "module", Filter1)
+            if Filter1args:
+                instance.defer_create_set(10, "args", Filter1args)
             instance.defer_connect(7, "fd->", 10, "->fd")
             
         if Filter2:
             instance.defer_create(11, "TunFilter")
             instance.defer_create_set(11, "module", Filter2)
+            if Filter2args:
+                instance.defer_create_set(11, "args", Filter2args)
             instance.defer_connect(8, "fd->", 11, "->fd")
 
         if Filter1 and Filter2:
@@ -468,19 +472,19 @@ echo 'OKIDOKI'
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_tap_ping_udp_loss1_py(self):
-        self._pingtest("TapInterface", "udp", "AES", self.PLR50_PY)
+        self._pingtest("TapInterface", "udp", "AES", self.PLR50_PY, None, "plr=50")
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_tap_ping_udp_loss2_py(self):
-        self._pingtest("TapInterface", "udp", "AES", self.PLR50_PY, self.PLR50_PY)
+        self._pingtest("TapInterface", "udp", "AES", self.PLR50_PY, self.PLR50_PY, "plr=50", "plr=50")
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_tap_ping_udp_loss1_c(self):
-        self._pingtest("TapInterface", "udp", "AES", self.PLR50_C)
+        self._pingtest("TapInterface", "udp", "AES", self.PLR50_C, None, "plr=50")
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_tap_ping_udp_loss2_c(self):
-        self._pingtest("TapInterface", "udp", "AES", self.PLR50_C, self.PLR50_C)
+        self._pingtest("TapInterface", "udp", "AES", self.PLR50_C, self.PLR50_C, "plr=50", "plr=50")
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_nepi_depends(self):

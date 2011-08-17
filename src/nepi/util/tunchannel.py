@@ -192,7 +192,7 @@ def nonblock(fd):
         return False
 
 def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr=sys.stderr, reconnect=None, rwrite=None, rread=None, tunqueue=1000, tunkqueue=1000,
-        cipher='AES', accept_local=None, accept_remote=None, slowlocal=True,
+        cipher='AES', accept_local=None, accept_remote=None, slowlocal=True, queueclass=None,
         len=len, max=max, OSError=OSError, select=select.select, selecterror=select.error, os=os, socket=socket,
         retrycodes=(os.errno.EWOULDBLOCK, os.errno.EAGAIN, os.errno.EINTR) ):
     crypto_mode = False
@@ -290,22 +290,25 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
                 else:
                     return None
     
-    # Limited frame parsing, to preserve packet boundaries.
-    # Which is needed, since /dev/net/tun is unbuffered
     maxbkbuf = maxfwbuf = max(10,tunqueue-tunkqueue)
     tunhurry = max(0,maxbkbuf/2)
-    fwbuf = collections.deque()
-    bkbuf = collections.deque()
+    
+    if queueclass is None:
+        queueclass = collections.deque
+        maxfwbuf = maxbkbuf = 2000000000
+    
+    fwbuf = queueclass()
+    bkbuf = queueclass()
     nfwbuf = 0
     nbkbuf = 0
-    if ether_mode:
+    if ether_mode or udp:
         packetReady = bool
-        pullPacket = collections.deque.popleft
-        reschedule = collections.deque.appendleft
+        pullPacket = queueclass.popleft
+        reschedule = queueclass.appendleft
     else:
         packetReady = _packetReady
         pullPacket = _pullPacket
-        reschedule = collections.deque.appendleft
+        reschedule = queueclass.appendleft
     tunfd = tun.fileno()
     os_read = os.read
     os_write = os.write
