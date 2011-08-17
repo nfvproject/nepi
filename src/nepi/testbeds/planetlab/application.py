@@ -977,7 +977,7 @@ class YumDependency(Dependency):
         
         # unpack cached rpms into yum cache, install, and cleanup
         return (
-            "tar -k --keep-newer-files -C /var/cache/yum -xf packages.tar && "
+            "sudo -S tar -k --keep-newer-files -C /var/cache/yum -xf packages.tar && "
             "sudo -S nice yum -y install %s && "
             "sudo -S nice yum -y clean packages "
         ) % ( depends, )
