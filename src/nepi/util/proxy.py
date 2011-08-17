@@ -62,6 +62,8 @@ GET_TESTBED_VERSION = 40
 TRACES_INFO = 41
 EXEC_XML = 42
 TESTBED_STATUS  = 43
+STARTED_TIME  = 44
+STOPPED_TIME  = 45
 
 instruction_text = dict({
     OK:     "OK",
@@ -105,6 +107,9 @@ instruction_text = dict({
     TESTBED_ID: "TESTBED_ID",
     TESTBED_VERSION: "TESTBED_VERSION",
     TRACES_INFO: "TRACES_INFO",
+    STARTED_TIME: "STARTED_TIME",
+    STOPPED_TIME: "STOPPED_TIME",
+
     })
 
 def log_msg(server, params):
@@ -278,7 +283,7 @@ class Marshalling:
         @staticmethod
         def nullint(sdata):
             return None if sdata == "None" else int(sdata)
-        
+
         @staticmethod
         def bool(sdata):
             return sdata == 'True'
@@ -717,6 +722,18 @@ class ExperimentControllerServer(BaseServer):
     @Marshalling.retval( Marshalling.pickled_data )
     def guids(self):
         return self._experiment.guids
+
+    @Marshalling.handles(STARTED_TIME)
+    @Marshalling.args()
+    @Marshalling.retval( Marshalling.pickled_data )
+    def started_time(self):
+        return self._experiment.started_time
+
+    @Marshalling.handles(STOPPED_TIME)
+    @Marshalling.args()
+    @Marshalling.retval( Marshalling.pickled_data )
+    def stopped_time(self):
+        return self._experiment.stopped_time
 
     @Marshalling.handles(XML)
     @Marshalling.args()
