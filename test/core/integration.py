@@ -90,6 +90,8 @@ class ExecuteTestCase(unittest.TestCase):
         controller = proxy.create_experiment_controller(xml, access_config)
 
         controller.start()
+        started_time = controller.started_time
+        self.assertTrue(started_time < time.time())
         while not controller.is_finished(app.guid):
             time.sleep(0.5)
         fake_result = controller.trace(app.guid, "fake")
@@ -105,6 +107,8 @@ class ExecuteTestCase(unittest.TestCase):
         self.assertEquals(controller.get_factory_id(node1.guid), "Node")
 
         controller.stop()
+        stopped_time = controller.stopped_time
+        self.assertTrue(stopped_time < time.time())
         controller.shutdown()
 
     def test_daemonized_controller_integration(self):
@@ -116,6 +120,8 @@ class ExecuteTestCase(unittest.TestCase):
         controller = proxy.create_experiment_controller(xml, access_config)
 
         controller.start()
+        started_time = controller.started_time
+        self.assertTrue(started_time < time.time())
         while not controller.is_finished(app.guid):
             time.sleep(0.5)
         fake_result = controller.trace(app.guid, "fake")
@@ -131,6 +137,8 @@ class ExecuteTestCase(unittest.TestCase):
         self.assertEquals(controller.get_factory_id(node1.guid), "Node")
 
         controller.stop()
+        stopped_time = controller.stopped_time
+        self.assertTrue(stopped_time < time.time())
         controller.shutdown()
 
     def test_daemonized_testbed_integration(self):

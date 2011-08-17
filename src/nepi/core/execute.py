@@ -12,6 +12,7 @@ import ConfigParser
 import os
 import collections
 import functools
+import time
 
 ATTRIBUTE_PATTERN_BASE = re.compile(r"\{#\[(?P<label>[-a-zA-Z0-9._]*)\](?P<expr>(?P<component>\.addr\[[0-9]+\]|\.route\[[0-9]+\]|\.trace\[[0-9]+\])?.\[(?P<attribute>[-a-zA-Z0-9._]*)\])#}")
 ATTRIBUTE_PATTERN_GUID_SUB = r"{#[%(guid)s]%(expr)s#}"
@@ -236,6 +237,8 @@ class ExperimentController(object):
         self._netreffed_testbeds = set()
         self._guids_in_testbed_cache = dict()
         self._failed_testbeds = set()
+        self._started_time = None
+        self._stopped_time = None
         
         if experiment_xml is None and root_dir is not None:
             # Recover
@@ -251,6 +254,14 @@ class ExperimentController(object):
     @property
     def experiment_execute_xml(self):
         return self._experiment_execute_xml
+
+    @property
+    def started_time(self):
+        return self._started_time
+
+    @property
+    def stopped_time(self):
+        return self._stopped_time
 
     @property
     def guids(self):
@@ -322,6 +333,7 @@ class ExperimentController(object):
             raise eTyp, eVal, eLoc
 
     def start(self):
+        self._started_time = time.time() 
         self._start()
 
     def _start(self, recover = False):
@@ -570,6 +582,7 @@ class ExperimentController(object):
        for testbed in self._testbeds.values():
            testbed.stop()
        self._unpersist_testbed_proxies()
+       self._stopped_time = time.time() 
    
     def recover(self):
         # reload perviously persisted testbed access configurations
