@@ -928,8 +928,8 @@ attributes = dict({
                 "value": True,
                 "validation_function": validation.is_bool
             }),
-    "device_name": dict({
-                "name": "name",
+    "if_name": dict({
+                "name": "if_name",
                 "help": "Device name",
                 "type": Attribute.STRING,
                 "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
@@ -1210,7 +1210,7 @@ factories_info = dict({
             "configure_function": postconfigure_tuniface,
             "prestart_function": wait_tuniface,
             "box_attributes": [
-                "up", "device_name", "mtu", "snat", "pointopoint",
+                "up", "if_name", "mtu", "snat", "pointopoint",
                 "txqueuelen",
                 "tun_proto", "tun_addr", "tun_port", "tun_key", "tun_cipher",
             ],
@@ -1226,7 +1226,7 @@ factories_info = dict({
             "configure_function": postconfigure_tuniface,
             "prestart_function": wait_tuniface,
             "box_attributes": [
-                "up", "device_name", "mtu", "snat", "pointopoint",
+                "up", "if_name", "mtu", "snat", "pointopoint",
                 "txqueuelen",
                 "tun_proto", "tun_addr", "tun_port", "tun_key", "tun_cipher",
             ],

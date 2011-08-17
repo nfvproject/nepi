@@ -124,7 +124,6 @@ class TunIface(object):
         self.netmask = None
         
         self.up = None
-        self.device_name = None
         self.mtu = None
         self.snat = False
         self.txqueuelen = None
