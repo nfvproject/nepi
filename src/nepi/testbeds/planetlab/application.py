@@ -956,17 +956,15 @@ class YumDependency(Dependency):
         
         # download rpms and pack into a tar archive
         return (
-            "sudo -S yum -y makecache && "
+            "sudo -S nice yum -y makecache && "
             "sudo -S sed -i -r 's/keepcache *= *0/keepcache=1/' /etc/yum.conf && "
             " ( ( "
-                "sudo -S yum -y install %s ; "
+                "sudo -S nice yum -y install %s ; "
                 "rm -f ${BUILD}/packages.tar ; "
-                "( tar -C /var/cache/yum -rf ${BUILD}/packages.tar $(find /var/cache/yum -iname '*.rpm')"
-                    # Try again if it fails, some files sometimes disappear because yum deletes them
-                "  || ( rm -f ${BUILD}/packages.tar ; tar -C /var/cache/yum -rf ${BUILD}/packages.tar $(find /var/cache/yum -iname '*.rpm') ) )"
+                "tar -C /var/cache/yum -rf ${BUILD}/packages.tar $(cd /var/cache/yum ; find -iname '*.rpm')"
             " ) || /bin/true ) && "
             "sudo -S sed -i -r 's/keepcache *= *1/keepcache=0/' /etc/yum.conf && "
-            "sudo -S yum -y clean packages "
+            "sudo -S nice yum -y clean packages "
         ) % ( depends, )
     def _build_set(self, value):
         # ignore
@@ -980,8 +978,8 @@ class YumDependency(Dependency):
         # unpack cached rpms into yum cache, install, and cleanup
         return (
             "tar -k --keep-newer-files -C /var/cache/yum -xf packages.tar && "
-            "sudo -S yum -y install %s && "
-            "sudo -S yum -y clean packages "
+            "sudo -S nice yum -y install %s && "
+            "sudo -S nice yum -y clean packages "
         ) % ( depends, )
     def _install_set(self, value):
         # ignore
