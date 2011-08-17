@@ -251,11 +251,11 @@ def tunopen(tun_path, tun_name):
     return tun
 
 def tunclose(tun_path, tun_name, tun):
-    if tun_path.isdigit():
+    if tun_path and tun_path.isdigit():
         # close TUN fd
         os.close(int(tun_path))
         tun.close()
-    else:
+    elif tun:
         # close TUN object
         tun.close()
 
@@ -359,7 +359,7 @@ def pl_tuntap_namealloc(kind, tun_path, tun_name):
     global _name_reservation
     # Serialize access
     lockfile = open("/tmp/nepi-tun-connect.lock", "a")
-    _name_reservation = lock = HostLock(lockfile)
+    lock = HostLock(lockfile)
     
     # We need to do this, fd_tuntap is the only one who can
     # tell us our slice id (this script runs as root, so no uid),
@@ -382,6 +382,8 @@ def pl_tuntap_namealloc(kind, tun_path, tun_name):
     else:
         raise RuntimeError, "Could not assign interface name"
     
+    _name_reservation = lock
+    
     return None, name
 
 def pl_vif_start(tun_path, tun_name):
@@ -389,7 +391,6 @@ def pl_vif_start(tun_path, tun_name):
 
     out = []
     def outreader():
-        stdout = open("/vsys/vif_up.out","r")
         out.append(stdout.read())
         stdout.close()
         time.sleep(1)
@@ -400,6 +401,7 @@ def pl_vif_start(tun_path, tun_name):
     _name_reservation = None
     
     stdin = open("/vsys/vif_up.in","w")
+    stdout = open("/vsys/vif_up.out","r")
 
     t = threading.Thread(target=outreader)
     t.start()
@@ -428,7 +430,6 @@ def pl_vif_start(tun_path, tun_name):
 def pl_vif_stop(tun_path, tun_name):
     out = []
     def outreader():
-        stdout = open("/vsys/vif_down.out","r")
         out.append(stdout.read())
         stdout.close()
         
@@ -449,6 +450,7 @@ def pl_vif_stop(tun_path, tun_name):
     lock = HostLock(lockfile)
 
     stdin = open("/vsys/vif_down.in","w")
+    stdout = open("/vsys/vif_down.out","r")
     
     t = threading.Thread(target=outreader)
     t.start()
@@ -610,6 +612,8 @@ try:
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         retrydelay = 1.0
         for i in xrange(30):
+            if TERMINATE:
+                raise OSError, "Killed"
             try:
                 sock.connect(options.pass_fd)
                 break
@@ -648,6 +652,8 @@ try:
             rsock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
             retrydelay = 1.0
             for i in xrange(30):
+                if TERMINATE:
+                    raise OSError, "Killed"
                 try:
                     rsock.bind((hostaddr,options.udp))
                     break
@@ -662,6 +668,37 @@ try:
         else:
             print >>sys.stderr, "Error: need a remote endpoint in UDP mode"
             raise AssertionError, "Error: need a remote endpoint in UDP mode"
+        
+        # Wait for other peer
+        endme = False
+        def keepalive():
+            while not endme and not TERMINATE:
+                try:
+                    rsock.send('')
+                except:
+                    pass
+                time.sleep(1)
+            try:
+                rsock.send('')
+            except:
+                pass
+        keepalive_thread = threading.Thread(target=keepalive)
+        keepalive_thread.start()
+        retrydelay = 1.0
+        for i in xrange(30):
+            if TERMINATE:
+                raise OSError, "Killed"
+            try:
+                heartbeat = rsock.recv(10)
+                break
+            except:
+                time.sleep(min(30.0,retrydelay))
+                retrydelay *= 1.1
+        else:
+            heartbeat = rsock.recv(10)
+        endme = True
+        keepalive_thread.join()
+        
         remote = os.fdopen(rsock.fileno(), 'r+b', 0)
     else:
         # connect to remote endpoint
@@ -670,6 +707,8 @@ try:
             rsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
             retrydelay = 1.0
             for i in xrange(30):
+                if TERMINATE:
+                    raise OSError, "Killed"
                 try:
                     rsock.connect((remaining_args[0],options.port))
                     break
@@ -685,6 +724,8 @@ try:
             lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
             retrydelay = 1.0
             for i in xrange(30):
+                if TERMINATE:
+                    raise OSError, "Killed"
                 try:
                     lsock.bind((hostaddr,options.port))
                     break
@@ -699,13 +740,6 @@ try:
             rsock,raddr = lsock.accept()
         remote = os.fdopen(rsock.fileno(), 'r+b', 0)
 
-    if not options.no_capture:
-        # Launch a tcpdump subprocess, to capture and dump packets.
-        # Make sure to catch sigterm and kill the tcpdump as well
-        tcpdump = subprocess.Popen(
-            ["tcpdump","-l","-n","-i",tun_name, "-s", "4096"]
-            + ["-w",options.pcap_capture,"-U"] * bool(options.pcap_capture) )
-    
     if filter_init:
         filter_local, filter_remote = filter_init()
         
@@ -723,6 +757,13 @@ try:
         filter_thread.start()
     
     print >>sys.stderr, "Connected"
+
+    if not options.no_capture:
+        # Launch a tcpdump subprocess, to capture and dump packets.
+        # Make sure to catch sigterm and kill the tcpdump as well
+        tcpdump = subprocess.Popen(
+            ["tcpdump","-l","-n","-i",tun_name, "-s", "4096"]
+            + ["-w",options.pcap_capture,"-U"] * bool(options.pcap_capture) )
     
     # Try to give us high priority
     try:
@@ -769,6 +810,12 @@ try:
                 accept_remote = accept_packet,
                 slowlocal = False)
         
+        localthread = threading.Thread(target=localside)
+        remotethread = threading.Thread(target=remoteside)
+        localthread.start()
+        remotethread.start()
+        localthread.join()
+        remotethread.join()
 
 finally:
     try:

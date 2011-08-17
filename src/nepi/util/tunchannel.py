@@ -167,15 +167,16 @@ def encrypt(packet, crypter, len=len, padmap=_padmap):
     return crypter.encrypt(packet)
 
 def decrypt(packet, crypter, ord=ord):
-    # decrypt
-    packet = crypter.decrypt(packet)
-    
-    # un-pad
-    padding = ord(packet[-1])
-    if not (0 < padding <= crypter.block_size):
-        # wrong padding
-        raise RuntimeError, "Truncated packet"
-    packet = packet[:-padding]
+    if packet:
+        # decrypt
+        packet = crypter.decrypt(packet)
+        
+        # un-pad
+        padding = ord(packet[-1])
+        if not (0 < padding <= crypter.block_size):
+            # wrong padding
+            raise RuntimeError, "Truncated packet"
+        packet = packet[:-padding]
     
     return packet
 
@@ -261,6 +262,10 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
         twrite = os.write
         tread = os.read
     
+    encrypt_ = encrypt
+    decrypt_ = decrypt
+    xrange_ = xrange
+
     if accept_local is not None:
         def tread(fd, maxlen, _tread=tread, accept=accept_local):
             packet = _tread(fd, maxlen)
@@ -270,12 +275,20 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
                 return None
 
     if accept_remote is not None:
-        def rread(fd, maxlen, _rread=rread, accept=accept_remote):
-            packet = _rread(fd, maxlen)
-            if accept(packet, 1):
-                return packet
-            else:
-                return None
+        if crypto_mode:
+            def decrypt_(packet, crypter, decrypt_=decrypt_, accept=accept_remote):
+                packet = decrypt_(packet, crypter)
+                if accept(packet, 1):
+                    return packet
+                else:
+                    return None
+        else:
+            def rread(fd, maxlen, _rread=rread, accept=accept_remote):
+                packet = _rread(fd, maxlen)
+                if accept(packet, 1):
+                    return packet
+                else:
+                    return None
     
     # Limited frame parsing, to preserve packet boundaries.
     # Which is needed, since /dev/net/tun is unbuffered
@@ -296,23 +309,29 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
     tunfd = tun.fileno()
     os_read = os.read
     os_write = os.write
-    encrypt_ = encrypt
-    decrypt_ = decrypt
+    
+    remoteok = True
+    
     while not TERMINATE:
         wset = []
         if packetReady(bkbuf):
             wset.append(tun)
-        if packetReady(fwbuf):
+        if remoteok and packetReady(fwbuf):
             wset.append(remote)
         
         rset = []
         if len(fwbuf) < maxfwbuf:
             rset.append(tun)
-        if len(bkbuf) < maxbkbuf:
+        if remoteok and len(bkbuf) < maxbkbuf:
             rset.append(remote)
         
+        if remoteok:
+            eset = (tun,remote)
+        else:
+            eset = (tun,)
+        
         try:
-            rdrdy, wrdy, errs = select(rset,wset,(tun,remote),1)
+            rdrdy, wrdy, errs = select(rset,wset,eset,1)
         except selecterror, e:
             if e.args[0] == errno.EINTR:
                 # just retry
@@ -326,16 +345,23 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
                     remote_fd = remote.fileno()
             elif udp and remote in errs and tun not in errs:
                 # In UDP mode, those are always transient errors
-                pass
+                # Usually, an error will imply a read-ready socket
+                # that will raise an "Connection refused" error, so
+                # disable read-readiness just for now, and retry
+                # the select
+                remoteok = False
+                continue
             else:
                 break
+        else:
+            remoteok = True
         
         # check to see if we can write
         #rr = wr = rt = wt = 0
         if remote in wrdy:
             try:
                 try:
-                    while 1:
+                    for x in xrange(2000):
                         packet = pullPacket(fwbuf)
 
                         if crypto_mode:
@@ -396,9 +422,9 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
         # check incoming data packets
         if tun in rdrdy:
             try:
-                while 1:
+                for x in xrange(2000):
                     packet = tread(tunfd,2000) # tun.read blocks until it gets 2k!
-                    if packet is None:
+                    if not packet:
                         continue
                     #rt += 1
                     fwbuf.append(packet)
@@ -414,14 +440,21 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
         if remote in rdrdy:
             try:
                 try:
-                    while 1:
+                    for x in xrange(2000):
                         packet = rread(remote,2000)
-                        if packet is None:
-                            continue
                         #rr += 1
                         
                         if crypto_mode:
                             packet = decrypt_(packet, crypter)
+                            if not packet:
+                                continue
+                        elif not packet:
+                            if not udp and packet == "":
+                                # Connection broken, try to reconnect (or just die)
+                                raise RuntimeError, "Connection broken"
+                            else:
+                                continue
+
                         bkbuf.append(packet)
                         
                         if not rnonblock or len(bkbuf) >= maxbkbuf:
@@ -442,7 +475,7 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
                 elif not udp:
                     # in UDP mode, we ignore errors - packet loss man...
                     raise
-                #traceback.print_exc(file=sys.stderr)
+                traceback.print_exc(file=sys.stderr)
         
         #print >>sys.stderr, "rr:%d\twr:%d\trt:%d\twt:%d" % (rr,wr,rt,wt)
 

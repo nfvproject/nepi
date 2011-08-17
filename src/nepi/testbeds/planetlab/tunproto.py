@@ -31,6 +31,7 @@ class TunProtoBase(object):
         
         self._launcher = None
         self._started = False
+        self._started_listening = False
         self._starting = False
         self._pid = None
         self._ppid = None
@@ -296,6 +297,7 @@ class TunProtoBase(object):
         # Tunnel should be still running in its node
         # Just check its pidfile and we're done
         self._started = True
+        self._started_listening = True
         self.checkpid()
     
     def _launch_and_wait(self, *p, **kw):
@@ -318,11 +320,13 @@ class TunProtoBase(object):
             time.sleep(1.0)
         
         # Wait for the connection to be established
+        retrytime = 2.0
         for spin in xrange(30):
             if self.status() != rspawn.RUNNING:
                 self._logger.warn("FAILED TO CONNECT! %s", self)
                 break
             
+            # Connected?
             (out,err),proc = server.eintr_retry(server.popen_ssh_command)(
                 "cd %(home)s ; grep -c Connected capture" % dict(
                     home = server.shell_escape(self.home_path)),
@@ -333,16 +337,43 @@ class TunProtoBase(object):
                 ident_key = local.node.ident_path,
                 server_key = local.node.server_key
                 )
-            
-            if proc.wait():
+            proc.wait()
+
+            if out.strip() == '1':
                 break
+
+            # At least listening?
+            (out,err),proc = server.eintr_retry(server.popen_ssh_command)(
+                "cd %(home)s ; grep -c Listening capture" % dict(
+                    home = server.shell_escape(self.home_path)),
+                host = local.node.hostname,
+                port = None,
+                user = local.node.slicename,
+                agent = None,
+                ident_key = local.node.ident_path,
+                server_key = local.node.server_key
+                )
+            proc.wait()
+
+            if out.strip() == '1':
+                self._started_listening = True
             
-            if out.strip() != '0':
-                break
-            
-            time.sleep(1.0)
+            time.sleep(min(30.0, retrytime))
+            retrytime *= 1.1
         else:
-            self._logger.warn("FAILED TO CONNECT! %s", self)
+            (out,err),proc = server.eintr_retry(server.popen_ssh_command)(
+                "cat %(home)s/capture" % dict(
+                    home = server.shell_escape(self.home_path)),
+                host = local.node.hostname,
+                port = None,
+                user = local.node.slicename,
+                agent = None,
+                ident_key = local.node.ident_path,
+                server_key = local.node.server_key
+                )
+            proc.wait()
+
+            raise RuntimeError, "FAILED TO CONNECT %s: %s%s" % (self,out,err)
     
     @property
     def if_name(self):
@@ -419,12 +450,24 @@ class TunProtoBase(object):
     def async_launch_wait(self):
         if self._launcher:
             self._launcher.join()
-            if not self._started:
+
+            if self._launcher._exc:
+                exctyp,exval,exctrace = self._launcher._exc[0]
+                raise exctyp,exval,exctrace
+            elif not self._started:
+                raise RuntimeError, "Failed to launch TUN forwarder"
+        elif not self._started:
+            self.launch()
+
+    def async_launch_wait_listening(self):
+        if self._launcher:
+            for x in xrange(180):
                 if self._launcher._exc:
                     exctyp,exval,exctrace = self._launcher._exc[0]
                     raise exctyp,exval,exctrace
-                else:
-                    raise RuntimeError, "Failed to launch TUN forwarder"
+                elif self._started and self._started_listening:
+                    break
+                time.sleep(1)
         elif not self._started:
             self.launch()
 
@@ -473,7 +516,7 @@ class TunProtoBase(object):
                 )
             return status
     
-    def kill(self):
+    def kill(self, nowait = True):
         local = self.local()
         
         if not local:
@@ -493,7 +536,7 @@ class TunProtoBase(object):
                 ident_key = local.node.ident_path,
                 server_key = local.node.server_key,
                 sudo = True,
-                nowait = True
+                nowait = nowait
                 )
     
     def waitkill(self):
@@ -505,6 +548,8 @@ class TunProtoBase(object):
                 break
             time.sleep(interval)
             interval = min(30.0, interval * 1.1)
+        else:
+            self.kill(nowait=False)
 
         if self.if_name:
             for i in xrange(30):
@@ -674,7 +719,7 @@ class TunProtoTCP(TunProtoBase):
             # make sure our peer is ready
             peer = self.peer()
             if peer and peer.peer_proto_impl:
-                peer.peer_proto_impl.async_launch_wait()
+                peer.peer_proto_impl.async_launch_wait_listening()
             
             if not self._started:
                 self.async_launch('tcp', False)
