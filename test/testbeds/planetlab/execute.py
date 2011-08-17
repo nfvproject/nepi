@@ -31,6 +31,10 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
         os.path.dirname(planetlab.__file__), 
         'scripts',
         'plr50.c')
+    TOS_PY = os.path.join(
+        os.path.dirname(planetlab.__file__), 
+        'scripts',
+        'tosqueue.py')
     
     def setUp(self):
         self.root_dir = tempfile.mkdtemp()
@@ -485,6 +489,10 @@ echo 'OKIDOKI'
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_tap_ping_udp_loss2_c(self):
         self._pingtest("TapInterface", "udp", "AES", self.PLR50_C, self.PLR50_C, "plr=50", "plr=50")
+
+    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    def test_tap_ping_udp_tos(self):
+        self._pingtest("TapInterface", "udp", "AES", self.TOS_PY, self.TOS_PY, "size=1000", "size=1000")
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_nepi_depends(self):

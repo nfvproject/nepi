@@ -35,6 +35,8 @@ def test(cipher, passphrase, plr=None, queuemodule=None):
             'src','nepi','testbeds','planetlab','scripts'))
         queuemodule = __import__(queuemodule)
         queueclass = queuemodule.queueclass
+   else:
+        queueclass = None
    TERMINATE = []
    def stopme():
        time.sleep(100)
@@ -52,7 +54,7 @@ def decrypt(packet, crypter, super=tunchannel.decrypt):
     except:
         return packet
 tunchannel.decrypt = decrypt
-"""
+
 for cipher in (None, 'AES', 'Blowfish', 'DES', 'DES3'):
     if cipher is None:
         passphrase = None
@@ -73,7 +75,6 @@ print "Profile (50% PLR):"
 pstats.Stats('tunchannel.plr.profile').strip_dirs().sort_stats('time').print_stats()
 
 print "Bandwidth (50%% PLR): %.4fMb/s" % ( bytes / 200.0 * 8 / 2**20, )
-"""
 
 bytes = 0
 cProfile.runctx('test(None,None,None,"tosqueue")',globals(),locals(),'tunchannel.tos.profile')
