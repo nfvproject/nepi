@@ -53,6 +53,9 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
         pl_ssh_key = os.environ.get(
             "PL_SSH_KEY",
             "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'],) )
+        slicename = os.environ.get(
+            "PL_SLICE",
+            slicename)
         pl_user, pl_pwd = test_util.pl_auth()
         
         instance.defer_configure("homeDirectory", self.root_dir)
@@ -63,6 +66,12 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
         instance.defer_configure("plcHost", plchost)
         instance.defer_configure("tapPortBase", self.port_base)
         instance.defer_configure("p2pDeployment", False) # it's interactive, we don't want it in tests
+        instance.defer_configure("dedicatedSlice", True)
+        
+        # Hack, but we need vsys_vnet
+        instance.do_setup()
+        vnet = instance.vsys_vnet
+        self.net_prefix = vnet.rsplit('.',1)[0]
         
         return instance
 
@@ -116,7 +125,10 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
             ping_result = instance.trace(7, "stdout") or ""
             instance.stop()
         finally:
-            instance.shutdown()
+            try:
+                instance.shutdown()
+            except:
+                pass
 
         # asserts at the end, to make sure there's proper cleanup
         self.assertTrue(re.match(comp_result, ping_result, re.MULTILINE),
@@ -155,7 +167,10 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
             comp_result = r".*GNU Fortran \(GCC\).*"
             instance.stop()
         finally:
-            instance.shutdown()
+            try:
+                instance.shutdown()
+            except:
+                pass
 
         # asserts at the end, to make sure there's proper cleanup
         self.assertTrue(re.match(comp_result, ping_result, re.MULTILINE),
@@ -212,7 +227,10 @@ FIONREAD = 0x[0-9a-fA-F]{8}.*
             ping_result = instance.trace(10, "stdout") or ""
             instance.stop()
         finally:
-            instance.shutdown()
+            try:
+                instance.shutdown()
+            except:
+                pass
 
         # asserts at the end, to make sure there's proper cleanup
         self.assertTrue(re.match(comp_result, ping_result, re.MULTILINE),
@@ -229,7 +247,7 @@ FIONREAD = 0x[0-9a-fA-F]{8}.*
         instance.defer_create(4, "Internet")
         instance.defer_connect(3, "inet", 4, "devs")
         instance.defer_create(5, "TunInterface")
-        instance.defer_add_address(5, "192.168.2.2", 24, False)
+        instance.defer_add_address(5, self.net_prefix+".2", 24, False)
         instance.defer_connect(2, "devs", 5, "node")
         instance.defer_create(6, "Application")
         instance.defer_create_set(6, "command", """
@@ -261,7 +279,10 @@ echo 'OKIDOKI'
             comp_result = "OKIDOKI"
             instance.stop()
         finally:
-            instance.shutdown()
+            try:
+                instance.shutdown()
+            except:
+                pass
 
         # asserts at the end, to make sure there's proper cleanup
         self.assertEqual(comp_result, test_result)
@@ -311,7 +332,10 @@ echo 'OKIDOKI'
             
             instance.stop()
         finally:
-            instance.shutdown()
+            try:
+                instance.shutdown()
+            except:
+                pass
 
         # asserts at the end, to make sure there's proper cleanup
         match = re.match(comp_result, test_result, re.MULTILINE)
@@ -341,12 +365,12 @@ echo 'OKIDOKI'
         instance.defer_create(7, TunClass)
         instance.defer_create_set(7, "tun_cipher", Cipher)
         instance.defer_add_trace(7, "packets")
-        instance.defer_add_address(7, "192.168.2.2", 24, False)
+        instance.defer_add_address(7, self.net_prefix+".2", 24, False)
         instance.defer_connect(2, "devs", 7, "node")
         instance.defer_create(8, TunClass)
         instance.defer_create_set(8, "tun_cipher", Cipher)
         instance.defer_add_trace(8, "packets")
-        instance.defer_add_address(8, "192.168.2.3", 24, False)
+        instance.defer_add_address(8, self.net_prefix+".3", 24, False)
         instance.defer_connect(3, "devs", 8, "node")
         instance.defer_create(9, "Application")
         instance.defer_create_set(9, "command", "ping -qc10 {#[GUID-8].addr[0].[Address]#}")
@@ -378,7 +402,7 @@ echo 'OKIDOKI'
         comp_result = r"""PING .* \(.*\) \d*\(\d*\) bytes of data.
 
 --- .* ping statistics ---
-10 packets transmitted, [0-9]+ received, %s%% packet loss, time \d*ms.*
+10 packets transmitted, [0-9]+ received,.* %s%% packet loss, time \d*ms.*
 """ % (plr,)
 
         try:
@@ -406,7 +430,10 @@ echo 'OKIDOKI'
             packets2 = instance.trace(8, "packets") or ""
             instance.stop()
         finally:
-            instance.shutdown()
+            try:
+                instance.shutdown()
+            except:
+                pass
 
         # asserts at the end, to make sure there's proper cleanup
         self.assertTrue(re.match(comp_result, ping_result, re.MULTILINE),
@@ -487,7 +514,10 @@ echo 'OKIDOKI'
             ping_result = (instance.trace(12, "stderr") or "").strip()
             instance.stop()
         finally:
-            instance.shutdown()
+            try:
+                instance.shutdown()
+            except:
+                pass
         
         # asserts at the end, to make sure there's proper cleanup
         self.assertEqual(ping_result, "")
@@ -529,7 +559,10 @@ echo 'OKIDOKI'
             ping_result = (instance.trace(12, "stderr") or "").strip()
             instance.stop()
         finally:
-            instance.shutdown()
+            try:
+                instance.shutdown()
+            except:
+                pass
         
         # asserts at the end, to make sure there's proper cleanup
         self.assertEqual(ping_result, "")
@@ -584,7 +617,10 @@ echo 'OKIDOKI'
             ping_result = instance.trace(7, "stdout") or ""
             instance.stop()
         finally:
-            instance.shutdown()
+            try:
+                instance.shutdown()
+            except:
+                pass
 
         # asserts at the end, to make sure there's proper cleanup
         self.assertTrue(re.match(comp_result, ping_result, re.MULTILINE),
