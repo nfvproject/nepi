@@ -295,6 +295,7 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
     
     if queueclass is None:
         queueclass = collections.deque
+    else:
         maxfwbuf = maxbkbuf = 2000000000
     
     fwbuf = queueclass()
