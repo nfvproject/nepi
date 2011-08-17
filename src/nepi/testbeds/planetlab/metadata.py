@@ -1128,6 +1128,13 @@ attributes = dict({
                 "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_string
             }),
+    "args": dict({
+                "name": "args",
+                "help": "Module arguments - comma-separated list of name=value pairs",
+                "type": Attribute.STRING,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+                "validation_function": validation.is_string
+            }),
     })
 
 traces = dict({
@@ -1235,11 +1242,57 @@ factories_info = dict({
             "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
         }),
     TUNFILTER: dict({
-            "help": "TUN/TAP stream filter",
+            "help": "TUN/TAP stream filter\n\n"
+                    "If specified, it should be either a .py or .so module. "
+                    "It will be loaded, and all incoming and outgoing packets "
+                    "will be routed through it. The filter will not be responsible "
+                    "for buffering, packet queueing is performed in tun_connect "
+                    "already, so it should not concern itself with it. It should "
+                    "not, however, block in one direction if the other is congested.\n"
+                    "\n"
+                    "Modules are expected to have the following methods:\n"
+                    "\tinit(**args)\n"
+                    "\t\tIf arguments are given, this method will be called with the\n"
+                    "\t\tgiven arguments (as keyword args in python modules, or a single\n"
+                    "\taccept_packet(packet, direction):\n"
+                    "\t\tDecide whether to drop the packet. Direction is 0 for packets "
+                        "coming from the local side to the remote, and 1 is for packets "
+                        "coming from the remote side to the local. Return a boolean, "
+                        "true if the packet is not to be dropped.\n"
+                    "\tfilter_init():\n"
+                    "\t\tInitializes a filtering pipe (filter_run). It should "
+                        "return two file descriptors to use as a bidirectional "
+                        "pipe: local and remote. 'local' is where packets from the "
+                        "local side will be written to. After filtering, those packets "
+                        "should be written to 'remote', where tun_connect will read "
+                        "from, and it will forward them to the remote peer. "
+                        "Packets from the remote peer will be written to 'remote', "
+                        "where the filter is expected to read from, and eventually "
+                        "forward them to the local side. If the file descriptors are "
+                        "not nonblocking, they will be set to nonblocking. So it's "
+                        "better to set them from the start like that.\n"
+                    "\tfilter_run(local, remote):\n"
+                    "\t\tIf filter_init is provided, it will be called repeatedly, "
+                        "in a separate thread until the process is killed. It should "
+                        "sleep at most for a second.\n"
+                    "\tfilter_close(local, remote):\n"
+                    "\t\tCalled then the process is killed, if filter_init was provided. "
+                        "It should, among other things, close the file descriptors.\n"
+                    "\n"
+                    "Python modules are expected to return a tuple in filter_init, "
+                    "either of file descriptors or file objects, while native ones "
+                    "will receive two int*.\n"
+                    "\n"
+                    "Python modules can additionally contain a custom queue class "
+                    "that will replace the FIFO used by default. The class should "
+                    "be named 'queueclass' and contain an interface compatible with "
+                    "collections.deque. That is, indexing (especiall for q[0]), "
+                    "bool(q), popleft, appendleft, pop (right), append (right), "
+                    "len(q) and clear.",
             "category": FC.CATEGORY_CHANNELS,
             "create_function": create_tunfilter,
             "box_attributes": [
-                "module",
+                "module", "args",
                 "tun_proto", "tun_addr", "tun_port", "tun_key", "tun_cipher",
             ],
             "connector_types": ["->fd","udp","tcp"],
