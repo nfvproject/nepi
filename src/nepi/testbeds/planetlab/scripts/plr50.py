@@ -1,6 +1,8 @@
 import random
 
+random.seed(1234)
+
 def accept_packet(packet, direction, rng=random.random):
-    return rng() > 0.5
+    return direction or rng() > 0.5
 
 
