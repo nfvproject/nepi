@@ -467,12 +467,13 @@ class Node(object):
 
         (out,err),proc = server.popen_ssh_command(
             # Some apps need two kills
-            "sudo -S killall -u %(slicename)s ; "
-            "sudo -S killall -u %(slicename)s ; "
-            "sudo -S killall python tcpdump ; "
-            "sudo -S kill $(ps -N T -o pid --no-heading | sort) ; "
-            "sudo -S killall -u root ; "
-            "sudo -S killall -u root " % {
+            "sudo -S killall python tcpdump || /bin/true ; "
+            "sudo -S killall python tcpdump || /bin/true ; "
+            "sudo -S kill $(ps -N T -o pid --no-heading | sort) || /bin/true ; "
+            "sudo -S killall -u %(slicename)s || /bin/true ; "
+            "sudo -S killall -u %(slicename)s || /bin/true ; "
+            "sudo -S killall -u root || /bin/true ; "
+            "sudo -S killall -u root || /bin/true " % {
                 'slicename' : self.slicename ,
             },
             host = self.hostname,
