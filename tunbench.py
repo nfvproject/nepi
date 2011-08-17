@@ -46,7 +46,6 @@ def decrypt(packet, crypter, super=tunchannel.decrypt):
         return packet
 tunchannel.decrypt = decrypt
 
-"""
 for cipher in (None, 'AES', 'Blowfish', 'DES', 'DES3'):
     if cipher is None:
         passphrase = None
@@ -59,7 +58,6 @@ for cipher in (None, 'AES', 'Blowfish', 'DES', 'DES3'):
     pstats.Stats('tunchannel.%s.profile' % cipher).strip_dirs().sort_stats('time').print_stats()
     
     print "Bandwidth (%s): %.4fMb/s" % ( cipher, bytes / 200.0 * 8 / 2**20, )
-"""
 
 bytes = 0
 cProfile.runctx('test(None,None,0.5)',globals(),locals(),'tunchannel.plr.profile')
