@@ -463,6 +463,10 @@ class Node(object):
             self.do_cleanup()
     
     def do_cleanup(self):
+        if self.testbed().recovering:
+            # WOW - not now
+            return
+            
         self._logger.info("Cleaning up %s", self.hostname)
 
         (out,err),proc = server.popen_ssh_command(

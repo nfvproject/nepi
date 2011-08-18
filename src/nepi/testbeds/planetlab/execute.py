@@ -25,6 +25,7 @@ import random
 import shutil
 import logging
 import metadata
+import weakref
 
 class TempKeyError(Exception):
     pass
@@ -47,6 +48,8 @@ class TestbedController(testbed_impl.TestbedController):
         self._load_blacklist()
         
         self._logger = logging.getLogger('nepi.testbeds.planetlab')
+        
+        self.recovering = False
 
     @property
     def home_directory(self):
@@ -469,7 +472,15 @@ class TestbedController(testbed_impl.TestbedController):
         # TODO: take on account schedule time for the task
         element = self._elements[guid]
         if element:
-            setattr(element, name, value)
+            try:
+                setattr(element, name, value)
+            except:
+                # We ignore these errors while recovering.
+                # Some attributes are immutable, and setting
+                # them is necessary (to recover the state), but
+                # some are not (they throw an exception).
+                if not self.recovering:
+                    raise
 
             if hasattr(element, 'refresh'):
                 # invoke attribute refresh hook
@@ -546,95 +557,110 @@ class TestbedController(testbed_impl.TestbedController):
         self._traces[trace_id] = trace
 
     def recover(self):
-        # Create and connect do not perform any real tasks against
-        # the nodes, it only sets up the object hierarchy,
-        # so we can run them normally
-        self.do_create()
-        self.do_connect_init()
-        self.do_connect_compl()
-        
-        # Manually recover nodes, to mark dependencies installed
-        # and clean up mutable attributes
-        self._do_in_factory_order(
-            lambda self, guid : self._elements[guid].recover(), 
-            [
-                metadata.NODE,
-            ])
-        
-        # Assign nodes - since we're working off exeucte XML, nodes
-        # have specific hostnames assigned and we don't need to do
-        # real assignment, only find out node ids and check liveliness
-        self.do_resource_discovery(recover = True)
-        self.do_wait_nodes()
-        
-        # Pre/post configure, however, tends to set up tunnels
-        # Execute configuration steps only for those object
-        # kinds that do not have side effects
-        
-        # Do the ones without side effects,
-        # including nodes that need to set up home 
-        # folders and all that
-        self._do_in_factory_order(
-            "preconfigure_function", 
-            [
-                metadata.INTERNET,
-                Parallel(metadata.NODE),
-                metadata.NODEIFACE,
-            ])
-        
-        # Tunnels require a home path that is configured
-        # at this step. Since we cannot run the step itself,
-        # we need to inject this homepath ourselves
-        for guid, element in self._elements.iteritems():
-            if isinstance(element, self._interfaces.TunIface):
-                element._home_path = "tun-%s" % (guid,)
-        
-        # Manually recover tunnels, applications and
-        # netpipes, negating the side effects
-        self._do_in_factory_order(
-            lambda self, guid : self._elements[guid].recover(), 
-            [
-                Parallel(metadata.TAPIFACE),
-                Parallel(metadata.TUNIFACE),
-                metadata.NETPIPE,
-                Parallel(metadata.NEPIDEPENDENCY),
-                Parallel(metadata.NS3DEPENDENCY),
-                Parallel(metadata.DEPENDENCY),
-                Parallel(metadata.APPLICATION),
-            ])
+        try:
+            # An internal flag, so we know to behave differently in
+            # a few corner cases.
+            self.recovering = True
+            
+            # Create and connect do not perform any real tasks against
+            # the nodes, it only sets up the object hierarchy,
+            # so we can run them normally
+            self.do_create()
+            self.do_connect_init()
+            self.do_connect_compl()
+            
+            # Manually recover nodes, to mark dependencies installed
+            # and clean up mutable attributes
+            self._do_in_factory_order(
+                lambda self, guid : self._elements[guid].recover(), 
+                [
+                    metadata.NODE,
+                ])
+            
+            # Assign nodes - since we're working off exeucte XML, nodes
+            # have specific hostnames assigned and we don't need to do
+            # real assignment, only find out node ids and check liveliness
+            self.do_resource_discovery(recover = True)
+            self.do_wait_nodes()
+            
+            # Pre/post configure, however, tends to set up tunnels
+            # Execute configuration steps only for those object
+            # kinds that do not have side effects
+            
+            # Do the ones without side effects,
+            # including nodes that need to set up home 
+            # folders and all that
+            self._do_in_factory_order(
+                "preconfigure_function", 
+                [
+                    metadata.INTERNET,
+                    Parallel(metadata.NODE),
+                    metadata.NODEIFACE,
+                ])
+            
+            # Tunnels require a home path that is configured
+            # at this step. Since we cannot run the step itself,
+            # we need to inject this homepath ourselves
+            for guid, element in self._elements.iteritems():
+                if isinstance(element, self._interfaces.TunIface):
+                    element._home_path = "tun-%s" % (guid,)
+            
+            # Manually recover tunnels, applications and
+            # netpipes, negating the side effects
+            self._do_in_factory_order(
+                lambda self, guid : self._elements[guid].recover(), 
+                [
+                    Parallel(metadata.TAPIFACE),
+                    Parallel(metadata.TUNIFACE),
+                    metadata.NETPIPE,
+                    Parallel(metadata.NEPIDEPENDENCY),
+                    Parallel(metadata.NS3DEPENDENCY),
+                    Parallel(metadata.DEPENDENCY),
+                    Parallel(metadata.APPLICATION),
+                ])
 
-        # Tunnels are not harmed by configuration after
-        # recovery, and some attributes get set this way
-        # like external_iface
-        self._do_in_factory_order(
-            "preconfigure_function", 
-            [
-                Parallel(metadata.TAPIFACE),
-                Parallel(metadata.TUNIFACE),
-            ])
+            # Tunnels are not harmed by configuration after
+            # recovery, and some attributes get set this way
+            # like external_iface
+            self._do_in_factory_order(
+                "preconfigure_function", 
+                [
+                    Parallel(metadata.TAPIFACE),
+                    Parallel(metadata.TUNIFACE),
+                ])
 
-        # Post-do the ones without side effects
-        self._do_in_factory_order(
-            "configure_function", 
-            [
-                metadata.INTERNET,
-                Parallel(metadata.NODE),
-                metadata.NODEIFACE,
-                Parallel(metadata.TAPIFACE),
-                Parallel(metadata.TUNIFACE),
-            ])
-        
-        # There are no required prestart steps
-        # to call upon recovery, so we're done
-        
+            # Post-do the ones without side effects
+            self._do_in_factory_order(
+                "configure_function", 
+                [
+                    metadata.INTERNET,
+                    Parallel(metadata.NODE),
+                    metadata.NODEIFACE,
+                    Parallel(metadata.TAPIFACE),
+                    Parallel(metadata.TUNIFACE),
+                ])
+            
+            # There are no required prestart steps
+            # to call upon recovery, so we're done
+        finally:
+            self.recovering = True
     
     def _make_generic(self, parameters, kind):
         app = kind(self.plapi)
+        app.testbed = weakref.ref(self)
 
         # Note: there is 1-to-1 correspondence between attribute names
         #   If that changes, this has to change as well
         for attr,val in parameters.iteritems():
-            setattr(app, attr, val)
+            try:
+                setattr(app, attr, val)
+            except:
+                # We ignore these errors while recovering.
+                # Some attributes are immutable, and setting
+                # them is necessary (to recover the state), but
+                # some are not (they throw an exception).
+                if not self.recovering:
+                    raise
 
         return app
 

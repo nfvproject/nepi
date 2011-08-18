@@ -5,10 +5,12 @@ import threading
 import Queue
 import traceback
 import sys
+import os
 
 N_PROCS = None
 
 THREADCACHE = []
+THREADCACHEPID = None
 
 class WorkerThread(threading.Thread):
     class QUIT:
@@ -79,6 +81,8 @@ class WorkerThread(threading.Thread):
 class ParallelMap(object):
     def __init__(self, maxthreads = None, maxqueue = None, results = True):
         global N_PROCS
+        global THREADCACHE
+        global THREADCACHEPID
         
         if maxthreads is None:
             if N_PROCS is None:
@@ -103,6 +107,11 @@ class ParallelMap(object):
             self.rvqueue = Queue.Queue()
         else:
             self.rvqueue = None
+        
+        # Check threadcache
+        if THREADCACHEPID is None or THREADCACHEPID != os.getpid():
+            del THREADCACHE[:]
+            THREADCACHEPID = os.getpid()
     
         self.workers = []
         for x in xrange(maxthreads):
@@ -124,6 +133,13 @@ class ParallelMap(object):
         self.destroy()
     
     def destroy(self):
+        # Check threadcache
+        global THREADCACHE
+        global THREADCACHEPID
+        if THREADCACHEPID is None or THREADCACHEPID != os.getpid():
+            del THREADCACHE[:]
+            THREADCACHEPID = os.getpid()
+
         for worker in self.workers:
             worker.waitdone()
         for worker in self.workers:

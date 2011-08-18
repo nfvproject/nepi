@@ -14,6 +14,7 @@ import time
 import unittest
 import re
 import sys
+import logging
 
 class PlanetLabIntegrationTestCase(unittest.TestCase):
     testbed_id = "planetlab"
@@ -59,6 +60,8 @@ class PlanetLabIntegrationTestCase(unittest.TestCase):
         pl_desc.set_attribute_value("plcHost", plchost)
         pl_desc.set_attribute_value("tapPortBase", self.port_base)
         pl_desc.set_attribute_value("p2pDeployment", False) # it's interactive, we don't want it in tests
+        pl_desc.set_attribute_value("dedicatedSlice", True)
+        #pl_desc.set_attribute_value("plLogLevel", "DEBUG")
         
         return pl_desc, exp_desc
     
@@ -114,8 +117,16 @@ class PlanetLabIntegrationTestCase(unittest.TestCase):
                 "Unexpected trace:\n" + ping_result)
         
         finally:
-            controller.stop()
-            controller.shutdown()
+            try:
+                controller.stop()
+            except:
+                import traceback
+                traceback.print_exc()
+            try:
+                controller.shutdown()
+            except:
+                import traceback
+                traceback.print_exc()
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     @test_util.skipUnless(os.environ.get('NEPI_FULL_TESTS','').lower() in ('1','yes','true','on'),
@@ -185,8 +196,16 @@ FIONREAD = 0x[0-9a-fA-F]{8}.*
                     "Unexpected trace:\n" + build_result)
         
         finally:
-            controller.stop()
-            controller.shutdown()
+            try:
+                controller.stop()
+            except:
+                import traceback
+                traceback.print_exc()
+            try:
+                controller.shutdown()
+            except:
+                import traceback
+                traceback.print_exc()
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_simple(self):
@@ -199,6 +218,7 @@ FIONREAD = 0x[0-9a-fA-F]{8}.*
         access_config = proxy.AccessConfiguration({
             DC.DEPLOYMENT_MODE : DC.MODE_DAEMON,
             DC.ROOT_DIRECTORY : self.root_dir,
+            DC.LOG_LEVEL : DC.DEBUG_LEVEL,
         })
 
         self._test_simple(
@@ -316,6 +336,10 @@ FIONREAD = 0x[0-9a-fA-F]{8}.*
             if controller is not None:
                 try:
                     controller.stop()
+                except:
+                    import traceback
+                    traceback.print_exc()
+                try:
                     controller.shutdown()
                 except:
                     import traceback
@@ -332,6 +356,7 @@ FIONREAD = 0x[0-9a-fA-F]{8}.*
         access_config = proxy.AccessConfiguration({
             DC.DEPLOYMENT_MODE : DC.MODE_DAEMON,
             DC.ROOT_DIRECTORY : self.root_dir,
+            DC.LOG_LEVEL : DC.DEBUG_LEVEL,
         })
 
         self._test_recover(

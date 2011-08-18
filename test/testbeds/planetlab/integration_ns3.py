@@ -58,6 +58,7 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
         pl_desc.set_attribute_value("plcHost", plchost)
         pl_desc.set_attribute_value("tapPortBase", self.port_base)
         pl_desc.set_attribute_value("p2pDeployment", False) # it's interactive, we don't want it in tests
+        pl_desc.set_attribute_value("dedicatedSlice", True)
         
         return pl_desc, exp_desc
     
@@ -159,8 +160,16 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
             controller.start()
             # just test that it starts...
         finally:
-            controller.stop()
-            controller.shutdown()
+            try:
+                controller.stop()
+            except:
+                import traceback
+                traceback.print_exc()
+            try:
+                controller.shutdown()
+            except:
+                import traceback
+                traceback.print_exc()
 
     @test_util.skipUnless(test_util.pl_auth() is not None, 
         "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
@@ -220,8 +229,16 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
             tap_trace = controller.trace(tap1.guid, "packets")
 
         finally:
-            controller.stop()
-            controller.shutdown()
+            try:
+                controller.stop()
+            except:
+                import traceback
+                traceback.print_exc()
+            try:
+                controller.shutdown()
+            except:
+                import traceback
+                traceback.print_exc()
 
         # asserts at the end, to make sure there's proper cleanup
         self.assertTrue(re.match(comp_result, ping_result, re.MULTILINE),
@@ -298,8 +315,16 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
             tap_trace = controller.trace(tap1.guid, "packets")
 
         finally:
-            controller.stop()
-            controller.shutdown()
+            try:
+                controller.stop()
+            except:
+                import traceback
+                traceback.print_exc()
+            try:
+                controller.shutdown()
+            except:
+                import traceback
+                traceback.print_exc()
         
         # asserts at the end, to make sure there's proper cleanup
         sent = 0
@@ -408,8 +433,16 @@ class PlanetLabCrossIntegrationTestCase(unittest.TestCase):
             tap0_trace = controller.trace(tap0.guid, "packets")
 
         finally:
-            controller.stop()
-            controller.shutdown()
+            try:
+                controller.stop()
+            except:
+                import traceback
+                traceback.print_exc()
+            try:
+                controller.shutdown()
+            except:
+                import traceback
+                traceback.print_exc()
         
         # asserts at the end, to make sure there's proper cleanup
         sent = 0
