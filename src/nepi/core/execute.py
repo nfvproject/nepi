@@ -419,7 +419,7 @@ class ExperimentController(object):
         all_restart = [ self._testbeds[guid] for guid in all_restart ]
             
         # final netref step, fail if anything's left unresolved
-        self.do_netrefs(data, fail_if_undefined=True)
+        self.do_netrefs(data, fail_if_undefined=False)
        
         # Only now, that netref dependencies have been solve, it is safe to
         # program cross_connections
@@ -450,6 +450,9 @@ class ExperimentController(object):
         self._parallel([testbed.do_prestart
                         for testbed in all_restart])
 
+        # final netref step, fail if anything's left unresolved
+        self.do_netrefs(data, fail_if_undefined=True)
+ 
         self._clear_caches()
         
         if not recover:
@@ -858,12 +861,13 @@ class ExperimentController(object):
                             if not label.startswith('GUID-'):
                                 ref_guid = label_guids.get(label)
                                 if ref_guid is not None:
-                                    value = ATTRIBUTE_PATTERN_BASE.sub(
+                                    value = value.replace(
+                                        match.group(),
                                         ATTRIBUTE_PATTERN_GUID_SUB % dict(
                                             guid = 'GUID-%d' % (ref_guid,),
                                             expr = match.group("expr"),
-                                            label = label), 
-                                        value)
+                                            label = label)
+                                    )
                                     data.set_attribute_data(guid, name, value)
                                     
                                     # memorize which guid-attribute pairs require
