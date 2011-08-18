@@ -557,6 +557,7 @@ modeinfo = MODEINFO[options.mode]
 # Try to load filter module
 filter_thread = None
 if options.filter_module:
+    print >>sys.stderr, "Loading module", options.filter_module, "with args", options.filter_args
     if options.filter_module.endswith('.py'):
         sys.path.append(os.path.dirname(options.filter_module))
         filter_module = __import__(os.path.basename(options.filter_module).rsplit('.',1)[0])
@@ -575,11 +576,13 @@ if options.filter_module:
                 pass
     try:
         accept_packet = filter_module.accept_packet
+        print >>sys.stderr, "Installing packet filter (accept_packet)"
     except:
         accept_packet = None
     
     try:
         queueclass = filter_module.queueclass
+        print >>sys.stderr, "Installing custom queue"
     except:
         queueclass = None
     
@@ -593,6 +596,8 @@ if options.filter_module:
             filter_remote = ctypes.c_int(0)
             _filter_init(filter_local, filter_remote)
             return filter_local, filter_remote
+
+        print >>sys.stderr, "Installing packet filter (stream filter)"
     except:
         filter_init = None
         filter_run = None

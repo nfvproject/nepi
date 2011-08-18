@@ -68,6 +68,7 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
         pl_desc.set_attribute_value("plcHost", plchost1)
         pl_desc.set_attribute_value("tapPortBase", self.port_base)
         pl_desc.set_attribute_value("p2pDeployment", False) # it's interactive, we don't want it in tests
+        pl_desc.set_attribute_value("dedicatedSlice", True)
 
         pl_desc2 = exp_desc.add_testbed_description(pl_provider)
         pl_desc2.set_attribute_value("homeDirectory", self.root_dir+"v2")
@@ -78,6 +79,7 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
         pl_desc2.set_attribute_value("plcHost", plchost2)
         pl_desc2.set_attribute_value("tapPortBase", self.port_base+500)
         pl_desc2.set_attribute_value("p2pDeployment", False) # it's interactive, we don't want it in tests
+        pl_desc2.set_attribute_value("dedicatedSlice", True)
         
         return pl_desc, pl_desc2, exp_desc
     
@@ -199,8 +201,16 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
             ping_result = controller.trace(ping.guid, "stdout")
             tap2_trace = controller.trace(tap2.guid, "packets")
         finally:
-            controller.stop()
-            controller.shutdown()
+            try:
+                controller.stop()
+            except:
+                import traceback
+                traceback.print_exc()
+            try:
+                controller.shutdown()
+            except:
+                import traceback
+                traceback.print_exc()
 
         # asserts at the end, to make sure there's proper cleanup
         self.assertTrue(re.match(comp_result, ping_result, re.MULTILINE),
