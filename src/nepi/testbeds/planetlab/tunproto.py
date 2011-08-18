@@ -217,8 +217,10 @@ class TunProtoBase(object):
             filter_module = os.path.join('.',os.path.basename(filter_module[0]))
             if filter_module.endswith('.c'):
                 filter_module = filter_module.rsplit('.',1)[0] + '.so'
+            filter_args = local.filter_module.args
         else:
             filter_module = None
+            filter_args = None
         
         args = ["python", "tun_connect.py", 
             "-m", str(self.mode),
@@ -262,6 +264,8 @@ class TunProtoBase(object):
             args.append(str(peer_addr))
         if filter_module:
             args.extend(("--filter", filter_module))
+        if filter_args:
+            args.extend(("--filter-args", filter_args))
 
         self._logger.info("Starting %s", self)
         
