@@ -13,6 +13,7 @@ import os
 import collections
 import functools
 import time
+import logging
 
 ATTRIBUTE_PATTERN_BASE = re.compile(r"\{#\[(?P<label>[-a-zA-Z0-9._]*)\](?P<expr>(?P<component>\.addr\[[0-9]+\]|\.route\[[0-9]+\]|\.trace\[[0-9]+\])?.\[(?P<attribute>[-a-zA-Z0-9._]*)\])#}")
 ATTRIBUTE_PATTERN_GUID_SUB = r"{#[%(guid)s]%(expr)s#}"
@@ -240,6 +241,8 @@ class ExperimentController(object):
         self._started_time = None
         self._stopped_time = None
         
+        self._logger = logging.getLogger('nepi.core.execute')
+        
         if experiment_xml is None and root_dir is not None:
             # Recover
             self.load_experiment_xml()
@@ -319,8 +322,7 @@ class ExperimentController(object):
                 try:
                     callable(*p, **kw)
                 except:
-                    import traceback
-                    traceback.print_exc(file=sys.stderr)
+                    logging.exception("Exception occurred in asynchronous thread:")
                     excs.append(sys.exc_info())
             return wrapped
         threads = [ threading.Thread(target=wrap(callable)) for callable in callables ]
@@ -359,6 +361,8 @@ class ExperimentController(object):
                     self._testbeds[guid].do_setup()
                     self._testbeds[guid].recover()
                 except:
+                    self._logger.exception("During recovery of testbed %s", guid)
+                    
                     # Mark failed
                     self._failed_testbeds.add(guid)
     
@@ -410,6 +414,8 @@ class ExperimentController(object):
                         self._testbeds[guid].do_setup()
                         self._testbeds[guid].recover()
                     except:
+                        self._logger.exception("During recovery of testbed %s", guid)
+
                         # Mark failed
                         self._failed_testbeds.add(guid)
 
@@ -519,10 +525,7 @@ class ExperimentController(object):
             os.remove(os.path.join(self._root_dir, 'deployment_config.ini'))
         except:
             # Just print exceptions, this is just cleanup
-            import traceback
-            ######## BUG ##########
-            #BUG: If the next line is uncomented pyQt explodes when shutting down the experiment !!!!!!!!
-            #traceback.print_exc(file=sys.stderr)
+            self._logger.exception("Loading testbed configuration")
 
     def _update_execute_xml(self):
         # For all testbeds,
