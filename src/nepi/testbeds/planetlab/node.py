@@ -468,27 +468,32 @@ class Node(object):
             return
             
         self._logger.info("Cleaning up %s", self.hostname)
+        
+        cmds = [
+            "sudo -S killall python tcpdump || /bin/true ; "
+            "sudo -S killall python tcpdump || /bin/true ; "
+            "sudo -S kill $(ps -N -T -o pid --no-heading | grep -v $PPID | sort) || /bin/true ",
+            "sudo -S killall -u %(slicename)s || /bin/true ",
+            "sudo -S killall -u root || /bin/true ",
+            "sudo -S killall -u %(slicename)s || /bin/true ",
+            "sudo -S killall -u root || /bin/true ",
+        ]
 
-        (out,err),proc = server.popen_ssh_command(
-            # Some apps need two kills
-            "sudo -S killall python tcpdump || /bin/true ; "
-            "sudo -S killall python tcpdump || /bin/true ; "
-            "sudo -S kill $(ps -N T -o pid --no-heading | sort) || /bin/true ; "
-            "sudo -S killall -u %(slicename)s || /bin/true ; "
-            "sudo -S killall -u %(slicename)s || /bin/true ; "
-            "sudo -S killall -u root || /bin/true ; "
-            "sudo -S killall -u root || /bin/true " % {
-                'slicename' : self.slicename ,
-            },
-            host = self.hostname,
-            port = None,
-            user = self.slicename,
-            agent = None,
-            ident_key = self.ident_path,
-            server_key = self.server_key,
-            tty = True, # so that ps -N -T works as advertised...
-            )
-        proc.wait()
+        for cmd in cmds:
+            (out,err),proc = server.popen_ssh_command(
+                # Some apps need two kills
+                cmd % {
+                    'slicename' : self.slicename ,
+                },
+                host = self.hostname,
+                port = None,
+                user = self.slicename,
+                agent = None,
+                ident_key = self.ident_path,
+                server_key = self.server_key,
+                tty = True, # so that ps -N -T works as advertised...
+                )
+            proc.wait()
     
     def prepare_dependencies(self):
         # Configure p2p yum dependency installer
