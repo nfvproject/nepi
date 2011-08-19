@@ -149,6 +149,13 @@ class TestbedController(testbed_impl.TestbedController):
         self.dedicatedSlice = self._attributes.\
             get_attribute_value("dedicatedSlice")
         
+        if not self.slicename:
+            raise RuntimeError, "Slice not set"
+        if not self.authUser:
+            raise RuntimeError, "PlanetLab account username not set"
+        if not self.authString:
+            raise RuntimeError, "PlanetLab account passphrase not set"
+        
         self._logger.setLevel(getattr(logging,self.logLevel))
         
         super(TestbedController, self).do_setup()
