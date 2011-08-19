@@ -627,19 +627,22 @@ class Metadata(object):
             from_connections = dict()
             to_connections = dict()
             for connection in self._metadata.connections:
-                from_ = connection["from"]
-                to = connection["to"]
+                froms = connection["from"]
+                tos = connection["to"]
                 can_cross = connection["can_cross"]
                 init_code = connection.get("init_code")
                 compl_code = connection.get("compl_code")
-                if from_ not in from_connections:
-                    from_connections[from_] = list()
-                if to not in to_connections:
-                    to_connections[to] = list()
-                from_connections[from_].append((to, can_cross, init_code, 
-                    compl_code))
-                to_connections[to].append((from_, can_cross, init_code,
-                    compl_code))
+                
+                for from_ in _expand(froms):
+                    for to in _expand(tos):
+                        if from_ not in from_connections:
+                            from_connections[from_] = list()
+                        if to not in to_connections:
+                            to_connections[to] = list()
+                        from_connections[from_].append((to, can_cross, init_code, 
+                            compl_code))
+                        to_connections[to].append((from_, can_cross, init_code,
+                            compl_code))
             for connector_id in info["connector_types"]:
                 connector_type_info = self._metadata.connector_types[
                         connector_id]
@@ -668,3 +671,27 @@ class Metadata(object):
                                 compl_code)
                 factory.add_connector_type(connector_type)
  
+
+def _expand(val):
+    """
+    Expands multiple values in the "val" tuple to create cross products:
+    
+    >>> list(_expand((1,2,3)))
+    [(1, 2, 3)]
+    >>> list(_expand((1,(2,4,5),3)))
+    [(1, 2, 3), (1, 4, 3), (1, 5, 3)]
+    >>> list(_expand(((1,2),(2,4,5),3)))
+    [(1, 2, 3), (1, 4, 3), (1, 5, 3), (2, 2, 3), (2, 4, 3), (2, 5, 3)]
+    """
+    if not val:
+        yield ()
+    elif isinstance(val[0], (list,set,tuple)):
+        for x in val[0]:
+            x = (x,)
+            for e_val in _expand(val[1:]):
+                yield x + e_val
+    else:
+        x = (val[0],)
+        for e_val in _expand(val[1:]):
+            yield x + e_val
+
