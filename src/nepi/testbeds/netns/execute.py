@@ -127,6 +127,11 @@ class TestbedController(testbed_impl.TestbedController):
             (trace, filename) = self._traces[guid][trace_id]
         return os.path.join(self.home_directory, filename)
 
+    def trace_filename(self, guid, trace_id):
+        (trace, filename) = self._traces[guid][trace_id]
+        return filename
+
+
     def follow_trace(self, guid, trace_id, trace, filename):
         if not guid in self._traces:
             self._traces[guid] = dict()

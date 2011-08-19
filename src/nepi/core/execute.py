@@ -15,7 +15,7 @@ import functools
 import time
 import logging
 
-ATTRIBUTE_PATTERN_BASE = re.compile(r"\{#\[(?P<label>[-a-zA-Z0-9._]*)\](?P<expr>(?P<component>\.addr\[[0-9]+\]|\.route\[[0-9]+\]|\.trace\[[0-9]+\])?.\[(?P<attribute>[-a-zA-Z0-9._]*)\])#}")
+ATTRIBUTE_PATTERN_BASE = re.compile(r"\{#\[(?P<label>[-a-zA-Z0-9._]*)\](?P<expr>(?P<component>\.addr\[[0-9]+\]|\.route\[[0-9]+\]|\.trace\[[-a-zA-Z0-9._]+\])?.\[(?P<attribute>[-a-zA-Z0-9._]*)\])#}")
 ATTRIBUTE_PATTERN_GUID_SUB = r"{#[%(guid)s]%(expr)s#}"
 COMPONENT_PATTERN = re.compile(r"(?P<kind>[a-z]*)\[(?P<index>.*)\]")
 
@@ -710,7 +710,7 @@ class ExperimentController(object):
                 testbed.get_route(guid, int(index), name),
         'trace' :
             lambda testbed, guid, index, name: 
-                testbed.trace(guid, index, name),
+                testbed.trace(guid, index, attribute = name),
         '' : 
             lambda testbed, guid, index, name: 
                 testbed.get(guid, name),
@@ -1048,4 +1048,43 @@ class ExperimentController(object):
                     elem_cross_data[attr_name] = _undefer(attr_value)
         
         return cross_data
-    
+
+    """
+class ExperimentSuite(object):
+    def __init__(self, experiment_xml, access_config, nexp,
+            duration, wait_guids):
+        self._experiment_xml = experiment_xml
+        self._access_config = access_config
+        self._experiments = dict()
+        self._nexp = nexp
+        self._duration = duration
+        self._wait_guids = wait_guids
+        self._curr = None
+
+
+    def _run_one_exp(self):
+        access_config = proxy.AccessConfiguration()
+        controller = proxy.create_experiment_controller(self._experiment_xml,
+                access_config)
+        self._experiments[self._curr] = controller
+        controller.start()
+        started_at = time.time()
+        if self._wait_guids:
+            while not controller.is_finished(92) and \
+                    not controller.is_finished(108) and \
+                    not controller.is_finished(126) and \
+                    not controller.is_finished(84):
+                time.sleep(0.5)
+        # add results to instructions
+        controller.stop()
+        #download results!!
+        controller.shutdown()
+    """
+
+
+
+
+
+
+
+
