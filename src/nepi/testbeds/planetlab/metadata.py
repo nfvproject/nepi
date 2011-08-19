@@ -331,6 +331,7 @@ def start_application(testbed_instance, guid):
     app.stdout = "stdout" in traces
     app.stderr = "stderr" in traces
     app.buildlog = "buildlog" in traces
+    app.outout = "output" in traces
     
     app.start()
 
@@ -1164,6 +1165,10 @@ traces = dict({
                 "name": "pcap",
                 "help": "PCAP trace of all packets going through the interface",
               }),
+    "output": dict({
+                "name": "output",
+                "help": "Extra output trace for applications. When activated this trace can be referenced with wildcard a reference from an Application command line. Ex: command: 'tcpdump -w {#[elemet-label].trace[trace-id].[name|path]#}' ",
+              }),
     })
 
 create_order = [ INTERNET, NODE, NODEIFACE, TUNFILTER, TAPIFACE, TUNIFACE, NETPIPE, NEPIDEPENDENCY, NS3DEPENDENCY, DEPENDENCY, APPLICATION ]
@@ -1309,7 +1314,7 @@ factories_info = dict({
                                "depends", "build-depends", "build", "install",
                                "sources", "rpm-fusion" ],
             "connector_types": ["node"],
-            "traces": ["stdout", "stderr", "buildlog"],
+            "traces": ["stdout", "stderr", "buildlog", "output"],
             "tags": [tags.APPLICATION],
         }),
     DEPENDENCY: dict({

@@ -111,7 +111,12 @@ class Dependency(object):
             tracefile = None
         
         return tracefile
-    
+
+    def remote_trace_name(self, whichtrace):
+        if whichtrace in self.TRACES:
+            return whichtrace
+        return None
+
     def sync_trace(self, local_dir, whichtrace):
         tracefile = self.remote_trace_path(whichtrace)
         if not tracefile:
@@ -581,7 +586,7 @@ class Application(Dependency):
     It adds the output of that command as traces.
     """
     
-    TRACES = ('stdout','stderr','buildlog')
+    TRACES = ('stdout','stderr','buildlog', 'output')
     
     def __init__(self, api=None):
         super(Application,self).__init__(api)
@@ -593,6 +598,7 @@ class Application(Dependency):
         self.stdin = None
         self.stdout = None
         self.stderr = None
+        self.output = None
         
         # Those are filled when the app is started
         #   Having both pid and ppid makes it harder
