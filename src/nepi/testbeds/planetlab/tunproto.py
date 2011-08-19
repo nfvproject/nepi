@@ -94,7 +94,18 @@ class TunProtoBase(object):
         if local.filter_module:
             filter_sources = filter(bool,map(str.strip,local.filter_module.module.split()))
             filter_module = filter_sources[0]
+            
+            # Translate paths to builtin sources
+            for i,source in enumerate(filter_sources):
+                if not os.path.exists(source):
+                    # Um... try the builtin folder
+                    source = os.path.join(os.path.dirname(__file__), source)
+                    if os.path.exists(source):
+                        # Yep... replace
+                        filter_sources[i] = source
+
             sources.extend(set(filter_sources))
+                
         else:
             filter_module = None
             filter_sources = None
