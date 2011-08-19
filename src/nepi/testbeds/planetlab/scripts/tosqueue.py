@@ -1,5 +1,6 @@
 import collections
 import itertools
+import random
 
 _size = 1000
 
@@ -17,6 +18,8 @@ class TOSQueue(object):
             for thoughput in (0,1,1)
             for reliability in (0,1)
         ]
+        random.shuffle(self.order)
+        
         self.cycle = None
         self.cyclelen = None
         self.cycle_update = True
