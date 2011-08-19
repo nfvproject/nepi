@@ -29,6 +29,12 @@ NS3DEPENDENCY = "NS3Dependency"
 INTERNET = "Internet"
 NETPIPE = "NetPipe"
 TUNFILTER = "TunFilter"
+CLASSQUEUEFILTER = "ClassQueueFilter"
+TOSQUEUEFILTER = "TosQueueFilter"
+
+TUNFILTERS = (TUNFILTER, CLASSQUEUEFILTER, TOSQUEUEFILTER)
+TAPFILTERS = (TUNFILTER, )
+ALLFILTERS = (TUNFILTER, CLASSQUEUEFILTER, TOSQUEUEFILTER)
 
 PL_TESTBED_ID = "planetlab"
 
@@ -273,6 +279,14 @@ def create_tunfilter(testbed_instance, guid):
     parameters = testbed_instance._get_parameters(guid)
     element = testbed_instance._make_tun_filter(parameters)
     testbed_instance.elements[guid] = element
+
+def create_classqueuefilter(testbed_instance, guid):
+    element = create_tunfilter(testbed_instance, guid)
+    element.module = "classqueue.py"
+
+def create_tosqueuefilter(testbed_instance, guid):
+    element = create_tunfilter(testbed_instance, guid)
+    element.module = "tosqueue.py"
 
 
 def create_application(testbed_instance, guid):
@@ -647,18 +661,18 @@ connections = [
     }),
     dict({
         "from": (TESTBED_ID, TUNIFACE, "fd->"),
-        "to":   (TESTBED_ID, TUNFILTER, "->fd"),
+        "to":   (TESTBED_ID, TUNFILTERS, "->fd"),
         "init_code": connect_tun_iface_filter,
         "can_cross": False
     }),
     dict({
-        "from": (TESTBED_ID, TUNFILTER, "tcp"),
+        "from": (TESTBED_ID, TUNFILTERS, "tcp"),
         "to":   (TESTBED_ID, TUNIFACE, "tcp"),
         "init_code": functools.partial(connect_filter_peer,"tcp"),
         "can_cross": False
     }),
     dict({
-        "from": (TESTBED_ID, TUNFILTER, "udp"),
+        "from": (TESTBED_ID, TUNFILTERS, "udp"),
         "to":   (TESTBED_ID, TUNIFACE, "udp"),
         "init_code": functools.partial(connect_filter_peer,"udp"),
         "can_cross": False
@@ -683,31 +697,43 @@ connections = [
     }),
     dict({
         "from": (TESTBED_ID, TAPIFACE, "fd->"),
-        "to":   (TESTBED_ID, TUNFILTER, "->fd"),
+        "to":   (TESTBED_ID, TAPFILTERS, "->fd"),
         "init_code": connect_tun_iface_filter,
         "can_cross": False
     }),
     dict({
-        "from": (TESTBED_ID, TUNFILTER, "tcp"),
+        "from": (TESTBED_ID, TAPFILTERS, "tcp"),
         "to":   (TESTBED_ID, TAPIFACE, "tcp"),
         "init_code": functools.partial(connect_filter_peer,"tcp"),
         "can_cross": False
     }),
     dict({
-        "from": (TESTBED_ID, TUNFILTER, "udp"),
+        "from": (TESTBED_ID, TAPFILTERS, "udp"),
         "to":   (TESTBED_ID, TAPIFACE, "udp"),
         "init_code": functools.partial(connect_filter_peer,"udp"),
         "can_cross": False
     }),
     dict({
-        "from": (TESTBED_ID, TUNFILTER, "tcp"),
-        "to":   (TESTBED_ID, TUNFILTER, "tcp"),
+        "from": (TESTBED_ID, TUNFILTERS, "tcp"),
+        "to":   (TESTBED_ID, TUNFILTERS, "tcp"),
         "init_code": functools.partial(connect_filter_filter,"tcp"),
         "can_cross": False
     }),
     dict({
-        "from": (TESTBED_ID, TUNFILTER, "udp"),
-        "to":   (TESTBED_ID, TUNFILTER, "udp"),
+        "from": (TESTBED_ID, TUNFILTERS, "udp"),
+        "to":   (TESTBED_ID, TUNFILTERS, "udp"),
+        "init_code": functools.partial(connect_filter_filter,"udp"),
+        "can_cross": False
+    }),
+    dict({
+        "from": (TESTBED_ID, TAPFILTERS, "tcp"),
+        "to":   (TESTBED_ID, TAPFILTERS, "tcp"),
+        "init_code": functools.partial(connect_filter_filter,"tcp"),
+        "can_cross": False
+    }),
+    dict({
+        "from": (TESTBED_ID, TAPFILTERS, "udp"),
+        "to":   (TESTBED_ID, TAPFILTERS, "udp"),
         "init_code": functools.partial(connect_filter_filter,"udp"),
         "can_cross": False
     }),
@@ -766,14 +792,14 @@ connections = [
         "can_cross": True
     }),
     dict({
-        "from": (TESTBED_ID, TUNFILTER, "tcp"),
+        "from": (TESTBED_ID, ALLFILTERS, "tcp"),
         "to":   (None, None, "tcp"),
         "init_code": functools.partial(crossconnect_filter_peer_init,"tcp"),
         "compl_code": functools.partial(crossconnect_filter_peer_compl,"tcp"),
         "can_cross": True
     }),
     dict({
-        "from": (TESTBED_ID, TUNFILTER, "udp"),
+        "from": (TESTBED_ID, ALLFILTERS, "udp"),
         "to":   (None, None, "udp"),
         "init_code": functools.partial(crossconnect_filter_peer_init,"udp"),
         "compl_code": functools.partial(crossconnect_filter_peer_compl,"udp"),
@@ -1297,6 +1323,53 @@ factories_info = dict({
             ],
             "connector_types": ["->fd","udp","tcp"],
         }),
+    CLASSQUEUEFILTER : dict({
+            "help": "TUN classfull queue, uses a separate queue for each user-definable class.\n\n"
+                    "It takes two arguments, both of which have sensible defaults:\n"
+                    "\tsize: the base size of each class' queue\n"
+                    "\tclasses: the class definitions, which follow the following syntax:\n"
+                    '\t   <CLASSLIST> ::= <CLASS> ":" CLASSLIST\n'
+                    '\t                |  <CLASS>\n'
+                    '\t   <CLASS>     ::= <PROTOLIST> "*" <PRIORITYSPEC>\n'
+                    '\t                |  <DFLTCLASS>\n'
+                    '\t   <DFLTCLASS> ::= "*" <PRIORITYSPEC>\n'
+                    '\t   <PROTOLIST> ::= <PROTO> "." <PROTOLIST>\n'
+                    '\t                |  <PROTO>\n'
+                    '\t   <PROTO>     ::= <NAME> | <NUMBER>\n'
+                    '\t   <NAME>      ::= --see http://en.wikipedia.org/wiki/List_of_IP_protocol_numbers --\n'
+                    '\t                   --only in lowercase, with special characters removed--\n'
+                    '\t                   --or see below--\n'
+                    '\t   <NUMBER>    ::= [0-9]+\n'
+                    '\t   <PRIORITYSPEC> ::= <THOUGHPUT> [ "#" <SIZE> ] [ "p" <PRIORITY> ]\n'
+                    '\t   <THOUGHPUT> ::= NUMBER -- default 1\n'
+                    '\t   <PRIORITY>  ::= NUMBER -- default 0\n'
+                    '\t   <SIZE>      ::= NUMBER -- default 1\n'
+                    "\n"
+                    "Size, thoughput and priority are all relative terms. "
+                    "Sizes are multipliers for the size argument, thoughput "
+                    "is applied relative to other classes and the same with "
+                    "priority.",
+            "category": FC.CATEGORY_CHANNELS,
+            "create_function": create_classqueuefilter,
+            "box_attributes": [
+                "args",
+                "tun_proto", "tun_addr", "tun_port", "tun_key", "tun_cipher",
+            ],
+            "connector_types": ["->fd","udp","tcp"],
+        }),
+    TOSQUEUEFILTER : dict({
+            "help": "TUN classfull queue that classifies according to the TOS (RFC 791) IP field.\n\n"
+                    "It takes a size argument that specifies the size of each class. As TOS is a "
+                    "subset of DiffServ, this queue half-implements DiffServ.",
+            "category": FC.CATEGORY_CHANNELS,
+            "create_function": create_tosqueuefilter,
+            "box_attributes": [
+                "args",
+                "tun_proto", "tun_addr", "tun_port", "tun_key", "tun_cipher",
+            ],
+            "connector_types": ["->fd","udp","tcp"],
+        }),
+
     APPLICATION: dict({
             "help": "Generic executable command line application",
             "category": FC.CATEGORY_APPLICATIONS,
