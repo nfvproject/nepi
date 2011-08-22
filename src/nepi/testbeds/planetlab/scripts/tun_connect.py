@@ -505,6 +505,7 @@ def tun_fwd(tun, remote, reconnect = None, accept_local = None, accept_remote = 
         cipher = options.cipher,
         accept_local = accept_local,
         accept_remote = accept_remote,
+        queueclass = queueclass,
         slowlocal = slowlocal
     )
 
@@ -607,6 +608,7 @@ else:
     filter_init = None
     filter_run = None
     filter_close = None
+    queueclass = None
 
 # be careful to roll back stuff on exceptions
 tun_path, tun_name = modeinfo['alloc'](tun_path, tun_name)
