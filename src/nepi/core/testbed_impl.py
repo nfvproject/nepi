@@ -468,6 +468,8 @@ class TestbedController(execute.TestbedController):
             fd.close()
         elif attribute == 'path':
             content = self.trace_filepath(guid, trace_id)
+        elif attribute == 'filename':
+            content = self.trace_filename(guid, trace_id)
         else:
             content = None
         return content
@@ -489,6 +491,13 @@ class TestbedController(execute.TestbedController):
     def trace_filepath(self, guid, trace_id):
         """
         Return a trace's file path, for TestbedController's default 
+        implementation of trace()
+        """
+        raise NotImplementedError
+
+    def trace_filename(self, guid, trace_id):
+        """
+        Return a trace's file name, for TestbedController's default 
         implementation of trace()
         """
         raise NotImplementedError

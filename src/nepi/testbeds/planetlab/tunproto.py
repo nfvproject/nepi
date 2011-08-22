@@ -99,7 +99,7 @@ class TunProtoBase(object):
             for i,source in enumerate(filter_sources):
                 if not os.path.exists(source):
                     # Um... try the builtin folder
-                    source = os.path.join(os.path.dirname(__file__), source)
+                    source = os.path.join(os.path.dirname(__file__), "scripts", source)
                     if os.path.exists(source):
                         # Yep... replace
                         filter_sources[i] = source
