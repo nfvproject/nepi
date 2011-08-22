@@ -404,7 +404,8 @@ class Node(object):
                     user = self.slicename,
                     agent = None,
                     ident_key = self.ident_path,
-                    server_key = self.server_key
+                    server_key = self.server_key,
+                    timeout = 600,
                     )
                 
                 if proc.wait():
@@ -448,7 +449,9 @@ class Node(object):
             user = self.slicename,
             agent = None,
             ident_key = self.ident_path,
-            server_key = self.server_key
+            server_key = self.server_key,
+            timeout = 60,
+            err_on_timeout = False
             )
         
         if proc.wait():
@@ -492,6 +495,8 @@ class Node(object):
                 ident_key = self.ident_path,
                 server_key = self.server_key,
                 tty = True, # so that ps -N -T works as advertised...
+                timeout = 60,
+                retry = 3
                 )
             proc.wait()
     
@@ -670,7 +675,8 @@ class Node(object):
             agent = None,
             ident_key = self.ident_path,
             server_key = self.server_key,
-            stdin = '\n'.join(rules)
+            stdin = '\n'.join(rules),
+            timeout = 300
             )
         
         if proc.wait() or err:
