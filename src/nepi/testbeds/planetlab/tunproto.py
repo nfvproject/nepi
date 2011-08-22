@@ -69,7 +69,9 @@ class TunProtoBase(object):
             user = local.node.slicename,
             agent = None,
             ident_key = local.node.ident_path,
-            server_key = local.node.server_key
+            server_key = local.node.server_key,
+            timeout = 60,
+            retry = 3
             )
         
         if proc.wait():
@@ -171,7 +173,8 @@ class TunProtoBase(object):
             user = local.node.slicename,
             agent = None,
             ident_key = local.node.ident_path,
-            server_key = local.node.server_key
+            server_key = local.node.server_key,
+            timeout = 300
             )
         
         if proc.wait():
@@ -350,7 +353,9 @@ class TunProtoBase(object):
                 user = local.node.slicename,
                 agent = None,
                 ident_key = local.node.ident_path,
-                server_key = local.node.server_key
+                server_key = local.node.server_key,
+                timeout = 60,
+                err_on_timeout = False
                 )
             proc.wait()
 
@@ -366,7 +371,9 @@ class TunProtoBase(object):
                 user = local.node.slicename,
                 agent = None,
                 ident_key = local.node.ident_path,
-                server_key = local.node.server_key
+                server_key = local.node.server_key,
+                timeout = 60,
+                err_on_timeout = False
                 )
             proc.wait()
 
@@ -384,7 +391,10 @@ class TunProtoBase(object):
                 user = local.node.slicename,
                 agent = None,
                 ident_key = local.node.ident_path,
-                server_key = local.node.server_key
+                server_key = local.node.server_key,
+                timeout = 60,
+                retry = 3,
+                err_on_timeout = False
                 )
             proc.wait()
 
@@ -406,7 +416,9 @@ class TunProtoBase(object):
                         user = local.node.slicename,
                         agent = None,
                         ident_key = local.node.ident_path,
-                        server_key = local.node.server_key
+                        server_key = local.node.server_key,
+                        timeout = 60,
+                        err_on_timeout = False
                         )
                     
                     if proc.wait():
@@ -441,7 +453,9 @@ class TunProtoBase(object):
                     user = local.node.slicename,
                     agent = None,
                     ident_key = local.node.ident_path,
-                    server_key = local.node.server_key
+                    server_key = local.node.server_key,
+                    timeout = 60,
+                    err_on_timeout = False
                     )
                 
                 if proc.wait():

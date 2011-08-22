@@ -191,7 +191,9 @@ class Dependency(object):
         try:
             self._popen_ssh_command(
                 "mkdir -p %(home)s && ( rm -f %(home)s/{pid,build-pid,nepi-build.sh} >/dev/null 2>&1 || /bin/true )" \
-                    % { 'home' : server.shell_escape(self.home_path) }
+                    % { 'home' : server.shell_escape(self.home_path) },
+                timeout = 120,
+                retry = 3
                 )
         except RuntimeError, e:
             raise RuntimeError, "Failed to set up application %s: %s %s" % (self.home_path, e.args[0], e.args[1],)
@@ -396,6 +398,7 @@ class Dependency(object):
                 "cat %(token_path)s" % {
                     'token_path' : os.path.join(self.home_path, 'build.token'),
                 },
+                timeout = 120,
                 noerrors = True)
             slave_token = ""
             if not proc.wait() and out:
@@ -409,6 +412,7 @@ class Dependency(object):
                         'buildlog' : os.path.join(self.home_path, 'buildlog'),
                         'buildscript' : os.path.join(self.home_path, 'nepi-build.sh'),
                     },
+                    timeout = 120,
                     noerrors = True)
                 
                 proc.wait()
@@ -547,23 +551,30 @@ class Dependency(object):
         self._do_kill_build()
 
     @server.eintr_retry
-    def _popen_scp(self, src, dst, retry = True):
-        (out,err),proc = server.popen_scp(
-            src,
-            dst, 
-            port = None,
-            agent = None,
-            ident_key = self.node.ident_path,
-            server_key = self.node.server_key
-            )
+    def _popen_scp(self, src, dst, retry = 3):
+        while 1:
+            try:
+                (out,err),proc = server.popen_scp(
+                    src,
+                    dst, 
+                    port = None,
+                    agent = None,
+                    ident_key = self.node.ident_path,
+                    server_key = self.node.server_key
+                    )
 
-        if server.eintr_retry(proc.wait)():
-            raise RuntimeError, (out, err)
-        return (out, err), proc
+                if server.eintr_retry(proc.wait)():
+                    raise RuntimeError, (out, err)
+                return (out, err), proc
+            except:
+                if retry <= 0:
+                    raise
+                else:
+                    retry -= 1
   
 
     @server.eintr_retry
-    def _popen_ssh_command(self, command, retry = True, noerrors=False):
+    def _popen_ssh_command(self, command, retry = 0, noerrors=False, timeout=None):
         (out,err),proc = server.popen_ssh_command(
             command,
             host = self.node.hostname,
@@ -571,7 +582,9 @@ class Dependency(object):
             user = self.node.slicename,
             agent = None,
             ident_key = self.node.ident_path,
-            server_key = self.node.server_key
+            server_key = self.node.server_key,
+            timeout = timeout,
+            retry = retry
             )
 
         if server.eintr_retry(proc.wait)():

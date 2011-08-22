@@ -8,6 +8,7 @@ import os.path
 import resource
 import select
 import socket
+import signal
 import sys
 import subprocess
 import threading
@@ -522,7 +523,10 @@ def popen_ssh_command(command, host, port, user, agent,
             stdin="", 
             ident_key = None,
             server_key = None,
-            tty = False):
+            tty = False,
+            timeout = None,
+            retry = 0,
+            err_on_timeout = True):
         """
         Executes a remote commands, returns ((stdout,stderr),process)
         """
@@ -548,17 +552,27 @@ def popen_ssh_command(command, host, port, user, agent,
                 server_key, host, port, args)
         args.append(command)
 
-        # connects to the remote host and starts a remote connection
-        proc = subprocess.Popen(args, 
-                stdout = subprocess.PIPE,
-                stdin = subprocess.PIPE, 
-                stderr = subprocess.PIPE)
-        
-        # attach tempfile object to the process, to make sure the file stays
-        # alive until the process is finished with it
-        proc._known_hosts = tmp_known_hosts
-        
-        out, err = proc.communicate(stdin)
+        while 1:
+            # connects to the remote host and starts a remote connection
+            proc = subprocess.Popen(args, 
+                    stdout = subprocess.PIPE,
+                    stdin = subprocess.PIPE, 
+                    stderr = subprocess.PIPE)
+            
+            # attach tempfile object to the process, to make sure the file stays
+            # alive until the process is finished with it
+            proc._known_hosts = tmp_known_hosts
+            
+            try:
+                out, err = _communicate(proc, stdin, timeout, err_on_timeout)
+                break
+            except RuntimeError,e:
+                if retry <= 0:
+                    raise
+                if TRACE:
+                    print " timedout -> ", e.args
+                retry -= 1
+            
         if TRACE:
             print " -> ", out, err
 
@@ -843,4 +857,111 @@ def popen_ssh_subprocess(python_code, host, port, user, agent,
             raise RuntimeError, "Failed to start remote python interpreter: \nout:\n%s%s\nerr:\n%s" % (
                 msg, proc.stdout.read(), proc.stderr.read())
         return proc
- 
+
+
+# POSIX
+def _communicate(self, input, timeout=None, err_on_timeout=True):
+    read_set = []
+    write_set = []
+    stdout = None # Return
+    stderr = None # Return
+    
+    killed = False
+    
+    if timeout is not None:
+        timelimit = time.time() + timeout
+        killtime = timelimit + 4
+        bailtime = timelimit + 4
+
+    if self.stdin:
+        # Flush stdio buffer.  This might block, if the user has
+        # been writing to .stdin in an uncontrolled fashion.
+        self.stdin.flush()
+        if input:
+            write_set.append(self.stdin)
+        else:
+            self.stdin.close()
+    if self.stdout:
+        read_set.append(self.stdout)
+        stdout = []
+    if self.stderr:
+        read_set.append(self.stderr)
+        stderr = []
+
+    input_offset = 0
+    while read_set or write_set:
+        if timeout is not None:
+            curtime = time.time()
+            if timeout is None or curtime > timelimit:
+                if curtime > bailtime:
+                    break
+                elif curtime > killtime:
+                    signum = signal.SIGKILL
+                else:
+                    signum = signal.SIGTERM
+                # Lets kill it
+                os.kill(self.pid, signum)
+                select_timeout = 0.5
+            else:
+                select_timeout = timelimit - curtime + 0.1
+        else:
+            select_timeout = None
+            
+        try:
+            rlist, wlist, xlist = select.select(read_set, write_set, [], select_timeout)
+        except select.error,e:
+            if e[0] != 4:
+                raise
+            else:
+                continue
+
+        if self.stdin in wlist:
+            # When select has indicated that the file is writable,
+            # we can write up to PIPE_BUF bytes without risk
+            # blocking.  POSIX defines PIPE_BUF >= 512
+            bytes_written = os.write(self.stdin.fileno(), buffer(input, input_offset, 512))
+            input_offset += bytes_written
+            if input_offset >= len(input):
+                self.stdin.close()
+                write_set.remove(self.stdin)
+
+        if self.stdout in rlist:
+            data = os.read(self.stdout.fileno(), 1024)
+            if data == "":
+                self.stdout.close()
+                read_set.remove(self.stdout)
+            stdout.append(data)
+
+        if self.stderr in rlist:
+            data = os.read(self.stderr.fileno(), 1024)
+            if data == "":
+                self.stderr.close()
+                read_set.remove(self.stderr)
+            stderr.append(data)
+    
+    # All data exchanged.  Translate lists into strings.
+    if stdout is not None:
+        stdout = ''.join(stdout)
+    if stderr is not None:
+        stderr = ''.join(stderr)
+
+    # Translate newlines, if requested.  We cannot let the file
+    # object do the translation: It is based on stdio, which is
+    # impossible to combine with select (unless forcing no
+    # buffering).
+    if self.universal_newlines and hasattr(file, 'newlines'):
+        if stdout:
+            stdout = self._translate_newlines(stdout)
+        if stderr:
+            stderr = self._translate_newlines(stderr)
+
+    if killed and err_on_timeout:
+        errcode = self.poll()
+        raise RuntimeError, ("Operation timed out", errcode, stdout, stderr)
+    else:
+        if killed:
+            self.poll()
+        else:
+            self.wait()
+        return (stdout, stderr)
+
