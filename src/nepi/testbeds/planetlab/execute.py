@@ -556,6 +556,8 @@ class TestbedController(testbed_impl.TestbedController):
                 content = None
         elif attribute == 'path':
             content = app.remote_trace_path(trace_id)
+        elif attribute == 'name':
+            content = app.remote_trace_name(trace_id)
         else:
             content = None
         return content
