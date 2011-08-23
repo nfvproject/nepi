@@ -155,6 +155,10 @@ class TestbedController(testbed_impl.TestbedController):
             raise RuntimeError, "PlanetLab account username not set"
         if not self.authString:
             raise RuntimeError, "PlanetLab account passphrase not set"
+        if not self.sliceSSHKey:
+            raise RuntimeError, "PlanetLab account key not specified"
+        if not os.path.exists(self.sliceSSHKey):
+            raise RuntimeError, "PlanetLab account key cannot be opened: %s" % (self.sliceSSHKey,)
         
         self._logger.setLevel(getattr(logging,self.logLevel))
         
