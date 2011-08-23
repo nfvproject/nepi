@@ -88,10 +88,12 @@ class TunProtoBase(object):
         
         # Install the tun_connect script and tunalloc utility
         from nepi.util import tunchannel
+        from nepi.util import ipaddr2
         sources = [
             os.path.join(os.path.dirname(__file__), 'scripts', 'tun_connect.py'),
             os.path.join(os.path.dirname(__file__), 'scripts', 'tunalloc.c'),
             re.sub(r"([.]py)[co]$", r'\1', tunchannel.__file__, 1), # pyc/o files are version-specific
+            re.sub(r"([.]py)[co]$", r'\1', ipaddr2.__file__, 1), # pyc/o files are version-specific
         ]
         if local.filter_module:
             filter_sources = filter(bool,map(str.strip,local.filter_module.module.split()))
@@ -205,6 +207,8 @@ class TunProtoBase(object):
         local_txq  = local.txqueuelen
         local_p2p  = local.pointopoint
         local_cipher=local.tun_cipher
+        local_mcast= local.multicast
+        local_bwlim= local.bwlimit
         
         if not local_p2p and hasattr(peer, 'address'):
             local_p2p = peer.address
@@ -272,6 +276,10 @@ class TunProtoBase(object):
             args.append("-N")
         elif local_cap == 'pcap':
             args.extend(('-c','pcap'))
+        if local_mcast:
+            args.append("--multicast")
+        if local_bwlim:
+            args.extend(("-b",str(local_bwlim*1024)))
         if extra_args:
             args.extend(map(str,extra_args))
         if not listen and check_proto != 'fd':

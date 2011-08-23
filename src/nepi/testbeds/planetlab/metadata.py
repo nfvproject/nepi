@@ -987,6 +987,15 @@ attributes = dict({
                 "value": False,
                 "validation_function": validation.is_bool
             }),
+    "multicast":  dict({
+                "name": "multicast", 
+                "help": "Enable multicast forwarding on this device. "
+                        "Note that you still need a multicast routing daemon "
+                        "in the node.",
+                "type": Attribute.BOOL,
+                "value": False,
+                "validation_function": validation.is_bool
+            }),
     "pointopoint":  dict({
                 "name": "pointopoint", 
                 "help": "If the interface is a P2P link, the remote endpoint's IP "
@@ -994,6 +1003,14 @@ attributes = dict({
                 "type": Attribute.STRING,
                 "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_string
+            }),
+    "bwlimit":  dict({
+                "name": "bwlimit", 
+                "help": "Emulated transmission speed (in kbytes per second)",
+                "type": Attribute.INTEGER,
+                "range" : (1,10*2**20),
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+                "validation_function": validation.is_integer
             }),
     "txqueuelen":  dict({
                 "name": "txqueuelen", 
@@ -1257,7 +1274,7 @@ factories_info = dict({
             "configure_function": postconfigure_tuniface,
             "prestart_function": wait_tuniface,
             "box_attributes": [
-                "up", "if_name", "mtu", "snat", "pointopoint",
+                "up", "if_name", "mtu", "snat", "pointopoint", "multicast", "bwlimit",
                 "txqueuelen",
                 "tun_proto", "tun_addr", "tun_port", "tun_key", "tun_cipher",
             ],
@@ -1273,7 +1290,7 @@ factories_info = dict({
             "configure_function": postconfigure_tuniface,
             "prestart_function": wait_tuniface,
             "box_attributes": [
-                "up", "if_name", "mtu", "snat", "pointopoint",
+                "up", "if_name", "mtu", "snat", "pointopoint", "multicast", "bwlimit",
                 "txqueuelen",
                 "tun_proto", "tun_addr", "tun_port", "tun_key", "tun_cipher",
             ],
