@@ -594,16 +594,17 @@ class TunProtoBase(object):
         'pcap' : ('pcap','capture.pcap'),
     }
     
-    def remote_trace_path(self, whichtrace):
-        tracemap = self._TRACEMAP
+    def remote_trace_path(self, whichtrace, tracemap = None):
+        tracemap = self._TRACEMAP if not tracemap else tracemap
+        
         
         if whichtrace not in tracemap:
             return None
         
         return os.path.join(self.home_path, tracemap[whichtrace][1])
         
-    def sync_trace(self, local_dir, whichtrace):
-        tracemap = self._TRACEMAP
+    def sync_trace(self, local_dir, whichtrace, tracemap = None):
+        tracemap = self._TRACEMAP if not tracemap else tracemap
         
         if whichtrace not in tracemap:
             return None

@@ -1048,39 +1048,61 @@ class ExperimentController(object):
                     elem_cross_data[attr_name] = _undefer(attr_value)
         
         return cross_data
-
     """
 class ExperimentSuite(object):
-    def __init__(self, experiment_xml, access_config, nexp,
+    def __init__(self, experiment_xml, access_config, repetitions,
             duration, wait_guids):
         self._experiment_xml = experiment_xml
         self._access_config = access_config
         self._experiments = dict()
-        self._nexp = nexp
+        self._repetitions = repetitions
         self._duration = duration
         self._wait_guids = wait_guids
-        self._curr = None
+        self._current = None
+        self._status = TS.STATUS_ZERO
+        self._thread = None
 
+    def start(self):
+        self._status  = TS.STATUS_STARTED
+        self._thread = threading.Thread(target = self._run_experiment_suite)
+        self._thread.start()
 
-    def _run_one_exp(self):
+    def shutdown(self):
+        if self._thread:
+            self._thread.join()
+            self._thread = None
+
+    def _run_experiment_suite(self):
+        for i in xrange[0, self.repetitions]:
+            self._current = i
+            self._run_one_experiment()
+
+    def _run_one_experiment(self):
         access_config = proxy.AccessConfiguration()
+        for attr in self._access_config.attributes:
+            access_config.set_attribute_value(attr.name, attr.value)
+        access_config.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
+        root_dir = "%s_%d" % (
+                access_config.get_attribute_value(DC.ROOT_DIRECTORY), 
+                self._current)
+        access_config.set_attribute_value(DC.ROOT_DIRECTORY, root_dir)
         controller = proxy.create_experiment_controller(self._experiment_xml,
                 access_config)
-        self._experiments[self._curr] = controller
+        self._experiments[self._current] = controller
         controller.start()
         started_at = time.time()
+        # wait until all specified guids have finished execution
         if self._wait_guids:
-            while not controller.is_finished(92) and \
-                    not controller.is_finished(108) and \
-                    not controller.is_finished(126) and \
-                    not controller.is_finished(84):
+            while all(itertools.imap(controller.is_finished, self._wait_guids):
                 time.sleep(0.5)
-        # add results to instructions
+        # wait until the minimum experiment duration time has elapsed 
+        if self._duration:
+            while (time.time() - started_at) < self._duration:
+                time.sleep(0.5)
         controller.stop()
         #download results!!
         controller.shutdown()
     """
-
 
 
 

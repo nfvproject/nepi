@@ -284,17 +284,21 @@ class TunIface(object):
         if self.peer_proto_impl:
             self.peer_proto_impl.async_launch_wait()
 
-    def sync_trace(self, local_dir, whichtrace):
+    def sync_trace(self, local_dir, whichtrace, tracemap = None):
         if self.peer_proto_impl:
-            return self.peer_proto_impl.sync_trace(local_dir, whichtrace)
+            return self.peer_proto_impl.sync_trace(local_dir, whichtrace,
+                    tracemap)
         else:
             return None
 
-    def remote_trace_path(self, whichtrace):
+    def remote_trace_path(self, whichtrace, tracemap = None):
         if self.peer_proto_impl:
-            return self.peer_proto_impl.remote_trace_path(whichtrace)
+            return self.peer_proto_impl.remote_trace_path(whichtrace, tracemap)
         else:
             return None
+
+    def remote_trace_name(self, whichtrace):
+        return whichtrace
 
 class TapIface(TunIface):
     _PROTO_MAP = tunproto.TAP_PROTO_MAP
@@ -470,6 +474,10 @@ class NetPipe(object):
         return local_path
     
 class TunFilter(object):
+    _TRACEMAP = {
+        # tracename : (remotename, localname)
+    }
+    
     def __init__(self, api=None):
         if not api:
             api = plcapi.PLCAPI()
@@ -477,6 +485,7 @@ class TunFilter(object):
         
         # Attributes
         self.module = None
+        self.args = None
 
         # These get initialised when the filter is connected
         self.peer_guid = None
@@ -519,4 +528,39 @@ class TunFilter(object):
     
     del _get
     del _set
+
+    def remote_trace_path(self, whichtrace):
+        iface = self.iface()
+        if iface is not None:
+            return iface.remote_trace_path(whichtrace, self._TRACEMAP)
+        return None
+
+    def remote_trace_name(self, whichtrace):
+        iface = self.iface()
+        if iface is not None:
+            return iface.remote_trace_name(whichtrace, self._TRACEMAP)
+        return None
+
+    def sync_trace(self, local_dir, whichtrace):
+        iface = self.iface()
+        if iface is not None:
+            return iface.sync_trace(local_dir, whichtrace, self._TRACEMAP)
+        return None
+
+class ClassQueueFilter(TunFilter):
+    _TRACEMAP = {
+        # tracename : (remotename, localname)
+        'dropped_stats' : ('dropped_stats', 'dropped_stats')
+    }
+    
+    def __init__(self, api=None):
+        super(ClassQueueFilter, self).__init__(api)
+        # Attributes
+        self.module = "classqueue.py"
+
+class ToSQueueFilter(TunFilter):
+    def __init__(self, api=None):
+        super(ToSQueueFilter, self).__init__(api)
+        # Attributes
+        self.module = "tosqueue.py"
 
