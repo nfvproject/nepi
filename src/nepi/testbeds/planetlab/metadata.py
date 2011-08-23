@@ -121,9 +121,14 @@ def connect_tun_iface_peer(proto, testbed_instance, iface_guid, peer_iface_guid)
 def connect_tun_iface_filter(testbed_instance, iface_guid, filter_guid):
     iface = testbed_instance._elements[iface_guid]
     filt = testbed_instance._elements[filter_guid]
+    traces = testbed_instance._get_traces(filter_guid)
+    if 'dropped_stats' in traces: 
+        args = filt.args if filt.args else ""
+        filt.args = ','.join(filt.args.split(',') + ["logdropped=true",])
     iface.filter_module = filt
     filt.iface_guid = iface_guid
     filt.iface = weakref.ref(iface)
+
     if filt.peer_guid:
         connect_tun_iface_peer(filt.peer_proto, testbed_instance, filt.iface_guid, filt.peer_guid)
 
@@ -186,7 +191,6 @@ def crossconnect_filter_peer_compl(proto, testbed_instance, filter_guid, peer_da
 def crossconnect_filter_peer_both(proto, testbed_instance, filter_guid, peer_data):
     crossconnect_filter_peer_init(proto, testbed_instance, iface_guid, peer_iface_data)
     crossconnect_filter_peer_compl(proto, testbed_instance, iface_guid, peer_iface_data)
-
 
 def connect_dep(testbed_instance, node_guid, app_guid):
     node = testbed_instance._elements[node_guid]
@@ -281,13 +285,14 @@ def create_tunfilter(testbed_instance, guid):
     testbed_instance.elements[guid] = element
 
 def create_classqueuefilter(testbed_instance, guid):
-    element = create_tunfilter(testbed_instance, guid)
-    element.module = "classqueue.py"
+    parameters = testbed_instance._get_parameters(guid)
+    element = testbed_instance._make_class_queue_filter(parameters)
+    testbed_instance.elements[guid] = element
 
 def create_tosqueuefilter(testbed_instance, guid):
-    element = create_tunfilter(testbed_instance, guid)
-    element.module = "tosqueue.py"
-
+    parameters = testbed_instance._get_parameters(guid)
+    element = testbed_instance._make_tos_queue_filter(parameters)
+    testbed_instance.elements[guid] = element
 
 def create_application(testbed_instance, guid):
     parameters = testbed_instance._get_parameters(guid)
@@ -1195,9 +1200,13 @@ traces = dict({
                 "name": "output",
                 "help": "Extra output trace for applications. When activated this trace can be referenced with wildcard a reference from an Application command line. Ex: command: 'tcpdump -w {#[elemet-label].trace[trace-id].[name|path]#}' ",
               }),
+    "dropped_stats": dict({
+                "name": "dropped_stats",
+                "help": "Information on dropped packets on a filer or queue associated to a network interface",
+            }),
     })
 
-create_order = [ INTERNET, NODE, NODEIFACE, TUNFILTER, TAPIFACE, TUNIFACE, NETPIPE, NEPIDEPENDENCY, NS3DEPENDENCY, DEPENDENCY, APPLICATION ]
+create_order = [ INTERNET, NODE, NODEIFACE, CLASSQUEUEFILTER, TOSQUEUEFILTER, TUNFILTER, TAPIFACE, TUNIFACE, NETPIPE, NEPIDEPENDENCY, NS3DEPENDENCY, DEPENDENCY, APPLICATION ]
 
 configure_order = [ INTERNET, Parallel(NODE), NODEIFACE, Parallel(TAPIFACE), Parallel(TUNIFACE), NETPIPE, Parallel(NEPIDEPENDENCY), Parallel(NS3DEPENDENCY), Parallel(DEPENDENCY), Parallel(APPLICATION) ]
 
@@ -1361,6 +1370,7 @@ factories_info = dict({
                 "tun_proto", "tun_addr", "tun_port", "tun_key", "tun_cipher",
             ],
             "connector_types": ["->fd","udp","tcp"],
+            "traces": ["dropped_stats"],
         }),
     TOSQUEUEFILTER : dict({
             "help": "TUN classfull queue that classifies according to the TOS (RFC 791) IP field.\n\n"

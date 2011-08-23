@@ -544,10 +544,10 @@ class TestbedController(testbed_impl.TestbedController):
         self._traces.clear()
 
     def trace(self, guid, trace_id, attribute='value'):
-        app = self._elements[guid]
+        elem = self._elements[guid]
 
         if attribute == 'value':
-            path = app.sync_trace(self.home_directory, trace_id)
+            path = elem.sync_trace(self.home_directory, trace_id)
             if path:
                 fd = open(path, "r")
                 content = fd.read()
@@ -555,9 +555,9 @@ class TestbedController(testbed_impl.TestbedController):
             else:
                 content = None
         elif attribute == 'path':
-            content = app.remote_trace_path(trace_id)
+            content = elem.remote_trace_path(trace_id)
         elif attribute == 'name':
-            content = app.remote_trace_name(trace_id)
+            content = elem.remote_trace_name(trace_id)
         else:
             content = None
         return content
@@ -707,4 +707,11 @@ class TestbedController(testbed_impl.TestbedController):
 
     def _make_tun_filter(self, parameters):
         return self._make_generic(parameters, self._interfaces.TunFilter)
+
+    def _make_class_queue_filter(self, parameters):
+        return self._make_generic(parameters, self._interfaces.ClassQueueFilter)
+
+    def _make_tos_queue_filter(self, parameters):
+        return self._make_generic(parameters, self._interfaces.ToSQueueFilter)
+
 

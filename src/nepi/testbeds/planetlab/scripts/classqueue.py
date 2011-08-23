@@ -2,6 +2,8 @@ import collections
 import itertools
 import random
 import re
+import sys
+import iovec
 
 _size = 1000
 _classes = (
@@ -71,7 +73,9 @@ class ClassQueue(object):
     def __init__(self):
         self.size = _size
         self.len = 0
-        
+        self.stats = collections.defaultdict(int)
+        self.dump_count = 0
+
         # Prepare classes
         self.classspec = _parse_classes(_classes)
 
@@ -124,7 +128,7 @@ class ClassQueue(object):
     
     def __len__(self):
         return self.len
-    
+
     def clear(self):
         self.classes.clear()
         self.cycle = None
@@ -140,11 +144,12 @@ class ClassQueue(object):
             if rv is None:
                 rv = self.classmap.get(None)
         else:
+            proto = 0
             rv = self.classmap.get(None)
-        return rv, self.sizemap[rv]
+        return proto, rv, self.sizemap[rv]
     
     def append(self, packet, len=len):
-        qi,size = self.queuefor(packet)
+        proto,qi,size = self.queuefor(packet)
         q = self.queues[qi]
         if len(q) < size:
             classes = self.classes
@@ -153,6 +158,10 @@ class ClassQueue(object):
                 self.cycle_update = True
             q.append(packet)
             self.len += 1
+        # packet dropped
+        elif _logdropped:
+            self.stats[proto] += 1
+            self.dump_stats()
 
     def appendleft(self, packet):
         self.queues[-1].append(packet)
@@ -197,14 +206,23 @@ class ClassQueue(object):
         else:
             raise IndexError, "pop from an empty queue"
 
+    def dump_stats(self):
+        if self.dump_count >= 10000:
+            stats = "".join(['%s:%s\n' % (key, value) for key, value in self.stats.items()])
+            fd = open('dropped_stats', 'w')
+            iovec.writev(fd.fileno(), stats)
+            fd.close()
+            self.dump_count = 0
+        else:
+            self.dump_count += 1
+
 queueclass = ClassQueue
 
-def init(size, classes):
-    global _size
-    _size = size
+def init(size = 1000, classes = _classes, logdropped = 'False'):
+    global _size, _classes, _logdropped
+    _size = int(size)
     _classes = classes
-    
-
+    _logdropped = logdropped.lower() in ('true','1','on')
 
 _protomap = {
     '3pc'	:	34,
