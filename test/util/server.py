@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import getpass
 from nepi.util import server
+from nepi.util.constants import DeploymentConfiguration as DC
+
+import getpass
 import os
 import shutil
 import sys
@@ -83,16 +85,43 @@ class ServerTestCase(unittest.TestCase):
         reply = c.read_reply()
         self.assertEqual(reply, "Stopping server")
 
+    @test_util.skipUnless(os.getuid() == 0, "Test requires root privileges")
+    def test_sudo_server(self):
+        env = test_util.test_environment()
+        user = getpass.getuser()
+        # launch server
+        python_code = "from nepi.util import server;s=server.Server('%s');\
+                s.run()" % self.root_dir
+        server.popen_python(python_code, 
+                sudo = True)
+        c = server.Client(self.root_dir, 
+                sudo = True)
+        c.send_msg("Hola")
+        reply = c.read_reply()
+        self.assertEqual(reply, "Reply to: Hola")
+        c.send_stop()
+        reply = c.read_reply()
+        self.assertEqual(reply, "Stopping server")
+
+
     def test_ssh_server(self):
         env = test_util.test_environment()
         user = getpass.getuser()
         # launch server
         python_code = "from nepi.util import server;s=server.Server('%s');\
                 s.run()" % self.root_dir
-        server.popen_ssh_subprocess(python_code, host = "localhost", 
-                port = env.port, user = user, agent = True)
-        c = server.Client(self.root_dir, host = "localhost", port = env.port,
-                user = user, agent = True)
+        server.popen_python(python_code, 
+                communication = DC.ACCESS_SSH,
+                host = "localhost", 
+                port = env.port, 
+                user = user, 
+                agent = True)
+        c = server.Client(self.root_dir, 
+                communication = DC.ACCESS_SSH,
+                host = "localhost", 
+                port = env.port,
+                user = user, 
+                agent = True)
         c.send_msg("Hola")
         reply = c.read_reply()
         self.assertEqual(reply, "Reply to: Hola")
@@ -106,11 +135,19 @@ class ServerTestCase(unittest.TestCase):
         # launch server
         python_code = "from nepi.util import server;s=server.Server('%s');\
                 s.run()" % self.root_dir
-        server.popen_ssh_subprocess(python_code, host = "localhost", 
-                port = env.port, user = user, agent = True)
+        server.popen_python(python_code, 
+                communication = DC.ACCESS_SSH,
+                host = "localhost", 
+                port = env.port, 
+                user = user, 
+                agent = True)
         
-        c = server.Client(self.root_dir, host = "localhost", port = env.port,
-                user = user, agent = True)
+        c = server.Client(self.root_dir, 
+                communication = DC.ACCESS_SSH,
+                host = "localhost", 
+                port = env.port,
+                user = user, 
+                agent = True)
                 
         c.send_msg("Hola")
         reply = c.read_reply()
@@ -120,8 +157,12 @@ class ServerTestCase(unittest.TestCase):
         del c
         
         # reconnect
-        c = server.Client(self.root_dir, host = "localhost", port = env.port,
-                user = user, agent = True)
+        c = server.Client(self.root_dir,
+                communication = DC.ACCESS_SSH,
+                host = "localhost", 
+                port = env.port,
+                user = user, 
+                agent = True)
                 
         c.send_msg("Hola")
         reply = c.read_reply()
@@ -137,11 +178,19 @@ class ServerTestCase(unittest.TestCase):
         # launch server
         python_code = "from nepi.util import server;s=server.Server('%s');\
                 s.run()" % self.root_dir
-        server.popen_ssh_subprocess(python_code, host = "localhost", 
-                port = env.port, user = user, agent = True)
+        server.popen_python(python_code, 
+                communication = DC.ACCESS_SSH,
+                host = "localhost", 
+                port = env.port, 
+                user = user, 
+                agent = True)
         
-        c = server.Client(self.root_dir, host = "localhost", port = env.port,
-                user = user, agent = True)
+        c = server.Client(self.root_dir, 
+                communication = DC.ACCESS_SSH,
+                host = "localhost", 
+                port = env.port,
+                user = user, 
+                agent = True)
                 
         c.send_msg("Hola")
         reply = c.read_reply()

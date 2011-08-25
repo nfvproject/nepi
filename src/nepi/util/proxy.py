@@ -150,20 +150,22 @@ def get_access_config_params(access_config):
     root_dir = access_config.get_attribute_value(DC.ROOT_DIRECTORY)
     log_level = access_config.get_attribute_value(DC.LOG_LEVEL)
     log_level = to_server_log_level(log_level)
-    user = host = port = agent = key = None
+    user = host = port = agent = key = sudo = None
     communication = access_config.get_attribute_value(DC.DEPLOYMENT_COMMUNICATION)
     environment_setup = (
         access_config.get_attribute_value(DC.DEPLOYMENT_ENVIRONMENT_SETUP)
         if access_config.has_attribute(DC.DEPLOYMENT_ENVIRONMENT_SETUP)
         else ""
     )
-    if communication == DC.ACCESS_SSH:
-        user = access_config.get_attribute_value(DC.DEPLOYMENT_USER)
-        host = access_config.get_attribute_value(DC.DEPLOYMENT_HOST)
-        port = access_config.get_attribute_value(DC.DEPLOYMENT_PORT)
-        agent = access_config.get_attribute_value(DC.USE_AGENT)
-        key = access_config.get_attribute_value(DC.DEPLOYMENT_KEY)
-    return (root_dir, log_level, user, host, port, key, agent, environment_setup)
+    user = access_config.get_attribute_value(DC.DEPLOYMENT_USER)
+    host = access_config.get_attribute_value(DC.DEPLOYMENT_HOST)
+    port = access_config.get_attribute_value(DC.DEPLOYMENT_PORT)
+    agent = access_config.get_attribute_value(DC.USE_AGENT)
+    sudo = access_config.get_attribute_value(DC.USE_SUDO)
+    key = access_config.get_attribute_value(DC.DEPLOYMENT_KEY)
+    communication = access_config.get_attribute_value(DC.DEPLOYMENT_COMMUNICATION)
+    return (root_dir, log_level, communication, user, host, port, key, agent,
+            sudo, environment_setup)
 
 class AccessConfiguration(AttributesMap):
     def __init__(self, params = None):
@@ -215,19 +217,33 @@ def create_experiment_controller(xml, access_config = None):
         
         return controller
     elif mode == DC.MODE_DAEMON:
-        (root_dir, log_level, user, host, port, key, agent, environment_setup) = \
-                get_access_config_params(access_config)
+        (root_dir, log_level, communication, user, host, port, key, agent,
+                sudo, environment_setup) = get_access_config_params(access_config)
         try:
             return ExperimentControllerProxy(root_dir, log_level,
-                experiment_xml = xml, host = host, port = port, user = user, ident_key = key,
-                agent = agent, launch = launch,
+                experiment_xml = xml,
+                communication = communication,
+                host = host, 
+                port = port, 
+                user = user, 
+                ident_key = key,
+                agent = agent, 
+                sudo = sudo, 
+                launch = launch,
                 environment_setup = environment_setup)
         except:
             if not launch:
                 # Maybe controller died, recover from persisted testbed information if possible
                 controller = ExperimentControllerProxy(root_dir, log_level,
-                    experiment_xml = xml, host = host, port = port, user = user, ident_key = key,
-                    agent = agent, launch = True,
+                    experiment_xml = xml,
+                    communication = communication,
+                    host = host, 
+                    port = port, 
+                    user = user, 
+                    ident_key = key,
+                    agent = agent, 
+                    sudo = sudo, 
+                    launch = True,
                     environment_setup = environment_setup)
                 controller.recover()
                 return controller
@@ -245,11 +261,19 @@ def create_testbed_controller(testbed_id, testbed_version, access_config):
             raise ValueError, "Unsupported instantiation mode: %s with lanch=False" % (mode,)
         return  _build_testbed_controller(testbed_id, testbed_version)
     elif mode == DC.MODE_DAEMON:
-        (root_dir, log_level, user, host, port, key, agent, environment_setup) = \
-                get_access_config_params(access_config)
-        return TestbedControllerProxy(root_dir, log_level, testbed_id = testbed_id, 
-                testbed_version = testbed_version, host = host, port = port, ident_key = key,
-                user = user, agent = agent, launch = launch,
+        (root_dir, log_level, communication, user, host, port, key, agent,
+                sudo, environment_setup) = get_access_config_params(access_config)
+        return TestbedControllerProxy(root_dir, log_level, 
+                testbed_id = testbed_id, 
+                testbed_version = testbed_version,
+                communication = communication,
+                host = host, 
+                port = port, 
+                ident_key = key,
+                user = user, 
+                agent = agent, 
+                sudo = sudo, 
+                launch = launch,
                 environment_setup = environment_setup)
     raise RuntimeError("Unsupported access configuration '%s'" % mode)
 
@@ -829,15 +853,18 @@ class BaseProxy(object):
     _ServerClass = None
     _ServerClassModule = "nepi.util.proxy"
     
-    def __init__(self, 
-            ctor_args, root_dir, 
-            launch = True, host = None, 
-            port = None, user = None, ident_key = None, agent = None,
+    def __init__(self, ctor_args, root_dir, 
+            launch = True, 
+            communication = DC.ACCESS_LOCAL,
+            host = None, 
+            port = None, 
+            user = None, 
+            ident_key = None, 
+            agent = None,
+            sudo = False, 
             environment_setup = ""):
         if launch:
-            # ssh
-            if host != None:
-                python_code = (
+            python_code = (
                     "from %(classmodule)s import %(classname)s;"
                     "s = %(classname)s%(ctor_args)r;"
                     "s.run()" 
@@ -846,22 +873,29 @@ class BaseProxy(object):
                     classmodule = self._ServerClassModule,
                     ctor_args = ctor_args
                 ) )
-                proc = server.popen_ssh_subprocess(python_code, host = host,
-                    port = port, user = user, agent = agent,
-                    ident_key = ident_key,
-                    environment_setup = environment_setup,
-                    waitcommand = True)
-                if proc.poll():
-                    err = proc.stderr.read()
-                    raise RuntimeError, "Server could not be executed: %s" % (err,)
-            else:
-                # launch daemon
-                s = self._ServerClass(*ctor_args)
-                s.run()
-
+            proc = server.popen_python(python_code,
+                        communication = communication,
+                        host = host,
+                        port = port, 
+                        user = user, 
+                        agent = agent,
+                        ident_key = ident_key, 
+                        sudo = sudo,
+                        environment_setup = environment_setup) 
+            # Wait for the server to be ready, otherwise nobody
+            # will be able to connect to it
+            helo = proc.stderr.readline()
+            if helo != 'SERVER_READY.\n':
+                raise AssertionError, "Expected 'SERVER_READY.', got %r: %s" % (helo,
+                        helo + proc.stderr.read())
         # connect client to server
-        self._client = server.Client(root_dir, host = host, port = port, 
-                user = user, agent = agent, 
+        self._client = server.Client(root_dir, 
+                communication = communication,
+                host = host, 
+                port = port, 
+                user = user, 
+                agent = agent, 
+                sudo = sudo,
                 environment_setup = environment_setup)
     
     @staticmethod
@@ -1052,9 +1086,17 @@ class TestbedControllerProxy(BaseProxy):
     
     _ServerClass = TestbedControllerServer
     
-    def __init__(self, root_dir, log_level, testbed_id = None, 
-            testbed_version = None, launch = True, host = None, 
-            port = None, user = None, ident_key = None, agent = None,
+    def __init__(self, root_dir, log_level, 
+            testbed_id = None, 
+            testbed_version = None, 
+            launch = True, 
+            communication = DC.ACCESS_LOCAL,
+            host = None, 
+            port = None, 
+            user = None, 
+            ident_key = None, 
+            agent = None,
+            sudo = False, 
             environment_setup = ""):
         if launch and (testbed_id == None or testbed_version == None):
             raise RuntimeError("To launch a TesbedControllerServer a "
@@ -1062,8 +1104,14 @@ class TestbedControllerProxy(BaseProxy):
         super(TestbedControllerProxy,self).__init__(
             ctor_args = (root_dir, log_level, testbed_id, testbed_version, environment_setup),
             root_dir = root_dir,
-            launch = launch, host = host, port = port, user = user,
-            ident_key = ident_key, agent = agent, 
+            launch = launch,
+            communication = communication,
+            host = host, 
+            port = port, 
+            user = user,
+            ident_key = ident_key, 
+            agent = agent, 
+            sudo = sudo, 
             environment_setup = environment_setup)
 
     locals().update( BaseProxy._make_stubs(
@@ -1082,14 +1130,28 @@ class TestbedControllerProxy(BaseProxy):
 class ExperimentControllerProxy(BaseProxy):
     _ServerClass = ExperimentControllerServer
     
-    def __init__(self, root_dir, log_level, experiment_xml = None, 
-            launch = True, host = None, port = None, user = None, 
-            ident_key = None, agent = None, environment_setup = ""):
+    def __init__(self, root_dir, log_level, 
+            experiment_xml = None, 
+            launch = True, 
+            communication = DC.ACCESS_LOCAL,
+            host = None, 
+            port = None, 
+            user = None, 
+            ident_key = None, 
+            agent = None, 
+            sudo = False, 
+            environment_setup = ""):
         super(ExperimentControllerProxy,self).__init__(
             ctor_args = (root_dir, log_level, experiment_xml, environment_setup),
             root_dir = root_dir,
-            launch = launch, host = host, port = port, user = user,
-            ident_key = ident_key, agent = agent, 
+            launch = launch, 
+            communication = communication,
+            host = host, 
+            port = port, 
+            user = user,
+            ident_key = ident_key, 
+            agent = agent, 
+            sudo = sudo, 
             environment_setup = environment_setup)
 
     locals().update( BaseProxy._make_stubs(

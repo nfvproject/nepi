@@ -117,6 +117,12 @@ class ExecuteTestCase(unittest.TestCase):
         access_config = proxy.AccessConfiguration()
         access_config.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
         access_config.set_attribute_value(DC.ROOT_DIRECTORY, self.root_dir)
+        access_config.set_attribute_value(DC.DEPLOYMENT_ENVIRONMENT_SETUP, 
+            "export PYTHONPATH=%r:%r:$PYTHONPATH "
+            "export NEPI_TESTBEDS='mock:mock mock2:mock2' " % (
+                os.path.dirname(os.path.dirname(mock.__file__)),
+                os.path.dirname(os.path.dirname(mock2.__file__)),))
+
         controller = proxy.create_experiment_controller(xml, access_config)
 
         controller.start()
@@ -146,6 +152,11 @@ class ExecuteTestCase(unittest.TestCase):
         
         desc.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
         desc.set_attribute_value(DC.ROOT_DIRECTORY, self.root_dir)
+        desc.set_attribute_value(DC.DEPLOYMENT_ENVIRONMENT_SETUP, 
+            "export PYTHONPATH=%r:%r:$PYTHONPATH "
+            "export NEPI_TESTBEDS='mock:mock mock2:mock2' " % (
+                os.path.dirname(os.path.dirname(mock.__file__)),
+                os.path.dirname(os.path.dirname(mock2.__file__)),))
 
         xml = exp_desc.to_xml()
         
@@ -182,6 +193,11 @@ class ExecuteTestCase(unittest.TestCase):
         access_config = proxy.AccessConfiguration()
         access_config.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
         access_config.set_attribute_value(DC.ROOT_DIRECTORY, self.root_dir)
+        access_config.set_attribute_value(DC.DEPLOYMENT_ENVIRONMENT_SETUP, 
+            "export PYTHONPATH=%r:%r:$PYTHONPATH "
+            "export NEPI_TESTBEDS='mock:mock mock2:mock2' " % (
+                os.path.dirname(os.path.dirname(mock.__file__)),
+                os.path.dirname(os.path.dirname(mock2.__file__)),))
         controller = proxy.create_experiment_controller(xml, access_config)
 
         controller.start()
@@ -229,6 +245,11 @@ class ExecuteTestCase(unittest.TestCase):
         access_config = proxy.AccessConfiguration()
         access_config.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
         access_config.set_attribute_value(DC.ROOT_DIRECTORY, self.root_dir)
+        access_config.set_attribute_value(DC.DEPLOYMENT_ENVIRONMENT_SETUP, 
+            "export PYTHONPATH=%r:%r:$PYTHONPATH "
+            "export NEPI_TESTBEDS='mock:mock mock2:mock2' " % (
+                os.path.dirname(os.path.dirname(mock.__file__)),
+                os.path.dirname(os.path.dirname(mock2.__file__)),))
         controller = proxy.create_experiment_controller(xml, access_config)
 
         controller.start()
@@ -327,9 +348,6 @@ class ExecuteTestCase(unittest.TestCase):
         controller.shutdown()
 
     def test_ssh_daemonized_integration(self):
-        # TODO: This test doesn't run because
-        # sys.modules["nepi.testbeds.mock"] = mock
-        # is not set in the ssh process
         exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()
         env = test_util.test_environment()
         
@@ -337,12 +355,6 @@ class ExecuteTestCase(unittest.TestCase):
         inst_root_dir = os.path.join(self.root_dir, "instance")
         os.mkdir(inst_root_dir)
         desc.set_attribute_value(DC.ROOT_DIRECTORY, inst_root_dir)
-        desc.set_attribute_value(DC.DEPLOYMENT_ENVIRONMENT_SETUP, 
-            "export PYTHONPATH=%r:%r:$PYTHONPATH ; "
-            "export NEPI_TESTBEDS='mock:mock mock2:mock2' ; " % (
-                os.path.dirname(os.path.dirname(mock.__file__)),
-                os.path.dirname(os.path.dirname(mock2.__file__)),))
-        
         xml = exp_desc.to_xml()
         
         access_config = proxy.AccessConfiguration()
@@ -351,6 +363,11 @@ class ExecuteTestCase(unittest.TestCase):
         access_config.set_attribute_value(DC.DEPLOYMENT_COMMUNICATION, DC.ACCESS_SSH)
         access_config.set_attribute_value(DC.DEPLOYMENT_PORT, env.port)
         access_config.set_attribute_value(DC.USE_AGENT, True)
+        access_config.set_attribute_value(DC.DEPLOYMENT_ENVIRONMENT_SETUP, 
+            "export PYTHONPATH=%r:%r:$PYTHONPATH "
+            "export NEPI_TESTBEDS='mock:mock mock2:mock2' " % (
+                os.path.dirname(os.path.dirname(mock.__file__)),
+                os.path.dirname(os.path.dirname(mock2.__file__)),))
         controller = proxy.create_experiment_controller(xml, access_config)
 
         try:

@@ -341,6 +341,17 @@ class Metadata(object):
             "validation_function" : validation.is_bool,
             "category" : AC.CATEGORY_DEPLOYMENT,
             }),
+        DC.USE_SUDO : dict({
+            "name" : DC.USE_SUDO,
+            "help" : "Use sudo to run the deamon process. This option only take flace when the server runs in daemon mode.", 
+            "type" : Attribute.BOOL,
+            "value" : False,
+            "flags" : Attribute.ExecReadOnly |\
+                    Attribute.ExecImmutable |\
+                    Attribute.Metadata,
+            "validation_function" : validation.is_bool,
+            "category" : AC.CATEGORY_DEPLOYMENT,
+            }),        
         DC.LOG_LEVEL : dict({
             "name" : DC.LOG_LEVEL,
             "help" : "Log level for instance",

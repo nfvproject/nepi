@@ -73,6 +73,7 @@ class DeploymentConfiguration:
     
     ROOT_DIRECTORY = "rootDirectory"
     USE_AGENT = "useAgent"
+    USE_SUDO = "useSudo"
     LOG_LEVEL = "logLevel"
     RECOVER = "recover"
     RECOVERY_POLICY = "recoveryPolicy"

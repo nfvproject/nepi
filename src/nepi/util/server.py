@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from nepi.util.constants import DeploymentConfiguration as DC
+
 import base64
 import errno
 import os
@@ -98,9 +100,11 @@ class Server(object):
                 # first process (the one that did the first fork) returned.
                 os._exit(0)
         except:
+            print >>sys.stderr, "SERVER_ERROR."
             self.log_error()
             self.cleanup()
             os._exit(0)
+        print >>sys.stderr, "SERVER_READY."
 
     def daemonize(self):
         # pipes for process synchronization
@@ -307,7 +311,7 @@ class Forwarder(object):
 
     def forward(self):
         self.connect()
-        print >>sys.stderr, "READY."
+        print >>sys.stderr, "FORWARDER_READY."
         while not self._stop:
             data = self.read_data()
             self.send_to_server(data)
@@ -373,11 +377,14 @@ class Forwarder(object):
 
 class Client(object):
     def __init__(self, root_dir = ".", host = None, port = None, user = None, 
-            agent = None, environment_setup = ""):
+            agent = None, sudo = False, communication = DC.ACCESS_LOCAL,
+            environment_setup = ""):
         self.root_dir = root_dir
         self.addr = (host, port)
         self.user = user
         self.agent = agent
+        self.sudo = sudo
+        self.communication = communication
         self.environment_setup = environment_setup
         self._stopped = False
         self._deferreds = collections.deque()
@@ -393,31 +400,26 @@ class Client(object):
         (host, port) = self.addr
         user = self.user
         agent = self.agent
+        sudo = self.sudo
+        communication = self.communication
         
         python_code = "from nepi.util import server;c=server.Forwarder(%r);\
                 c.forward()" % (root_dir,)
-        if host != None:
-            self._process = popen_ssh_subprocess(python_code, host, port, 
-                    user, agent,
+
+        self._process = popen_python(python_code, 
+                    communication = communication,
+                    host = host, 
+                    port = port, 
+                    user = user, 
+                    agent = agent, 
+                    sudo = sudo, 
                     environment_setup = self.environment_setup)
-            # popen_ssh_subprocess already waits for readiness
-            if self._process.poll():
-                err = proc.stderr.read()
-                raise RuntimeError("Client could not be reached: %s" % \
-                        err)
-        else:
-            self._process = subprocess.Popen(
-                    ["python", "-c", python_code],
-                    stdin = subprocess.PIPE, 
-                    stdout = subprocess.PIPE,
-                    stderr = subprocess.PIPE
-                )
-                
+               
         # Wait for the forwarder to be ready, otherwise nobody
         # will be able to connect to it
         helo = self._process.stderr.readline()
-        if helo != 'READY.\n':
-            raise AssertionError, "Expected 'Ready.', got %r: %s" % (helo,
+        if helo != 'FORWARDER_READY.\n':
+            raise AssertionError, "Expected 'FORWARDER_READY.', got %r: %s" % (helo,
                     helo + self._process.stderr.read())
         
     def send_msg(self, msg):
@@ -520,309 +522,321 @@ def _make_server_key_args(server_key, host, port, args):
     return tmp_known_hosts
 
 def popen_ssh_command(command, host, port, user, agent, 
-            stdin="", 
-            ident_key = None,
-            server_key = None,
-            tty = False,
-            timeout = None,
-            retry = 0,
-            err_on_timeout = True):
-        """
-        Executes a remote commands, returns ((stdout,stderr),process)
-        """
-        if TRACE:
-            print "ssh", host, command
+        stdin="", 
+        ident_key = None,
+        server_key = None,
+        tty = False,
+        timeout = None,
+        retry = 0,
+        err_on_timeout = True):
+    """
+    Executes a remote commands, returns ((stdout,stderr),process)
+    """
+    if TRACE:
+        print "ssh", host, command
+    
+    tmp_known_hosts = None
+    args = ['ssh',
+            # Don't bother with localhost. Makes test easier
+            '-o', 'NoHostAuthenticationForLocalhost=yes',
+            '-l', user, host]
+    if agent:
+        args.append('-A')
+    if port:
+        args.append('-p%d' % port)
+    if ident_key:
+        args.extend(('-i', ident_key))
+    if tty:
+        args.append('-t')
+    if server_key:
+        # Create a temporary server key file
+        tmp_known_hosts = _make_server_key_args(
+            server_key, host, port, args)
+    args.append(command)
+
+    while 1:
+        # connects to the remote host and starts a remote connection
+        proc = subprocess.Popen(args, 
+                stdout = subprocess.PIPE,
+                stdin = subprocess.PIPE, 
+                stderr = subprocess.PIPE)
         
+        # attach tempfile object to the process, to make sure the file stays
+        # alive until the process is finished with it
+        proc._known_hosts = tmp_known_hosts
+        
+        try:
+            out, err = _communicate(proc, stdin, timeout, err_on_timeout)
+            break
+        except RuntimeError,e:
+            if retry <= 0:
+                raise
+            if TRACE:
+                print " timedout -> ", e.args
+            retry -= 1
+        
+    if TRACE:
+        print " -> ", out, err
+
+    return ((out, err), proc)
+
+def popen_scp(source, dest, 
+        port = None, 
+        agent = None, 
+        recursive = False,
+        ident_key = None,
+        server_key = None):
+    """
+    Copies from/to remote sites.
+    
+    Source and destination should have the user and host encoded
+    as per scp specs.
+    
+    If source is a file object, a special mode will be used to
+    create the remote file with the same contents.
+    
+    If dest is a file object, the remote file (source) will be
+    read and written into dest.
+    
+    In these modes, recursive cannot be True.
+    
+    Source can be a list of files to copy to a single destination,
+    in which case it is advised that the destination be a folder.
+    """
+    
+    if TRACE:
+        print "scp", source, dest
+    
+    if isinstance(source, file) and source.tell() == 0:
+        source = source.name
+    elif hasattr(source, 'read'):
+        tmp = tempfile.NamedTemporaryFile()
+        while True:
+            buf = source.read(65536)
+            if buf:
+                tmp.write(buf)
+            else:
+                break
+        tmp.seek(0)
+        source = tmp.name
+    
+    if isinstance(source, file) or isinstance(dest, file) \
+            or hasattr(source, 'read')  or hasattr(dest, 'write'):
+        assert not recursive
+        
+        # Parse source/destination as <user>@<server>:<path>
+        if isinstance(dest, basestring) and ':' in dest:
+            remspec, path = dest.split(':',1)
+        elif isinstance(source, basestring) and ':' in source:
+            remspec, path = source.split(':',1)
+        else:
+            raise ValueError, "Both endpoints cannot be local"
+        user,host = remspec.rsplit('@',1)
         tmp_known_hosts = None
-        args = ['ssh',
+        
+        args = ['ssh', '-l', user, '-C',
                 # Don't bother with localhost. Makes test easier
                 '-o', 'NoHostAuthenticationForLocalhost=yes',
-                '-l', user, host]
-        if agent:
-            args.append('-A')
+                host ]
         if port:
-            args.append('-p%d' % port)
+            args.append('-P%d' % port)
         if ident_key:
             args.extend(('-i', ident_key))
-        if tty:
-            args.append('-t')
         if server_key:
             # Create a temporary server key file
             tmp_known_hosts = _make_server_key_args(
                 server_key, host, port, args)
-        args.append(command)
-
-        while 1:
-            # connects to the remote host and starts a remote connection
+        
+        if isinstance(source, file) or hasattr(source, 'read'):
+            args.append('cat > %s' % (shell_escape(path),))
+        elif isinstance(dest, file) or hasattr(dest, 'write'):
+            args.append('cat %s' % (shell_escape(path),))
+        else:
+            raise AssertionError, "Unreachable code reached! :-Q"
+        
+        # connects to the remote host and starts a remote connection
+        if isinstance(source, file):
+            proc = subprocess.Popen(args, 
+                    stdout = open('/dev/null','w'),
+                    stderr = subprocess.PIPE,
+                    stdin = source)
+            err = proc.stderr.read()
+            proc._known_hosts = tmp_known_hosts
+            eintr_retry(proc.wait)()
+            return ((None,err), proc)
+        elif isinstance(dest, file):
+            proc = subprocess.Popen(args, 
+                    stdout = open('/dev/null','w'),
+                    stderr = subprocess.PIPE,
+                    stdin = source)
+            err = proc.stderr.read()
+            proc._known_hosts = tmp_known_hosts
+            eintr_retry(proc.wait)()
+            return ((None,err), proc)
+        elif hasattr(source, 'read'):
+            # file-like (but not file) source
+            proc = subprocess.Popen(args, 
+                    stdout = open('/dev/null','w'),
+                    stderr = subprocess.PIPE,
+                    stdin = subprocess.PIPE)
+            
+            buf = None
+            err = []
+            while True:
+                if not buf:
+                    buf = source.read(4096)
+                if not buf:
+                    #EOF
+                    break
+                
+                rdrdy, wrdy, broken = select.select(
+                    [proc.stderr],
+                    [proc.stdin],
+                    [proc.stderr,proc.stdin])
+                
+                if proc.stderr in rdrdy:
+                    # use os.read for fully unbuffered behavior
+                    err.append(os.read(proc.stderr.fileno(), 4096))
+                
+                if proc.stdin in wrdy:
+                    proc.stdin.write(buf)
+                    buf = None
+                
+                if broken:
+                    break
+            proc.stdin.close()
+            err.append(proc.stderr.read())
+                
+            proc._known_hosts = tmp_known_hosts
+            eintr_retry(proc.wait)()
+            return ((None,''.join(err)), proc)
+        elif hasattr(dest, 'write'):
+            # file-like (but not file) dest
             proc = subprocess.Popen(args, 
                     stdout = subprocess.PIPE,
-                    stdin = subprocess.PIPE, 
-                    stderr = subprocess.PIPE)
+                    stderr = subprocess.PIPE,
+                    stdin = open('/dev/null','w'))
             
-            # attach tempfile object to the process, to make sure the file stays
-            # alive until the process is finished with it
-            proc._known_hosts = tmp_known_hosts
-            
-            try:
-                out, err = _communicate(proc, stdin, timeout, err_on_timeout)
-                break
-            except RuntimeError,e:
-                if retry <= 0:
-                    raise
-                if TRACE:
-                    print " timedout -> ", e.args
-                retry -= 1
-            
-        if TRACE:
-            print " -> ", out, err
-
-        return ((out, err), proc)
- 
-def popen_scp(source, dest, 
-            port = None, 
-            agent = None, 
-            recursive = False,
-            ident_key = None,
-            server_key = None):
-        """
-        Copies from/to remote sites.
-        
-        Source and destination should have the user and host encoded
-        as per scp specs.
-        
-        If source is a file object, a special mode will be used to
-        create the remote file with the same contents.
-        
-        If dest is a file object, the remote file (source) will be
-        read and written into dest.
-        
-        In these modes, recursive cannot be True.
-        
-        Source can be a list of files to copy to a single destination,
-        in which case it is advised that the destination be a folder.
-        """
-        
-        if TRACE:
-            print "scp", source, dest
-        
-        if isinstance(source, file) and source.tell() == 0:
-            source = source.name
-        elif hasattr(source, 'read'):
-            tmp = tempfile.NamedTemporaryFile()
+            buf = None
+            err = []
             while True:
-                buf = source.read(65536)
-                if buf:
-                    tmp.write(buf)
-                else:
-                    break
-            tmp.seek(0)
-            source = tmp.name
-        
-        if isinstance(source, file) or isinstance(dest, file) \
-                or hasattr(source, 'read')  or hasattr(dest, 'write'):
-            assert not recursive
-            
-            # Parse source/destination as <user>@<server>:<path>
-            if isinstance(dest, basestring) and ':' in dest:
-                remspec, path = dest.split(':',1)
-            elif isinstance(source, basestring) and ':' in source:
-                remspec, path = source.split(':',1)
-            else:
-                raise ValueError, "Both endpoints cannot be local"
-            user,host = remspec.rsplit('@',1)
-            tmp_known_hosts = None
-            
-            args = ['ssh', '-l', user, '-C',
-                    # Don't bother with localhost. Makes test easier
-                    '-o', 'NoHostAuthenticationForLocalhost=yes',
-                    host ]
-            if port:
-                args.append('-P%d' % port)
-            if ident_key:
-                args.extend(('-i', ident_key))
-            if server_key:
-                # Create a temporary server key file
-                tmp_known_hosts = _make_server_key_args(
-                    server_key, host, port, args)
-            
-            if isinstance(source, file) or hasattr(source, 'read'):
-                args.append('cat > %s' % (shell_escape(path),))
-            elif isinstance(dest, file) or hasattr(dest, 'write'):
-                args.append('cat %s' % (shell_escape(path),))
-            else:
-                raise AssertionError, "Unreachable code reached! :-Q"
-            
-            # connects to the remote host and starts a remote connection
-            if isinstance(source, file):
-                proc = subprocess.Popen(args, 
-                        stdout = open('/dev/null','w'),
-                        stderr = subprocess.PIPE,
-                        stdin = source)
-                err = proc.stderr.read()
-                proc._known_hosts = tmp_known_hosts
-                eintr_retry(proc.wait)()
-                return ((None,err), proc)
-            elif isinstance(dest, file):
-                proc = subprocess.Popen(args, 
-                        stdout = open('/dev/null','w'),
-                        stderr = subprocess.PIPE,
-                        stdin = source)
-                err = proc.stderr.read()
-                proc._known_hosts = tmp_known_hosts
-                eintr_retry(proc.wait)()
-                return ((None,err), proc)
-            elif hasattr(source, 'read'):
-                # file-like (but not file) source
-                proc = subprocess.Popen(args, 
-                        stdout = open('/dev/null','w'),
-                        stderr = subprocess.PIPE,
-                        stdin = subprocess.PIPE)
+                rdrdy, wrdy, broken = select.select(
+                    [proc.stderr, proc.stdout],
+                    [],
+                    [proc.stderr, proc.stdout])
                 
-                buf = None
-                err = []
-                while True:
-                    if not buf:
-                        buf = source.read(4096)
+                if proc.stderr in rdrdy:
+                    # use os.read for fully unbuffered behavior
+                    err.append(os.read(proc.stderr.fileno(), 4096))
+                
+                if proc.stdout in rdrdy:
+                    # use os.read for fully unbuffered behavior
+                    buf = os.read(proc.stdout.fileno(), 4096)
+                    dest.write(buf)
+                    
                     if not buf:
                         #EOF
                         break
-                    
-                    rdrdy, wrdy, broken = select.select(
-                        [proc.stderr],
-                        [proc.stdin],
-                        [proc.stderr,proc.stdin])
-                    
-                    if proc.stderr in rdrdy:
-                        # use os.read for fully unbuffered behavior
-                        err.append(os.read(proc.stderr.fileno(), 4096))
-                    
-                    if proc.stdin in wrdy:
-                        proc.stdin.write(buf)
-                        buf = None
-                    
-                    if broken:
-                        break
-                proc.stdin.close()
-                err.append(proc.stderr.read())
-                    
-                proc._known_hosts = tmp_known_hosts
-                eintr_retry(proc.wait)()
-                return ((None,''.join(err)), proc)
-            elif hasattr(dest, 'write'):
-                # file-like (but not file) dest
-                proc = subprocess.Popen(args, 
-                        stdout = subprocess.PIPE,
-                        stderr = subprocess.PIPE,
-                        stdin = open('/dev/null','w'))
                 
-                buf = None
-                err = []
-                while True:
-                    rdrdy, wrdy, broken = select.select(
-                        [proc.stderr, proc.stdout],
-                        [],
-                        [proc.stderr, proc.stdout])
-                    
-                    if proc.stderr in rdrdy:
-                        # use os.read for fully unbuffered behavior
-                        err.append(os.read(proc.stderr.fileno(), 4096))
-                    
-                    if proc.stdout in rdrdy:
-                        # use os.read for fully unbuffered behavior
-                        buf = os.read(proc.stdout.fileno(), 4096)
-                        dest.write(buf)
-                        
-                        if not buf:
-                            #EOF
-                            break
-                    
-                    if broken:
-                        break
-                err.append(proc.stderr.read())
-                    
-                proc._known_hosts = tmp_known_hosts
-                eintr_retry(proc.wait)()
-                return ((None,''.join(err)), proc)
-            else:
-                raise AssertionError, "Unreachable code reached! :-Q"
-        else:
-            # Parse destination as <user>@<server>:<path>
-            if isinstance(dest, basestring) and ':' in dest:
-                remspec, path = dest.split(':',1)
-            elif isinstance(source, basestring) and ':' in source:
-                remspec, path = source.split(':',1)
-            else:
-                raise ValueError, "Both endpoints cannot be local"
-            user,host = remspec.rsplit('@',1)
-            
-            # plain scp
-            tmp_known_hosts = None
-            args = ['scp', '-q', '-p', '-C',
-                    # Don't bother with localhost. Makes test easier
-                    '-o', 'NoHostAuthenticationForLocalhost=yes' ]
-            if port:
-                args.append('-P%d' % port)
-            if recursive:
-                args.append('-r')
-            if ident_key:
-                args.extend(('-i', ident_key))
-            if server_key:
-                # Create a temporary server key file
-                tmp_known_hosts = _make_server_key_args(
-                    server_key, host, port, args)
-            if isinstance(source,list):
-                args.extend(source)
-            else:
-                args.append(source)
-            args.append(dest)
-
-            # connects to the remote host and starts a remote connection
-            proc = subprocess.Popen(args, 
-                    stdout = subprocess.PIPE,
-                    stdin = subprocess.PIPE, 
-                    stderr = subprocess.PIPE)
+                if broken:
+                    break
+            err.append(proc.stderr.read())
+                
             proc._known_hosts = tmp_known_hosts
-            
-            comm = proc.communicate()
             eintr_retry(proc.wait)()
-            return (comm, proc)
- 
-def popen_ssh_subprocess(python_code, host, port, user, agent, 
+            return ((None,''.join(err)), proc)
+        else:
+            raise AssertionError, "Unreachable code reached! :-Q"
+    else:
+        # Parse destination as <user>@<server>:<path>
+        if isinstance(dest, basestring) and ':' in dest:
+            remspec, path = dest.split(':',1)
+        elif isinstance(source, basestring) and ':' in source:
+            remspec, path = source.split(':',1)
+        else:
+            raise ValueError, "Both endpoints cannot be local"
+        user,host = remspec.rsplit('@',1)
+        
+        # plain scp
+        tmp_known_hosts = None
+        args = ['scp', '-q', '-p', '-C',
+                # Don't bother with localhost. Makes test easier
+                '-o', 'NoHostAuthenticationForLocalhost=yes' ]
+        if port:
+            args.append('-P%d' % port)
+        if recursive:
+            args.append('-r')
+        if ident_key:
+            args.extend(('-i', ident_key))
+        if server_key:
+            # Create a temporary server key file
+            tmp_known_hosts = _make_server_key_args(
+                server_key, host, port, args)
+        if isinstance(source,list):
+            args.extend(source)
+        else:
+            args.append(source)
+        args.append(dest)
+
+        # connects to the remote host and starts a remote connection
+        proc = subprocess.Popen(args, 
+                stdout = subprocess.PIPE,
+                stdin = subprocess.PIPE, 
+                stderr = subprocess.PIPE)
+        proc._known_hosts = tmp_known_hosts
+        
+        comm = proc.communicate()
+        eintr_retry(proc.wait)()
+        return (comm, proc)
+
+def decode_and_execute():
+    # The python code we want to execute might have characters that 
+    # are not compatible with the 'inline' mode we are using. To avoid
+    # problems we receive the encoded python code in base64 as a input 
+    # stream and decode it for execution.
+    import base64, os
+    cmd = ""
+    while True:
+        cmd += os.read(0, 1)# one byte from stdin
+        if cmd[-1] == "\n": 
+            break
+    cmd = base64.b64decode(cmd)
+    # Uncomment for debug
+    #os.write(2, "Executing python code: %s\n" % cmd)
+    os.write(1, "OK\n") # send a sync message
+    exec(cmd)
+
+def popen_python(python_code, 
+        communication = DC.ACCESS_LOCAL,
+        host = None, 
+        port = None, 
+        user = None, 
+        agent = False, 
         python_path = None,
         ident_key = None,
         server_key = None,
         tty = False,
-        environment_setup = "",
-        waitcommand = False):
-        cmd = ""
-        if python_path:
-            python_path.replace("'", r"'\''")
-            cmd = """PYTHONPATH="$PYTHONPATH":'%s' """ % python_path
-            cmd += " ; "
-        if environment_setup:
-            cmd += environment_setup
-            cmd += " ; "
-        # Uncomment for debug (to run everything under strace)
-        # We had to verify if strace works (cannot nest them)
-        #cmd += "if strace echo >/dev/null 2>&1; then CMD='strace -ff -tt -s 200 -o strace.out'; else CMD=''; fi\n"
-        #cmd += "$CMD "
-        #cmd += "strace -f -tt -s 200 -o strace$$.out "
-        cmd += "python -c '"
-        cmd += "import base64, os\n"
-        cmd += "cmd = \"\"\n"
-        cmd += "while True:\n"
-        cmd += " cmd += os.read(0, 1)\n" # one byte from stdin
-        cmd += " if cmd[-1] == \"\\n\": break\n"
-        cmd += "cmd = base64.b64decode(cmd)\n"
-        # Uncomment for debug
-        #cmd += "os.write(2, \"Executing python code: %s\\n\" % cmd)\n"
-        if not waitcommand:
-            cmd += "os.write(1, \"OK\\n\")\n" # send a sync message
-        cmd += "exec(cmd)\n"
-        if waitcommand:
-            cmd += "os.write(1, \"OK\\n\")\n" # send a sync message
-        cmd += "'"
-        
+        sudo = False, 
+        environment_setup = ""):
+
+
+    shell = False
+    cmd = ""
+    if python_path:
+        python_path.replace("'", r"'\''")
+        cmd = """PYTHONPATH="$PYTHONPATH":'%s' """ % python_path
+        cmd += " ; "
+    if environment_setup:
+        cmd += environment_setup
+        cmd += " ; "
+    # Uncomment for debug (to run everything under strace)
+    # We had to verify if strace works (cannot nest them)
+    #cmd += "if strace echo >/dev/null 2>&1; then CMD='strace -ff -tt -s 200 -o strace.out'; else CMD=''; fi\n"
+    #cmd += "$CMD "
+    #cmd += "strace -f -tt -s 200 -o strace$$.out "
+    cmd += "python -c 'from nepi.util import server; server.decode_and_execute()'"
+
+    if communication == DC.ACCESS_SSH:
         tmp_known_hosts = None
         args = ['ssh',
                 # Don't bother with localhost. Makes test easier
@@ -841,23 +855,29 @@ def popen_ssh_subprocess(python_code, host, port, user, agent,
             tmp_known_hosts = _make_server_key_args(
                 server_key, host, port, args)
         args.append(cmd)
+    else:
+        args = [cmd]
+        shell = True
 
-        # connects to the remote host and starts a remote rpyc connection
-        proc = subprocess.Popen(args, 
-                stdout = subprocess.PIPE,
-                stdin = subprocess.PIPE, 
-                stderr = subprocess.PIPE)
+    # connects to the remote host and starts a remote
+    proc = subprocess.Popen(args,
+            shell = shell, 
+            stdout = subprocess.PIPE,
+            stdin = subprocess.PIPE, 
+            stderr = subprocess.PIPE)
+
+    if communication == DC.ACCESS_SSH:
         proc._known_hosts = tmp_known_hosts
-        
-        # send the command to execute
-        os.write(proc.stdin.fileno(),
-                base64.b64encode(python_code) + "\n")
-        msg = os.read(proc.stdout.fileno(), 3)
-        if msg != "OK\n":
-            raise RuntimeError, "Failed to start remote python interpreter: \nout:\n%s%s\nerr:\n%s" % (
-                msg, proc.stdout.read(), proc.stderr.read())
-        return proc
 
+    # send the command to execute
+    os.write(proc.stdin.fileno(),
+            base64.b64encode(python_code) + "\n")
+    msg = os.read(proc.stdout.fileno(), 3)
+    if msg != "OK\n":
+        raise RuntimeError, "Failed to start remote python interpreter: \nout:\n%s%s\nerr:\n%s" % (
+            msg, proc.stdout.read(), proc.stderr.read())
+
+    return proc
 
 # POSIX
 def _communicate(self, input, timeout=None, err_on_timeout=True):
