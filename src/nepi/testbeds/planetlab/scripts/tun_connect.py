@@ -19,6 +19,7 @@ import base64
 import traceback
 
 import tunchannel
+import ipaddr2
 
 tun_name = 'tun0'
 tun_path = '/dev/net/tun'
@@ -86,6 +87,11 @@ parser.add_option(
     help = 
         "See mode. This specifies the interface's transmission queue length. " )
 parser.add_option(
+    "-b", "--bwlimit", dest="bwlimit", metavar="BYTESPERSECOND", type="int",
+    default = None,
+    help = 
+        "This specifies the interface's emulated bandwidth in bytes per second." )
+parser.add_option(
     "-u", "--udp", dest="udp", metavar="PORT", type="int",
     default = None,
     help = 
@@ -117,6 +123,15 @@ parser.add_option(
     default = None,
     help = "If specified, packets won't be logged to standard output, "
            "but dumped to a pcap-formatted trace in the specified file. " )
+parser.add_option(
+    "--multicast", dest="multicast", 
+    action = "store_true",
+    default = False,
+    help = "If specified, multicast packets will be forwarded and IGMP "
+           "join/leave packets will be generated. Routing information "
+           "must be sent to the mroute unix socket, in a format identical "
+           "to that of the kernel's MRT ioctls, prefixed with 32-bit IOCTL "
+           "code and 32-bit data length." )
 parser.add_option(
     "--filter", dest="filter_module", metavar="PATH",
     default = None,
@@ -197,6 +212,54 @@ IFHWADDRLEN = 0x00000006
 IFNAMSIZ = 0x00000010
 IFREQ_SZ = 0x00000028
 FIONREAD = 0x0000541b
+
+class MulticastThread(threading.Thread):
+    def __init__(self, *p, **kw):
+        super(MulticastThread, self).__init__(*p, **kw)
+        self.igmp_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_IGMP)
+        self.igmp_socket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF,
+            socket.inet_aton(options.vif_addr) )
+        self._stop = False
+        self.setDaemon(True)
+    
+    def run(self):
+        devnull = open('/dev/null','r+b')
+        maddr_re = re.compile(r"\s*inet\s*(\d{1,3}[.]\d{1,3}[.]\d{1,3}[.]\d{1,3})\s*")
+        cur_maddr = set()
+        while not self._stop:
+            # Get current subscriptions
+            proc = subprocess.Popen(['ip','maddr','show',tun_name],
+                stdout = subprocess.PIPE,
+                stderr = subprocess.STDOUT,
+                stdin = devnull)
+            new_maddr = set()
+            for line in proc.stdout:
+                match = maddr_re.match(line)
+                if match:
+                    new_maddr.add(match.group(1))
+            proc.wait()
+            
+            # Notify new subscriptions
+            for grp in new_maddr - cur_maddr:
+                self.igmp_socket.sendto(
+                    ipaddr2.igmp(0x16, 0, grp), 
+                    0, 
+                    (grp,0))
+
+            # Notify group leave
+            for grp in cur_maddr - new_maddr:
+                self.igmp_socket.sendto(
+                    ipaddr2.igmp(0x17, 0, grp), 
+                    0, 
+                    (grp,0))
+
+            cur_maddr = new_maddr
+            
+            time.sleep(1)
+    
+    def stop(self):
+        self._stop = True
+        self.join(5)
 
 class HostLock(object):
     # This class is used as a lock to prevent concurrency issues with more
@@ -484,7 +547,7 @@ def pl_vif_stop(tun_path, tun_name):
     del lock, lockfile
 
 
-def tun_fwd(tun, remote, reconnect = None, accept_local = None, accept_remote = None, slowlocal = True):
+def tun_fwd(tun, remote, reconnect = None, accept_local = None, accept_remote = None, slowlocal = True, bwlimit = None):
     global TERMINATE
     
     tunqueue = options.vif_txqueuelen or 1000
@@ -506,7 +569,8 @@ def tun_fwd(tun, remote, reconnect = None, accept_local = None, accept_remote = 
         accept_local = accept_local,
         accept_remote = accept_remote,
         queueclass = queueclass,
-        slowlocal = slowlocal
+        slowlocal = slowlocal,
+        bwlimit = bwlimit
     )
 
 
@@ -634,6 +698,7 @@ signal.signal(signal.SIGTERM, _finalize)
 try:
     tcpdump = None
     reconnect = None
+    mcastthread = None
     
     if options.pass_fd:
         if accept_packet or filter_init:
@@ -812,12 +877,18 @@ try:
         # Ignore errors, we might not have enough privileges,
         # or perhaps there is no os.nice support in the system
         pass
+    
+    if options.multicast:
+        # Start multicast forwarding daemon
+        mcastthread = MulticastThread()
+        mcastthread.start()
 
     if not filter_init:
         tun_fwd(tun, remote,
             reconnect = reconnect,
             accept_local = accept_packet,
             accept_remote = accept_packet,
+            bwlimit = options.bwlimit,
             slowlocal = True)
     else:
         # Hm...
@@ -848,6 +919,7 @@ try:
             tun_fwd(filter_remote_fd, remote,
                 reconnect = reconnect,
                 accept_remote = accept_packet,
+                bwlimit = options.bwlimit,
                 slowlocal = False)
         
         localthread = threading.Thread(target=localside)
@@ -866,6 +938,12 @@ finally:
     
     # tidy shutdown in every case - swallow exceptions
     TERMINATE.append(None)
+    
+    if mcastthread:
+        try:
+            mcastthread.stop()
+        except:
+            pass
     
     if filter_thread:
         try:

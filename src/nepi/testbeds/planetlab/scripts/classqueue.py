@@ -5,6 +5,11 @@ import re
 import sys
 import iovec
 
+dstats = collections.defaultdict(int)
+astats = collections.defaultdict(int)
+dump_count = [0]
+
+_red = True
 _size = 1000
 _classes = (
     "igmp.ggp.cbt.egp.igp.idrp.mhrp.narp.ospf.eigrp*p1:"
@@ -73,8 +78,6 @@ class ClassQueue(object):
     def __init__(self):
         self.size = _size
         self.len = 0
-        self.stats = collections.defaultdict(int)
-        self.dump_count = 0
 
         # Prepare classes
         self.classspec = _parse_classes(_classes)
@@ -148,19 +151,36 @@ class ClassQueue(object):
             rv = self.classmap.get(None)
         return proto, rv, self.sizemap[rv]
     
-    def append(self, packet, len=len):
+    def get_packetdrop_p(self, qlen, qsize, packet):
+        pdrop = ((qlen * 1.0 / qsize) - 0.5) * 2.0
+        pdrop *= pdrop
+        return pdrop
+    
+    def append(self, packet, len=len, dstats=dstats, astats=astats, rng=random.random):
         proto,qi,size = self.queuefor(packet)
         q = self.queues[qi]
-        if len(q) < size:
-            classes = self.classes
-            if qi not in classes:
-                classes.add(qi)
-                self.cycle_update = True
-            q.append(packet)
-            self.len += 1
+        lq = len(q)
+        if lq < size:
+            dropped = 0
+            if lq > (size/2) and _red:
+                pdrop = self.get_packetdrop_p(lq, size, packet)
+                if rng() < pdrop:
+                    dropped = 1
+            if not dropped:
+                classes = self.classes
+                if qi not in classes:
+                    classes.add(qi)
+                    self.cycle_update = True
+                q.append(packet)
+                self.len += 1
         # packet dropped
-        elif _logdropped:
-            self.stats[proto] += 1
+        else:
+            dropped = 1
+        if _logdropped:
+            if dropped:
+                dstats[proto] += 1
+            else:
+                astats[proto] += 1
             self.dump_stats()
 
     def appendleft(self, packet):
@@ -170,7 +190,7 @@ class ClassQueue(object):
     def pop(self, xrange=xrange, len=len, iter=iter, pop=collections.deque.pop):
         return self.popleft(pop=pop)
     
-    def popleft(self, xrange=xrange, len=len, iter=iter, pop=collections.deque.popleft):
+    def popleft(self, xrange=xrange, len=len, iter=iter, enumerate=enumerate, zip=zip, pop=collections.deque.popleft):
         queues = self.queues
         classes = self.classes
 
@@ -206,27 +226,33 @@ class ClassQueue(object):
         else:
             raise IndexError, "pop from an empty queue"
 
-    def dump_stats(self):
-        if self.dump_count >= 10000:
-            stats = "".join(['%s:%s\n' % (key, value) for key, value in self.stats.items()])
+    def dump_stats(self, astats=astats, dstats=dstats, dump_count=dump_count):
+        if dump_count[0] >= 10000:
+            dstatsstr = "".join(['%s:%s\n' % (key, value) for key, value in dstats.items()])
+            astatsstr = "".join(['%s:%s\n' % (key, value) for key, value in astats.items()])
             fd = open('dropped_stats', 'w')
-            iovec.writev(fd.fileno(), stats)
+            iovec.writev(fd.fileno(), "Dropped:\n", dstatsstr, "Accepted:\n", astatsstr)
             fd.close()
-            self.dump_count = 0
+            dump_count[0] = 0
         else:
-            self.dump_count += 1
+            dump_count[0] += 1
 
 queueclass = ClassQueue
 
-def init(size = 1000, classes = _classes, logdropped = 'False'):
+def init(size = 1000, classes = _classes, logdropped = 'False', red = True):
     global _size, _classes, _logdropped
     _size = int(size)
     _classes = classes
+    _red = red
     _logdropped = logdropped.lower() in ('true','1','on')
+    
+    if _logdropped:
+        # Truncate stats
+        open('dropped_stats', 'w').close()
 
 _protomap = {
     '3pc'	:	34,
-    'a/n'	:	107,
+    'an'	:	107,
     'ah'	:	51,
     'argus'	:	13,
     'aris'	:	104,

@@ -128,6 +128,8 @@ class TunIface(object):
         self.snat = False
         self.txqueuelen = None
         self.pointopoint = None
+        self.multicast = False
+        self.bwlimit = None
         
         # Enabled traces
         self.capture = False
