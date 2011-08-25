@@ -20,14 +20,14 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
     slicename1 = "inria_nepi"
     plchost1 = "nepiplc.pl.sophia.inria.fr"
 
-    slicename2 = "inria_nepi12"
-    plchost2 = "www.planet-lab.eu"
+    slicename2 = "inria_nepi2"
+    plchost2 = "nepiplc.pl.sophia.inria.fr"
     
     host1pl1 = "nepi1.pl.sophia.inria.fr"
     host2pl1 = "nepi2.pl.sophia.inria.fr"
 
-    host1pl2 = "planetlab1.utt.fr"
-    host2pl2 = "planetlab2.utt.fr"
+    host1pl2 = "nepi3.pl.sophia.inria.fr"
+    host2pl2 = "nepi4.pl.sophia.inria.fr"
 
     port_base = 2000 + (os.getpid() % 1000) * 13
     
