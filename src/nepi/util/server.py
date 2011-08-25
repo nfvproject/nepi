@@ -835,7 +835,10 @@ def popen_python(python_code,
     #cmd += "if strace echo >/dev/null 2>&1; then CMD='strace -ff -tt -s 200 -o strace.out'; else CMD=''; fi\n"
     #cmd += "$CMD "
     #cmd += "strace -f -tt -s 200 -o strace$$.out "
-    cmd += "python -c 'from nepi.util import server; server.decode_and_execute()'"
+    import nepi
+    cmd += "python -c 'import sys; sys.path.append(%s); from nepi.util import server; server.decode_and_execute()'" % (
+        repr(os.path.dirname(os.path.dirname(nepi.__file__))).replace("'",'"'),
+    )
 
     if communication == DC.ACCESS_SSH:
         tmp_known_hosts = None
