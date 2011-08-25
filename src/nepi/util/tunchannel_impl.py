@@ -215,7 +215,7 @@ class TunChannel(object):
             else:
                 rsock.bind((local_addr,local_port))
             rsock.connect((peer_addr,peer_port))
-            tunchannel.udp_handshake(TERMINATE, rsock)
+            udp_handshake(TERMINATE, rsock)
             remote = os.fdopen(rsock.fileno(), 'r+b', 0)
         elif listen:
             # accept tcp connections
