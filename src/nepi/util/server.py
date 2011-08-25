@@ -221,12 +221,17 @@ class Server(object):
     def loop(self):
         while not self._stop:
             conn, addr = self._ctrl_sock.accept()
+            self.log_error("ACCEPTED CONNECTION: %s" % (addr,))
             conn.settimeout(5)
             while not self._stop:
                 try:
                     msg = self.recv_msg(conn)
                 except socket.timeout, e:
                     self.log_error()
+                    break
+                
+                if not msg:
+                    self.log_error("CONNECTION LOST")
                     break
                     
                 if msg == STOP_MSG:
@@ -314,8 +319,16 @@ class Forwarder(object):
         print >>sys.stderr, "FORWARDER_READY."
         while not self._stop:
             data = self.read_data()
+            if not data:
+                # Connection to client lost
+                break
             self.send_to_server(data)
+            
             data = self.recv_from_server()
+            if not data:
+                # Connection to server lost
+                raise IOError, "Connection to server lost while "\
+                    "expecting response"
             self.write_data(data)
         self.disconnect()
 
