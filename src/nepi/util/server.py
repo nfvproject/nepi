@@ -810,7 +810,13 @@ def decode_and_execute():
     import base64, os
     cmd = ""
     while True:
-        cmd += os.read(0, 1)# one byte from stdin
+        try:
+            cmd += os.read(0, 1)# one byte from stdin
+        except OSError, e:            
+            if e.errno == errno.EINTR:
+                continue
+            else:
+                raise
         if cmd[-1] == "\n": 
             break
     cmd = base64.b64decode(cmd)
@@ -889,7 +895,17 @@ def popen_python(python_code,
     # send the command to execute
     os.write(proc.stdin.fileno(),
             base64.b64encode(python_code) + "\n")
-    msg = os.read(proc.stdout.fileno(), 3)
+ 
+    while True: 
+        try:
+            msg = os.read(proc.stdout.fileno(), 3)
+            break
+        except OSError, e:            
+            if e.errno == errno.EINTR:
+                continue
+            else:
+                raise
+    
     if msg != "OK\n":
         raise RuntimeError, "Failed to start remote python interpreter: \nout:\n%s%s\nerr:\n%s" % (
             msg, proc.stdout.read(), proc.stderr.read())
