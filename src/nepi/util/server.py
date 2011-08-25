@@ -819,9 +819,10 @@ def popen_python(python_code,
         sudo = False, 
         environment_setup = ""):
 
-
     shell = False
     cmd = ""
+    if sudo:
+        cmd +="sudo "
     if python_path:
         python_path.replace("'", r"'\''")
         cmd = """PYTHONPATH="$PYTHONPATH":'%s' """ % python_path
