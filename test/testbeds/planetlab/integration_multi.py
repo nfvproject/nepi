@@ -19,15 +19,17 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
     
     slicename1 = "inria_nepi"
     plchost1 = "nepiplc.pl.sophia.inria.fr"
+    plcvnet1 = "192.168.2"
 
     slicename2 = "inria_nepi2"
     plchost2 = "nepiplc.pl.sophia.inria.fr"
+    plcvnet2 = "192.168.3"
     
     host1pl1 = "nepi1.pl.sophia.inria.fr"
     host2pl1 = "nepi2.pl.sophia.inria.fr"
 
     host1pl2 = "nepi3.pl.sophia.inria.fr"
-    host2pl2 = "nepi4.pl.sophia.inria.fr"
+    host2pl2 = "nepi5.pl.sophia.inria.fr"
 
     port_base = 2000 + (os.getpid() % 1000) * 13
     
@@ -113,12 +115,14 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
         
         # Create PL node, ifaces, assign addresses
         node1, iface1, tap1, tap1ip, inet1 = self.make_pl_tapnode(pl, 
-            "192.168.2.2", self.host1pl1, "node1")
+            self.plcvnet1+".2", self.host1pl1, "node1")
         node2, iface2, tap2, tap2ip, inet2 = self.make_pl_tapnode(pl2, 
-            "192.168.2.3", self.host1pl2, "node2")
+            self.plcvnet2+".3", self.host1pl2, "node2")
             
         # Connect the two
         tap1.connector(proto).connect(tap2.connector(proto))
+        tap1.set_attribute_value("pointopoint", "{#[node2tap].addr[0].[Address]#}")
+        tap2.set_attribute_value("pointopoint", "{#[node1tap].addr[0].[Address]#}")
         
         # Disable encryption for GRE
         if proto == "gre":
