@@ -775,34 +775,7 @@ try:
             raise AssertionError, "Error: need a remote endpoint in UDP mode"
         
         # Wait for other peer
-        endme = False
-        def keepalive():
-            while not endme and not TERMINATE:
-                try:
-                    rsock.send('')
-                except:
-                    pass
-                time.sleep(1)
-            try:
-                rsock.send('')
-            except:
-                pass
-        keepalive_thread = threading.Thread(target=keepalive)
-        keepalive_thread.start()
-        retrydelay = 1.0
-        for i in xrange(30):
-            if TERMINATE:
-                raise OSError, "Killed"
-            try:
-                heartbeat = rsock.recv(10)
-                break
-            except:
-                time.sleep(min(30.0,retrydelay))
-                retrydelay *= 1.1
-        else:
-            heartbeat = rsock.recv(10)
-        endme = True
-        keepalive_thread.join()
+        tunchannel.udp_handshake(TERMINATE, rsock)
         
         remote = os.fdopen(rsock.fileno(), 'r+b', 0)
     else:
