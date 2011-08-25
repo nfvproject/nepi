@@ -7,7 +7,7 @@ import select
 import weakref
 import time
 
-from tunchannel import tun_fwd
+from tunchannel import tun_fwd, udp_handshake
 
 class TunChannel(object):
     """
