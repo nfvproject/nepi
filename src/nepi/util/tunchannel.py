@@ -506,4 +506,33 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
         #print >>sys.stderr, "rr:%d\twr:%d\trt:%d\twt:%d" % (rr,wr,rt,wt)
 
 
+def udp_handshake(TERMINATE, rsock):
+    endme = False
+    def keepalive():
+        while not endme and not TERMINATE:
+            try:
+                rsock.send('')
+            except:
+                pass
+            time.sleep(1)
+        try:
+            rsock.send('')
+        except:
+            pass
+    keepalive_thread = threading.Thread(target=keepalive)
+    keepalive_thread.start()
+    retrydelay = 1.0
+    for i in xrange(30):
+        if TERMINATE:
+            raise OSError, "Killed"
+        try:
+            heartbeat = rsock.recv(10)
+            break
+        except:
+            time.sleep(min(30.0,retrydelay))
+            retrydelay *= 1.1
+    else:
+        heartbeat = rsock.recv(10)
+    endme = True
+    keepalive_thread.join()
 
