@@ -192,8 +192,8 @@ def nonblock(fd):
         return False
 
 def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr=sys.stderr, reconnect=None, rwrite=None, rread=None, tunqueue=1000, tunkqueue=1000,
-        cipher='AES', accept_local=None, accept_remote=None, slowlocal=True, queueclass=None,
-        len=len, max=max, OSError=OSError, select=select.select, selecterror=select.error, os=os, socket=socket,
+        cipher='AES', accept_local=None, accept_remote=None, slowlocal=True, queueclass=None, bwlimit=None,
+        len=len, max=max, min=min, OSError=OSError, select=select.select, selecterror=select.error, os=os, socket=socket,
         retrycodes=(os.errno.EWOULDBLOCK, os.errno.EAGAIN, os.errno.EINTR) ):
     crypto_mode = False
     try:
@@ -295,8 +295,13 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
     
     if queueclass is None:
         queueclass = collections.deque
+        maxbatch = 2000
+        maxtbatch = 50
     else:
         maxfwbuf = maxbkbuf = 2000000000
+        maxbatch = 50
+        maxtbatch = 30
+        tunhurry = 30
     
     fwbuf = queueclass()
     bkbuf = queueclass()
@@ -314,13 +319,17 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
     os_read = os.read
     os_write = os.write
     
+    tget = time.time
+    maxbwfree = bwfree = 1500 * tunqueue
+    lastbwtime = tget()
+    
     remoteok = True
     
     while not TERMINATE:
         wset = []
         if packetReady(bkbuf):
             wset.append(tun)
-        if remoteok and packetReady(fwbuf):
+        if remoteok and packetReady(fwbuf) and (not bwlimit or bwfree > 0):
             wset.append(remote)
         
         rset = []
@@ -363,15 +372,16 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
         # check to see if we can write
         #rr = wr = rt = wt = 0
         if remote in wrdy:
+            sent = 0
             try:
                 try:
-                    for x in xrange(2000):
+                    for x in xrange(maxbatch):
                         packet = pullPacket(fwbuf)
 
                         if crypto_mode:
                             packet = encrypt_(packet, crypter)
                         
-                        rwrite(remote, packet)
+                        sent += rwrite(remote, packet)
                         #wr += 1
                         
                         if not rnonblock or not packetReady(fwbuf):
@@ -396,9 +406,12 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
                     # in UDP mode, we ignore errors - packet loss man...
                     raise
                 #traceback.print_exc(file=sys.stderr)
+            
+            if bwlimit:
+                bwfree -= sent
         if tun in wrdy:
             try:
-                for x in xrange(50):
+                for x in xrange(maxtbatch):
                     packet = pullPacket(bkbuf)
                     twrite(tunfd, packet)
                     #wt += 1
@@ -426,7 +439,7 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
         # check incoming data packets
         if tun in rdrdy:
             try:
-                for x in xrange(2000):
+                for x in xrange(maxbatch):
                     packet = tread(tunfd,2000) # tun.read blocks until it gets 2k!
                     if not packet:
                         continue
@@ -444,7 +457,7 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
         if remote in rdrdy:
             try:
                 try:
-                    for x in xrange(2000):
+                    for x in xrange(maxbatch):
                         packet = rread(remote,2000)
                         #rr += 1
                         
@@ -480,6 +493,15 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
                     # in UDP mode, we ignore errors - packet loss man...
                     raise
                 traceback.print_exc(file=sys.stderr)
+
+        if bwlimit:
+            tnow = tget()
+            delta = tnow - lastbwtime
+            if delta > 0.001:
+                delta = int(bwlimit * delta)
+                if delta > 0:
+                    bwfree = min(bwfree+delta, maxbwfree)
+                    lastbwtime = tnow
         
         #print >>sys.stderr, "rr:%d\twr:%d\trt:%d\twt:%d" % (rr,wr,rt,wt)
 
