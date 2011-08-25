@@ -16,6 +16,19 @@ import time
 class ServerTestCase(unittest.TestCase):
     def setUp(self):
         self.root_dir = tempfile.mkdtemp()
+        
+        # Silence the server
+        self.stderr = sys.stderr
+        sys.stderr = open("/dev/null","r+b")
+
+    def tearDown(self):
+        sys.stderr = self.stderr
+        try:
+            shutil.rmtree(self.root_dir)
+        except:
+            # retry
+            time.sleep(0.1)
+            shutil.rmtree(self.root_dir)
 
     def test_server(self):
         s = server.Server(self.root_dir)
@@ -209,14 +222,6 @@ class ServerTestCase(unittest.TestCase):
         c.send_stop()
         reply = c.read_reply()
         self.assertEqual(reply, "Stopping server")
-
-    def tearDown(self):
-        try:
-            shutil.rmtree(self.root_dir)
-        except:
-            # retry
-            time.sleep(0.1)
-            shutil.rmtree(self.root_dir)
 
 if __name__ == '__main__':
     unittest.main()
