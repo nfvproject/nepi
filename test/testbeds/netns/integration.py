@@ -132,7 +132,7 @@ class NetnsIntegrationTestCase(unittest.TestCase):
         self._test_switched(
                 testbed_access_config = testbed_access_config)
 
-    def test_sudo_daemonized_tbd(self):
+    def DISABLED_test_sudo_daemonized_tbd(self):
         env = test_util.test_environment()
 
         testbed_access_config = proxy.AccessConfiguration()
