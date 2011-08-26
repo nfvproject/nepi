@@ -141,9 +141,9 @@ def log_reply(server, reply):
 
 def to_server_log_level(log_level):
     return (
-        server.DEBUG_LEVEL
+        DC.DEBUG_LEVEL
             if log_level == DC.DEBUG_LEVEL 
-        else server.ERROR_LEVEL
+        else DC.ERROR_LEVEL
     )
 
 def get_access_config_params(access_config):
@@ -198,6 +198,10 @@ def create_experiment_controller(xml, access_config = None):
             else access_config.get_attribute_value(DC.DEPLOYMENT_MODE)
     launch = True if not access_config \
             else not access_config.get_attribute_value(DC.RECOVER)
+    log_level = DC.ERROR_LEVEL if not access_config \
+            else access_config.get_attribute_value(DC.LOG_LEVEL)
+    os.environ["NEPI_CONTROLLER_LOGLEVEL"] = log_level
+
     if not mode or mode == DC.MODE_SINGLE_PROCESS:
         from nepi.core.execute import ExperimentController
         

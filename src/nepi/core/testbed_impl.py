@@ -250,15 +250,15 @@ class TestbedController(execute.TestbedController):
 
             # perform the action on all elements, in parallel if so requested
             if runner:
-                logger.debug("Starting parallel %s", action)
+                logger.debug("TesbedController: Starting parallel %s", action)
                 runner.start()
 
             for guid in guids[factory_id]:
                 if runner:
-                    logger.debug("Scheduling %s on %s", action, guid)
+                    logger.debug("TestbedController: Scheduling %s on %s", action, guid)
                     runner.put(perform_action, guid)
                 else:
-                    logger.debug("Performing %s on %s", action, guid)
+                    logger.debug("TestbedController: Performing %s on %s", action, guid)
                     perform_action(guid)
 
             # sync
@@ -269,16 +269,16 @@ class TestbedController(execute.TestbedController):
             if poststep:
                 for guid in guids[factory_id]:
                     if runner:
-                        logger.debug("Scheduling post-%s on %s", action, guid)
+                        logger.debug("TestbedController: Scheduling post-%s on %s", action, guid)
                         runner.put(poststep, self, guid)
                     else:
-                        logger.debug("Performing post-%s on %s", action, guid)
+                        logger.debug("TestbedController: Performing post-%s on %s", action, guid)
                         poststep(self, guid)
 
             # sync
             if runner:
                 runner.join()
-                logger.debug("Finished parallel %s", action)
+                logger.debug("TestbedController: Finished parallel %s", action)
 
     @staticmethod
     def do_poststep_preconfigure(self, guid):
@@ -329,6 +329,8 @@ class TestbedController(execute.TestbedController):
                         cross_connector_type_name,
                         True)
                 if connect_code:
+                    self._logger.debug("Cross-connect: guid: %d, connect_code: %s " % (
+                        guid, repr(connect_code)))
                     elem_cross_data = cross_data[cross_testbed_guid][cross_guid]
                     connect_code(self, guid, elem_cross_data)       
 
