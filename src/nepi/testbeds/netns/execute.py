@@ -11,6 +11,12 @@ import threading
 class TestbedController(testbed_impl.TestbedController):
     from nepi.util.tunchannel_impl import TunChannel
     
+    LOCAL_FACTORIES = {
+        'ns3::Nepi::TunChannel' : TunChannel,
+    }
+    
+    LOCAL_TYPES = tuple(LOCAL_FACTORIES.values())
+
     class HostLock(object):
         # This class is used as a lock to prevent concurrency issues with more
         # than one instance of netns running in the same machine. Both in 
@@ -86,7 +92,8 @@ class TestbedController(testbed_impl.TestbedController):
         # TODO: take on account schedule time for the task 
         factory_id = self._create[guid]
         factory = self._factories[factory_id]
-        if factory.box_attributes.is_attribute_metadata(name):
+        if factory_id not in self.LOCAL_FACTORIES and \
+                factory.box_attributes.is_attribute_metadata(name):
             return
         element = self._elements.get(guid)
         if element:
@@ -97,7 +104,8 @@ class TestbedController(testbed_impl.TestbedController):
         # TODO: take on account schedule time for the task
         factory_id = self._create[guid]
         factory = self._factories[factory_id]
-        if factory.box_attributes.is_attribute_metadata(name):
+        if factory_id not in self.LOCAL_FACTORIES and \
+                factory.box_attributes.is_attribute_metadata(name):
             return value
         element = self._elements.get(guid)
         try:
