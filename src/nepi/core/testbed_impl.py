@@ -250,7 +250,7 @@ class TestbedController(execute.TestbedController):
 
             # perform the action on all elements, in parallel if so requested
             if runner:
-                logger.debug("TesbedController: Starting parallel %s", action)
+                logger.debug("TestbedController: Starting parallel %s", action)
                 runner.start()
 
             for guid in guids[factory_id]:
