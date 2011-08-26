@@ -12,7 +12,7 @@ class TestbedController(testbed_impl.TestbedController):
     from nepi.util.tunchannel_impl import TunChannel
     
     LOCAL_FACTORIES = {
-        'ns3::Nepi::TunChannel' : TunChannel,
+        'TunChannel' : TunChannel,
     }
     
     LOCAL_TYPES = tuple(LOCAL_FACTORIES.values())
