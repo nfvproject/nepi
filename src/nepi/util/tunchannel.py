@@ -196,8 +196,9 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
         len=len, max=max, min=min, OSError=OSError, select=select.select, selecterror=select.error, os=os, socket=socket,
         retrycodes=(os.errno.EWOULDBLOCK, os.errno.EAGAIN, os.errno.EINTR) ):
     crypto_mode = False
+    crypter = None
     try:
-        if cipher_key:
+        if cipher_key and cipher:
             import Crypto.Cipher
             import hashlib
             __import__('Crypto.Cipher.'+cipher)

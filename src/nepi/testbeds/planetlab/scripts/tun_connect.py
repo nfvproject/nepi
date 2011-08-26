@@ -219,6 +219,8 @@ class MulticastThread(threading.Thread):
         self.igmp_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_IGMP)
         self.igmp_socket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF,
             socket.inet_aton(options.vif_addr) )
+        self.igmp_socket.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
+        self.igmp_socket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 1)
         self._stop = False
         self.setDaemon(True)
     
@@ -226,6 +228,7 @@ class MulticastThread(threading.Thread):
         devnull = open('/dev/null','r+b')
         maddr_re = re.compile(r"\s*inet\s*(\d{1,3}[.]\d{1,3}[.]\d{1,3}[.]\d{1,3})\s*")
         cur_maddr = set()
+        lastfullrefresh = time.time()
         while not self._stop:
             # Get current subscriptions
             proc = subprocess.Popen(['ip','maddr','show',tun_name],
@@ -239,19 +242,27 @@ class MulticastThread(threading.Thread):
                     new_maddr.add(match.group(1))
             proc.wait()
             
-            # Notify new subscriptions
-            for grp in new_maddr - cur_maddr:
-                self.igmp_socket.sendto(
-                    ipaddr2.igmp(0x16, 0, grp), 
-                    0, 
-                    (grp,0))
+            # Every now and then, send a full report
+            now = time.time()
+            report_new = new_maddr
+            if (now - lastfullrefresh) <= 30.0:
+                report_new = report_new - cur_maddr
+            else:
+                lastfullrefresh = now
+            
+            # Report subscriptions
+            for grp in report_new:
+                igmpp = ipaddr2.ipigmp(
+                    options.vif_addr, '224.0.0.2', 1, 0x16, 0, grp, 
+                    noipcksum=True)
+                self.igmp_socket.sendto(igmpp, 0, ('224.0.0.2',0))
 
             # Notify group leave
             for grp in cur_maddr - new_maddr:
-                self.igmp_socket.sendto(
-                    ipaddr2.igmp(0x17, 0, grp), 
-                    0, 
-                    (grp,0))
+                igmpp = ipaddr2.ipigmp(
+                    options.vif_addr, '224.0.0.2', 1, 0x17, 0, grp, 
+                    noipcksum=True)
+                self.igmp_socket.sendto(igmpp, 0, ('224.0.0.2',0))
 
             cur_maddr = new_maddr
             
