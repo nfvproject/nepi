@@ -29,8 +29,6 @@ MAX_FD = 1024
 
 STOP_MSG = "STOP"
 
-ERROR_LEVEL = 0
-DEBUG_LEVEL = 1
 TRACE = os.environ.get("NEPI_TRACE", "false").lower() in ("true", "1", "on")
 
 if hasattr(os, "devnull"):
@@ -78,7 +76,7 @@ def eintr_retry(func):
     return rv
 
 class Server(object):
-    def __init__(self, root_dir = ".", log_level = ERROR_LEVEL, environment_setup = ""):
+    def __init__(self, root_dir = ".", log_level = DC.ERROR_LEVEL, environment_setup = ""):
         self._root_dir = root_dir
         self._stop = False
         self._ctrl_sock = None
@@ -205,6 +203,7 @@ class Server(object):
         return 1
 
     def post_daemonize(self):
+        os.environ["NEPI_CONTROLLER_LOGLEVEL"] = self._log_level
         # QT, for some strange reason, redefines the SIGCHILD handler to write
         # a \0 to a fd (lets say fileno 'x'), when ever a SIGCHILD is received.
         # Server dameonization closes all file descriptors from fileno '3',
@@ -227,8 +226,8 @@ class Server(object):
                 try:
                     msg = self.recv_msg(conn)
                 except socket.timeout, e:
-                    self.log_error()
-                    break
+                    self.log_error("SERVER recv_msg: connection timedout ")
+                    continue
                 
                 if not msg:
                     self.log_error("CONNECTION LOST")
@@ -303,7 +302,7 @@ class Server(object):
         return text
 
     def log_debug(self, text):
-        if self._log_level == DEBUG_LEVEL:
+        if self._log_level == DC.DEBUG_LEVEL:
             date = time.strftime("%Y-%m-%d %H:%M:%S")
             sys.stderr.write("DEBUG: %s\n%s\n" % (date, text))
 

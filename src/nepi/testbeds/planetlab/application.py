@@ -181,6 +181,8 @@ class Dependency(object):
                         raise exctyp,exval,exctrace
                     else:
                         raise RuntimeError, "Failed to setup application"
+                else:
+                    self._logger.info("Setup ready: %s", self)
             else:
                 self.setup()
         

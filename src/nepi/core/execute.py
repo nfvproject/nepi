@@ -241,9 +241,14 @@ class ExperimentController(object):
         self._failed_testbeds = set()
         self._started_time = None
         self._stopped_time = None
-        
+      
         self._logger = logging.getLogger('nepi.core.execute')
-        
+        level = logging.ERROR
+        if os.environ.get("NEPI_CONTROLLER_LOGLEVEL", 
+                DC.ERROR_LEVEL) == DC.DEBUG_LEVEL:
+            level = logging.DEBUG
+        self._logger.setLevel(level)
+ 
         if experiment_xml is None and root_dir is not None:
             # Recover
             self.load_experiment_xml()
@@ -370,24 +375,30 @@ class ExperimentController(object):
         def steps_to_configure(self, allowed_guids):
             # perform setup in parallel for all test beds,
             # wait for all threads to finish
+
+            self._logger.debug("ExperimentController: Starting parallel do_setup")
             self._parallel([testbed.do_setup 
                             for guid,testbed in self._testbeds.iteritems()
                             if guid in allowed_guids])
        
             # perform create-connect in parallel, wait
             # (internal connections only)
+            self._logger.debug("ExperimentController: Starting parallel do_create")
             self._parallel([testbed.do_create
                             for guid,testbed in self._testbeds.iteritems()
                             if guid in allowed_guids])
 
+            self._logger.debug("ExperimentController: Starting parallel do_connect_init")
             self._parallel([testbed.do_connect_init
                             for guid,testbed in self._testbeds.iteritems()
                             if guid in allowed_guids])
 
+            self._logger.debug("ExperimentController: Starting parallel do_connect_fin")
             self._parallel([testbed.do_connect_compl
                             for guid,testbed in self._testbeds.iteritems()
                             if guid in allowed_guids])
 
+            self._logger.debug("ExperimentController: Starting parallel do_preconfigure")
             self._parallel([testbed.do_preconfigure
                             for guid,testbed in self._testbeds.iteritems()
                             if guid in allowed_guids])
@@ -396,6 +407,7 @@ class ExperimentController(object):
         steps_to_configure(self, to_restart)
 
         if self._netreffed_testbeds:
+            self._logger.debug("ExperimentController: Resolving netreffed testbeds")
             # initally resolve netrefs
             self.do_netrefs(data, fail_if_undefined=False)
             
@@ -426,14 +438,17 @@ class ExperimentController(object):
         all_restart = [ self._testbeds[guid] for guid in all_restart ]
             
         # final netref step, fail if anything's left unresolved
+        self._logger.debug("ExperimentController: Resolving do_netrefs")
         self.do_netrefs(data, fail_if_undefined=False)
        
         # Only now, that netref dependencies have been solve, it is safe to
         # program cross_connections
+        self._logger.debug("ExperimentController: Programming testbed cross-connections")
         self._program_testbed_cross_connections(data)
  
         # perform do_configure in parallel for al testbeds
         # (it's internal configuration for each)
+        self._logger.debug("ExperimentController: Starting parallel do_configure")
         self._parallel([testbed.do_configure
                         for testbed in all_restart])
 
@@ -444,6 +459,7 @@ class ExperimentController(object):
         #time.sleep(60)
         
         # cross-connect (cannot be done in parallel)
+        self._logger.debug("ExperimentController: Starting cross-connect")
         for guid, testbed in self._testbeds.iteritems():
             cross_data = self._get_cross_data(guid)
             testbed.do_cross_connect_init(cross_data)
@@ -454,6 +470,7 @@ class ExperimentController(object):
         self._clear_caches()
 
         # Last chance to configure (parallel on all testbeds)
+        self._logger.debug("ExperimentController: Starting parallel do_prestart")
         self._parallel([testbed.do_prestart
                         for testbed in all_restart])
 
@@ -469,6 +486,7 @@ class ExperimentController(object):
             self.persist_execute_xml()
 
         # start experiment (parallel start on all testbeds)
+        self._logger.debug("ExperimentController: Starting parallel do_start")
         self._parallel([testbed.start
                         for testbed in all_restart])
 
@@ -1001,6 +1019,8 @@ class ExperimentController(object):
                                     cross_testbed_guid, cross_testbed_id, cross_factory_id, 
                                     cross_connector_type_name)
                             # save cross data for later
+                            self._logger.debug("ExperimentController: adding cross_connection data tbd=%d:guid=%d - tbd=%d:guid=%d" % \
+                                    (testbed_guid, guid, cross_testbed_guid, cross_guid))
                             self._add_crossdata(testbed_guid, guid, cross_testbed_guid,
                                     cross_guid)
 
