@@ -49,32 +49,43 @@ def ipdistn(a,b):
 def inet_cksum(packet):
     words = array.array('H')
     words.fromstring(packet[:len(packet)&~0x1])
-    cksum = sum(words)
+    htons = socket.htons
+    cksum = 0
+    for word in words:
+        cksum += htons(word)
     if len(packet)&0x1:
-       cksum += ord(packet[-1])
+        cksum += ord(packet[-1])
+    cksum &= 0xffffffff
     cksum = (cksum >> 16) + (cksum & 0xffff)
     cksum += (cksum >> 16)
     return ~cksum
 
-def iphdr(src, dst, datalen, ttl, proto):
+def iphdr(src, dst, datalen, ttl, proto, tos=0, nocksum=False, ipid=0):
     cksum = 0
     src = socket.inet_aton(src)
     dst = socket.inet_aton(dst)
     hdr = struct.pack('!BBHHHBBH4s4s', 
-        0x45, 0, datalen + 5*32, int(random.random() * 65536) & 0xffff, 0, 
+        0x45, tos, datalen + 5*4, ipid, 0, 
         ttl, proto, cksum & 0xffff, src, dst)
-    cksum = inet_cksum(hdr)
-    hdr = struct.pack('!BBHHHBBH4s4s', 
-        0x45, 0, datalen + 5*32, int(random.random() * 65536) & 0xffff, 0, 
-        ttl, proto, cksum & 0xffff, src, dst)
+    if not nocksum:
+        cksum = inet_cksum(hdr)
+        hdr = struct.pack('!BBHHHBBH4s4s', 
+            0x45, tos, datalen + 5*4, ipid, 0, 
+            ttl, proto, cksum & 0xffff, src, dst)
     return hdr
 
-def igmp(type, mxrt, grp):
+def igmp(type, mxrt, grp, nocksum=False):
     cksum = 0
     grp = socket.inet_aton(grp)
     ighdr = struct.pack('!BBH4s', type, mxrt, cksum & 0xffff, grp)
-    cksum = inet_cksum(ighdr)
-    ighdr = struct.pack('!BBH4s', type, mxrt, cksum & 0xffff, grp)
+    if not nocksum:
+        cksum = inet_cksum(ighdr)
+        ighdr = struct.pack('!BBH4s', type, mxrt, cksum & 0xffff, grp)
     return ighdr
+
+def ipigmp(src, dst, ttl, type, mxrt, grp, noipcksum=False, noigmpcksum=False):
+    igmpp = igmp(type, mxrt, grp, nocksum=noigmpcksum)
+    iph = iphdr(src, dst, len(igmpp), ttl, 2, tos=0xc0, nocksum=noipcksum)
+    return iph+igmpp
 
 
