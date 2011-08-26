@@ -227,7 +227,7 @@ class Server(object):
                     msg = self.recv_msg(conn)
                 except socket.timeout, e:
                     self.log_error("SERVER recv_msg: connection timedout ")
-                    break
+                    continue
                 
                 if not msg:
                     self.log_error("CONNECTION LOST")

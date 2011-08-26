@@ -406,8 +406,8 @@ class ExperimentController(object):
 
         steps_to_configure(self, to_restart)
 
-        self._logger.debug("ExperimentController: Resolving netreffed testbeds")
         if self._netreffed_testbeds:
+            self._logger.debug("ExperimentController: Resolving netreffed testbeds")
             # initally resolve netrefs
             self.do_netrefs(data, fail_if_undefined=False)
             
@@ -443,6 +443,7 @@ class ExperimentController(object):
        
         # Only now, that netref dependencies have been solve, it is safe to
         # program cross_connections
+        self._logger.debug("ExperimentController: Programming testbed cross-connections")
         self._program_testbed_cross_connections(data)
  
         # perform do_configure in parallel for al testbeds
@@ -1018,6 +1019,8 @@ class ExperimentController(object):
                                     cross_testbed_guid, cross_testbed_id, cross_factory_id, 
                                     cross_connector_type_name)
                             # save cross data for later
+                            self._logger.debug("ExperimentController: adding cross_connection data tbd=%d:guid=%d - tbd=%d:guid=%d" % \
+                                    (testbed_guid, guid, cross_testbed_guid, cross_guid))
                             self._add_crossdata(testbed_guid, guid, cross_testbed_guid,
                                     cross_guid)
 

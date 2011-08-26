@@ -65,7 +65,7 @@ class TunChannel(object):
         # They're part of the TUN standard attribute set
         self.tun_port = None
         self.tun_addr = None
-        self.tun_cipher = None
+        self.tun_cipher = 'AES'
         
         # These get initialized when the channel is connected to its peer
         self.peer_proto = None
