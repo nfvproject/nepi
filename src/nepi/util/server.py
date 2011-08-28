@@ -9,14 +9,14 @@ import os
 import os.path
 import resource
 import select
-import socket
+import shutil
 import signal
+import socket
 import sys
 import subprocess
 import threading
 import time
 import traceback
-import signal
 import re
 import tempfile
 import defer
@@ -76,8 +76,10 @@ def eintr_retry(func):
     return rv
 
 class Server(object):
-    def __init__(self, root_dir = ".", log_level = DC.ERROR_LEVEL, environment_setup = ""):
+    def __init__(self, root_dir = ".", log_level = DC.ERROR_LEVEL, 
+            environment_setup = "", clean_root = False):
         self._root_dir = root_dir
+        self._clean_root = clean_root
         self._stop = False
         self._ctrl_sock = None
         self._log_level = log_level
@@ -110,6 +112,8 @@ class Server(object):
         
         # build root folder
         root = os.path.normpath(self._root_dir)
+        if os.path.exists(root) and self._clean_root:
+            shutil.rmtree(root)
         if not os.path.exists(root):
             os.makedirs(root, 0755)
 
