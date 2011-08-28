@@ -330,7 +330,7 @@ class TestbedController(execute.TestbedController):
                         True)
                 if connect_code:
                     self._logger.debug("Cross-connect: guid: %d, connect_code: %s " % (
-                        guid, repr(connect_code)))
+                        guid, connect_code.func.__name__))
                     elem_cross_data = cross_data[cross_testbed_guid][cross_guid]
                     connect_code(self, guid, elem_cross_data)       
 
