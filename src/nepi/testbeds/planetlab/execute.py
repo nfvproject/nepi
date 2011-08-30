@@ -37,10 +37,11 @@ class TestbedController(testbed_impl.TestbedController):
         self.slicename = None
         self._traces = dict()
 
-        import node, interfaces, application
+        import node, interfaces, application, multicast
         self._node = node
         self._interfaces = interfaces
         self._app = application
+        self._multicast = multicast
         
         self._blacklist = set()
         self._just_provisioned = set()
@@ -717,5 +718,14 @@ class TestbedController(testbed_impl.TestbedController):
 
     def _make_tos_queue_filter(self, parameters):
         return self._make_generic(parameters, self._interfaces.ToSQueueFilter)
+
+    def _make_multicast_forwarder(self, parameters):
+        return self._make_generic(parameters, self._multicast.MulticastForwarder)
+
+    def _make_multicast_announcer(self, parameters):
+        return self._make_generic(parameters, self._multicast.MulticastAnnouncer)
+
+    def _make_multicast_router(self, parameters):
+        return self._make_generic(parameters, self._multicast.MulticastRouter)
 
 

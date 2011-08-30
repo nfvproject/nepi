@@ -34,6 +34,10 @@ parser.add_option(
     "-r", "--router-path", dest="mrt_path", metavar="PATH", 
     default = "/var/run/mcastrt",
     help = "Path of the unix socket in which the program will listen for routing changes")
+parser.add_option(
+    "-A", "--announce-only", dest="announce_only", action="store_true",
+    default = False,
+    help = "If given, only group membership announcements will be made. Useful for non-router multicast nodes.")
 
 (options, remaining_args) = parser.parse_args(sys.argv[1:])
 
@@ -172,6 +176,7 @@ class FWDThread(threading.Thread):
         router_socket = self.router_socket
         len_ = len
         ord_ = ord
+        str_ = str
         pending = self.pending
         in_socket.settimeout(options.poll_delay)
         buffer_ = buffer
@@ -208,14 +213,16 @@ class FWDThread(threading.Thread):
             # To-Do: PIM asserts
             
             # Get route
-            addrinfo = buffer_(packet,14,8)
+            addrinfo = buffer_(packet,12,8)
             fwd_targets = rt_cache.get(parent+addrinfo)
+            if fwd_targets is None:
+                fwd_targets = rt_cache.get('\x00\x00\x00\x00'+str_(addrinfo))
             
             if fwd_targets is not None:
                 # Forward
                 ttl = ord_(packet[8])
                 tgt_group = (addrinfo[4:],0)
-                print >>sys.stderr, socket.inet_ntoa(tgt_group), "->",
+                print >>sys.stderr, socket.inet_ntoa(tgt_group[0]), "->",
                 for vifi, ttl in enumerate_(fwd_targets):
                     ttl_thresh = ord_(ttl)
                     if ttl_thresh > 0 and ttl > ttl_thresh and vifi in vifs:
@@ -279,7 +286,7 @@ class RouterThread(threading.Thread):
             return unpack('HBBI4s4s', data)
         def mfcctl(data, unpack=struct.unpack):
             #origin,mcastgrp,parent,ttls,pkt_cnt,byte_cnt,wrong_if,expire = unpack('4s4sH10sIIIi', data)
-            return unpack('4s4sH10sIIIi', data)
+            return unpack('4s4sH32sIIIi', data)
         
         
         def add_vif(cmd):
@@ -295,14 +302,22 @@ class RouterThread(threading.Thread):
             print >>sys.stderr, "Removed VIF", vifi
         def add_mfc(cmd):
             origin,mcastgrp,parent,ttls,pkt_cnt,byte_cnt,wrong_if,expire = mfcctl(data)
-            addrinfo = ''.join(vifs[parent][4],origin,mcastgrp)
+            if parent in vifs:
+                parent_addr = vifs[parent][4]
+            else:
+                parent_addr = '\x00\x00\x00\x00'
+            addrinfo = ''.join((parent_addr,origin,mcastgrp))
             rt_cache[addrinfo] = ttls
-            print >>sys.stderr, "Added RT", '-'.join(map(socket.inet_ntoa((vifs[parent][4],origin,mcastgrp))))
+            print >>sys.stderr, "Added RT", '-'.join(map(socket.inet_ntoa,(parent_addr,origin,mcastgrp)))
         def del_mfc(cmd):
             origin,mcastgrp,parent,ttls,pkt_cnt,byte_cnt,wrong_if,expire = mfcctl(data)
-            addrinfo = ''.join(vifs[parent][4],origin,mcastgrp)
+            if parent in vifs:
+                parent_addr = vifs[parent][4]
+            else:
+                parent_addr = '\x00\x00\x00\x00'
+            addrinfo = ''.join((parent_addr,origin,mcastgrp))
             del rt_cache[addrinfo]
-            print >>sys.stderr, "Removed RT", '-'.join(map(socket.inet_ntoa((vifs[parent][4],origin,mcastgrp))))
+            print >>sys.stderr, "Removed RT", '-'.join(map(socket.inet_ntoa,(parent_addr,origin,mcastgrp)))
         
         commands = {
             MRT_ADD_VIF : add_vif,
@@ -369,18 +384,21 @@ signal.signal(signal.SIGTERM, _finalize)
 
 
 try:
-    router_socket = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
-    router_socket.bind(options.mrt_path)
-    router_socket.listen(0)
-    router_remote_socket, router_remote_addr = router_socket.accept()
+    if not options.announce_only:
+        router_socket = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
+        router_socket.bind(options.mrt_path)
+        router_socket.listen(0)
+        router_remote_socket, router_remote_addr = router_socket.accept()
 
-    fwd_thread = FWDThread(rt_cache, router_remote_socket, vifs)
-    router_thread = RouterThread(rt_cache, router_remote_socket, vifs)
+        fwd_thread = FWDThread(rt_cache, router_remote_socket, vifs)
+        router_thread = RouterThread(rt_cache, router_remote_socket, vifs)
 
     for thread in igmp_threads:
         thread.start()
-    fwd_thread.start()
-    router_thread.start()
+    
+    if not options.announce_only:
+        fwd_thread.start()
+        router_thread.start()
 
     while not TERMINATE:
         time.sleep(30)
