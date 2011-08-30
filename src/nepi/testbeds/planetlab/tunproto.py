@@ -280,8 +280,6 @@ class TunProtoBase(object):
             args.append("-N")
         elif local_cap == 'pcap':
             args.extend(('-c','pcap'))
-        if local_mcast:
-            args.append("--multicast")
         if local_bwlim:
             args.extend(("-b",str(local_bwlim*1024)))
         if extra_args:
@@ -292,7 +290,7 @@ class TunProtoBase(object):
             args.extend(("--filter", filter_module))
         if filter_args:
             args.extend(("--filter-args", filter_args))
-        if local_mcastfwd:
+        if local_mcast and local_mcastfwd:
             args.extend(("--multicast-forwarder", local_mcastfwd))
 
         self._logger.info("Starting %s", self)

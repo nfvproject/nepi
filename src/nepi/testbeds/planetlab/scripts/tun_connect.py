@@ -19,7 +19,6 @@ import base64
 import traceback
 
 import tunchannel
-import ipaddr2
 
 try:
     import iovec
@@ -130,21 +129,12 @@ parser.add_option(
     help = "If specified, packets won't be logged to standard output, "
            "but dumped to a pcap-formatted trace in the specified file. " )
 parser.add_option(
-    "--multicast", dest="multicast", 
-    action = "store_true",
-    default = False,
-    help = "If specified, multicast packets will be forwarded and IGMP "
-           "join/leave packets will be generated. Routing information "
-           "must be sent to the mroute unix socket, in a format identical "
-           "to that of the kernel's MRT ioctls, prefixed with 32-bit IOCTL "
-           "code and 32-bit data length." )
-parser.add_option(
     "--multicast-forwarder", dest="multicast_fwd", 
     default = None,
     help = "If specified, multicast packets will be forwarded to "
            "the specified unix-domain socket. If the device uses ethernet "
            "frames, ethernet headers will be stripped and IP packets "
-           "will be forwarded." )
+           "will be forwarded, prefixed with the interface's address." )
 parser.add_option(
     "--filter", dest="filter_module", metavar="PATH",
     default = None,
@@ -225,65 +215,6 @@ IFHWADDRLEN = 0x00000006
 IFNAMSIZ = 0x00000010
 IFREQ_SZ = 0x00000028
 FIONREAD = 0x0000541b
-
-class MulticastThread(threading.Thread):
-    def __init__(self, *p, **kw):
-        super(MulticastThread, self).__init__(*p, **kw)
-        self.igmp_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_IGMP)
-        self.igmp_socket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF,
-            socket.inet_aton(options.vif_addr) )
-        self.igmp_socket.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
-        self.igmp_socket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 1)
-        self._stop = False
-        self.setDaemon(True)
-    
-    def run(self):
-        devnull = open('/dev/null','r+b')
-        maddr_re = re.compile(r"\s*inet\s*(\d{1,3}[.]\d{1,3}[.]\d{1,3}[.]\d{1,3})\s*")
-        cur_maddr = set()
-        lastfullrefresh = time.time()
-        while not self._stop:
-            # Get current subscriptions
-            proc = subprocess.Popen(['ip','maddr','show',tun_name],
-                stdout = subprocess.PIPE,
-                stderr = subprocess.STDOUT,
-                stdin = devnull)
-            new_maddr = set()
-            for line in proc.stdout:
-                match = maddr_re.match(line)
-                if match:
-                    new_maddr.add(match.group(1))
-            proc.wait()
-            
-            # Every now and then, send a full report
-            now = time.time()
-            report_new = new_maddr
-            if (now - lastfullrefresh) <= 30.0:
-                report_new = report_new - cur_maddr
-            else:
-                lastfullrefresh = now
-            
-            # Report subscriptions
-            for grp in report_new:
-                igmpp = ipaddr2.ipigmp(
-                    options.vif_addr, '224.0.0.2', 1, 0x16, 0, grp, 
-                    noipcksum=True)
-                self.igmp_socket.sendto(igmpp, 0, ('224.0.0.2',0))
-
-            # Notify group leave
-            for grp in cur_maddr - new_maddr:
-                igmpp = ipaddr2.ipigmp(
-                    options.vif_addr, '224.0.0.2', 1, 0x17, 0, grp, 
-                    noipcksum=True)
-                self.igmp_socket.sendto(igmpp, 0, ('224.0.0.2',0))
-
-            cur_maddr = new_maddr
-            
-            time.sleep(1)
-    
-    def stop(self):
-        self._stop = True
-        self.join(5)
 
 class HostLock(object):
     # This class is used as a lock to prevent concurrency issues with more
@@ -936,11 +867,6 @@ try:
         # or perhaps there is no os.nice support in the system
         pass
     
-    if options.multicast:
-        # Start multicast forwarding daemon
-        mcastthread = MulticastThread()
-        mcastthread.start()
-
     if not filter_init:
         tun_fwd(tun, remote,
             reconnect = reconnect,
