@@ -329,8 +329,14 @@ class TestbedController(execute.TestbedController):
                         cross_connector_type_name,
                         True)
                 if connect_code:
-                    self._logger.debug("Cross-connect: guid: %d, connect_code: %s " % (
-                        guid, connect_code.func.__name__))
+                    if hasattr(connect_code, "func"):
+                        func_name = connect_code.func.__name__
+                    elif hasattr(connect_code, "__name__"):
+                        func_name = connect_code.__name__
+                    else:
+                        func_name = repr(connect_code)
+                    self._logger.debug("Cross-connect - guid: %d, connect_code: %s " % (
+                        guid, func_name))
                     elem_cross_data = cross_data[cross_testbed_guid][cross_guid]
                     connect_code(self, guid, elem_cross_data)       
 

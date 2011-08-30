@@ -238,9 +238,9 @@ class TunIface(object):
         if self.tun_cipher != 'PLAIN' and self.peer_proto not in ('udp','tcp',None):
             raise RuntimeError, "Miscofnigured TUN: %s - ciphered tunnels only work with udp or tcp links" % (self,)
     
-    def _impl_instance(self, home_path, listening):
+    def _impl_instance(self, home_path):
         impl = self._PROTO_MAP[self.peer_proto](
-            self, self.peer_iface, home_path, self.tun_key, listening)
+            self, self.peer_iface, home_path, self.tun_key)
         impl.port = self.tun_port
         return impl
     
@@ -253,8 +253,8 @@ class TunIface(object):
         else:
             self._delay_recover = True
     
-    def prepare(self, home_path, listening):
-        if not self.peer_iface and (self.peer_proto and (listening or (self.peer_addr and self.peer_port))):
+    def prepare(self, home_path):
+        if not self.peer_iface and (self.peer_proto and self.peer_addr and self.peer_port):
             # Ad-hoc peer_iface
             self.peer_iface = _CrossIface(
                 self.peer_proto,
@@ -263,15 +263,13 @@ class TunIface(object):
                 self.peer_cipher)
         if self.peer_iface:
             if not self.peer_proto_impl:
-                self.peer_proto_impl = self._impl_instance(home_path, listening)
+                self.peer_proto_impl = self._impl_instance(home_path)
             if self._delay_recover:
                 self.peer_proto_impl.recover()
-            else:
-                self.peer_proto_impl.prepare()
     
-    def setup(self):
+    def launch(self):
         if self.peer_proto_impl:
-            self.peer_proto_impl.setup()
+            self.peer_proto_impl.launch()
     
     def cleanup(self):
         if self.peer_proto_impl:
@@ -282,9 +280,9 @@ class TunIface(object):
             self.peer_proto_impl.destroy()
             self.peer_proto_impl = None
 
-    def async_launch_wait(self):
+    def wait(self):
         if self.peer_proto_impl:
-            self.peer_proto_impl.async_launch_wait()
+            self.peer_proto_impl.wait()
 
     def sync_trace(self, local_dir, whichtrace, tracemap = None):
         if self.peer_proto_impl:
