@@ -21,6 +21,12 @@ import traceback
 import tunchannel
 import ipaddr2
 
+try:
+    import iovec
+    HAS_IOVEC = True
+except:
+    HAS_IOVEC = False
+
 tun_name = 'tun0'
 tun_path = '/dev/net/tun'
 hostaddr = socket.gethostbyname(socket.gethostname())
@@ -104,8 +110,8 @@ parser.add_option(
         "Specify a symmetric encryption key with which to protect packets across "
         "the tunnel. python-crypto must be installed on the system." )
 parser.add_option(
-    "-K", "--gre-key", dest="gre_key", metavar="KEY", type="int",
-    default = None,
+    "-K", "--gre-key", dest="gre_key", metavar="KEY", type="string",
+    default = "true",
     help = 
         "Specify a demultiplexing 32-bit numeric key for GRE." )
 parser.add_option(
@@ -132,6 +138,13 @@ parser.add_option(
            "must be sent to the mroute unix socket, in a format identical "
            "to that of the kernel's MRT ioctls, prefixed with 32-bit IOCTL "
            "code and 32-bit data length." )
+parser.add_option(
+    "--multicast-forwarder", dest="multicast_fwd", 
+    default = None,
+    help = "If specified, multicast packets will be forwarded to "
+           "the specified unix-domain socket. If the device uses ethernet "
+           "frames, ethernet headers will be stripped and IP packets "
+           "will be forwarded." )
 parser.add_option(
     "--filter", dest="filter_module", metavar="PATH",
     default = None,
@@ -508,7 +521,7 @@ def pl_vif_start(tun_path, tun_name):
     if options.vif_txqueuelen is not None:
         stdin.write("txqueuelen=%d\n" % (options.vif_txqueuelen,))
     if options.mode.startswith('pl-gre'):
-        stdin.write("gre=%d\n" % (options.gre_key,))
+        stdin.write("gre=%s\n" % (options.gre_key,))
         stdin.write("remote=%s\n" % (remaining_args[0],))
     stdin.close()
     
@@ -685,6 +698,12 @@ else:
     filter_close = None
     queueclass = None
 
+# install multicast forwarding hook
+if options.multicast_fwd:
+    print >>sys.stderr, "Connecting to mcast filter"
+    mcfwd_sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    tunchannel.nonblock(mcfwd_sock.fileno())
+
 # be careful to roll back stuff on exceptions
 tun_path, tun_name = modeinfo['alloc'](tun_path, tun_name)
 try:
@@ -710,6 +729,61 @@ try:
     tcpdump = None
     reconnect = None
     mcastthread = None
+
+    # install multicast forwarding hook
+    if options.multicast_fwd:
+        print >>sys.stderr, "Installing mcast filter"
+        
+        if HAS_IOVEC:
+            writev = iovec.writev
+        else:
+            os_write = os.write
+            map_ = map
+            str_ = str
+            def writev(fileno, *stuff):
+                os_write(''.join(map_(str_,stuff)))
+        
+        def accept_packet(packet, direction, 
+                _up_accept=accept_packet, 
+                sock=mcfwd_sock, 
+                sockno=mcfwd_sock.fileno(),
+                etherProto=tunchannel.etherProto,
+                etherStrip=tunchannel.etherStrip,
+                etherMode=tun_name.startswith('tap'),
+                multicast_fwd = options.multicast_fwd,
+                vif_addr = socket.inet_aton(options.vif_addr),
+                connected = [], writev=writev,
+                len=len, ord=ord):
+            if _up_accept:
+                rv = _up_accept(packet, direction)
+                if not rv:
+                    return rv
+
+            if direction == 1:
+                # Incoming... what?
+                if etherMode:
+                    if etherProto(packet)=='\x08\x00':
+                        fwd = etherStrip(packet)
+                    else:
+                        fwd = None
+                else:
+                    fwd = packet
+                if fwd is not None and len(fwd) >= 20:
+                    if (ord(fwd[16]) & 0xf0) == 0xe0:
+                        # Forward it
+                        if not connected:
+                            try:
+                                sock.connect(multicast_fwd)
+                                connected.append(None)
+                            except:
+                                traceback.print_exc(file=sys.stderr)
+                        if connected:
+                            try:
+                                writev(sockno, vif_addr,fwd)
+                            except:
+                                traceback.print_exc(file=sys.stderr)
+            return 1
+
     
     if options.pass_fd:
         if accept_packet or filter_init:

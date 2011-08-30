@@ -26,6 +26,7 @@ class TunProtoBase(object):
         self.port = 15000
         self.mode = 'pl-tun'
         self.key = key
+        self.cross_slice = False
         
         self.home_path = home_path
         
@@ -209,6 +210,7 @@ class TunProtoBase(object):
         local_cipher=local.tun_cipher
         local_mcast= local.multicast
         local_bwlim= local.bwlimit
+        local_mcastfwd = local.multicast_forwarder
         
         if not local_p2p and hasattr(peer, 'address'):
             local_p2p = peer.address
@@ -244,7 +246,8 @@ class TunProtoBase(object):
             "-m", str(self.mode),
             "-A", str(local_addr),
             "-M", str(local_mask),
-            "-C", str(local_cipher)]
+            "-C", str(local_cipher),
+            ]
         
         if check_proto == 'fd':
             passfd_arg = str(peer_addr)
@@ -257,9 +260,10 @@ class TunProtoBase(object):
                 "--pass-fd", passfd_arg
             ])
         elif check_proto == 'gre':
-            args.extend([
-                "-K", str(min(local_port, peer_port))
-            ])
+            if self.cross_slice:
+                args.extend([
+                    "-K", str(self.key.strip('='))
+                ])
         else:
             args.extend([
                 "-p", str(local_port if listen else peer_port),
@@ -288,6 +292,8 @@ class TunProtoBase(object):
             args.extend(("--filter", filter_module))
         if filter_args:
             args.extend(("--filter-args", filter_args))
+        if local_mcastfwd:
+            args.extend(("--multicast-forwarder", local_mcastfwd))
 
         self._logger.info("Starting %s", self)
         
@@ -354,7 +360,7 @@ class TunProtoBase(object):
             
             # Connected?
             (out,err),proc = server.eintr_retry(server.popen_ssh_command)(
-                "cd %(home)s ; grep -c Connected capture" % dict(
+                "cd %(home)s ; grep -a -c Connected capture" % dict(
                     home = server.shell_escape(self.home_path)),
                 host = local.node.hostname,
                 port = None,
@@ -372,7 +378,7 @@ class TunProtoBase(object):
 
             # At least listening?
             (out,err),proc = server.eintr_retry(server.popen_ssh_command)(
-                "cd %(home)s ; grep -c Listening capture" % dict(
+                "cd %(home)s ; grep -a -c Listening capture" % dict(
                     home = server.shell_escape(self.home_path)),
                 host = local.node.hostname,
                 port = None,
@@ -414,7 +420,7 @@ class TunProtoBase(object):
             # Inspect the trace to check the assigned iface
             local = self.local()
             if local:
-                cmd = "cd %(home)s ; grep 'Using tun:' capture | head -1" % dict(
+                cmd = "cd %(home)s ; grep -a 'Using tun:' capture | head -1" % dict(
                             home = server.shell_escape(self.home_path))
                 for spin in xrange(30):
                     (out,err),proc = server.eintr_retry(server.popen_ssh_command)(

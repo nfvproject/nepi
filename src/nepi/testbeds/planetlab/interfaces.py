@@ -139,6 +139,7 @@ class TunIface(object):
         
         # These get initialized when the iface is connected to any filter
         self.filter_module = None
+        self.multicast_forwarder = None
         
         # These get initialized when the iface is configured
         self.external_iface = None
@@ -242,6 +243,7 @@ class TunIface(object):
         impl = self._PROTO_MAP[self.peer_proto](
             self, self.peer_iface, home_path, self.tun_key, listening)
         impl.port = self.tun_port
+        impl.cross_slice = not self.peer_iface or isinstance(self.peer_iface, _CrossIface)
         return impl
     
     def recover(self):

@@ -118,15 +118,15 @@ def _pullPacket(buf, ether_mode=False, len=len):
             rv = buf.popleft()
         return rv
 
-def etherStrip(buf):
+def etherStrip(buf, buffer=buffer, len=len):
     if len(buf) < 14:
         return ""
     if buf[12:14] == '\x08\x10' and buf[16:18] == '\x08\x00':
         # tagged ethernet frame
-        return buf[18:]
+        return buffer(buf, 18)
     elif buf[12:14] == '\x08\x00':
         # untagged ethernet frame
-        return buf[14:]
+        return buffer(buf, 14)
     else:
         return ""
 
