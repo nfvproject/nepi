@@ -11,6 +11,7 @@ import time
 import collections
 import os
 import traceback
+import logging
 
 import ipaddr2
 
@@ -38,8 +39,16 @@ parser.add_option(
     "-A", "--announce-only", dest="announce_only", action="store_true",
     default = False,
     help = "If given, only group membership announcements will be made. Useful for non-router multicast nodes.")
+parser.add_option(
+    "-v", "--verbose", dest="verbose", action="store_true",
+    default = False,
+    help = "Path of the unix socket in which the program will listen for routing changes")
 
 (options, remaining_args) = parser.parse_args(sys.argv[1:])
+
+logging.basicConfig(
+    stream=sys.stderr, 
+    level=logging.DEBUG if options.verbose else logging.WARNING)
 
 ETH_P_ALL = 0x00000003
 ETH_P_IP = 0x00000800
@@ -74,7 +83,7 @@ class IGMPThread(threading.Thread):
             stderr = subprocess.STDOUT,
             stdin = open('/dev/null','r+b') )
         tun_name = None
-        heading = re.compile(r"\d+:\s*(\w+):.*")
+        heading = re.compile(r"\d+:\s*([-a-zA-Z0-9_]+):.*")
         addr = re.compile(r"\s*inet\s*(\d{1,3}[.]\d{1,3}[.]\d{1,3}[.]\d{1,3}).*")
         for line in proc.stdout:
             match = heading.match(line)
@@ -118,10 +127,10 @@ class IGMPThread(threading.Thread):
             for grp in report_new:
                 print >>sys.stderr, "JOINING", grp
                 igmpp = ipaddr2.ipigmp(
-                    self.vif_addr, '224.0.0.2', 1, 0x16, 0, grp, 
+                    self.vif_addr, grp, 1, 0x16, 0, grp, 
                     noipcksum=True)
                 try:
-                    self.igmp_socket.sendto(igmpp, 0, ('224.0.0.2',0))
+                    self.igmp_socket.sendto(igmpp, 0, (grp,0))
                 except:
                     traceback.print_exc(file=sys.stderr)
 
@@ -183,6 +192,9 @@ class FWDThread(threading.Thread):
         enumerate_ = enumerate
         fwd_sockets = self.fwd_sockets
         npending = 0
+        getnow = time.time
+        now = getnow()
+        noent = (None,None)
         
         while not self._stop:
             # Get packet
@@ -199,6 +211,7 @@ class FWDThread(threading.Thread):
             if not packet or len_(packet) < 24:
                 continue
             
+            now = getnow()
             fullpacket = packet
             parent = buffer_(packet,0,4)
             packet = buffer_(packet,4)
@@ -214,23 +227,24 @@ class FWDThread(threading.Thread):
             
             # Get route
             addrinfo = buffer_(packet,12,8)
-            fwd_targets = rt_cache.get(parent+addrinfo)
+            fwd_targets, expire = rt_cache.get(parent+addrinfo, noent)
             if fwd_targets is None:
-                fwd_targets = rt_cache.get('\x00\x00\x00\x00'+str_(addrinfo))
+                fwd_targets, expire = rt_cache.get('\x00\x00\x00\x00'+str_(addrinfo), noent)
             
-            if fwd_targets is not None:
+            if fwd_targets is not None and expire > now:
                 # Forward
                 ttl = ord_(packet[8])
                 tgt_group = (addrinfo[4:],0)
-                print >>sys.stderr, socket.inet_ntoa(tgt_group[0]), "->",
-                for vifi, ttl in enumerate_(fwd_targets):
-                    ttl_thresh = ord_(ttl)
-                    if ttl_thresh > 0 and ttl > ttl_thresh and vifi in vifs:
-                        vifi = vifs[vifi]
-                        if vifi[4] in fwd_sockets:
-                            print >>sys.stderr, socket.inet_ntoa(vifi[4]),
-                            fwd_socket = fwd_sockets[vifi[4]]
-                            fwd_socket.sendto(packet, 0, tgt_group)
+                print >>sys.stderr, socket.inet_ntoa(tgt_group[0]), "->", ttl, map(ord,fwd_targets),
+                nfwd_targets = len_(fwd_targets)
+                for vifi, vif in vifs.iteritems():
+                    if vifi < nfwd_targets:
+                        ttl_thresh = ord_(fwd_targets[vifi])
+                        if ttl_thresh > 0 and ttl > ttl_thresh:
+                            if vif[4] in fwd_sockets:
+                                print >>sys.stderr, socket.inet_ntoa(vif[4]),
+                                fwd_socket = fwd_sockets[vif[4]]
+                                fwd_socket.sendto(packet, 0, tgt_group)
                 print >>sys.stderr, "."
             else:
                 # Mark pending
@@ -307,7 +321,7 @@ class RouterThread(threading.Thread):
             else:
                 parent_addr = '\x00\x00\x00\x00'
             addrinfo = ''.join((parent_addr,origin,mcastgrp))
-            rt_cache[addrinfo] = ttls
+            rt_cache[addrinfo] = (ttls, time.time() + options.refresh_delay)
             print >>sys.stderr, "Added RT", '-'.join(map(socket.inet_ntoa,(parent_addr,origin,mcastgrp)))
         def del_mfc(cmd):
             origin,mcastgrp,parent,ttls,pkt_cnt,byte_cnt,wrong_if,expire = mfcctl(data)
