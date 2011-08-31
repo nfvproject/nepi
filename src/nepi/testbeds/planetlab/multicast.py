@@ -120,7 +120,7 @@ class MulticastRouter(application.Application):
                 "for iface in %(nonifaces)s ; do echo \"phyint $iface disable\" >> ./mrouted.conf ; done ; "
                 "./mrouted -f %(debugbit)s -c ./mrouted.conf"
                 ,
-            'debugbit' : "-dpacket,igmp,routing,interface,pruning,membership",
+            'debugbit' : "-dpacket,igmp,routing,interface,pruning,membership,cache",
         }
     }
     

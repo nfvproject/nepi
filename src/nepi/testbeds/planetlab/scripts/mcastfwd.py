@@ -192,8 +192,6 @@ class FWDThread(threading.Thread):
         enumerate_ = enumerate
         fwd_sockets = self.fwd_sockets
         npending = 0
-        getnow = time.time
-        now = getnow()
         noent = (None,None)
         
         while not self._stop:
@@ -211,9 +209,8 @@ class FWDThread(threading.Thread):
             if not packet or len_(packet) < 24:
                 continue
             
-            now = getnow()
             fullpacket = packet
-            parent = buffer_(packet,0,4)
+            parent = packet[:4]
             packet = buffer_(packet,4)
             
             if packet[9] == '\x02':
@@ -226,16 +223,14 @@ class FWDThread(threading.Thread):
             # To-Do: PIM asserts
             
             # Get route
-            addrinfo = buffer_(packet,12,8)
-            fwd_targets, expire = rt_cache.get(parent+addrinfo, noent)
-            if fwd_targets is None:
-                fwd_targets, expire = rt_cache.get('\x00\x00\x00\x00'+str_(addrinfo), noent)
+            addrinfo = packet[12:20]
+            fwd_targets, rparent = rt_cache.get(addrinfo, noent)
             
-            if fwd_targets is not None and expire > now:
+            if fwd_targets is not None and (rparent == '\x00\x00\x00\x00' or rparent == parent):
                 # Forward
                 ttl = ord_(packet[8])
-                tgt_group = (addrinfo[4:],0)
-                print >>sys.stderr, socket.inet_ntoa(tgt_group[0]), "->", ttl, map(ord,fwd_targets),
+                tgt_group = (socket.inet_ntoa(addrinfo[4:]),0)
+                print >>sys.stderr, map(socket.inet_ntoa, (parent, addrinfo[:4], addrinfo[4:])), "-> ttl", ttl,
                 nfwd_targets = len_(fwd_targets)
                 for vifi, vif in vifs.iteritems():
                     if vifi < nfwd_targets:
@@ -250,7 +245,7 @@ class FWDThread(threading.Thread):
                 # Mark pending
                 if len_(pending) < self.maxpending:
                     tgt_group = addrinfo[4:]
-                    print >>sys.stderr, socket.inet_ntoa(tgt_group), "-> ?"
+                    print >>sys.stderr, map(socket.inet_ntoa, (parent, addrinfo[:4], addrinfo[4:])), "-> ?"
                     
                     pending.append(fullpacket)
                     
@@ -320,16 +315,16 @@ class RouterThread(threading.Thread):
                 parent_addr = vifs[parent][4]
             else:
                 parent_addr = '\x00\x00\x00\x00'
-            addrinfo = ''.join((parent_addr,origin,mcastgrp))
-            rt_cache[addrinfo] = (ttls, time.time() + options.refresh_delay)
-            print >>sys.stderr, "Added RT", '-'.join(map(socket.inet_ntoa,(parent_addr,origin,mcastgrp)))
+            addrinfo = origin + mcastgrp
+            rt_cache[addrinfo] = (ttls, parent_addr)
+            print >>sys.stderr, "Added RT", '-'.join(map(socket.inet_ntoa,(parent_addr,origin,mcastgrp))), map(ord,ttls)
         def del_mfc(cmd):
             origin,mcastgrp,parent,ttls,pkt_cnt,byte_cnt,wrong_if,expire = mfcctl(data)
             if parent in vifs:
                 parent_addr = vifs[parent][4]
             else:
                 parent_addr = '\x00\x00\x00\x00'
-            addrinfo = ''.join((parent_addr,origin,mcastgrp))
+            addrinfo = origin + mcastgrp
             del rt_cache[addrinfo]
             print >>sys.stderr, "Removed RT", '-'.join(map(socket.inet_ntoa,(parent_addr,origin,mcastgrp)))
         
