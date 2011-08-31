@@ -112,7 +112,7 @@ diff -ur --exclude='*.o' --exclude=cfparse.c --exclude='*~' mrouted-3.9.5/igmp.c
  
 diff -ur --exclude='*.o' --exclude=cfparse.c --exclude='*~' mrouted-3.9.5/kern.c mrouted-3.9.5-pl/kern.c
 --- mrouted-3.9.5/kern.c	2011-03-05 21:45:25.000000000 +0100
-+++ mrouted-3.9.5-pl/kern.c	2011-08-30 15:30:10.508700000 +0200
++++ mrouted-3.9.5-pl/kern.c	2011-08-31 15:09:21.457071000 +0200
 @@ -7,16 +7,26 @@
   * Leland Stanford Junior University.
   */
@@ -253,7 +253,7 @@ diff -ur --exclude='*.o' --exclude=cfparse.c --exclude='*~' mrouted-3.9.5/kern.c
      {
          if (errno == EADDRNOTAVAIL || errno == EINVAL)
              return;
-@@ -238,31 +309,50 @@
+@@ -238,31 +309,57 @@
   */
  void k_add_rg(u_int32 origin, struct gtable *g)
  {
@@ -286,6 +286,13 @@ diff -ur --exclude='*.o' --exclude=cfparse.c --exclude='*~' mrouted-3.9.5/kern.c
 +
 +#ifdef PLANETLAB
 +
++	logit(LOG_DEBUG, 0, "setsockopt MRT_ADD_MFC %s-%s %d[%d %d %d %d %d %d]", 
++	    inet_fmt(origin, s1, sizeof(s1)),
++	    inet_fmt(g->gt_mcastgrp, s2, sizeof(s2)),
++	    numvifs,
++	    op.mc.mfcc_ttls[0], op.mc.mfcc_ttls[1], op.mc.mfcc_ttls[2],
++	    op.mc.mfcc_ttls[3], op.mc.mfcc_ttls[4], op.mc.mfcc_ttls[5] );
++
 +    /* Send to PlanetLab's user-space MRT daemon */
 +    op.op = MRT_ADD_MFC;
 +    op.len = sizeof(op.mc);
@@ -311,7 +318,7 @@ diff -ur --exclude='*.o' --exclude=cfparse.c --exclude='*~' mrouted-3.9.5/kern.c
  }
  
  
-@@ -271,20 +361,37 @@
+@@ -271,20 +368,37 @@
   */
  int k_del_rg(u_int32 origin, struct gtable *g)
  {
@@ -497,7 +504,7 @@ diff -ur --exclude='*.o' --exclude=cfparse.c --exclude='*~' mrouted-3.9.5/pathna
 Only in mrouted-3.9.5-pl: vers.c
 diff -ur --exclude='*.o' --exclude=cfparse.c --exclude='*~' mrouted-3.9.5/vif.c mrouted-3.9.5-pl/vif.c
 --- mrouted-3.9.5/vif.c	2011-03-05 21:45:25.000000000 +0100
-+++ mrouted-3.9.5-pl/vif.c	2011-08-30 10:18:29.223147000 +0200
++++ mrouted-3.9.5-pl/vif.c	2011-08-31 19:26:52.955453000 +0200
 @@ -139,6 +139,7 @@
      v->uv_lcl_addr	= 0;
      v->uv_rmt_addr	= 0;
@@ -506,7 +513,16 @@ diff -ur --exclude='*.o' --exclude=cfparse.c --exclude='*~' mrouted-3.9.5/vif.c 
      v->uv_subnet	= 0;
      v->uv_subnetmask	= 0;
      v->uv_subnetbcast	= 0;
-@@ -526,6 +527,8 @@
+@@ -379,6 +380,8 @@
+ 	    start_route_updates();
+ 	    update_route(p->pa_subnet, p->pa_subnetmask, 0, 0, vifi, NULL);
+ 	}
++	if (v->uv_ptp_addr)
++	    update_route(v->uv_ptp_addr, 0xffffffff, 0, 0, vifi, NULL);
+ 
+ 	/*
+ 	 * Until neighbors are discovered, assume responsibility for sending
+@@ -526,6 +529,8 @@
  		    return(vifi);
  	    }
  	    else {
@@ -515,7 +531,7 @@ diff -ur --exclude='*.o' --exclude=cfparse.c --exclude='*~' mrouted-3.9.5/vif.c 
  		if ((src & v->uv_subnetmask) == v->uv_subnet &&
  		    ((v->uv_subnetmask == 0xffffffff) ||
  		     (src != v->uv_subnetbcast)))
-@@ -1666,6 +1669,10 @@
+@@ -1666,6 +1671,10 @@
  			scaletime(now - v->uv_querier->al_ctime),
  			scaletime(v->uv_querier->al_timer));
  	}
