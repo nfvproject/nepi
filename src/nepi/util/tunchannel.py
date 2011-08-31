@@ -576,7 +576,7 @@ def tcp_connect(TERMINATE, stop, rsock, peer_addr, peer_port):
     retrydelay = 1.0
     # The peer has a firewall that prevents a response to the connect, we 
     # will be forever blocked in the connect, so we put a reasonable timeout.
-    sock.settimeout(10) 
+    rsock.settimeout(10) 
     # We wait for 
     for i in xrange(30):
         if stop:
@@ -596,6 +596,7 @@ def tcp_connect(TERMINATE, stop, rsock, peer_addr, peer_port):
         rsock.connect((peer_addr, peer_port))
         sock = rsock
     if sock:
+        print >>sys.stderr, "tcp_connect: TCP sock connected to remote %s:%s" % (peer_addr, peer_port)
         sock.settimeout(0) 
     return sock
 
@@ -620,6 +621,7 @@ def tcp_listen(TERMINATE, stop, lsock, local_addr, local_port):
     else:
         lsock.bind((local_addr, local_port))
 
+    print >>sys.stderr, "tcp_listen: TCP sock listening in local sock %s:%s" % (local_addr, local_port)
     # Now we wait until the other side connects. 
     # The other side might not be ready yet, so we also wait in a loop for timeouts.
     timeout = 1
@@ -632,30 +634,32 @@ def tcp_listen(TERMINATE, stop, lsock, local_addr, local_port):
             break
         if lsock in rlist:
             sock,raddr = lsock.accept()
+            print >>sys.stderr, "tcp_listen: TCP connection accepted in local sock %s:%s" % (local_addr, local_port)
             break
         timeout += 5
     return sock
 
-def tcp_handshake(TERMINATE, sock, listen, dice):
+def tcp_handshake(TERMINATE, rsock, listen, dice):
     # we are going to use a barrier algorithm to decide wich side listen.
     # each side will "roll a dice" and send the resulting value to the other 
     # side. 
-    result = None
-    sock.settimeout(5)
+    sock = None
+    rsock.settimeout(5)
     for i in xrange(100):
         if TERMINATE:
             raise OSError, "Killed"
         try:
             hand = dice.read()
-            sock.send(hand)
-            peer_hand = sock.recv(1)
+            rsock.send(str(hand))
+            peer_hand = rsock.recv(1)
+            print >>sys.stderr, "tcp_handshake: hand %s, peer_hand %s" % (hand, peer_hand)
             if hand < peer_hand:
                 if listen:
-                    result = sock
+                    sock = rsock
                 break   
             elif hand > peer_hand:
                 if not listen:
-                    result = sock
+                    sock = rsock
                 break
             else:
                 dice.release()
@@ -663,26 +667,42 @@ def tcp_handshake(TERMINATE, sock, listen, dice):
         except socket.error:
             dice.release()
             break
-    if result:
+    if sock:
         sock.settimeout(0)
-    return result
+    return sock
 
 def tcp_establish(TERMINATE, local_addr, local_port, peer_addr, peer_port):
     def listen(stop, result, lsock, dice):
-        lsock = tcp_listen(TERMINATE, stop, lsock, local_addr, local_port)
-        if lsock:
-            lsock = tcp_handshake(TERMINATE, lsock, True, dice)
-            if lsock:
-                stop[0] = True
-                result[0] = lsock
+        rsock = tcp_listen(TERMINATE, stop, lsock, local_addr, local_port)
+        if rsock:
+            rsock = tcp_handshake(TERMINATE, rsock, True, dice)
+            if rsock:
+                stop.append(True)
+                result.append(rsock)
+                rsock.send("GATO")
+                rsock.settimeout(6)
+                try:
+                    perro = rsock.recv(5)
+                except:
+                    perro = "ERROR! TIMEOUT"
+                rsock.settimeout(0)
+                print >>sys.stderr, "tcp_establish: listen %s" % perro
 
     def connect(stop, result, rsock, dice):
         rsock = tcp_connect(TERMINATE, stop, rsock, peer_addr, peer_port)
         if rsock:
             rsock = tcp_handshake(TERMINATE, rsock, False, dice)
-            if sock:
-                stop[0] = True
-                result[0] = rsock
+            if rsock:
+                stop.append(True)
+                result.append(rsock)
+                rsock.send("PERRO")
+                rsock.settimeout(6)
+                try:
+                    gato = rsock.recv(4)
+                except:
+                    gato = "TIMEOUT!!"
+                rsock.settimeout(0)
+                print >>sys.stderr, "tcp_establish: connected %s" % gato
     
     dice = Dice()
     dice.throw()
@@ -690,8 +710,8 @@ def tcp_establish(TERMINATE, local_addr, local_port, peer_addr, peer_port):
     result = []
     lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
     rsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-    connect_thread = threading.Thread(target=connect, args=(stop, result, rsock, dice))
     listen_thread = threading.Thread(target=listen, args=(stop, result, lsock, dice))
+    connect_thread = threading.Thread(target=connect, args=(stop, result, rsock, dice))
     connect_thread.start()
     listen_thread.start()
     connect_thread.join()
@@ -699,10 +719,6 @@ def tcp_establish(TERMINATE, local_addr, local_port, peer_addr, peer_port):
     if not result:
         raise OSError, "Error: tcp_establish could not establish connection."
     sock = result[0]
-    if sock == lsock:
-        rsock.close()
-    else:
-        lsock.close()
     return sock
 
 class Dice(object):

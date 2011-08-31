@@ -38,7 +38,7 @@ parser.add_option(
     default = "/dev/net/tun",
     help = "TUN/TAP device file path or file descriptor number")
 parser.add_option(
-    "-p", "--peer-port", dest="peer-port", metavar="PEER_PORT", type="int",
+    "-p", "--peer-port", dest="peer_port", metavar="PEER_PORT", type="int",
     default = 15000,
     help = "Remote TCP/UDP port to connect to.")
 parser.add_option(
@@ -199,7 +199,7 @@ parser.add_option(
     help = "If specified, packets won't be logged to standard output, "
            "but dumped to a pcap-formatted trace in the specified file. " )
 
-(options,) = parser.parse_args(sys.argv[1:])
+(options,args) = parser.parse_args(sys.argv[1:])
 
 options.cipher = {
     'aes' : 'AES',
@@ -518,7 +518,7 @@ def pl_vif_start(tun_path, tun_name):
         stdin.write("txqueuelen=%d\n" % (options.vif_txqueuelen,))
     if options.mode.startswith('pl-gre'):
         stdin.write("gre=%d\n" % (options.gre_key,))
-        stdin.write("remote=%s\n" % (remaining_args[0],))
+        stdin.write("remote=%s\n" % (options.peer_addr,))
     stdin.close()
     
     t.join()
@@ -772,16 +772,18 @@ try:
     elif options.protocol == "udp":
         # connect to remote endpoint
         if options.peer_addr and options.peer_port:
-            remote = tunchannel.udp_establish(TERMINATE, hostaddr,
-                    options.port, options.peer_addr, options.peer_port)
+            rsock = tunchannel.udp_establish(TERMINATE, hostaddr, options.port, 
+                    options.peer_addr, options.peer_port)
+            remote = os.fdopen(rsock.fileno(), 'r+b', 0)
         else:
             print >>sys.stderr, "Error: need a remote endpoint in UDP mode"
             raise AssertionError, "Error: need a remote endpoint in UDP mode"
     elif options.protocol == "tcp":
         # connect to remote endpoint
         if options.peer_addr and options.peer_port:
-            remote = tunchannel.tcp_establish(TERMINATE, hostaddr, 
-                    options.port, options.peer_addr, options.peer_port)
+            rsock = tunchannel.tcp_establish(TERMINATE, hostaddr, options.port,
+                    options.peer_addr, options.peer_port)
+            remote = os.fdopen(rsock.fileno(), 'r+b', 0)
         else:
             print >>sys.stderr, "Error: need a remote endpoint in TCP mode"
             raise AssertionError, "Error: need a remote endpoint in TCP mode"

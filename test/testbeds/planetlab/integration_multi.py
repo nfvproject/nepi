@@ -71,6 +71,7 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
         pl_desc.set_attribute_value("tapPortBase", self.port_base)
         pl_desc.set_attribute_value("p2pDeployment", False) # it's interactive, we don't want it in tests
         pl_desc.set_attribute_value("dedicatedSlice", True)
+        pl_desc.set_attribute_value("plLogLevel", "DEBUG")
 
         pl_desc2 = exp_desc.add_testbed_description(pl_provider)
         pl_desc2.set_attribute_value("homeDirectory", self.root_dir+"v2")
@@ -82,6 +83,7 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
         pl_desc2.set_attribute_value("tapPortBase", self.port_base+500)
         pl_desc2.set_attribute_value("p2pDeployment", False) # it's interactive, we don't want it in tests
         pl_desc2.set_attribute_value("dedicatedSlice", True)
+        pl_desc2.set_attribute_value("plLogLevel", "DEBUG")
         
         return pl_desc, pl_desc2, exp_desc
     
@@ -182,7 +184,7 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
 
     @test_util.skipUnless(test_util.pl_auth() is not None, 
         "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
-    def test_plpl_crossconnect_udp(self):
+    def ptest_plpl_crossconnect_udp(self):
         self._test_plpl_crossconnect("udp")
 
     @test_util.skipUnless(test_util.pl_auth() is not None, 
@@ -192,12 +194,12 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
 
     @test_util.skipUnless(test_util.pl_auth() is not None, 
         "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
-    def test_plpl_crossconnect_gre(self):
+    def ptest_plpl_crossconnect_gre(self):
         self._test_plpl_crossconnect("gre")
 
     @test_util.skipUnless(test_util.pl_auth() is not None, 
         "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
-    def test_plpl_crossconnect_udp_recover(self):
+    def ptest_plpl_crossconnect_udp_recover(self):
         self._test_plpl_crossconnect("udp", 
             recover = True)
 

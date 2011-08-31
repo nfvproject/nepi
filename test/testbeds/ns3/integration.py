@@ -78,13 +78,13 @@ class Ns3IntegrationTestCase(unittest.TestCase):
             inst_root_dir = os.path.join(root_dir1, "instance")
             os.makedirs(inst_root_dir)
             ns3_desc1.set_attribute_value(DC.ROOT_DIRECTORY, inst_root_dir)
-            ns3_desc1.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
+            #ns3_desc1.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
 
             ns3_desc2.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
             inst_root_dir = os.path.join(root_dir2, "instance")
             os.makedirs(inst_root_dir)
             ns3_desc2.set_attribute_value(DC.ROOT_DIRECTORY, inst_root_dir)
-            ns3_desc2.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
+            #ns3_desc2.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
 
         xml = exp_desc.to_xml()
         
@@ -163,7 +163,7 @@ r [-+0-9.e]+ /NodeList/0/DeviceList/0/\$ns3::FdNetDevice/Rx Payload \(size=98\)
             inst_root_dir = os.path.join(self.root_dir, "instance")
             os.mkdir(inst_root_dir)
             ns3_desc.set_attribute_value(DC.ROOT_DIRECTORY, inst_root_dir)
-            ns3_desc.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
+            #ns3_desc.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
 
         xml = exp_desc.to_xml()
         
@@ -191,7 +191,7 @@ r [-+0-9.e]+ /NodeList/0/DeviceList/0/\$ns3::FdNetDevice/Rx Payload \(size=98\)
         access_config = proxy.AccessConfiguration()
         access_config.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
         access_config.set_attribute_value(DC.ROOT_DIRECTORY, self.root_dir)
-        access_config.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
+        #access_config.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
 
         self._test_fd_net_device(
             daemonize_testbed = True,
@@ -205,7 +205,7 @@ r [-+0-9.e]+ /NodeList/0/DeviceList/0/\$ns3::FdNetDevice/Rx Payload \(size=98\)
         access_config = proxy.AccessConfiguration()
         access_config.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
         access_config.set_attribute_value(DC.ROOT_DIRECTORY, self.root_dir)
-        access_config.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
+        #access_config.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
         access_config.set_attribute_value(DC.DEPLOYMENT_COMMUNICATION, DC.ACCESS_SSH)
         access_config.set_attribute_value(DC.DEPLOYMENT_PORT, env.port)
         access_config.set_attribute_value(DC.USE_AGENT, True)
@@ -227,7 +227,7 @@ r [-+0-9.e]+ /NodeList/0/DeviceList/0/\$ns3::FdNetDevice/Rx Payload \(size=98\)
         access_config = proxy.AccessConfiguration()
         access_config.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
         access_config.set_attribute_value(DC.ROOT_DIRECTORY, self.root_dir)
-        access_config.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
+        #access_config.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
 
         self._test_if(
             daemonize_testbed = True,
@@ -241,7 +241,7 @@ r [-+0-9.e]+ /NodeList/0/DeviceList/0/\$ns3::FdNetDevice/Rx Payload \(size=98\)
         access_config = proxy.AccessConfiguration()
         access_config.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
         access_config.set_attribute_value(DC.ROOT_DIRECTORY, self.root_dir)
-        access_config.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
+        #access_config.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
         access_config.set_attribute_value(DC.DEPLOYMENT_COMMUNICATION, DC.ACCESS_SSH)
         access_config.set_attribute_value(DC.DEPLOYMENT_PORT, env.port)
         access_config.set_attribute_value(DC.USE_AGENT, True)
