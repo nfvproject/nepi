@@ -20,6 +20,7 @@ import functools
 NODE = "Node"
 P2PIFACE = "P2PNodeInterface"
 TAPIFACE = "TapNodeInterface"
+TUNIFACE = "TunNodeInterface"
 NODEIFACE = "NodeInterface"
 SWITCH = "Switch"
 APPLICATION = "Application"
@@ -147,6 +148,15 @@ def create_tapiface(testbed_instance, guid):
                 node" % guid)
     node = testbed_instance.elements[node_guid[0]]
     element = node.add_tap()
+    testbed_instance.elements[guid] = element
+
+def create_tuniface(testbed_instance, guid):
+    node_guid = testbed_instance.get_connected(guid, "node", "devs")
+    if len(node_guid) == 0:
+        raise RuntimeError("Can't instantiate interface %d outside netns \
+                node" % guid)
+    node = testbed_instance.elements[node_guid[0]]
+    element = node.add_tun()
     testbed_instance.elements[guid] = element
 
 def create_nodeiface(testbed_instance, guid):
@@ -309,6 +319,11 @@ connections = [
     }),
     dict({
         "from": (TESTBED_ID, NODE, "devs"),
+        "to":   (TESTBED_ID, TUNIFACE, "node"),
+        "can_cross": False
+    }),
+    dict({
+        "from": (TESTBED_ID, NODE, "devs"),
         "to":   (TESTBED_ID, NODEIFACE, "node"),
         "can_cross": False
     }),
@@ -319,6 +334,12 @@ connections = [
     }),
     dict({
         "from": (TESTBED_ID, TAPIFACE, "fd->"),
+        "to":   (None, None, "->fd"),
+        "compl_code": connect_fd,
+        "can_cross": True
+    }),
+    dict({
+        "from": (TESTBED_ID, TUNIFACE, "fd->"),
         "to":   (None, None, "->fd"),
         "compl_code": connect_fd,
         "can_cross": True
@@ -337,6 +358,12 @@ connections = [
     dict({
         "from": (TESTBED_ID, TUNCHANNEL, "->fd" ),
         "to":   (TESTBED_ID, TAPIFACE, "fd->" ),
+        "init_code": connect_tunchannel_tap,
+        "can_cross": False
+    }),
+    dict({
+        "from": (TESTBED_ID, TUNCHANNEL, "->fd" ),
+        "to":   (TESTBED_ID, TUNIFACE, "fd->" ),
         "init_code": connect_tunchannel_tap,
         "can_cross": False
     }),
@@ -451,11 +478,11 @@ traces = dict({
     })
 
 create_order = [ NODE, P2PIFACE, NODEIFACE, TAPIFACE, 
-        TUNCHANNEL, SWITCH,
+        TUNIFACE, TUNCHANNEL, SWITCH,
         APPLICATION ]
 
 configure_order = [ P2PIFACE, NODEIFACE, TAPIFACE, 
-        TUNCHANNEL, SWITCH, 
+        TUNIFACE, TUNCHANNEL, SWITCH, 
         NODE, APPLICATION ]
 
 factories_info = dict({
@@ -483,6 +510,16 @@ factories_info = dict({
             "help": "Tap device network interface",
             "category": FC.CATEGORY_DEVICES,
             "create_function": create_tapiface,
+            "configure_function": configure_device,
+            "box_attributes": ["lladdr", "up", "device_name", "mtu", 
+                "multicast", "broadcast", "arp"],
+            "connector_types": ["node", "fd->"],
+            "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
+        }),
+    TUNIFACE: dict({
+            "help": "Tun device network interface",
+            "category": FC.CATEGORY_DEVICES,
+            "create_function": create_tuniface,
             "configure_function": configure_device,
             "box_attributes": ["lladdr", "up", "device_name", "mtu", 
                 "multicast", "broadcast", "arp"],

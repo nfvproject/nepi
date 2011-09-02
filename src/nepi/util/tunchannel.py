@@ -4,6 +4,7 @@ import os
 import struct
 import socket
 import threading
+import traceback
 import errno
 import fcntl
 import random
@@ -354,6 +355,7 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
                 # just retry
                 continue
             else:
+                traceback.print_exc(file=sys.stderr)
                 raise
 
         # check for errors
@@ -679,7 +681,9 @@ def tcp_establish(TERMINATE, local_addr, local_port, peer_addr, peer_port):
   
     end = False
     sock = None
-    while not end:
+    for i in xrange(0, 50):
+        if end:
+            break
         if TERMINATE:
             raise OSError, "Killed"
         hand = str(random.randint(1, 6))

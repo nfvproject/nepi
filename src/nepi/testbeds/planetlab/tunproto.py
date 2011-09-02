@@ -411,7 +411,7 @@ class TunProtoBase(object):
                         self._logger.debug("if_name: %r does not match expected pattern from cmd %s", out, cmd)
                     else:
                         self._logger.debug("if_name: empty output from cmd %s", cmd)
-                    time.sleep(1)
+                    time.sleep(3)
                 else:
                     self._logger.warn("if_name: Could not get interface name")
         return self._if_name
