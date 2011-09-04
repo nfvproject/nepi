@@ -351,6 +351,17 @@ class Metadata(object):
                     Attribute.Metadata,
             "validation_function" : validation.is_bool,
             "category" : AC.CATEGORY_DEPLOYMENT,
+            }),
+        DC.CLEAN_ROOT : dict({
+            "name" : DC.CLEAN_ROOT,
+            "help" : "Clean server root directory (Warning: This will erase previous data).", 
+            "type" : Attribute.BOOL,
+            "value" : False,
+            "flags" : Attribute.ExecReadOnly |\
+                    Attribute.ExecImmutable |\
+                    Attribute.Metadata,
+            "validation_function" : validation.is_bool,
+            "category" : AC.CATEGORY_DEPLOYMENT,
             }),        
         DC.LOG_LEVEL : dict({
             "name" : DC.LOG_LEVEL,

@@ -77,5 +77,6 @@ class DeploymentConfiguration:
     LOG_LEVEL = "logLevel"
     RECOVER = "recover"
     RECOVERY_POLICY = "recoveryPolicy"
+    CLEAN_ROOT = "cleanRoot"
 
 

@@ -178,8 +178,7 @@ class NetnsIntegrationTestCase(unittest.TestCase):
 
     def tearDown(self):
         try:
-            #shutil.rmtree(self.root_dir)
-            pass
+            shutil.rmtree(self.root_dir)
         except:
             # retry
             time.sleep(0.1)
