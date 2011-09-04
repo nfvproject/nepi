@@ -164,7 +164,7 @@ class TestbedController(testbed_impl.TestbedController):
         for element in self._elements.itervalues():
             if isinstance(element, self.LOCAL_TYPES):
                 # graceful shutdown of locally-implemented objects
-                element.Cleanup()
+                element.cleanup()
         if self.ns3:
             if not self.ns3.Simulator.IsFinished():
                 self.stop()

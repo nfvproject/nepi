@@ -10,7 +10,7 @@ from nepi.util.constants import ApplicationStatus as AS, \
 
 from nepi.util.tunchannel_impl import \
     preconfigure_tunchannel, postconfigure_tunchannel, \
-    wait_tunchannel, create_tunchannel, \
+    prestart_tunchannel, create_tunchannel, \
     crossconnect_tunchannel_peer_init, \
     crossconnect_tunchannel_peer_compl
 
@@ -530,7 +530,7 @@ factories_info = dict({
             "create_function": create_tunchannel,
             "preconfigure_function": preconfigure_tunchannel,
             "configure_function": postconfigure_tunchannel,
-            "prestart_function": wait_tunchannel,
+            "prestart_function": prestart_tunchannel,
             "help": "Channel to forward "+TAPIFACE+" data to "
                 "other TAP interfaces supporting the NEPI tunneling protocol.",
             "connector_types": ["->fd", "udp", "tcp"],

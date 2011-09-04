@@ -471,36 +471,19 @@ def preconfigure_tuniface(testbed_instance, guid):
     element.validate()
     
     # First-phase setup
-    if element.peer_proto:
-        if element.peer_iface and isinstance(element.peer_iface, testbed_instance._interfaces.TunIface):
-            # intra tun
-            listening = id(element) < id(element.peer_iface)
-        else:
-            # cross tun
-            if not element.tun_addr or not element.tun_port:
-                listening = True
-            elif not element.peer_addr or not element.peer_port:
-                listening = True
-            else:
-                # both have addresses...
-                # ...the one with the lesser address listens
-                listening = element.tun_addr < element.peer_addr
-        element.prepare( 
-            'tun-%s' % (guid,),
-             listening)
+    element.prepare('tun-%s' % (guid,))
 
 def postconfigure_tuniface(testbed_instance, guid):
     element = testbed_instance._elements[guid]
     
     # Second-phase setup
-    element.setup()
+    element.launch()
     
-def wait_tuniface(testbed_instance, guid):
+def prestart_tuniface(testbed_instance, guid):
     element = testbed_instance._elements[guid]
     
     # Second-phase setup
-    element.async_launch_wait()
-    
+    element.wait()
 
 def configure_node(testbed_instance, guid):
     node = testbed_instance._elements[guid]
@@ -1383,7 +1366,7 @@ factories_info = dict({
             "create_function": create_tuniface,
             "preconfigure_function": preconfigure_tuniface,
             "configure_function": postconfigure_tuniface,
-            "prestart_function": wait_tuniface,
+            "prestart_function": prestart_tuniface,
             "box_attributes": [
                 "up", "if_name", "mtu", "snat", "pointopoint", "multicast", "bwlimit",
                 "txqueuelen",
@@ -1399,7 +1382,7 @@ factories_info = dict({
             "create_function": create_tapiface,
             "preconfigure_function": preconfigure_tuniface,
             "configure_function": postconfigure_tuniface,
-            "prestart_function": wait_tuniface,
+            "prestart_function": prestart_tuniface,
             "box_attributes": [
                 "up", "if_name", "mtu", "snat", "pointopoint", "multicast", "bwlimit",
                 "txqueuelen",

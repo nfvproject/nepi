@@ -123,7 +123,7 @@ class TestbedController(testbed_impl.TestbedController):
                     trace.close()
         for guid, element in self._elements.iteritems():
             if isinstance(element, self.TunChannel):
-                element.Cleanup()
+                element.cleanup()
             else:
                 factory_id = self._create[guid]
                 if factory_id == "Node":

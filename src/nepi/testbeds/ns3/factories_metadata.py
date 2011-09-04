@@ -6,7 +6,7 @@ from nepi.util.constants import AF_INET, ApplicationStatus as AS, \
         FactoryCategories as FC
 from nepi.util.tunchannel_impl import \
     preconfigure_tunchannel, postconfigure_tunchannel, \
-    wait_tunchannel, create_tunchannel
+    prestart_tunchannel, create_tunchannel
 import re
 
 wifi_standards = dict({
@@ -1057,7 +1057,7 @@ factories_info = dict({
         "create_function": create_tunchannel,
         "preconfigure_function": preconfigure_tunchannel,
         "configure_function": postconfigure_tunchannel,
-        "prestart_function": wait_tunchannel,
+        "prestart_function": prestart_tunchannel,
         "help": "Channel to forward FdNetDevice data to "
                 "other TAP interfaces supporting the NEPI tunneling protocol.",
         "connector_types": ["fd->", "udp", "tcp"],
