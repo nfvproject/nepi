@@ -697,8 +697,20 @@ connections = [
     }),
     dict({
         "from": (TESTBED_ID, NODE, "apps"),
-        "to":   (TESTBED_ID, (APPLICATION, DEPENDENCY, NEPIDEPENDENCY, NS3DEPENDENCY, MULTICASTANNOUNCER), "node"),
+        "to":   (TESTBED_ID, (APPLICATION, MULTICASTANNOUNCER), "node"),
         "init_code": connect_dep,
+        "can_cross": False
+    }),
+    dict({
+        "from": (TESTBED_ID, NODE, "deps"),
+        "to":   (TESTBED_ID, (DEPENDENCY, NEPIDEPENDENCY, NS3DEPENDENCY), "node"),
+        "init_code": connect_dep,
+        "can_cross": False
+    }),
+    dict({
+        "from": (TESTBED_ID, NODE, "pipes"),
+        "to":   (TESTBED_ID, NETPIPE, "node"),
+        "init_code": connect_node_netpipe,
         "can_cross": False
     }),
     dict({
