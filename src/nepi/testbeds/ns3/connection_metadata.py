@@ -145,7 +145,7 @@ def connect_tunchannel_fd(testbed_instance, tun_guid, fdnd_guid):
     # Store a reference to the endpoint to keep the socket alive
     fdnd._endpoint_socket = sock1
     fdnd.SetFileDescriptor(sock1.fileno())
-    
+   
     # Send the other endpoint to the TUN channel
     tun.tun_socket = sock2
     
@@ -153,6 +153,7 @@ def connect_tunchannel_fd(testbed_instance, tun_guid, fdnd_guid):
     # (sockets don't support the TUNGETIFF ioctl, so it will assume
     # the default presence of PI headers)
     tun.with_pi = True
+
 
 ### Connector information ###
 

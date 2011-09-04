@@ -30,7 +30,7 @@ tun_name = 'tun0'
 tun_path = '/dev/net/tun'
 hostaddr = socket.gethostbyname(socket.gethostname())
 
-usage = "usage: %prog [options] <remote-endpoint>"
+usage = "usage: %prog [options]"
 
 parser = optparse.OptionParser(usage=usage)
 
@@ -43,9 +43,9 @@ parser.add_option(
     default = "/dev/net/tun",
     help = "TUN/TAP device file path or file descriptor number")
 parser.add_option(
-    "-p", "--port", dest="port", metavar="PORT", type="int",
+    "-p", "--peer-port", dest="peer_port", metavar="PEER_PORT", type="int",
     default = 15000,
-    help = "Peering TCP port to connect or listen to.")
+    help = "Remote TCP/UDP port to connect to.")
 parser.add_option(
     "--pass-fd", dest="pass_fd", metavar="UNIX_SOCKET",
     default = None,
@@ -53,7 +53,6 @@ parser.add_option(
            "If given, all other connectivity options are ignored, tun_connect will "
            "simply wait to be killed after passing the file descriptor, and it will be "
            "the receiver's responsability to handle the tunneling.")
-
 parser.add_option(
     "-m", "--mode", dest="mode", metavar="MODE",
     default = "none",
@@ -62,6 +61,11 @@ parser.add_option(
         "by using the proper interface (tunctl for tun/tap, /vsys/fd_tuntap.control for pl-tun/pl-tap), "
         "and it will be brought up (with ifconfig for tun/tap, with /vsys/vif_up for pl-tun/pl-tap). You have "
         "to specify an VIF_ADDRESS and VIF_MASK in any case (except for none).")
+parser.add_option(
+    "-t", "--protocol", dest="protocol", metavar="PROTOCOL",
+    default = None,
+    help = 
+        "Set protocol. One of tcp, udp, fd, gre. In any mode except none, a TUN/TAP will be created.")
 parser.add_option(
     "-A", "--vif-address", dest="vif_addr", metavar="VIF_ADDRESS",
     default = None,
@@ -75,12 +79,17 @@ parser.add_option(
         "See mode. This specifies the VIF_MASK, "
         "a number indicating the network type (ie: 24 for a C-class network).")
 parser.add_option(
+    "-P", "--port", dest="port", type="int", metavar="PORT", 
+    default = None,
+    help = 
+        "This specifies the LOCAL_PORT. This will be the local bind port for UDP/TCP.")
+parser.add_option(
     "-S", "--vif-snat", dest="vif_snat", 
     action = "store_true",
     default = False,
     help = "See mode. This specifies whether SNAT will be enabled for the virtual interface. " )
 parser.add_option(
-    "-P", "--vif-pointopoint", dest="vif_pointopoint",  metavar="DST_ADDR",
+    "-Z", "--vif-pointopoint", dest="vif_pointopoint",  metavar="DST_ADDR",
     default = None,
     help = 
         "See mode. This specifies the remote endpoint's virtual address, "
@@ -97,11 +106,11 @@ parser.add_option(
     help = 
         "This specifies the interface's emulated bandwidth in bytes per second." )
 parser.add_option(
-    "-u", "--udp", dest="udp", metavar="PORT", type="int",
+    "-a", "--peer-address", dest="peer_addr", metavar="PEER_ADDRESS",
     default = None,
     help = 
-        "Bind to the specified UDP port locally, and send UDP datagrams to the "
-        "remote endpoint, creating a tunnel through UDP rather than TCP." )
+        "This specifies the PEER_ADDRESS, "
+        "the IP address of the remote interface.")
 parser.add_option(
     "-k", "--key", dest="cipher_key", metavar="KEY",
     default = None,
@@ -193,7 +202,7 @@ parser.add_option(
     help = "If specified, packets won't be logged to standard output, "
            "but dumped to a pcap-formatted trace in the specified file. " )
 
-(options, remaining_args) = parser.parse_args(sys.argv[1:])
+(options,args) = parser.parse_args(sys.argv[1:])
 
 options.cipher = {
     'aes' : 'AES',
@@ -453,7 +462,7 @@ def pl_vif_start(tun_path, tun_name):
         stdin.write("txqueuelen=%d\n" % (options.vif_txqueuelen,))
     if options.mode.startswith('pl-gre'):
         stdin.write("gre=%s\n" % (options.gre_key,))
-        stdin.write("remote=%s\n" % (remaining_args[0],))
+        stdin.write("remote=%s\n" % (options.peer_addr,))
     stdin.close()
     
     t.join()
@@ -514,7 +523,7 @@ def tun_fwd(tun, remote, reconnect = None, accept_local = None, accept_remote = 
         with_pi = options.mode.startswith('pl-'),
         ether_mode = tun_name.startswith('tap'),
         cipher_key = options.cipher_key,
-        udp = options.udp,
+        udp = options.protocol == 'udp',
         TERMINATE = TERMINATE,
         stderr = None,
         reconnect = reconnect,
@@ -716,7 +725,7 @@ try:
             return 1
 
     
-    if options.pass_fd:
+    if options.protocol == 'fd':
         if accept_packet or filter_init:
             raise NotImplementedError, "--pass-fd and --filter are not compatible"
         
@@ -754,7 +763,7 @@ try:
             while not TERM:
                 time.sleep(1)
         remote = None
-    elif options.mode.startswith('pl-gre'):
+    elif options.protocol == "gre":
         if accept_packet or filter_init:
             raise NotImplementedError, "--mode %s and --filter are not compatible" % (options.mode,)
         
@@ -764,75 +773,29 @@ try:
             TERM = TERMINATE
             while not TERM:
                 time.sleep(1)
-        remote = remaining_args[0]
-    elif options.udp:
+        remote = options.peer_addr
+    elif options.protocol == "udp":
         # connect to remote endpoint
-        if remaining_args and not remaining_args[0].startswith('-'):
-            print >>sys.stderr, "Listening at: %s:%d" % (hostaddr,options.udp)
-            print >>sys.stderr, "Connecting to: %s:%d" % (remaining_args[0],options.port)
-            rsock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
-            retrydelay = 1.0
-            for i in xrange(30):
-                if TERMINATE:
-                    raise OSError, "Killed"
-                try:
-                    rsock.bind((hostaddr,options.udp))
-                    break
-                except socket.error:
-                    # wait a while, retry
-                    print >>sys.stderr, "%s: Could not bind. Retrying in a sec..." % (time.strftime('%c'),)
-                    time.sleep(min(30.0,retrydelay))
-                    retrydelay *= 1.1
-            else:
-                rsock.bind((hostaddr,options.udp))
-            rsock.connect((remaining_args[0],options.port))
+        if options.peer_addr and options.peer_port:
+            rsock = tunchannel.udp_establish(TERMINATE, hostaddr, options.port, 
+                    options.peer_addr, options.peer_port)
+            remote = os.fdopen(rsock.fileno(), 'r+b', 0)
         else:
             print >>sys.stderr, "Error: need a remote endpoint in UDP mode"
             raise AssertionError, "Error: need a remote endpoint in UDP mode"
-        
-        # Wait for other peer
-        tunchannel.udp_handshake(TERMINATE, rsock)
-        
-        remote = os.fdopen(rsock.fileno(), 'r+b', 0)
-    else:
+    elif options.protocol == "tcp":
         # connect to remote endpoint
-        if remaining_args and not remaining_args[0].startswith('-'):
-            print >>sys.stderr, "Connecting to: %s:%d" % (remaining_args[0],options.port)
-            rsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-            retrydelay = 1.0
-            for i in xrange(30):
-                if TERMINATE:
-                    raise OSError, "Killed"
-                try:
-                    rsock.connect((remaining_args[0],options.port))
-                    break
-                except socket.error:
-                    # wait a while, retry
-                    print >>sys.stderr, "%s: Could not connect. Retrying in a sec..." % (time.strftime('%c'),)
-                    time.sleep(min(30.0,retrydelay))
-                    retrydelay *= 1.1
-            else:
-                rsock.connect((remaining_args[0],options.port))
+        if options.peer_addr and options.peer_port:
+            rsock = tunchannel.tcp_establish(TERMINATE, hostaddr, options.port,
+                    options.peer_addr, options.peer_port)
+            remote = os.fdopen(rsock.fileno(), 'r+b', 0)
         else:
-            print >>sys.stderr, "Listening at: %s:%d" % (hostaddr,options.port)
-            lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-            retrydelay = 1.0
-            for i in xrange(30):
-                if TERMINATE:
-                    raise OSError, "Killed"
-                try:
-                    lsock.bind((hostaddr,options.port))
-                    break
-                except socket.error:
-                    # wait a while, retry
-                    print >>sys.stderr, "%s: Could not bind. Retrying in a sec..." % (time.strftime('%c'),)
-                    time.sleep(min(30.0,retrydelay))
-                    retrydelay *= 1.1
-            else:
-                lsock.bind((hostaddr,options.port))
-            lsock.listen(1)
-            rsock,raddr = lsock.accept()
-        remote = os.fdopen(rsock.fileno(), 'r+b', 0)
+            print >>sys.stderr, "Error: need a remote endpoint in TCP mode"
+            raise AssertionError, "Error: need a remote endpoint in TCP mode"
+    else:
+        msg = "Error: Invalid protocol %s" % options.protocol
+        print >>sys.stderr, msg 
+        raise AssertionError, msg
 
     if filter_init:
         filter_local, filter_remote = filter_init()
