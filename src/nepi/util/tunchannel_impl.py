@@ -206,6 +206,7 @@ class TunChannel(object):
         # drop strong reference
         del self
         
+        print >>sys.stderr, "Connected"
         tun_fwd(tun, remote,
             with_pi = with_pi, 
             ether_mode = ether_mode, 
