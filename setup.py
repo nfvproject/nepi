@@ -22,6 +22,8 @@ setup(
             "nepi.util.graphtools",
             "nepi.util" ],
         package_dir = {"": "src"},
-        package_data = {"nepi.testbeds.planetlab" : ["scripts/*.py", "scripts/*.c"],
+        package_data = {"nepi.testbeds.planetlab" : [
+                                "scripts/*.py", "scripts/*.c", "scripts/*.patch", 
+                        ],
                         "nepi.util" : ["*.tpl"] },
     )

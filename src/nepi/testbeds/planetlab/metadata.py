@@ -31,6 +31,9 @@ NETPIPE = "NetPipe"
 TUNFILTER = "TunFilter"
 CLASSQUEUEFILTER = "ClassQueueFilter"
 TOSQUEUEFILTER = "TosQueueFilter"
+MULTICASTFORWARDER = "MulticastForwarder"
+MULTICASTANNOUNCER = "MulticastAnnouncer"
+MULTICASTROUTER = "MulticastRouter"
 
 TUNFILTERS = (TUNFILTER, CLASSQUEUEFILTER, TOSQUEUEFILTER)
 TAPFILTERS = (TUNFILTER, )
@@ -192,9 +195,9 @@ def crossconnect_filter_peer_both(proto, testbed_instance, filter_guid, peer_dat
     crossconnect_filter_peer_init(proto, testbed_instance, iface_guid, peer_iface_data)
     crossconnect_filter_peer_compl(proto, testbed_instance, iface_guid, peer_iface_data)
 
-def connect_dep(testbed_instance, node_guid, app_guid):
-    node = testbed_instance._elements[node_guid]
-    app = testbed_instance._elements[app_guid]
+def connect_dep(testbed_instance, node_guid, app_guid, node=None, app=None):
+    node = node or testbed_instance._elements[node_guid]
+    app = app or testbed_instance._elements[app_guid]
     app.node = node
     
     if app.depends:
@@ -212,6 +215,24 @@ def connect_dep(testbed_instance, node_guid, app_guid):
     
     if app.rpmFusion:
         node.rpmFusion = True
+
+def connect_forwarder(testbed_instance, node_guid, fwd_guid):
+    node = testbed_instance._elements[node_guid]
+    fwd = testbed_instance._elements[fwd_guid]
+    node.multicast_forwarder = fwd
+    
+    if fwd.router:
+        connect_dep(testbed_instance, node_guid, None, app=fwd.router)
+
+    connect_dep(testbed_instance, node_guid, fwd_guid)
+
+def connect_router(testbed_instance, fwd_guid, router_guid):
+    fwd = testbed_instance._elements[fwd_guid]
+    router = testbed_instance._elements[router_guid]
+    fwd.router = router
+    
+    if fwd.node:
+        connect_dep(testbed_instance, None, router_guid, node=fwd.node)
 
 def connect_node_netpipe(testbed_instance, node_guid, netpipe_guid):
     node = testbed_instance._elements[node_guid]
@@ -327,6 +348,33 @@ def create_ns3_dependency(testbed_instance, guid):
     
     # Just inject configuration stuff
     element.home_path = "nepi-ns3-%s" % (guid,)
+    
+    testbed_instance.elements[guid] = element
+
+def create_multicast_forwarder(testbed_instance, guid):
+    parameters = testbed_instance._get_parameters(guid)
+    element = testbed_instance._make_multicast_forwarder(parameters)
+    
+    # Just inject configuration stuff
+    element.home_path = "nepi-mcfwd-%s" % (guid,)
+    
+    testbed_instance.elements[guid] = element
+
+def create_multicast_announcer(testbed_instance, guid):
+    parameters = testbed_instance._get_parameters(guid)
+    element = testbed_instance._make_multicast_announcer(parameters)
+    
+    # Just inject configuration stuff
+    element.home_path = "nepi-mcann-%s" % (guid,)
+    
+    testbed_instance.elements[guid] = element
+
+def create_multicast_router(testbed_instance, guid):
+    parameters = testbed_instance._get_parameters(guid)
+    element = testbed_instance._make_multicast_router(parameters)
+    
+    # Just inject configuration stuff
+    element.home_path = "nepi-mcrt-%s" % (guid,)
     
     testbed_instance.elements[guid] = element
 
@@ -507,6 +555,41 @@ def configure_dependency(testbed_instance, guid):
     # Install stuff
     dep.async_setup()
 
+def configure_announcer(testbed_instance, guid):
+    # Link ifaces
+    fwd = testbed_instance._elements[guid]
+    fwd.ifaces = [ dev
+        for node_guid in testbed_instance.get_connected(guid, "node", "apps")
+        for dev_guid in testbed_instance.get_connected(node_guid, "devs", "node")
+        for dev in ( testbed_instance._elements.get(dev_guid) ,)
+        if dev and isinstance(dev, testbed_instance._interfaces.TunIface)
+            and dev.multicast ]
+    
+    # Install stuff
+    configure_dependency(testbed_instance, guid)
+
+def configure_forwarder(testbed_instance, guid):
+    configure_announcer(testbed_instance, guid)
+    
+    # Link ifaces to forwarder
+    fwd = testbed_instance._elements[guid]
+    for iface in fwd.ifaces:
+        iface.multicast_forwarder = '/var/run/mcastfwd'
+
+def configure_router(testbed_instance, guid):
+    # Link ifaces
+    rt = testbed_instance._elements[guid]
+    rt.nonifaces = [ dev
+        for fwd_guid in testbed_instance.get_connected(guid, "fwd", "router")
+        for node_guid in testbed_instance.get_connected(fwd_guid, "node", "apps")
+        for dev_guid in testbed_instance.get_connected(node_guid, "devs", "node")
+        for dev in ( testbed_instance._elements.get(dev_guid) ,)
+        if dev and isinstance(dev, testbed_instance._interfaces.TunIface)
+            and not dev.multicast ]
+    
+    # Install stuff
+    configure_dependency(testbed_instance, guid)
+
 def configure_netpipe(testbed_instance, guid):
     netpipe = testbed_instance._elements[guid]
     
@@ -550,6 +633,18 @@ connector_types = dict({
     "node": dict({
                 "help": "Connector to a Node", 
                 "name": "node",
+                "max": 1, 
+                "min": 1
+            }),
+    "router": dict({
+                "help": "Connector to a routing daemon", 
+                "name": "router",
+                "max": 1, 
+                "min": 1
+            }),
+    "fwd": dict({
+                "help": "Forwarder this routing daemon communicates with", 
+                "name": "fwd",
                 "max": 1, 
                 "min": 1
             }),
@@ -619,32 +714,20 @@ connections = [
     }),
     dict({
         "from": (TESTBED_ID, NODE, "apps"),
-        "to":   (TESTBED_ID, APPLICATION, "node"),
+        "to":   (TESTBED_ID, (APPLICATION, DEPENDENCY, NEPIDEPENDENCY, NS3DEPENDENCY, MULTICASTANNOUNCER), "node"),
         "init_code": connect_dep,
         "can_cross": False
     }),
     dict({
-        "from": (TESTBED_ID, NODE, "deps"),
-        "to":   (TESTBED_ID, DEPENDENCY, "node"),
-        "init_code": connect_dep,
+        "from": (TESTBED_ID, NODE, "apps"),
+        "to":   (TESTBED_ID, MULTICASTFORWARDER, "node"),
+        "init_code": connect_forwarder,
         "can_cross": False
     }),
     dict({
-        "from": (TESTBED_ID, NODE, "deps"),
-        "to":   (TESTBED_ID, NEPIDEPENDENCY, "node"),
-        "init_code": connect_dep,
-        "can_cross": False
-    }),
-    dict({
-        "from": (TESTBED_ID, NODE, "deps"),
-        "to":   (TESTBED_ID, NS3DEPENDENCY, "node"),
-        "init_code": connect_dep,
-        "can_cross": False
-    }),
-    dict({
-        "from": (TESTBED_ID, NODE, "pipes"),
-        "to":   (TESTBED_ID, NETPIPE, "node"),
-        "init_code": connect_node_netpipe,
+        "from": (TESTBED_ID, MULTICASTFORWARDER, "router"),
+        "to":   (TESTBED_ID, MULTICASTROUTER, "fwd"),
+        "init_code": connect_router,
         "can_cross": False
     }),
     dict({
@@ -1184,6 +1267,15 @@ attributes = dict({
                 "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_string
             }),
+    "routing_algorithm": dict({      
+            "name": "algorithm",
+            "help": "Routing algorithm.",
+            "value": "dvmrp",
+            "type": Attribute.ENUM, 
+            "allowed": ["dvmrp"],
+            "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+            "validation_function": validation.is_enum,
+        }),
     })
 
 traces = dict({
@@ -1223,15 +1315,34 @@ traces = dict({
             }),
     })
 
-create_order = [ INTERNET, NODE, NODEIFACE, CLASSQUEUEFILTER, TOSQUEUEFILTER, TUNFILTER, TAPIFACE, TUNIFACE, NETPIPE, NEPIDEPENDENCY, NS3DEPENDENCY, DEPENDENCY, APPLICATION ]
+create_order = [ 
+    INTERNET, NODE, NODEIFACE, CLASSQUEUEFILTER, TOSQUEUEFILTER, 
+    MULTICASTANNOUNCER, MULTICASTFORWARDER, MULTICASTROUTER, 
+    TUNFILTER, TAPIFACE, TUNIFACE, NETPIPE, 
+    NEPIDEPENDENCY, NS3DEPENDENCY, DEPENDENCY, APPLICATION ]
 
-configure_order = [ INTERNET, Parallel(NODE), NODEIFACE, Parallel(TAPIFACE), Parallel(TUNIFACE), NETPIPE, Parallel(NEPIDEPENDENCY), Parallel(NS3DEPENDENCY), Parallel(DEPENDENCY), Parallel(APPLICATION) ]
+configure_order = [ 
+    INTERNET, Parallel(NODE), 
+    NODEIFACE, 
+    Parallel(MULTICASTANNOUNCER), Parallel(MULTICASTFORWARDER), Parallel(MULTICASTROUTER), 
+    Parallel(TAPIFACE), Parallel(TUNIFACE), NETPIPE, 
+    Parallel(NEPIDEPENDENCY), Parallel(NS3DEPENDENCY), Parallel(DEPENDENCY), Parallel(APPLICATION) ]
 
 # Start (and prestart) node after ifaces, because the node needs the ifaces in order to set up routes
-start_order = [ INTERNET, NODEIFACE, Parallel(TAPIFACE), Parallel(TUNIFACE), Parallel(NODE), NETPIPE, Parallel(NEPIDEPENDENCY), Parallel(NS3DEPENDENCY), Parallel(DEPENDENCY), Parallel(APPLICATION) ]
+start_order = [ INTERNET, 
+    NODEIFACE, 
+    Parallel(TAPIFACE), Parallel(TUNIFACE), 
+    Parallel(NODE), NETPIPE, 
+    Parallel(MULTICASTANNOUNCER), Parallel(MULTICASTFORWARDER), Parallel(MULTICASTROUTER), 
+    Parallel(NEPIDEPENDENCY), Parallel(NS3DEPENDENCY), Parallel(DEPENDENCY), Parallel(APPLICATION) ]
 
 # cleanup order
-shutdown_order = [ Parallel(APPLICATION), Parallel(TAPIFACE), Parallel(TUNIFACE), Parallel(NETPIPE), Parallel(NEPIDEPENDENCY), Parallel(NS3DEPENDENCY), Parallel(DEPENDENCY), NODEIFACE, Parallel(NODE) ]
+shutdown_order = [ 
+    Parallel(APPLICATION), 
+    Parallel(MULTICASTROUTER), Parallel(MULTICASTFORWARDER), Parallel(MULTICASTANNOUNCER), 
+    Parallel(TAPIFACE), Parallel(TUNIFACE), Parallel(NETPIPE), 
+    Parallel(NEPIDEPENDENCY), Parallel(NS3DEPENDENCY), Parallel(DEPENDENCY), 
+    NODEIFACE, Parallel(NODE) ]
 
 factories_info = dict({
     NODE: dict({
@@ -1444,6 +1555,51 @@ factories_info = dict({
             "box_attributes": [ ],
             "connector_types": ["node"],
             "traces": ["buildlog"],
+        }),
+    MULTICASTFORWARDER: dict({
+            "help": "This application installs a userspace packet forwarder "
+                    "that, when connected to a node, filters all packets "
+                    "flowing through multicast-capable virtual interfaces "
+                    "and applies custom-specified routing policies.",
+            "category": FC.CATEGORY_APPLICATIONS,
+            "create_function": create_multicast_forwarder,
+            "preconfigure_function": configure_forwarder,
+            "start_function": start_application,
+            "status_function": status_application,
+            "stop_function": stop_application,
+            "box_attributes": [ ],
+            "connector_types": ["node","router"],
+            "traces": ["buildlog","stderr"],
+        }),
+    MULTICASTANNOUNCER: dict({
+            "help": "This application installs a userspace daemon that "
+                    "monitors multicast membership and announces it on all "
+                    "multicast-capable interfaces.\n"
+                    "This does not usually happen automatically on PlanetLab slivers.",
+            "category": FC.CATEGORY_APPLICATIONS,
+            "create_function": create_multicast_announcer,
+            "preconfigure_function": configure_announcer,
+            "start_function": start_application,
+            "status_function": status_application,
+            "stop_function": stop_application,
+            "box_attributes": [ ],
+            "connector_types": ["node"],
+            "traces": ["buildlog","stderr"],
+        }),
+    MULTICASTROUTER: dict({
+            "help": "This application installs a userspace daemon that "
+                    "monitors multicast membership and announces it on all "
+                    "multicast-capable interfaces.\n"
+                    "This does not usually happen automatically on PlanetLab slivers.",
+            "category": FC.CATEGORY_APPLICATIONS,
+            "create_function": create_multicast_router,
+            "preconfigure_function": configure_router,
+            "start_function": start_application,
+            "status_function": status_application,
+            "stop_function": stop_application,
+            "box_attributes": ["routing_algorithm"],
+            "connector_types": ["fwd"],
+            "traces": ["buildlog","stdout","stderr"],
         }),
     INTERNET: dict({
             "help": "Internet routing",
