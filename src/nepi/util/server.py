@@ -863,7 +863,7 @@ def popen_python(python_code,
     #cmd += "$CMD "
     #cmd += "strace -f -tt -s 200 -o strace$$.out "
     import nepi
-    cmd += "python -c 'import sys; sys.path.append(%s); from nepi.util import server; server.decode_and_execute()'" % (
+    cmd += "python -c 'import sys; sys.path.insert(0,%s); from nepi.util import server; server.decode_and_execute()'" % (
         repr(os.path.dirname(os.path.dirname(nepi.__file__))).replace("'",'"'),
     )
 
