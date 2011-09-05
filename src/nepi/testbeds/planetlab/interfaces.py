@@ -249,8 +249,7 @@ class TunIface(object):
     def recover(self):
         if self.peer_proto:
             self.peer_proto_impl = self._impl_instance(
-                self._home_path,
-                False) # no way to know, no need to know
+                self._home_path)
             self.peer_proto_impl.recover()
         else:
             self._delay_recover = True
