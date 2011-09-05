@@ -75,7 +75,7 @@ def connect_tunchannel_tap(testbed_instance, chan_guid, tap_guid):
         IFF_NO_PI = 0x00001000
         struct_ifreq = "x"*16+"H"+"x"*22
         flags = struct.unpack(struct_ifreq,
-            fcntl.ioctl(tap.fd, TUNGETIFF, struct.pack(struct_ifreq,0)) )
+            fcntl.ioctl(tap.fd, TUNGETIFF, struct.pack(struct_ifreq,0)) )[0]
         with_pi = (0 == (flags & IFF_NO_PI))
     except:
         # maybe the kernel doesn't support the IOCTL,
