@@ -433,10 +433,15 @@ class Client(object):
                
         # Wait for the forwarder to be ready, otherwise nobody
         # will be able to connect to it
-        helo = self._process.stderr.readline()
-        if helo != 'FORWARDER_READY.\n':
-            raise AssertionError, "Expected 'FORWARDER_READY.', got %r: %s" % (helo,
-                    helo + self._process.stderr.read())
+        err = []
+        helo = "nope"
+        while helo:
+            helo = self._process.stderr.readline()
+            if helo == 'FORWARDER_READY.\n':
+                break
+            err.append(helo)
+        else:
+            raise AssertionError, "Expected 'FORWARDER_READY.', got: %s" % (''.join(err),)
         
     def send_msg(self, msg):
         encoded = base64.b64encode(msg)

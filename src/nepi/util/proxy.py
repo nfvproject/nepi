@@ -900,10 +900,15 @@ class BaseProxy(object):
                         environment_setup = environment_setup) 
             # Wait for the server to be ready, otherwise nobody
             # will be able to connect to it
-            helo = proc.stderr.readline()
-            if helo != 'SERVER_READY.\n':
-                raise AssertionError, "Expected 'SERVER_READY.', got %r: %s" % (helo,
-                        helo + proc.stderr.read())
+            err = []
+            helo = "nope"
+            while helo:
+                helo = proc.stderr.readline()
+                if helo == 'SERVER_READY.\n':
+                    break
+                err.append(helo)
+            else:
+                raise AssertionError, "Expected 'SERVER_READY.', got: %s" % (''.join(err),)
         # connect client to server
         self._client = server.Client(root_dir, 
                 communication = communication,
