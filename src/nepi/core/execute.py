@@ -507,8 +507,9 @@ class ExperimentController(object):
             conf.add_section(testbed_guid)
             for attr in testbed_config.get_attribute_list():
                 if attr not in TRANSIENT:
-                    conf.set(testbed_guid, attr, 
-                        testbed_config.get_attribute_value(attr))
+                    value = testbed_config.get_attribute_value(attr)
+                    if value is not None:
+                        conf.set(testbed_guid, attr, value)
         
         f = open(os.path.join(self._root_dir, 'deployment_config.ini'), 'w')
         conf.write(f)
@@ -539,8 +540,12 @@ class ExperimentController(object):
                     getter = getattr(conf, TYPEMAP.get(
                         testbed_config.get_attribute_type(attr),
                         'get') )
-                    testbed_config.set_attribute_value(
-                        attr, getter(testbed_guid, attr))
+                    try:
+                        value = getter(testbed_guid, attr)
+                        testbed_config.set_attribute_value(attr, value)
+                    except ConfigParser.NoOptionError:
+                        # Leave default
+                        pass
     
     def _unpersist_testbed_proxies(self):
         try:
