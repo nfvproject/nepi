@@ -848,8 +848,6 @@ def popen_python(python_code,
 
     shell = False
     cmd = ""
-    if sudo:
-        cmd +="sudo "
     if python_path:
         python_path.replace("'", r"'\''")
         cmd = """PYTHONPATH="$PYTHONPATH":'%s' """ % python_path
@@ -866,6 +864,12 @@ def popen_python(python_code,
     cmd += "python -c 'import sys; sys.path.insert(0,%s); from nepi.util import server; server.decode_and_execute()'" % (
         repr(os.path.dirname(os.path.dirname(nepi.__file__))).replace("'",'"'),
     )
+
+    if sudo:
+        if ';' in cmd:
+            cmd = "sudo bash -c " + shell_escape(cmd)
+        else:
+            cmd = "sudo " + cmd
 
     if communication == DC.ACCESS_SSH:
         tmp_known_hosts = None
@@ -887,7 +891,7 @@ def popen_python(python_code,
                 server_key, host, port, args)
         args.append(cmd)
     else:
-        args = [cmd]
+        args = cmd
         shell = True
 
     # connects to the remote host and starts a remote
