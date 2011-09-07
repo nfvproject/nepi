@@ -846,7 +846,6 @@ def popen_python(python_code,
         sudo = False, 
         environment_setup = ""):
 
-    shell = False
     cmd = ""
     if python_path:
         python_path.replace("'", r"'\''")
@@ -891,12 +890,11 @@ def popen_python(python_code,
                 server_key, host, port, args)
         args.append(cmd)
     else:
-        args = cmd
-        shell = True
+        args = [ "/bin/bash", "-c", cmd ]
 
     # connects to the remote host and starts a remote
     proc = subprocess.Popen(args,
-            shell = shell, 
+            shell = False, 
             stdout = subprocess.PIPE,
             stdin = subprocess.PIPE, 
             stderr = subprocess.PIPE)
