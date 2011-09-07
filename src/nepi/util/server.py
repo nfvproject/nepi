@@ -46,7 +46,7 @@ def shell_escape(s):
     else:
         # unsafe string - escape
         def escp(c):
-            if (32 <= ord(c) < 127 or c in ('\r','\n','\t')) and c not in ("'",):
+            if (32 <= ord(c) < 127 or c in ('\r','\n','\t')) and c not in ("'",'"'):
                 return c
             else:
                 return "'$'\\x%02x''" % (ord(c),)
