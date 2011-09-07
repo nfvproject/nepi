@@ -883,7 +883,7 @@ class NS3Dependency(Dependency):
                      "python setup.py install --install-lib ${BUILD}/target && "
                      "python setup.py clean && "
                      "cd ../ns3-src && "
-                     "./waf configure --prefix=${BUILD}/target --with-pybindgen=../pybindgen-src -d release --disable-examples --disable-tests --enable-threading && "
+                     "./waf configure --prefix=${BUILD}/target --with-pybindgen=../pybindgen-src -d release --disable-examples --disable-tests && "
                      "./waf &&"
                      "./waf install && "
                      "rm -f ${BUILD}/target/lib/*.so && "
