@@ -429,7 +429,7 @@ class TunProtoBase(object):
             local = self.local()
             for i in xrange(30):
                 (out,err),proc = server.eintr_retry(server.popen_ssh_command)(
-                    "ip show %s >/dev/null 2>&1 && echo ALIVE || echo DEAD" % (name,),
+                    "ip link show %s >/dev/null 2>&1 && echo ALIVE || echo DEAD" % (name,),
                     host = local.node.hostname,
                     port = None,
                     user = local.node.slicename,
@@ -537,7 +537,23 @@ class TunProtoBase(object):
                     break
                 time.sleep(interval)
                 interval = min(30.0, interval * 1.1)
-    
+            else:
+                local = self.local()
+                
+                if local:
+                    # Forcibly shut down interface
+                    (out,err),proc = server.eintr_retry(server.popen_ssh_command)(
+                        "sudo -S bash -c 'echo %s > /vsys/vif_down.in'" % (self.if_name,),
+                        host = local.node.hostname,
+                        port = None,
+                        user = local.node.slicename,
+                        agent = None,
+                        ident_key = local.node.ident_path,
+                        server_key = local.node.server_key,
+                        timeout = 60,
+                        err_on_timeout = False
+                        )
+                    proc.wait()    
     _TRACEMAP = {
         # tracename : (remotename, localname)
         'packets' : ('capture','capture'),
