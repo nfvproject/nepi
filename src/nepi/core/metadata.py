@@ -466,7 +466,8 @@ class Metadata(object):
                 "DES",
                 "PLAIN",
             ],
-            "flags" : Attribute.ExecImmutable,
+            "flags" : Attribute.ExecImmutable | \
+                      Attribute.Metadata,
             "validation_function" : validation.is_enum,
             }),
         ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP : dict({

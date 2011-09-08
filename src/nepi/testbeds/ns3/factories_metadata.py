@@ -1048,7 +1048,7 @@ factories_info = dict({
         "help": "Network interface associated to a file descriptor",
         "connector_types": ["node", "->fd"],
         "box_attributes": ["Address", 
-            "tun_proto", "tun_addr", "tun_port", "tun_key"],
+            "tun_proto", "tun_addr", "tun_port", "tun_key", "tun_cipher_fdnd"],
         "traces": ["fdpcap", "fdascii"],
         "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
     }),
