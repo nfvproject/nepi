@@ -2544,4 +2544,15 @@ attributes = dict({
         "type": Attribute.STRING,
         "help": "Comma separated list of waypoints in format t:x:y:z. Ex: 0s:0:0:0, 1s:1:0:0"
     }),
+    "tun_cipher_fdnd" : dict({
+        "name" : "tun_cipher", 
+        "help" : "Tunnel cryptography not supported",
+        "type" : Attribute.ENUM,
+        "value" : "PLAIN",
+        "allowed" : [
+            "PLAIN",
+        ],
+        "flags" : Attribute.ExecImmutable | Attribute.Metadata,
+        "validation_function" : validation.is_enum,
+        }),
 })
