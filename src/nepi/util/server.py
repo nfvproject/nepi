@@ -24,6 +24,7 @@ import functools
 import collections
 
 CTRL_SOCK = "ctrl.sock"
+CTRL_PID = "ctrl.pid"
 STD_ERR = "stderr.log"
 MAX_FD = 1024
 
@@ -198,8 +199,35 @@ class Server(object):
 
         # create control socket
         self._ctrl_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self._ctrl_sock.bind(CTRL_SOCK)
+        try:
+            self._ctrl_sock.bind(CTRL_SOCK)
+        except socket.error:
+            # Address in use, check pidfile
+            pid = None
+            try:
+                pidfile = open(CTRL_PID, "r")
+                pid = pidfile.read()
+                pidfile.close()
+                pid = int(pid)
+            except:
+                # no pidfile
+                pass
+            
+            if pid is not None:
+                # Check process liveliness
+                if not os.path.exists("/proc/%d" % (pid,)):
+                    # Ok, it's dead, clean the socket
+                    os.remove(CTRL_SOCK)
+            
+            # try again
+            self._ctrl_sock.bind(CTRL_SOCK)
+            
         self._ctrl_sock.listen(0)
+        
+        # Save pidfile
+        pidfile = open(CTRL_PID, "w")
+        pidfile.write(str(os.getpid()))
+        pidfile.close()
 
         # let the parent process know that the daemonization is finished
         os.write(w, "\n")
