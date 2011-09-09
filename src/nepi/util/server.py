@@ -113,7 +113,8 @@ class Server(object):
         
         # build root folder
         root = os.path.normpath(self._root_dir)
-        if os.path.exists(root) and self._clean_root:
+        if self._root_dir not in [".", ""] and os.path.exists(root) \
+                and self._clean_root:
             shutil.rmtree(root)
         if not os.path.exists(root):
             os.makedirs(root, 0755)

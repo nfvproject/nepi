@@ -1101,19 +1101,36 @@ class ExperimentController(object):
                     elem_cross_data[attr_name] = _undefer(attr_value)
         
         return cross_data
-    """
+
 class ExperimentSuite(object):
     def __init__(self, experiment_xml, access_config, repetitions,
             duration, wait_guids):
         self._experiment_xml = experiment_xml
         self._access_config = access_config
-        self._experiments = dict()
+        self._controllers = dict()
+        self._access_configs = dict()
         self._repetitions = repetitions
         self._duration = duration
         self._wait_guids = wait_guids
         self._current = None
         self._status = TS.STATUS_ZERO
         self._thread = None
+
+    @property
+    def current(self):
+        return self._current
+
+    @property
+    def status(self):
+        return self._status
+
+    @property
+    def is_finished(self):
+        return self._status == TS.STATUS_FINISHED
+
+    @property
+    def access_configurations(self):
+        return self._access_configs.values()
 
     def start(self):
         self._status  = TS.STATUS_STARTED
@@ -1124,11 +1141,17 @@ class ExperimentSuite(object):
         if self._thread:
             self._thread.join()
             self._thread = None
+        for controller in self._controllers.values:
+            controller.shutdown()
+
+    def get_current_access_config(self):
+        return self._access_configs[self._current]
 
     def _run_experiment_suite(self):
         for i in xrange[0, self.repetitions]:
             self._current = i
             self._run_one_experiment()
+        self._status  = TS.STATUS_FINISHED
 
     def _run_one_experiment(self):
         access_config = proxy.AccessConfiguration()
@@ -1141,25 +1164,17 @@ class ExperimentSuite(object):
         access_config.set_attribute_value(DC.ROOT_DIRECTORY, root_dir)
         controller = proxy.create_experiment_controller(self._experiment_xml,
                 access_config)
-        self._experiments[self._current] = controller
+        self._access_configs[self._current] = access_config
+        self._controllers[self._current] = controller
         controller.start()
         started_at = time.time()
         # wait until all specified guids have finished execution
         if self._wait_guids:
-            while all(itertools.imap(controller.is_finished, self._wait_guids):
+            while all(itertools.imap(controller.is_finished, self._wait_guids)):
                 time.sleep(0.5)
         # wait until the minimum experiment duration time has elapsed 
         if self._duration:
             while (time.time() - started_at) < self._duration:
                 time.sleep(0.5)
         controller.stop()
-        #download results!!
-        controller.shutdown()
-    """
-
-
-
-
-
-
 

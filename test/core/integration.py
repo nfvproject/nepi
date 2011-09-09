@@ -384,7 +384,52 @@ class ExecuteTestCase(unittest.TestCase):
         finally:
             controller.stop()
             controller.shutdown()
- 
+
+    def ptest_experiment_suite(self):
+        exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()
+        
+        desc.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
+        desc.set_attribute_value(DC.ROOT_DIRECTORY, self.root_dir)
+        desc.set_attribute_value(DC.DEPLOYMENT_ENVIRONMENT_SETUP, 
+            "export PYTHONPATH=%r:%r:$PYTHONPATH "
+            "export NEPI_TESTBEDS='mock:mock mock2:mock2' " % (
+                os.path.dirname(os.path.dirname(mock.__file__)),
+                os.path.dirname(os.path.dirname(mock2.__file__)),))
+
+        xml = exp_desc.to_xml()
+
+        access_config = proxy.AccessConfiguration()
+        access_config.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
+        access_config.set_attribute_value(DC.ROOT_DIRECTORY, self.root_dir)
+        access_config.set_attribute_value(DC.DEPLOYMENT_ENVIRONMENT_SETUP, 
+            "export PYTHONPATH=%r:%r:$PYTHONPATH "
+            "export NEPI_TESTBEDS='mock:mock mock2:mock2' " % (
+                os.path.dirname(os.path.dirname(mock.__file__)),
+                os.path.dirname(os.path.dirname(mock2.__file__)),))
+       
+        exp_suite = proxy.create_experiment_suite(xml, access_config)
+        exp_suite.start()
+        while not exp_suite.is_finished:
+            time.sleep(0.5)
+
+        for access_config in exp_suite.access_configurations:
+            access_config.set_attribute_value(DC.RECOVER, True)
+            controller = proxy.create_experiment_controller(None, access_config)
+
+            fake_result = controller.trace(app.guid, "fake")
+            comp_result = """PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
+
+--- 10.0.0.2 ping statistics ---
+1 packets transmitted, 1 received, 0% packet loss, time 0ms
+"""
+            self.assertTrue(fake_result.startswith(comp_result))
+
+            self.assertEquals(controller.get_testbed_id(node1.guid), "mock")
+            self.assertEquals(controller.get_testbed_version(node1.guid), "0.1")
+            self.assertEquals(controller.get_factory_id(node1.guid), "Node")
+
+        exp_suite.shutdown()
+
 if __name__ == '__main__':
     unittest.main()
 
