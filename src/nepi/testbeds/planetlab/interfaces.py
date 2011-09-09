@@ -255,7 +255,7 @@ class TunIface(object):
             self._delay_recover = True
     
     def prepare(self, home_path):
-        if not self.peer_iface and (self.peer_proto and self.peer_addr and self.peer_port):
+        if not self.peer_iface and (self.peer_proto and self.peer_addr):
             # Ad-hoc peer_iface
             self.peer_iface = _CrossIface(
                 self.peer_proto,
