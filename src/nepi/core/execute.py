@@ -714,9 +714,10 @@ class ExperimentController(object):
         self._logger.debug("ExperimentController: Starting parallel shutdown")
         
         for testbed_guids in reversed(self._testbed_order):
+            testbed_guids = set(testbed_guids) - ordered_testbeds
             self._logger.debug("ExperimentController: Shutting down %r", testbed_guids)
             self._parallel([functools.partial(shutdown_testbed, guid)
-                            for guid in set(testbed_guids) - ordered_testbeds])
+                            for guid in testbed_guids])
         remaining_guids = set(self._testbeds) - ordered_testbeds
         if remaining_guids:
             self._logger.debug("ExperimentController: Shutted down %r", ordered_testbeds)
