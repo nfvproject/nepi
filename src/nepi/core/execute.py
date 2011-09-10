@@ -1103,13 +1103,13 @@ class ExperimentController(object):
         return cross_data
 
 class ExperimentSuite(object):
-    def __init__(self, experiment_xml, access_config, repetitions,
-            duration, wait_guids):
+    def __init__(self, experiment_xml, access_config, repetitions = None,
+            duration = None, wait_guids = None):
         self._experiment_xml = experiment_xml
         self._access_config = access_config
         self._controllers = dict()
         self._access_configs = dict()
-        self._repetitions = repetitions
+        self._repetitions = 1 if not repetitions else repetitions
         self._duration = duration
         self._wait_guids = wait_guids
         self._current = None
