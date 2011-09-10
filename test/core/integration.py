@@ -385,7 +385,7 @@ class ExecuteTestCase(unittest.TestCase):
             controller.stop()
             controller.shutdown()
 
-    def ptest_experiment_suite(self):
+    def test_experiment_suite(self):
         exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()
         
         desc.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)

@@ -64,6 +64,10 @@ EXEC_XML = 42
 TESTBED_STATUS  = 43
 STARTED_TIME  = 44
 STOPPED_TIME  = 45
+CURRENT = 46
+ACCESS_CONFIGURATIONS = 47
+CURRENT_ACCESS_CONFIG = 48
+
 
 instruction_text = dict({
     OK:     "OK",
@@ -109,6 +113,9 @@ instruction_text = dict({
     TRACES_INFO: "TRACES_INFO",
     STARTED_TIME: "STARTED_TIME",
     STOPPED_TIME: "STOPPED_TIME",
+    CURRENT: "CURRENT",
+    ACCESS_CONFIGURATIONS: "ACCESS_CONFIGURATIONS",
+    CURRENT_ACCESS_CONFIG: "CURRENT_ACCESS_CONFIG"
 
     })
 
@@ -219,7 +226,7 @@ def create_experiment_suite(xml, access_config, repetitions = None,
         return exp_suite
     elif mode == DC.MODE_DAEMON:
         return ExperimentSuiteProxy(root_dir, log_level,
-                experiment_xml = xml,
+                xml,
                 repetitions = repetitions, 
                 duration = duration,
                 wait_guids = wait_guids, 
@@ -230,7 +237,6 @@ def create_experiment_suite(xml, access_config, repetitions = None,
                 ident_key = key,
                 agent = agent, 
                 sudo = sudo, 
-                launch = launch,
                 environment_setup = environment_setup, 
                 clean_root = clean_root)
     raise RuntimeError("Unsupported access configuration '%s'" % mode)
@@ -372,6 +378,8 @@ class Marshalling:
         
         @staticmethod
         def base64_data(data):
+            if not data:
+                return ""
             return base64.b64encode(data)
         
         @staticmethod
@@ -549,7 +557,6 @@ class ExperimentSuiteServer(BaseServer):
     def __init__(self, root_dir, log_level, 
             xml, repetitions, duration, wait_guids, 
             communication = DC.ACCESS_LOCAL,
-            mode = None
             host = None, 
             port = None, 
             user = None, 
@@ -564,28 +571,26 @@ class ExperimentSuiteServer(BaseServer):
         access_config.set_attribute_value(DC.ROOT_DIRECTORY, root_dir)
         access_config.set_attribute_value(DC.LOG_LEVEL, log_level)
         access_config.set_attribute_value(DC.DEPLOYMENT_ENVIRONMENT_SETUP, environment_setup)
-        if mode:
-            access_config.set_attribute_value(DC.DEPLOYMENT_MODE, mode)
         if user:
             access_config.set_attribute_value(DC.DEPLOYMENT_USER, user)
         if host:
             access_config.set_attribute_value(DC.DEPLOYMENT_HOST, host)
         if port:
-            access_config.get_attribute_value(DC.DEPLOYMENT_PORT, port)
+            access_config.set_attribute_value(DC.DEPLOYMENT_PORT, port)
         if agent:    
-            access_config.get_attribute_value(DC.USE_AGENT, agent)
+            access_config.set_attribute_value(DC.USE_AGENT, agent)
         if sudo:
-            acess_config.get_attribute_value(DC.USE_SUDO, sudo)
+            acess_config.set_attribute_value(DC.USE_SUDO, sudo)
         if ident_key:
-            access_config.get_attribute_value(DC.DEPLOYMENT_KEY, ident_key)
+            access_config.set_attribute_value(DC.DEPLOYMENT_KEY, ident_key)
         if communication:
-            access_config.get_attribute_value(DC.DEPLOYMENT_COMMUNICATION, communication)
+            access_config.set_attribute_value(DC.DEPLOYMENT_COMMUNICATION, communication)
         if clean_root:
-            access_config.get_attribute_value(DC.CLEAN_ROOT, clean_root)
+            access_config.set_attribute_value(DC.CLEAN_ROOT, clean_root)
         self._experiment_xml = xml
         self._duration = duration
         self._repetitions = repetitions
-        self._wait_pids = wait_pids
+        self._wait_guids = wait_guids
         self._access_config = access_config
         self._experitment_suite = None
 
@@ -595,21 +600,47 @@ class ExperimentSuiteServer(BaseServer):
                 self._experiment_xml, self._access_config, 
                 self._repetitions, self._duration, self._wait_guids)
 
-    def post_daemonize(self):
-        pass
+    @Marshalling.handles(CURRENT)
+    @Marshalling.args()
+    @Marshalling.retval(int)
+    def current(self):
+        return str(self._experiment_suite.current)
+   
+    @Marshalling.handles(STATUS)
+    @Marshalling.args()
+    @Marshalling.retval(int)
+    def status(self):
+        return self._experiment_suite.status
+    
+    @Marshalling.handles(FINISHED)
+    @Marshalling.args()
+    @Marshalling.retval(bool)
+    def is_finished(self):
+        return self._experiment_suite.is_finished
 
-    @Marshalling.handles(GUIDS)
+    @Marshalling.handles(ACCESS_CONFIGURATIONS)
     @Marshalling.args()
     @Marshalling.retval( Marshalling.pickled_data )
-    def guids(self):
-        return self._testbed.guids
+    def access_configurations(self):
+        return self._experiment_suite.access_configurations
 
-    @Marshalling.handles(TESTBED_ID)
+    @Marshalling.handles(START)
     @Marshalling.args()
     @Marshalling.retval()
-    def testbed_id(self):
-        return str(self._testbed.testbed_id)
+    def start(self):
+        self._experiment_suite.start()
 
+    @Marshalling.handles(SHUTDOWN)
+    @Marshalling.args()
+    @Marshalling.retval()
+    def shutdown(self):
+        self._experiment_suite.shutdown()
+
+    @Marshalling.handles(CURRENT_ACCESS_CONFIG)
+    @Marshalling.args()
+    @Marshalling.retval( Marshalling.pickled_data )
+    def get_current_access_config(self):
+        return self._experiment_suite.get_current_access_config()
 
 class TestbedControllerServer(BaseServer):
     def __init__(self, root_dir, log_level, testbed_id, testbed_version, 
@@ -914,7 +945,7 @@ class ExperimentControllerServer(BaseServer):
     @Marshalling.args(int)
     @Marshalling.retval(int)
     def status(self, guid):
-        return self._experiment.is_finished(guid)
+        return self._experiment.status(guid)
 
     @Marshalling.handles(GET)
     @Marshalling.args(int, Marshalling.base64_data, str)
@@ -1224,23 +1255,23 @@ class ExperimentSuiteProxy(BaseProxy):
             sudo = False, 
             environment_setup = "", 
             clean_root = False):
-        super(TestbedControllerProxy,self).__init__(
+        super(ExperimentSuiteProxy,self).__init__(
             ctor_args = (root_dir, log_level,
-                experiment_xml, 
-                repetitions = repetitions, 
-                duration = duration,
-                wait_guids = wait_guids, 
-                communication = communication,
-                host = host, 
-                port = port, 
-                user = user, 
-                ident_key = key,
-                agent = agent, 
-                sudo = sudo, 
-                environment_setup = environment_setup, 
-                clean_root = clean_root),
+                xml, 
+                repetitions, 
+                duration,
+                wait_guids, 
+                communication,
+                host, 
+                port, 
+                user, 
+                ident_key,
+                agent, 
+                sudo, 
+                environment_setup, 
+                clean_root),
             root_dir = root_dir,
-            True, #launch
+            launch = True, #launch
             communication = communication,
             host = host, 
             port = port, 
