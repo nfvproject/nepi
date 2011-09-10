@@ -1126,7 +1126,7 @@ class ExperimentSuite(object):
 
     @property
     def is_finished(self):
-        return self._status == TS.STATUS_FINISHED
+        return self._status == TS.STATUS_STOPPED
 
     @property
     def access_configurations(self):
@@ -1141,7 +1141,7 @@ class ExperimentSuite(object):
         if self._thread:
             self._thread.join()
             self._thread = None
-        for controller in self._controllers.values:
+        for controller in self._controllers.values():
             controller.shutdown()
 
     def get_current_access_config(self):
@@ -1151,7 +1151,7 @@ class ExperimentSuite(object):
         for i in xrange[0, self.repetitions]:
             self._current = i
             self._run_one_experiment()
-        self._status  = TS.STATUS_FINISHED
+        self._status  = TS.STATUS_STOPPED
 
     def _run_one_experiment(self):
         access_config = proxy.AccessConfiguration()
