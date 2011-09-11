@@ -626,13 +626,13 @@ class ExperimentSuiteServer(BaseServer):
 
     @Marshalling.handles(START)
     @Marshalling.args()
-    @Marshalling.retval()
+    @Marshalling.retvoid
     def start(self):
         self._experiment_suite.start()
 
     @Marshalling.handles(SHUTDOWN)
     @Marshalling.args()
-    @Marshalling.retval()
+    @Marshalling.retvoid
     def shutdown(self):
         self._experiment_suite.shutdown()
 
