@@ -592,7 +592,7 @@ class ExperimentSuiteServer(BaseServer):
         self._repetitions = repetitions
         self._wait_guids = wait_guids
         self._access_config = access_config
-        self._experitment_suite = None
+        self._experiment_suite = None
 
     def post_daemonize(self):
         from nepi.core.execute import ExperimentSuite
@@ -604,25 +604,25 @@ class ExperimentSuiteServer(BaseServer):
     @Marshalling.args()
     @Marshalling.retval(int)
     def current(self):
-        return str(self._experiment_suite.current)
+        return self._experiment_suite.current()
    
     @Marshalling.handles(STATUS)
     @Marshalling.args()
     @Marshalling.retval(int)
     def status(self):
-        return self._experiment_suite.status
+        return self._experiment_suite.status()
     
     @Marshalling.handles(FINISHED)
     @Marshalling.args()
-    @Marshalling.retval(bool)
+    @Marshalling.retval(Marshalling.bool)
     def is_finished(self):
-        return self._experiment_suite.is_finished
+        return self._experiment_suite.is_finished()
 
     @Marshalling.handles(ACCESS_CONFIGURATIONS)
     @Marshalling.args()
     @Marshalling.retval( Marshalling.pickled_data )
-    def access_configurations(self):
-        return self._experiment_suite.access_configurations
+    def get_access_configurations(self):
+        return self._experiment_suite.get_access_configurations()
 
     @Marshalling.handles(START)
     @Marshalling.args()

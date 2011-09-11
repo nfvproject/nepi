@@ -1116,20 +1116,16 @@ class ExperimentSuite(object):
         self._status = TS.STATUS_ZERO
         self._thread = None
 
-    @property
     def current(self):
         return self._current
 
-    @property
     def status(self):
         return self._status
 
-    @property
     def is_finished(self):
         return self._status == TS.STATUS_STOPPED
 
-    @property
-    def access_configurations(self):
+    def get_access_configurations(self):
         return self._access_configs.values()
 
     def start(self):
@@ -1179,5 +1175,4 @@ class ExperimentSuite(object):
             while (time.time() - started_at) < self._duration:
                 time.sleep(0.5)
         controller.stop()
-        time.sleep(2)
 

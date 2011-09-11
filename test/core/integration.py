@@ -69,7 +69,7 @@ class ExecuteTestCase(unittest.TestCase):
 
         return exp_desc, desc1, desc2, iface12, iface21
 
-    def ptest_single_process_cross_integration(self):
+    def test_single_process_cross_integration(self):
         exp_desc, desc1, desc2, iface12, iface21 = \
                 self.make_cross_test_experiment()
         xml = exp_desc.to_xml()
@@ -83,7 +83,7 @@ class ExecuteTestCase(unittest.TestCase):
         controller.stop()
         controller.shutdown()
 
-    def ptest_single_process_integration(self):
+    def test_single_process_integration(self):
         exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()
         xml = exp_desc.to_xml()
         access_config = None
@@ -111,7 +111,7 @@ class ExecuteTestCase(unittest.TestCase):
         self.assertTrue(stopped_time < time.time())
         controller.shutdown()
 
-    def ptest_daemonized_controller_integration(self):
+    def test_daemonized_controller_integration(self):
         exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()
         xml = exp_desc.to_xml()
         access_config = proxy.AccessConfiguration()
@@ -147,7 +147,7 @@ class ExecuteTestCase(unittest.TestCase):
         self.assertTrue(stopped_time < time.time())
         controller.shutdown()
 
-    def ptest_daemonized_testbed_integration(self):
+    def test_daemonized_testbed_integration(self):
         exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()
         
         desc.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
@@ -180,7 +180,7 @@ class ExecuteTestCase(unittest.TestCase):
         controller.stop()
         controller.shutdown()
 
-    def ptest_daemonized_all_integration(self):
+    def test_daemonized_all_integration(self):
         exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()
         
         desc.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
@@ -232,7 +232,7 @@ class ExecuteTestCase(unittest.TestCase):
         controller.stop()
         controller.shutdown()
 
-    def ptest_daemonized_all_integration_recovery(self):
+    def test_daemonized_all_integration_recovery(self):
         exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()
         
         desc.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
@@ -282,7 +282,7 @@ class ExecuteTestCase(unittest.TestCase):
         controller.stop()
         controller.shutdown()
 
-    def ptest_reference_expressions(self):
+    def test_reference_expressions(self):
         exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()
         
         iface1.set_attribute_value("label", "some")
@@ -312,7 +312,7 @@ class ExecuteTestCase(unittest.TestCase):
         controller.stop()
         controller.shutdown()
 
-    def ptest_testbed_reference_expressions(self):
+    def test_testbed_reference_expressions(self):
         exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()
         
         iface1.set_attribute_value("label", "some")
@@ -347,7 +347,7 @@ class ExecuteTestCase(unittest.TestCase):
         controller.stop()
         controller.shutdown()
 
-    def ptest_ssh_daemonized_integration(self):
+    def test_ssh_daemonized_integration(self):
         exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()
         env = test_util.test_environment()
         
@@ -385,20 +385,13 @@ class ExecuteTestCase(unittest.TestCase):
             controller.stop()
             controller.shutdown()
 
-    def test_experiment_suite(self):
+    def ptest_experiment_suite(self):
         exp_desc, desc, app, node1, node2, iface1, iface2 = self.make_test_experiment()
-        
-        desc.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
-        desc.set_attribute_value(DC.ROOT_DIRECTORY, self.root_dir)
-        desc.set_attribute_value(DC.DEPLOYMENT_ENVIRONMENT_SETUP, 
-            "export PYTHONP TH=%r:%r:$PYTHONPATH "
-            "export NEPI_TESTBEDS='mock:mock mock2:mock2' " % (
-                os.path.dirname(os.path.dirname(mock.__file__)),
-                os.path.dirname(os.path.dirname(mock2.__file__)),))
-
+       
         xml = exp_desc.to_xml()
 
         access_config = proxy.AccessConfiguration()
+        access_config.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
         access_config.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
         access_config.set_attribute_value(DC.ROOT_DIRECTORY, self.root_dir)
         access_config.set_attribute_value(DC.DEPLOYMENT_ENVIRONMENT_SETUP, 
@@ -406,13 +399,14 @@ class ExecuteTestCase(unittest.TestCase):
             "export NEPI_TESTBEDS='mock:mock mock2:mock2' " % (
                 os.path.dirname(os.path.dirname(mock.__file__)),
                 os.path.dirname(os.path.dirname(mock2.__file__)),))
-       
+      
+        print self.root_dir
         exp_suite = proxy.create_experiment_suite(xml, access_config, repetitions = 4)
         exp_suite.start()
-        while not exp_suite.is_finished:
+        while not exp_suite.is_finished():
             time.sleep(0.5)
 
-        for access_config in exp_suite.access_configurations:
+        for access_config in exp_suite.get_access_configurations():
             access_config.set_attribute_value(DC.RECOVER, True)
             controller = proxy.create_experiment_controller(None, access_config)
 
