@@ -1148,15 +1148,17 @@ class ExperimentSuite(object):
         return self._access_configs[self._current]
 
     def _run_experiment_suite(self):
-        for i in xrange[0, self.repetitions]:
+        for i in xrange(1, self._repetitions):
             self._current = i
             self._run_one_experiment()
-        self._status  = TS.STATUS_STOPPED
+        self._status = TS.STATUS_STOPPED
 
     def _run_one_experiment(self):
+        from nepi.util import proxy
         access_config = proxy.AccessConfiguration()
         for attr in self._access_config.attributes:
-            access_config.set_attribute_value(attr.name, attr.value)
+            if attr.value:
+                access_config.set_attribute_value(attr.name, attr.value)
         access_config.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
         root_dir = "%s_%d" % (
                 access_config.get_attribute_value(DC.ROOT_DIRECTORY), 
@@ -1177,4 +1179,5 @@ class ExperimentSuite(object):
             while (time.time() - started_at) < self._duration:
                 time.sleep(0.5)
         controller.stop()
+        time.sleep(2)
 
