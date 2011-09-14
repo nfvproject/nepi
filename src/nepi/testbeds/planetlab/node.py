@@ -64,7 +64,15 @@ class Node(object):
         'maxLoad' : ('load%(timeframe)s', '[value'),
         'minCpu' : ('cpu%(timeframe)s', ']value'),
         'maxCpu' : ('cpu%(timeframe)s', '[value'),
-    }    
+    }
+    
+    RATE_FACTORS = (
+        # (<tag name>, <weight>, <default>)
+        ('bw%(timeframe)s', -0.001, 1024.0),
+        ('cpu%(timeframe)s', 0.1, 40.0),
+        ('load%(timeframe)s', -0.2, 3.0),
+        ('reliability%(timeframe)s', 1, 100.0),
+    )
     
     DEPENDS_PIDFILE = '/tmp/nepi-depends.pid'
     DEPENDS_LOGFILE = '/tmp/nepi-depends.log'
@@ -316,6 +324,28 @@ class Node(object):
         self._node_id = None
         self.__dict__.update(self.__orig_attrs)
     
+    def rate_nodes(self, nodes):
+        rates = collections.defaultdict(int)
+        tags = collections.defaultdict(dict)
+        replacements = {'timeframe':self.timeframe}
+        tagnames = [ tagname % replacements 
+                     for tagname, weight, default in self.RATE_FACTORS ]
+        
+        taginfo = self._api.GetNodeTags(
+            node_id=list(nodes), 
+            tagname=tagnames,
+            fields=('node_id','tagname','value'))
+        
+        for node, tagname, value in taginfo:
+            tags[tagname][int(node)] = float(value)
+        
+        for tagname, weight, default in self.RATE_FACTORS:
+            taginfo = tags[tagname].get
+            for node in nodes:
+                rates[node] += weight * taginfo(node,default)
+        
+        return map(rates.__getitem__, nodes)
+            
     def fetch_node_info(self):
         orig_attrs = {}
         
