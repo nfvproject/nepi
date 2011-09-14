@@ -256,9 +256,18 @@ class TestbedController(testbed_impl.TestbedController):
         if nodes and reqs:
             if recover:
                 raise RuntimeError, "Impossible to recover: unassigned host for Nodes %r" % (nodes,)
+
+            def pickbest(fullset, nreq, node=nodes[0]):
+                if len(fullset) > nreq:
+                    fullset = zip(node.rate_nodes(fullset),fullset)
+                    fullset.sort(reverse=True)
+                    del fullset[nreq:]
+                    return set(map(operator.itemgetter(1),fullset))
+                else:
+                    return fullset
             
             try:
-                solution = resourcealloc.alloc(reqs)
+                solution = resourcealloc.alloc(reqs, sample=pickbest)
             except resourcealloc.ResourceAllocationError:
                 # Failed, try again with all nodes
                 reqs = []
@@ -267,7 +276,7 @@ class TestbedController(testbed_impl.TestbedController):
                     candidates -= reserved
                     reqs.append(candidates)
                 
-                solution = resourcealloc.alloc(reqs)
+                solution = resourcealloc.alloc(reqs, sample=pickbest)
                 to_provision.update(solution)
             
             # Do assign nodes
