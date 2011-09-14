@@ -32,7 +32,7 @@ def _log(logstream, message, *args, **kwargs):
             logstream.write(message)
         logstream.write('\n')
 
-def alloc(requests, logstream = None, nonseparable = False, saveinteresting = None, backtracklim = 100000000, verbose = True):
+def alloc(requests, logstream = None, nonseparable = False, saveinteresting = None, backtracklim = 100000000, verbose = True, sample = random.sample):
     """
     Takes an iterable over requests, which are iterables of candidate node ids,
     and returns a specific node id for each request (if successful).
@@ -267,7 +267,7 @@ def alloc(requests, logstream = None, nonseparable = False, saveinteresting = No
                 part = Pavail[i]
                 if len(part) < nreq:
                     raise AssertionError, "Cannot allocate resources for supposedly valid solution!"
-                assigned = set(random.sample(part, nreq))
+                assigned = set(sample(part, nreq))
                 psol |= assigned
                 part -= assigned
             solution[c] = psol
