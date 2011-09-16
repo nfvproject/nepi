@@ -595,14 +595,14 @@ if options.filter_module:
                 filter_args = dict(map(lambda x:x.split('=',1),options.filter_args.split(',')))
                 filter_module.init(**filter_args)
             except:
-                pass
+                traceback.print_exc()
     elif options.filter_module.endswith('.so'):
         filter_module = ctypes.cdll.LoadLibrary(options.filter_module)
         if options.filter_args:
             try:
                 filter_module.init(options.filter_args)
             except:
-                pass
+                traceback.print_exc()
     try:
         accept_packet = filter_module.accept_packet
         print >>sys.stderr, "Installing packet filter (accept_packet)"
