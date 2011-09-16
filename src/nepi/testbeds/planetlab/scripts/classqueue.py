@@ -20,6 +20,7 @@ _classes = (
     "crtp.crudp*8:"
     "*3"
 )
+_logdropped = False
 
 def clsmap(cls):
     global _protomap
