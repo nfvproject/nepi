@@ -336,11 +336,14 @@ class Node(object):
             tagname=tagnames,
             fields=('node_id','tagname','value'))
         
-        for node, tagname, value in taginfo:
-            tags[tagname][int(node)] = float(value)
+        unpack = operator.itemgetter('node_id','tagname','value')
+        for value in taginfo:
+            node, tagname, value = unpack(value)
+            if value and value.lower() != 'n/a':
+                tags[tagname][int(node)] = float(value)
         
         for tagname, weight, default in self.RATE_FACTORS:
-            taginfo = tags[tagname].get
+            taginfo = tags[tagname % replacements].get
             for node in nodes:
                 rates[node] += weight * taginfo(node,default)
         
@@ -372,6 +375,8 @@ class Node(object):
                 value = tags[tag]
                 if hasattr(self, attr):
                     orig_attrs[attr] = getattr(self, attr)
+                if not value or value.lower() == 'n/a':
+                    value = None
                 setattr(self, attr, value)
         
         if 'peer_id' in info:
