@@ -604,7 +604,7 @@ def popen_ssh_command(command, host, port, user, agent,
             server_key, host, port, args)
     args.append(command)
 
-    while 1:
+    for x in xrange(retry or 3):
         # connects to the remote host and starts a remote connection
         proc = subprocess.Popen(args, 
                 stdout = subprocess.PIPE,
@@ -617,6 +617,9 @@ def popen_ssh_command(command, host, port, user, agent,
         
         try:
             out, err = _communicate(proc, stdin, timeout, err_on_timeout)
+            if proc.poll() and err.strip().startswith('ssh: '):
+                # SSH error, can safely retry
+                continue
             break
         except RuntimeError,e:
             if retry <= 0:
