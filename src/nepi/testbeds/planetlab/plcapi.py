@@ -1,4 +1,17 @@
 import xmlrpclib
+import functools
+import socket
+
+def _retry(fn):
+    def rv(*p, **kw):
+        for x in xrange(3):
+            try:
+                return fn(*p, **kw)
+            except (socket.error, IOError, OSError):
+                pass
+        else:
+            return fn (*p, **kw)
+    return rv
 
 class PLCAPI(object):
     _expected_methods = set(
@@ -77,7 +90,7 @@ class PLCAPI(object):
         import warnings
         
         # validate XMLRPC server checking supported API calls
-        methods = set(self.api.system.listMethods())
+        methods = set(_retry(self.api.system.listMethods)())
         if self._required_methods - methods:
             warnings.warn("Unsupported REQUIRED methods: %s" % ( ", ".join(sorted(self._required_methods - methods)), ) )
             return False
@@ -86,7 +99,7 @@ class PLCAPI(object):
         
         try:
             # test authorization
-            network_types = self.api.GetNetworkTypes(self.auth)
+            network_types = _retry(self.api.GetNetworkTypes)(self.auth)
         except (xmlrpclib.ProtocolError, xmlrpclib.Fault),e:
             warnings.warn(str(e))
         
@@ -98,7 +111,7 @@ class PLCAPI(object):
         try:
             return self._network_types
         except AttributeError:
-            self._network_types = self.api.GetNetworkTypes(self.auth)
+            self._network_types = _retry(self.api.GetNetworkTypes)(self.auth)
             return self._network_types
     
     @property
@@ -106,7 +119,7 @@ class PLCAPI(object):
         try:
             return self._peer_map
         except AttributeError:
-            peers = self.api.GetPeers(self.auth, {}, ['shortname','peername','peer_id'])
+            peers = _retry(self.api.GetPeers)(self.auth, {}, ['shortname','peername','peer_id'])
             self._peer_map = dict(
                 (peer['shortname'], peer['peer_id'])
                 for peer in peers
@@ -146,7 +159,7 @@ class PLCAPI(object):
         """
         if not isinstance(node, (str, int, long)):
             raise ValueError, "Node must be either a non-unicode string or an int"
-        return self.api.GetNodeFlavour(self.auth, node)
+        return _retry(self.api.GetNodeFlavour)(self.auth, node)
     
     def GetNodes(self, nodeIdOrName=None, fields=None, **kw):
         """
@@ -177,7 +190,7 @@ class PLCAPI(object):
         else:
             fieldstuple = ()
         if nodeIdOrName is not None:
-            return self.api.GetNodes(self.auth, nodeIdOrName, *fieldstuple)
+            return _retry(self.api.GetNodes)(self.auth, nodeIdOrName, *fieldstuple)
         else:
             filters = kw.pop('filters',{})
             
@@ -208,7 +221,7 @@ class PLCAPI(object):
                 filters['peer_id'] = peer_filter
             
             filters.update(kw)
-            return self.api.GetNodes(self.auth, filters, *fieldstuple)
+            return _retry(self.api.GetNodes)(self.auth, filters, *fieldstuple)
     
     def GetNodeTags(self, nodeTagId=None, fields=None, **kw):
         if fields is not None:
@@ -216,11 +229,11 @@ class PLCAPI(object):
         else:
             fieldstuple = ()
         if nodeTagId is not None:
-            return self.api.GetNodeTags(self.auth, nodeTagId, *fieldstuple)
+            return _retry(self.api.GetNodeTags)(self.auth, nodeTagId, *fieldstuple)
         else:
             filters = kw.pop('filters',{})
             filters.update(kw)
-            return self.api.GetNodeTags(self.auth, filters, *fieldstuple)
+            return _retry(self.api.GetNodeTags)(self.auth, filters, *fieldstuple)
 
     def GetSliceTags(self, sliceTagId=None, fields=None, **kw):
         if fields is not None:
@@ -228,11 +241,11 @@ class PLCAPI(object):
         else:
             fieldstuple = ()
         if sliceTagId is not None:
-            return self.api.GetSliceTags(self.auth, sliceTagId, *fieldstuple)
+            return _retry(self.api.GetSliceTags)(self.auth, sliceTagId, *fieldstuple)
         else:
             filters = kw.pop('filters',{})
             filters.update(kw)
-            return self.api.GetSliceTags(self.auth, filters, *fieldstuple)
+            return _retry(self.api.GetSliceTags)(self.auth, filters, *fieldstuple)
         
     
     def GetInterfaces(self, interfaceIdOrIp=None, fields=None, **kw):
@@ -241,11 +254,11 @@ class PLCAPI(object):
         else:
             fieldstuple = ()
         if interfaceIdOrIp is not None:
-            return self.api.GetInterfaces(self.auth, interfaceIdOrIp, *fieldstuple)
+            return _retry(self.api.GetInterfaces)(self.auth, interfaceIdOrIp, *fieldstuple)
         else:
             filters = kw.pop('filters',{})
             filters.update(kw)
-            return self.api.GetInterfaces(self.auth, filters, *fieldstuple)
+            return _retry(self.api.GetInterfaces)(self.auth, filters, *fieldstuple)
         
     def GetSlices(self, sliceIdOrName=None, fields=None, **kw):
         if fields is not None:
@@ -253,13 +266,13 @@ class PLCAPI(object):
         else:
             fieldstuple = ()
         if sliceIdOrName is not None:
-            return self.api.GetSlices(self.auth, sliceIdOrName, *fieldstuple)
+            return _retry(self.api.GetSlices)(self.auth, sliceIdOrName, *fieldstuple)
         else:
             filters = kw.pop('filters',{})
             filters.update(kw)
-            return self.api.GetSlices(self.auth, filters, *fieldstuple)
+            return _retry(self.api.GetSlices)(self.auth, filters, *fieldstuple)
         
     def UpdateSlice(self, sliceIdOrName, **kw):
-        return self.api.UpdateSlice(self.auth, sliceIdOrName, kw)
+        return _retry(self.api.UpdateSlice)(self.auth, sliceIdOrName, kw)
         
 
