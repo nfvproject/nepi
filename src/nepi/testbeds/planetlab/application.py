@@ -396,15 +396,21 @@ class Dependency(object):
                     delay = min(30,delay*1.2)
             
             # check build token
-            (out, err), proc = self._popen_ssh_command(
-                "cat %(token_path)s" % {
-                    'token_path' : os.path.join(self.home_path, 'build.token'),
-                },
-                timeout = 120,
-                noerrors = True)
             slave_token = ""
-            if not proc.wait() and out:
-                slave_token = out.strip()
+            for i in xrange(3):
+                (out, err), proc = self._popen_ssh_command(
+                    "cat %(token_path)s" % {
+                        'token_path' : os.path.join(self.home_path, 'build.token'),
+                    },
+                    timeout = 120,
+                    noerrors = True)
+                if not proc.wait() and out:
+                    slave_token = out.strip()
+                
+                if slave_token:
+                    break
+                else:
+                    time.sleep(2)
             
             if slave_token != self._master_token:
                 # Get buildlog for the error message
