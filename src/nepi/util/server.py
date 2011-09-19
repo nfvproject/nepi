@@ -578,7 +578,8 @@ def popen_ssh_command(command, host, port, user, agent,
         tty = False,
         timeout = None,
         retry = 0,
-        err_on_timeout = True):
+        err_on_timeout = True,
+        connect_timeout = 30):
     """
     Executes a remote commands, returns ((stdout,stderr),process)
     """
@@ -588,7 +589,7 @@ def popen_ssh_command(command, host, port, user, agent,
     tmp_known_hosts = None
     args = ['ssh',
             # Don't bother with localhost. Makes test easier
-            '-o', 'NoHostAuthenticationForLocalhost=yes',
+            '-o', 'NoHostAuthenticationForLocalhost=yes,ConnectTimeout=%s' % (connect_timeout,),
             '-l', user, host]
     if agent:
         args.append('-A')

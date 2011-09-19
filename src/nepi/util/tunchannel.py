@@ -552,16 +552,14 @@ def udp_handshake(TERMINATE, rsock):
             pass
     keepalive_thread = threading.Thread(target=keepalive)
     keepalive_thread.start()
-    retrydelay = 1.0
-    for i in xrange(30):
+    for i in xrange(900):
         if TERMINATE:
             raise OSError, "Killed"
         try:
             heartbeat = rsock.recv(10)
             break
         except:
-            time.sleep(min(30.0,retrydelay))
-            retrydelay *= 1.1
+            time.sleep(1)
     else:
         heartbeat = rsock.recv(10)
     endme = True
