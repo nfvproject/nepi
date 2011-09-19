@@ -20,7 +20,8 @@ def multicardinal(multiset):
 def avail(cls, partition):
     contains = classify.classContains
     return reduce(operator.or_, 
-        classify.classComponents(cls, partition))
+        classify.classComponents(cls, partition),
+        set())
 
 def _log(logstream, message, *args, **kwargs):
     if logstream:
@@ -44,7 +45,7 @@ def alloc(requests, logstream = None, nonseparable = False, saveinteresting = No
     requests = map(set,requests)
     
     # Classify all candidates
-    universe = reduce(operator.or_, requests)
+    universe = reduce(operator.or_, requests, set())
     partition = setclusters.disjoint_partition(*requests)
     
     # Classify requests
@@ -89,7 +90,7 @@ def alloc(requests, logstream = None, nonseparable = False, saveinteresting = No
         compmap = dict([(pid,idx) for idx,pid in enumerate(map(id,components))])
         for cluster in clusters:
             cluster_class = classify.getClass(
-                reduce(operator.or_, cluster),
+                reduce(operator.or_, cluster, set()),
                 partition )
             clustermaps.append(cluster_class)
         
@@ -325,7 +326,7 @@ if __name__ == '__main__':
         
         # Test tough cases
         for n,(solvable,req) in enumerate(toughcases):
-            print "Trying #R = %4d, #S = %4d (tough case %d)" % (len(req), len(reduce(operator.or_, map(set,req))), n)
+            print "Trying #R = %4d, #S = %4d (tough case %d)" % (len(req), len(reduce(operator.or_, map(set,req), set())), n)
             try:
                 solution = alloc(req, sys.stdout, verbose=False)
                 if solvable:
