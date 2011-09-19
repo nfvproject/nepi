@@ -589,7 +589,8 @@ def popen_ssh_command(command, host, port, user, agent,
     tmp_known_hosts = None
     args = ['ssh',
             # Don't bother with localhost. Makes test easier
-            '-o', 'NoHostAuthenticationForLocalhost=yes,ConnectTimeout=%s' % (connect_timeout,),
+            '-o', 'NoHostAuthenticationForLocalhost=yes',
+            '-o', 'ConnectTimeout=%d' % (int(connect_timeout),),
             '-l', user, host]
     if agent:
         args.append('-A')
