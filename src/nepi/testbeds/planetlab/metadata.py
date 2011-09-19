@@ -1356,6 +1356,10 @@ factories_info = dict({
                 "max_reliability",
                 "min_bandwidth",
                 "max_bandwidth",
+                "min_load",
+                "max_load",
+                "min_cpu",
+                "max_cpu",
                 
                 # NEPI-in-NEPI attributes
                 ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP,
