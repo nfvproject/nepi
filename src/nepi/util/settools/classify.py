@@ -64,7 +64,7 @@ def classCardinality(clz, partition = None):
                    if bit == "1" )
 
 def classMembers(clz, partition):
-    return reduce(operator.or_, classComponents(clz, partition))
+    return reduce(operator.or_, classComponents(clz, partition), set())
 
 def classComponents(clz, partition):
     return [
