@@ -985,7 +985,7 @@ class YumDependency(Dependency):
                 "tar -C /var/cache/yum -rf ${BUILD}/packages.tar $(cd /var/cache/yum ; find -iname '*.rpm')"
             " ) || /bin/true ) && "
             "sudo -S sed -i -r 's/keepcache *= *1/keepcache=0/' /etc/yum.conf && "
-            "sudo -S nice yum -y clean packages "
+            "( sudo -S nice yum -y clean packages || /bin/true ) "
         ) % ( depends, )
     def _build_set(self, value):
         # ignore
@@ -1000,7 +1000,7 @@ class YumDependency(Dependency):
         return (
             "sudo -S tar -k --keep-newer-files -C /var/cache/yum -xf packages.tar && "
             "sudo -S nice yum -y install %s && "
-            "sudo -S nice yum -y clean packages "
+            "( sudo -S nice yum -y clean packages || /bin/true ) "
         ) % ( depends, )
     def _install_set(self, value):
         # ignore
