@@ -368,13 +368,13 @@ connections = [
     dict({
             "from": ( "ns3", "ns3::Node", "devs" ),
             "to":   ( "ns3", "ns3::SubscriberStationNetDevice", "node" ),
-            "init_code": connect_dummy,   
+            "init_code": connect_node_device,   
             "can_cross": False
     }),
     dict({
             "from": ( "ns3", "ns3::Node", "devs" ),
             "to":   ( "ns3", "ns3::BaseStationNetDevice", "node" ),
-            "init_code": connect_dummy,   
+            "init_code": connect_node_device,   
             "can_cross": False
     }),
     dict({

@@ -2441,7 +2441,7 @@ attributes = dict({
         "name": "SrcAddress",
         "validation_function": validation.is_string, # TODO:! Address + Netref
         "value": "",
-        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable | Attribute.Metadata,
         "type": Attribute.STRING,
         "help": "The source ip address for the IpcsClassifierRecord"
     }),
@@ -2449,7 +2449,7 @@ attributes = dict({
         "name": "SrcMask",
         "validation_function": validation.is_string, # TODO:! NetworkMask
         "value": "",
-        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable | Attribute.Metadata,
         "type": Attribute.STRING,
         "help": "The mask to apply on the source ip address for the IpcsClassifierRecord"
     }),
@@ -2457,7 +2457,7 @@ attributes = dict({
         "name": "DstAddress",
         "validation_function": validation.is_string, # TODO:! Address + Netref
         "value": "",
-        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable | Attribute.Metadata,
         "type": Attribute.STRING,
         "help": "The destination ip address for the IpcsClassifierRecord"
     }),
@@ -2465,7 +2465,7 @@ attributes = dict({
         "name": "DstMask",
         "validation_function": validation.is_string, # TODO:! NetworkMask
         "value": "",
-        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable | Attribute.Metadata,
         "type": Attribute.STRING,
         "help": "The mask to apply on the destination ip address for the IpcsClassifierRecord"
     }),
@@ -2473,7 +2473,7 @@ attributes = dict({
         "name": "SrcPortLow",
         "validation_function": validation.is_integer,
         "value": 0,
-        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable | Attribute.Metadata,
         "type": Attribute.INTEGER,
         "help": "The lower boundary of the source port range for the IpcsClassifierRecord"
     }),
@@ -2481,7 +2481,7 @@ attributes = dict({
         "name": "SrcPortHigh",
         "validation_function": validation.is_integer,
         "value": 65000,
-        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable | Attribute.Metadata,
         "type": Attribute.INTEGER,
         "help": "The higher boundary of the source port range for the IpcsClassifierRecord"
     }),
@@ -2489,7 +2489,7 @@ attributes = dict({
         "name": "DstPortLow",
         "validation_function": validation.is_integer,
         "value": 0,
-        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable | Attribute.Metadata,
         "type": Attribute.INTEGER,
         "help": "The lower boundary of the destination port range for the IpcsClassifierRecord"
     }),
@@ -2497,7 +2497,7 @@ attributes = dict({
         "name": "DstPortHigh",
         "validation_function": validation.is_integer,
         "value": 65000,
-        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable | Attribute.Metadata,
         "type": Attribute.INTEGER,
         "help": "The higher boundary of the destination port range for the IpcsClassifierRecord"
     }),
@@ -2506,7 +2506,7 @@ attributes = dict({
         "validation_function": validation.is_string,
         "value": "UdpL4Protocol",
         "allowed": l4_protocols.keys(),
-        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable | Attribute.Metadata,
         "type": Attribute.ENUM,
         "help": "The L4 protocol for the IpcsClassifierRecord"
     }),
@@ -2514,7 +2514,7 @@ attributes = dict({
         "name": "Priority",
         "validation_function": validation.is_integer,
         "value": 1,
-        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable | Attribute.Metadata,
         "type": Attribute.INTEGER,
         "help": "The priority of the IpcsClassifierRecord"
     }),
@@ -2523,7 +2523,7 @@ attributes = dict({
         "validation_function": validation.is_string,
         "value": "SF_DIRECTION_UP",
         "allowed": service_flow_direction.keys(),
-        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable | Attribute.Metadata,
         "type": Attribute.ENUM,
         "help": "Service flow direction as described by the IEEE-802.16 standard"
     }),
@@ -2532,7 +2532,7 @@ attributes = dict({
         "validation_function": validation.is_string,
         "value": "SF_TYPE_RTPS",
         "allowed": service_flow_scheduling_type.keys(),
-        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+        "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable | Attribute.Metadata,
         "type": Attribute.ENUM,
         "help": "Service flow scheduling type",
     }),
