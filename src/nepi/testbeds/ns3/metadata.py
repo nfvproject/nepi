@@ -33,13 +33,13 @@ class MetadataInfo(metadata.MetadataInfo):
 
     @property
     def create_order(self):
-        from factories_metadata import factories_order
-        return factories_order
+        from factories_metadata import factories_create_order
+        return factories_create_order
 
     @property
     def configure_order(self):
-        from factories_metadata import factories_order
-        return factories_order
+        from factories_metadata import factories_configure_order
+        return factories_configure_order
 
     @property
     def factories_info(self):

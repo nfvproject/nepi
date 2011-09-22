@@ -131,8 +131,8 @@ class Roads09Example(object):
         controller.shutdown()
 
     def clean(self):
-        #shutil.rmtree(self.root_dir)
         print self.root_dir
+        #shutil.rmtree(self.root_dir)
         pass
 
 if __name__ == '__main__':
