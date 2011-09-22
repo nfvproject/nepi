@@ -96,10 +96,15 @@ def connect_node_other(testbed_instance, node_guid, other_guid):
     other = testbed_instance._elements[other_guid]
     node.AggregateObject(other)
 
-def connect_station_sflow(testbed_instance, station_guid, sflow_guid):
-    station = testbed_instance._elements[station_guid]
+def connect_ss_sflow(testbed_instance, station_guid, sflow_guid):
+    ss = testbed_instance._elements[station_guid]
     sflow = testbed_instance._elements[sflow_guid]
-    station.AddServiceFlow(sflow)
+    ss.AddServiceFlow(sflow)
+
+#def connect_bs_sflow(testbed_instance, station_guid, sflow_guid):
+#    bs = testbed_instance._elements[station_guid]
+#    sflow = testbed_instance._elements[sflow_guid]
+#    bs.GetServiceFlowManager().AddServiceFlow (sflow)
 
 def connect_bstation_linksched(testbed_instance, bstation_guid, linksched_guid):
     bstation = testbed_instance._elements[bstation_guid]
@@ -709,15 +714,15 @@ connections = [
     dict({
         "from": ( "ns3", "ns3::SubscriberStationNetDevice", "sflows" ),
         "to":   ( "ns3", "ns3::ServiceFlow", "dev" ),
-        "init_code": connect_station_sflow,
+        "init_code": connect_ss_sflow,
         "can_cross": False
     }),
-    dict({
-        "from": ( "ns3", "ns3::BaseStationNetDevice", "sflows" ),
-        "to":   ( "ns3", "ns3::ServiceFlow", "dev" ),
-        "init_code": connect_station_sflow,
-        "can_cross": False
-    }),
+#    dict({
+#        "from": ( "ns3", "ns3::BaseStationNetDevice", "sflows" ),
+#        "to":   ( "ns3", "ns3::ServiceFlow", "dev" ),
+#        "init_code": connect_bs_sflow,
+#        "can_cross": False
+#    }),
     dict({
         "from": ( "ns3", "ns3::BaseStationNetDevice", "uplnk" ),
         "to":   ( "ns3", "ns3::UplinkSchedulerSimple", "dev" ),
