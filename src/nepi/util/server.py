@@ -587,10 +587,17 @@ def popen_ssh_command(command, host, port, user, agent,
         print "ssh", host, command
     
     tmp_known_hosts = None
-    args = ['ssh',
+    connkey = repr((user,host,port)).encode("base64").strip().replace('/','.')
+    args = ['ssh', '-C',
             # Don't bother with localhost. Makes test easier
             '-o', 'NoHostAuthenticationForLocalhost=yes',
             '-o', 'ConnectTimeout=%d' % (int(connect_timeout),),
+            '-o', 'ConnectionAttempts=3',
+            '-o', 'ServerAliveInterval=30',
+            '-o', 'TCPKeepAlive=yes',
+            '-o', 'ControlMaster=auto',
+            '-o', 'ControlPath=/tmp/nepi_ssh_pl_%s' % ( connkey, ),
+            '-o', 'ControlPersist=60',
             '-l', user, host]
     if agent:
         args.append('-A')
@@ -689,9 +696,17 @@ def popen_scp(source, dest,
         user,host = remspec.rsplit('@',1)
         tmp_known_hosts = None
         
+        connkey = repr((user,host,port)).encode("base64").strip().replace('/','.')
         args = ['ssh', '-l', user, '-C',
                 # Don't bother with localhost. Makes test easier
                 '-o', 'NoHostAuthenticationForLocalhost=yes',
+                '-o', 'ConnectTimeout=30',
+                '-o', 'ConnectionAttempts=3',
+                '-o', 'ServerAliveInterval=30',
+                '-o', 'TCPKeepAlive=yes',
+                '-o', 'ControlMaster=auto',
+                '-o', 'ControlPath=/tmp/nepi_ssh_pl_%s' % ( connkey, ),
+                '-o', 'ControlPersist=60',
                 host ]
         if port:
             args.append('-P%d' % port)
@@ -906,9 +921,12 @@ def popen_python(python_code,
 
     if communication == DC.ACCESS_SSH:
         tmp_known_hosts = None
-        args = ['ssh',
+        args = ['ssh', '-C',
                 # Don't bother with localhost. Makes test easier
                 '-o', 'NoHostAuthenticationForLocalhost=yes',
+                '-o', 'ConnectionAttempts=3',
+                '-o', 'ServerAliveInterval=30',
+                '-o', 'TCPKeepAlive=yes',
                 '-l', user, host]
         if agent:
             args.append('-A')
@@ -1002,7 +1020,10 @@ def _communicate(self, input, timeout=None, err_on_timeout=True):
             else:
                 select_timeout = timelimit - curtime + 0.1
         else:
-            select_timeout = None
+            select_timeout = 1.0
+        
+        if select_timeout > 1.0:
+            select_timeout = 1.0
             
         try:
             rlist, wlist, xlist = select.select(read_set, write_set, [], select_timeout)
@@ -1011,6 +1032,10 @@ def _communicate(self, input, timeout=None, err_on_timeout=True):
                 raise
             else:
                 continue
+        
+        if not rlist and not wlist and not xlist and self.poll() is not None:
+            # timeout and process exited, say bye
+            break
 
         if self.stdin in wlist:
             # When select has indicated that the file is writable,
