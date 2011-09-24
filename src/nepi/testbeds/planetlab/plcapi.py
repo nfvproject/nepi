@@ -1,14 +1,15 @@
 import xmlrpclib
 import functools
 import socket
+import time
 
 def _retry(fn):
     def rv(*p, **kw):
-        for x in xrange(3):
+        for x in xrange(5):
             try:
                 return fn(*p, **kw)
             except (socket.error, IOError, OSError):
-                pass
+                time.sleep(x*5+5)
         else:
             return fn (*p, **kw)
     return rv
