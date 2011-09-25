@@ -352,9 +352,14 @@ class Node(object):
     def fetch_node_info(self):
         orig_attrs = {}
         
-        info = self._api.GetNodes(self._node_id)[0]
+        self._api.StartMulticall()
+        info = self._api.GetNodes(self._node_id)
+        tags = self._api.GetNodeTags(node_id=self._node_id, fields=('tagname','value'))
+        info, tags = self._api.FinishMulticall()
+        info = info[0]
+        
         tags = dict( (t['tagname'],t['value'])
-                     for t in self._api.GetNodeTags(node_id=self._node_id, fields=('tagname','value')) )
+                     for t in tags )
 
         orig_attrs['min_num_external_ifaces'] = self.min_num_external_ifaces
         orig_attrs['max_num_external_ifaces'] = self.max_num_external_ifaces

@@ -229,11 +229,15 @@ class ClassQueue(object):
 
     def dump_stats(self, astats=astats, dstats=dstats, dump_count=dump_count):
         if dump_count[0] >= 10000:
-            dstatsstr = "".join(['%s:%s\n' % (key, value) for key, value in dstats.items()])
-            astatsstr = "".join(['%s:%s\n' % (key, value) for key, value in astats.items()])
-            fd = open('dropped_stats', 'w')
-            iovec.writev(fd.fileno(), "Dropped:\n", dstatsstr, "Accepted:\n", astatsstr)
-            fd.close()
+            try:
+                dstatsstr = "".join(['%s:%s\n' % (key, value) for key, value in dstats.items()])
+                astatsstr = "".join(['%s:%s\n' % (key, value) for key, value in astats.items()])
+                fd = open('dropped_stats', 'w')
+                iovec.writev(fd.fileno(), "Classes: ", _classes, "\nDropped:\n", dstatsstr, "Accepted:\n", astatsstr)
+                fd.close()
+            except:
+                # who cares
+                pass
             dump_count[0] = 0
         else:
             dump_count[0] += 1
