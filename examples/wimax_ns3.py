@@ -131,6 +131,7 @@ class Roads09Example(object):
         controller.shutdown()
 
     def clean(self):
+        print self.root_dir
         #shutil.rmtree(self.root_dir)
         pass
 
