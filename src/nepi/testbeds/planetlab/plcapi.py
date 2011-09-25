@@ -87,6 +87,8 @@ class PLCAPI(object):
             urlpattern % {'hostname':hostname},
             allow_none = True)
         
+        self._multi = False
+        
     def test(self):
         import warnings
         
@@ -277,3 +279,17 @@ class PLCAPI(object):
         return _retry(self.api.UpdateSlice)(self.auth, sliceIdOrName, kw)
         
 
+    def StartMulticall(self):
+        if not self._multi:
+            self._api = self.api
+            self.api = xmlrpclib.MultiCall(self._api)
+            self._multi = True
+    
+    def FinishMulticall(self):
+        if self._multi:
+            rv = self.api()
+            self.api = self._api
+            self._multi = False
+            return rv
+        else:
+            return []
