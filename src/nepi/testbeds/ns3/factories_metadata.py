@@ -494,6 +494,8 @@ def configure_node(testbed_instance, guid):
                     ifindex = ipv4.GetInterfaceForPrefix(nexthop_address, ifmask)
                     if ifindex == ifidx:
                         break
+                if ifindex == ifidx:
+                    break
             if ifindex < 0:
                 # Check previous ptp routes
                 for chaindest, chainprefix, chainhop, metric in routes:
