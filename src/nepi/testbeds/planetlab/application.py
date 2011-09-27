@@ -372,6 +372,7 @@ class Dependency(object):
         if pid and ppid:
             delay = 1.0
             first = True
+            bustspin = 0
             while True:
                 status = rspawn.remote_status(
                     pid, ppid,
@@ -383,9 +384,15 @@ class Dependency(object):
                     server_key = self.node.server_key
                     )
                 
-                if status is not rspawn.RUNNING:
+                if status is rspawn.FINISHED:
                     self._build_pid = self._build_ppid = None
                     break
+                elif status is not rspawn.RUNNING:
+                    bustspin += 1
+                    time.sleep(5)
+                    if bustspin > 12:
+                        self._build_pid = self._build_ppid = None
+                        break
                 else:
                     if first:
                         self._logger.info("Waiting for %s to finish building %s", self,
