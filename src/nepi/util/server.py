@@ -22,6 +22,7 @@ import tempfile
 import defer
 import functools
 import collections
+import hashlib
 
 CTRL_SOCK = "ctrl.sock"
 CTRL_PID = "ctrl.pid"
@@ -571,6 +572,12 @@ def _make_server_key_args(server_key, host, port, args):
     
     return tmp_known_hosts
 
+def make_connkey(user, host, port):
+    connkey = repr((user,host,port)).encode("base64").strip().replace('/','.')
+    if len(connkey) > 60:
+        connkey = hashlib.sha1(connkey).hexdigest()
+    return connkey
+
 def popen_ssh_command(command, host, port, user, agent, 
         stdin="", 
         ident_key = None,
@@ -579,7 +586,8 @@ def popen_ssh_command(command, host, port, user, agent,
         timeout = None,
         retry = 0,
         err_on_timeout = True,
-        connect_timeout = 30):
+        connect_timeout = 30,
+        persistent = True):
     """
     Executes a remote commands, returns ((stdout,stderr),process)
     """
@@ -587,7 +595,7 @@ def popen_ssh_command(command, host, port, user, agent,
         print "ssh", host, command
     
     tmp_known_hosts = None
-    connkey = repr((user,host,port)).encode("base64").strip().replace('/','.')
+    connkey = make_connkey(user,host,port)
     args = ['ssh', '-C',
             # Don't bother with localhost. Makes test easier
             '-o', 'NoHostAuthenticationForLocalhost=yes',
@@ -595,10 +603,12 @@ def popen_ssh_command(command, host, port, user, agent,
             '-o', 'ConnectionAttempts=3',
             '-o', 'ServerAliveInterval=30',
             '-o', 'TCPKeepAlive=yes',
+            '-l', user, host]
+    if persistent:
+        args.extend([
             '-o', 'ControlMaster=auto',
             '-o', 'ControlPath=/tmp/nepi_ssh_pl_%s' % ( connkey, ),
-            '-o', 'ControlPersist=60',
-            '-l', user, host]
+            '-o', 'ControlPersist=60' ])
     if agent:
         args.append('-A')
     if port:
@@ -696,7 +706,7 @@ def popen_scp(source, dest,
         user,host = remspec.rsplit('@',1)
         tmp_known_hosts = None
         
-        connkey = repr((user,host,port)).encode("base64").strip().replace('/','.')
+        connkey = make_connkey(user,host,port)
         args = ['ssh', '-l', user, '-C',
                 # Don't bother with localhost. Makes test easier
                 '-o', 'NoHostAuthenticationForLocalhost=yes',
