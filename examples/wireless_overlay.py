@@ -9,6 +9,7 @@ from nepi.util.constants import DeploymentConfiguration as DC
 import os
 import shutil
 import tempfile
+import itertools
 import time
 import math
 
@@ -19,13 +20,13 @@ import math
   |    +-----+     +-----+    +-----+    +-----+          +------+      |
   |    |node1|     |node2|    |node3|    |node4 |         |server|      |
   |    +-----+     +-----+    +-----+    +-----+          +------+      |
-  |     65/30       69/30      33/30      37/30            226/30       |
+  |     65/30       69/30      73/30      77/30            226/30       |
   |    -------     -------    -------    -------          --------      |
   |       |           |          |          |                |          |
   |---------------------------------------------------------------------|
   |       |           |          |          |                |          | 
   |    -------     -------    -------    -------             |          |
-  |     66/30       30/30     34/30       38/30              |          |
+  |     66/30       30/30     74/30       78/30              |          |
   |    +-----+     +-----+    +-----+    +-----+             |          |
   |    |sta0 |     |sta1 |    |sta2 |    |sta3 |             |          |
   |    +-----+     +-----+    +-----+    +-----+             |          |
@@ -55,8 +56,8 @@ class WirelessOverlay(object):
         parser.add_option("-n", "--nsta", dest="nsta", help="Number of wifi stations", type="int")
         parser.add_option("-a", "--base_addr", dest="base_addr", help="Base address segment for the experiment", type="str")
         (options, args) = parser.parse_args()
-        #if not options.movie:
-        #    parser.error("Missing 'movie' option.")
+        if not options.movie:
+            parser.error("Missing 'movie' option.")
         if options.user == 'root':
             parser.error("Missing or invalid 'user' option.")
         if options.user == 'root':
@@ -65,8 +66,8 @@ class WirelessOverlay(object):
             parser.error("Try a number of stations under 9.")
 
         self.user = options.user if options.user else os.getlogin()
-        #self.movie = options.movie
-        self.nsta = options.nsta if options.nsta else 2
+        self.movie = options.movie
+        self.nsta = options.nsta if options.nsta else 4
         base = options.base_addr if options.base_addr else "192.168.4"
         self.base_addr = base + ".%d"
         self.root_dir = tempfile.mkdtemp()
@@ -160,7 +161,7 @@ class WirelessOverlay(object):
         
         # AP node
         ap = self.add_ns3_node(ns3_desc)
-        self.add_ns3_constant_mobility(ns3_desc, ap, r, r, 0)
+        self.add_ns3_constant_mobility(ns3_desc, ap, 0, 0, 0)
 
         wifi_ap, phy_ap = self.add_ns3_wifi(ns3_desc, ap, access_point = True)
         self.add_ip_address(wifi_ap, (self.base_addr%33), 27)
@@ -196,11 +197,11 @@ class WirelessOverlay(object):
         server = netns_desc.create("Node")
         server.set_attribute_value("forward_X11", True)
 
-        command = "xterm" 
-        app = netns_desc.create("Application")
-        app.set_attribute_value("command", command)
-        app.set_attribute_value("user", self.user)
-        app.connector("node").connect(server.connector("apps"))
+        #command = "xterm" 
+        #app = netns_desc.create("Application")
+        #app.set_attribute_value("command", command)
+        #app.set_attribute_value("user", self.user)
+        #app.connector("node").connect(server.connector("apps"))
 
         # INTERCONNECTION NETNS/NS3
 
@@ -214,11 +215,15 @@ class WirelessOverlay(object):
         # ROUTES
         self.add_route(server, (self.base_addr%32), 27, (self.base_addr%225))
 
+        servers = []
+        clients = []
         i = 0
         for (stai, wifi_addr) in sta_nodes:
             # fdnd - netns tap
             nodei = netns_desc.create("Node")
             nodei.set_attribute_value("forward_X11", True)
+            label = "client%d" % i
+            nodei.set_attribute_value("label", label)
             tapi = self.add_netns_tap(netns_desc, nodei)
             fdndi = self.add_ns3_fdnd(ns3_desc, stai)
             fdndi.connector("->fd").connect(tapi.connector("fd->"))
@@ -228,7 +233,6 @@ class WirelessOverlay(object):
             self.add_ip_address(tapi, (self.base_addr%(net + 1)), 30)
             self.add_ip_address(fdndi, (self.base_addr%(net + 2)), 30)
             
-            print i, " ", stai, " ", net
             # routes
             self.add_route(nodei, (self.base_addr%32), 27, (self.base_addr%(net+2)))
             self.add_route(nodei, (self.base_addr%224), 30, (self.base_addr%(net+2)))
@@ -236,14 +240,38 @@ class WirelessOverlay(object):
             
             self.add_route(ap, (self.base_addr%net), 30, wifi_addr)
             self.add_route(server, (self.base_addr%net), 30, (self.base_addr%225))
-            i += 4
 
+            # applications
+            #target = "{#[%s].addr[0].[Address]#}" % label
+            target = self.base_addr%(net+1)
+            port = 5000 + net + 1
+            command = "vlc -I dummy %s --sout '#rtp{dst=%s,port=%d,mux=ts}' vlc://quit" \
+                % (self.movie, target, port)
+            vlc_server = netns_desc.create("Application")
+            vlc_server.set_attribute_value("command", command)
+            vlc_server.set_attribute_value("user", self.user)
+            vlc_server.connector("node").connect(server.connector("apps"))
+            servers.append(vlc_server.guid)
+
+            command = "vlc rtp://%s:%d/test.ts" % (target, port)
+            vlc_client = netns_desc.create("Application")
+            vlc_client.set_attribute_value("command", command)
+            vlc_client.set_attribute_value("user", self.user)
+            vlc_client.connector("node").connect(nodei.connector("apps"))
+            clients.append(vlc_client.guid)
+
+            i += 4
 
         xml = exp_desc.to_xml()
         controller = ExperimentController(xml, self.root_dir)
         controller.start()
-        while not controller.is_finished(app.guid):
+        stop = False
+        while not stop:
             time.sleep(0.5)
+            stop = True
+            for guid in clients:
+                if not controller.is_finished(guid):
+                    stop = False
         time.sleep(0.1)
         controller.stop()
         controller.shutdown()
