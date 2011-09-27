@@ -470,7 +470,8 @@ class Node(object):
                 # PlanetLab has a 15' delay on configuration propagation
                 # If we're above that delay, the unresponsiveness is not due
                 # to this delay.
-                raise UnresponsiveNodeError, "Unresponsive host %s" % (self.hostname,)
+                if not self.is_alive(verbose=True):
+                    raise UnresponsiveNodeError, "Unresponsive host %s" % (self.hostname,)
         
         # Ensure the node is clean (no apps running that could interfere with operations)
         if self.enable_cleanup:
@@ -482,7 +483,7 @@ class Node(object):
             self._yum_dependencies.async_setup_wait()
             self._installed = True
         
-    def is_alive(self):
+    def is_alive(self, verbose = False):
         # Make sure all the paths are created where 
         # they have to be created for deployment
         (out,err),proc = server.eintr_retry(server.popen_ssh_command)(
@@ -494,14 +495,19 @@ class Node(object):
             ident_key = self.ident_path,
             server_key = self.server_key,
             timeout = 60,
-            err_on_timeout = False
+            err_on_timeout = False,
+            persistent = False
             )
         
         if proc.wait():
+            if verbose:
+                self._logger.warn("Unresponsive node %s got:\n%s%s", self.hostname, out, err)
             return False
         elif not err and out.strip() == 'ALIVE':
             return True
         else:
+            if verbose:
+                self._logger.warn("Unresponsive node %s got:\n%s%s", self.hostname, out, err)
             return False
     
     def destroy(self):
