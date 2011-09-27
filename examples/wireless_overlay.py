@@ -5,7 +5,8 @@ from nepi.core.design import ExperimentDescription, FactoriesProvider
 from nepi.core.execute import ExperimentController
 from optparse import OptionParser, SUPPRESS_HELP
 from nepi.util import proxy
-from nepi.util.constants import DeploymentConfiguration as DC
+from nepi.util.constants import DeploymentConfiguration as DC, ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP
+import test_util
 import os
 import shutil
 import tempfile
@@ -14,36 +15,57 @@ import time
 import math
 
 """
-  -----------------------------------------------------------------------
-  |    NETNS                                                            |                                    
-  |                                                                     |
-  |    +-----+     +-----+    +-----+    +-----+          +------+      |
-  |    |node1|     |node2|    |node3|    |node4 |         |server|      |
-  |    +-----+     +-----+    +-----+    +-----+          +------+      |
-  |     65/30       69/30      73/30      77/30            226/30       |
-  |    -------     -------    -------    -------          --------      |
-  |       |           |          |          |                |          |
-  |---------------------------------------------------------------------|
-  |       |           |          |          |                |          | 
-  |    -------     -------    -------    -------             |          |
-  |     66/30       30/30     74/30       78/30              |          |
-  |    +-----+     +-----+    +-----+    +-----+             |          |
-  |    |sta0 |     |sta1 |    |sta2 |    |sta3 |             |          |
-  |    +-----+     +-----+    +-----+    +-----+             |          |
-  |     34/27       35/27      36/27      37/27              |          |
-  |    -------     --------    -------   -------             |          |
-  |     ((*))       ((*))       ((*))     ((*))              |          |
-  |                                                          |          |
-  |                                                          |          |
-  |                       ((*))                              |          |
-  |                     --------                             |          |
-  |                       33/27                              |          |
-  |                     +------+                             |          |
-  |                     |  AP  |  225/30 |--------------------          |
-  |                     +------+                                        |
-  |                                                                     |
-  |     NS-3                                                            |
-  -----------------------------------------------------------------------
+
+   ___________________________________________________________
+  |   NETNS                                                   |
+  |                                                           |
+  |                    __________                             | 
+  |                   |netns_node|  VLC_SERVER                |
+  |                   |__________|                            |
+  |                                                           |
+  |                       1/30                                |
+  |                    -----------                            |
+  |_________________________|_________________________________|
+                            |  
+                            |  0/30
+   _________________________|_________________________________
+  |    PL1                  |                                 |  
+  |                   ------------                            |
+  |                       2/30                                |
+  |                                                           |
+  |                       5/30                                |
+  |                  -------------                            |
+  |_________________________|_________________________________|
+                            | 
+                            |   4/30
+   _________________________|_________________________________
+  |    NS-3                 |                                 |
+  |                     --------                              |  
+  |                       6/30                                |
+  |                      ______                               |
+  |                     |  AP  |                              |
+  |                     |______|                              |
+  |                       33/27                               |
+  |                     --------                              |
+  |                       ((*))                               |
+  |                                                           |
+  |                                                           |
+  |     ((*))       ((*))       ((*))     ((*))               |         
+  |    -------     --------    -------   -------              |          
+  |     34/27       35/27      36/27      37/27               |          
+  |    +-----+     +-----+    +-----+    +-----+              |
+  |    |sta0 |     |sta1 |    |sta2 |    |sta3 |              |
+  |    +-----+     +-----+    +-----+    +-----+              |
+  |     66/30       70/30      74/30      78/30               |
+  |    -------     -------    -------    -------              |
+  |_______|___________|__________|__________|_________________|
+          |           |          |          |
+   _______|___________|__________|__________|_________________
+  |  PL2  |           |          |          |                 | 
+  |       |           |          |          |                 |
+  |    -------     -------    -------    -------              |  
+  |     65/30       69/30      73/30      77/30               |                                 
+  |___________________________________________________________|
 
 """
 
@@ -55,6 +77,7 @@ class WirelessOverlay(object):
         parser.add_option("-m", "--movie", dest="movie", help="Path to movie file to play", type="str")
         parser.add_option("-n", "--nsta", dest="nsta", help="Number of wifi stations", type="int")
         parser.add_option("-a", "--base_addr", dest="base_addr", help="Base address segment for the experiment", type="str")
+        parser.add_option("-s", "--slicename", dest="slicename", help="PlanetLab slice", type="str")
         (options, args) = parser.parse_args()
         if not options.movie:
             parser.error("Missing 'movie' option.")
@@ -67,16 +90,22 @@ class WirelessOverlay(object):
 
         self.user = options.user if options.user else os.getlogin()
         self.movie = options.movie
-        self.nsta = options.nsta if options.nsta else 4
+        self.nsta = options.nsta if options.nsta else 3
+        self.slicename = options.slicename if options.slicename else "inria_nepi3"
         base = options.base_addr if options.base_addr else "192.168.4"
         self.base_addr = base + ".%d"
         self.root_dir = tempfile.mkdtemp()
 
-    def add_netns_tap(self, netns_desc, node):
-        tap = netns_desc.create("TapNodeInterface")
-        tap.set_attribute_value("up", True)
-        node.connector("devs").connect(tap.connector("node"))
-        return tap
+    def add_ip_address(self, iface, address, netprefix):
+        ip = iface.add_address()
+        ip.set_attribute_value("Address", address)
+        ip.set_attribute_value("NetPrefix", netprefix)
+
+    def add_route(self, node, destination, netprefix, nexthop):
+        route = node.add_route()
+        route.set_attribute_value("Destination", destination)
+        route.set_attribute_value("NetPrefix", netprefix)
+        route.set_attribute_value("NextHop", nexthop)
 
     def add_ns3_fdnd(self, ns3_desc, node):
         fdnd = ns3_desc.create("ns3::FdNetDevice")
@@ -133,42 +162,144 @@ class WirelessOverlay(object):
         channel.connector("loss").connect(loss.connector("prev"))
         return channel
 
-    def add_ip_address(self, iface, address, netprefix):
-        ip = iface.add_address()
-        ip.set_attribute_value("Address", address)
-        ip.set_attribute_value("NetPrefix", netprefix)
+    def add_pl_testbed(self, exp_desc):
+        plchost = "nepiplc.pl.sophia.inria.fr"
+        port_base = 2000 + (os.getpid() % 1000) * 13
+        pl_ssh_key = os.environ.get(
+            "PL_SSH_KEY",
+            "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'],) )
+        pl_user, pl_pwd = test_util.pl_auth()
 
-    def add_route(self, node, destination, netprefix, nexthop):
-        route = node.add_route()
-        route.set_attribute_value("Destination", destination)
-        route.set_attribute_value("NetPrefix", netprefix)
-        route.set_attribute_value("NextHop", nexthop)
+        pl_provider = FactoriesProvider("planetlab")
+        pl_desc = exp_desc.add_testbed_description(pl_provider)
+        pl_desc.set_attribute_value("homeDirectory", self.root_dir)
+        pl_desc.set_attribute_value("slice", self.slicename)
+        pl_desc.set_attribute_value("sliceSSHKey", pl_ssh_key)
+        pl_desc.set_attribute_value("authUser", pl_user)
+        pl_desc.set_attribute_value("authPass", pl_pwd)
+        pl_desc.set_attribute_value("plcHost", plchost)
+        pl_desc.set_attribute_value("tapPortBase", port_base)
+        pl_desc.set_attribute_value("p2pDeployment", False) # it's interactive, we don't want it in tests
+        pl_desc.set_attribute_value("dedicatedSlice", True)
+        pl_desc.set_attribute_value("plLogLevel", "DEBUG")
+        return pl_desc
+
+    def add_pl_node(self, pl_desc, inet, label_prefix):
+        node = pl_desc.create("Node")
+        node.set_attribute_value("label", label_prefix)
+        iface = pl_desc.create("NodeInterface")
+        iface.set_attribute_value("label", label_prefix+"iface")
+        iface.connector("inet").connect(inet.connector("devs"))
+        node.connector("devs").connect(iface.connector("node"))
+        return node, iface
+
+    def add_ns3_in_pl(self, exp_desc, pl_desc, pl_node, pl_iface, root):
+        # Add NS3 support in node
+        plnepi = pl_desc.create("NepiDependency")
+        plns3 = pl_desc.create("NS3Dependency")
+        plnepi.connector("node").connect(pl_node.connector("deps"))
+        plns3.connector("node").connect(pl_node.connector("deps"))
+
+        # Create NS3 testbed running in pl_node
+        ns3_provider = FactoriesProvider("ns3")
+        ns3_desc = exp_desc.add_testbed_description(ns3_provider)
+        ns3_desc.set_attribute_value("rootDirectory", root)
+        ns3_desc.set_attribute_value("SimulatorImplementationType", "ns3::RealtimeSimulatorImpl")
+        ns3_desc.set_attribute_value("ChecksumEnabled", True)
+        ns3_desc.set_attribute_value(DC.DEPLOYMENT_HOST, "{#[%s].addr[0].[Address]#}" % (
+            pl_iface.get_attribute_value("label"),))
+        ns3_desc.set_attribute_value(DC.DEPLOYMENT_USER, 
+            pl_desc.get_attribute_value("slice"))
+        ns3_desc.set_attribute_value(DC.DEPLOYMENT_KEY, 
+            pl_desc.get_attribute_value("sliceSSHKey"))
+        ns3_desc.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
+        ns3_desc.set_attribute_value(DC.DEPLOYMENT_COMMUNICATION, DC.ACCESS_SSH)
+        ns3_desc.set_attribute_value(DC.DEPLOYMENT_ENVIRONMENT_SETUP,
+            "{#[%s].[%s]#}" % (
+                pl_node.get_attribute_value("label"),
+                ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP,))
+        ns3_desc.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
+        return ns3_desc
+
+    def add_netns_testbed(self, exp_desc):
+        netns_provider = FactoriesProvider("netns")
+        netns_desc = exp_desc.add_testbed_description(netns_provider)
+        netns_desc.set_attribute_value("homeDirectory", self.root_dir)
+        netns_desc.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
+        netns_root_dir = os.path.join(self.root_dir, "netns")
+        os.mkdir(netns_root_dir)
+        netns_desc.set_attribute_value(DC.ROOT_DIRECTORY, netns_root_dir)
+        netns_desc.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
+        netns_desc.set_attribute_value(DC.USE_SUDO, True)
+        return netns_desc
+
+    def add_netns_node(self, netns_desc):
+        node = netns_desc.create("Node")
+        node.set_attribute_value("forward_X11", True)
+        return node
+
+    def add_pl_ns3_connection(self, pl_desc, pl_node, pl_addr,
+            ns3_desc, ns3_node, ns3_addr):
+        pl_tap = pl_desc.create("TapInterface")
+        pl_tap.set_attribute_value("tun_cipher", "PLAIN") 
+        self.add_ip_address(pl_tap, pl_addr, 30)
+        pl_node.connector("devs").connect(pl_tap.connector("node"))
+        ns3_fdnd = ns3_desc.create("ns3::FdNetDevice")
+        ns3_node.connector("devs").connect(ns3_fdnd.connector("node"))
+        self.add_ip_address(ns3_fdnd, ns3_addr, 30)
+        pl_tap.connector("fd->").connect(ns3_fdnd.connector("->fd"))
+
+    def add_pl_ns3_tunchan_connection(self, pl_desc, pl_node, pl_addr,
+            ns3_desc, ns3_node, ns3_addr):
+        pl_tap = pl_desc.create("TapInterface")
+        self.add_ip_address(pl_tap, pl_addr, 30)
+        pl_node.connector("devs").connect(pl_tap.connector("node"))
+        ns3_fdnd = ns3_desc.create("ns3::FdNetDevice")
+        self.add_ip_address(ns3_fdnd, ns3_addr, 30)
+        ns3_node.connector("devs").connect(ns3_fdnd.connector("node"))
+        ns3_tc = ns3_desc.create("ns3::Nepi::TunChannel")
+        ns3_tc.connector("fd->").connect(ns3_fdnd.connector("->fd"))
+        pl_tap.connector("tcp").connect(ns3_tc.connector("tcp"))
+
+    def add_pl_netns_connection(self, pl_desc, pl_node, pl_addr,
+            netns_desc, netns_node, netns_addr):
+        pl_tap = pl_desc.create("TapInterface")
+        self.add_ip_address(pl_tap, pl_addr, 30)
+        pl_node.connector("devs").connect(pl_tap.connector("node"))
+        netns_tap = netns_desc.create("TapNodeInterface")
+        netns_tap.set_attribute_value("up", True)
+        self.add_ip_address(netns_tap, netns_addr, 30)
+        netns_node.connector("devs").connect(netns_tap.connector("node"))
+        netns_tunchannel = netns_desc.create("TunChannel")
+        netns_tunchannel.connector("->fd").connect(netns_tap.connector("fd->"))
+        pl_tap.connector("tcp").connect(netns_tunchannel.connector("tcp"))
 
     def run(self):
         exp_desc = ExperimentDescription()
 
-        ## NS3 ##
+        ## PL ##
+        pl_desc = self.add_pl_testbed(exp_desc)
+        pl_inet = pl_desc.create("Internet")
+        pl_node1, pl_iface1 = self.add_pl_node(pl_desc, pl_inet, 
+                "node1_pl")
 
-        ns3_provider = FactoriesProvider("ns3")
-        ns3_desc = exp_desc.add_testbed_description(ns3_provider)
-        ns3_desc.set_attribute_value("homeDirectory", self.root_dir)
-        ns3_desc.set_attribute_value("SimulatorImplementationType", "ns3::RealtimeSimulatorImpl")
-        ns3_desc.set_attribute_value("ChecksumEnabled", True)
-        
-        ## NS3 wifi network 32/27
-        r = 50
+        ## NETNS ##
+        netns_desc = self.add_netns_testbed(exp_desc)
+        netns_node = self.add_netns_node(netns_desc)
+
+        ## NS3 ##
+        ns3_desc = self.add_ns3_in_pl(exp_desc, pl_desc, pl_node1, pl_iface1, "ns3")
         wifi_chan = self.add_ns3_wifi_channel(ns3_desc)
         
         # AP node
-        ap = self.add_ns3_node(ns3_desc)
-        self.add_ns3_constant_mobility(ns3_desc, ap, 0, 0, 0)
+        ap_node = self.add_ns3_node(ns3_desc)
+        self.add_ns3_constant_mobility(ns3_desc, ap_node, 0, 0, 0)
+        ap_wifi, ap_phy = self.add_ns3_wifi(ns3_desc, ap_node, access_point = True)
+        self.add_ip_address(ap_wifi, (self.base_addr%33), 27)
+        ap_phy.connector("chan").connect(wifi_chan.connector("phys"))
 
-        wifi_ap, phy_ap = self.add_ns3_wifi(ns3_desc, ap, access_point = True)
-        self.add_ip_address(wifi_ap, (self.base_addr%33), 27)
-        phy_ap.connector("chan").connect(wifi_chan.connector("phys"))
-        
-        sta_nodes = []
-        
+        # wifi network 32/27
+        r = 50
         # STA nodes
         for i in xrange(0, self.nsta):
             stai = self.add_ns3_node(ns3_desc)
@@ -180,67 +311,64 @@ class WirelessOverlay(object):
             wifi_addr = self.base_addr%(34 + i)
             self.add_ip_address(wifi, wifi_addr, 27)
             phy.connector("chan").connect(wifi_chan.connector("phys"))
-            sta_nodes.append((stai, wifi_addr))
 
-        ## NETNS ##
+            self.add_route(stai, (self.base_addr%0), 30, (self.base_addr%33))
+            self.add_route(stai, (self.base_addr%4), 30, (self.base_addr%33))
 
-        netns_provider = FactoriesProvider("netns")
-        netns_desc = exp_desc.add_testbed_description(netns_provider)
-        netns_desc.set_attribute_value("homeDirectory", self.root_dir)
-        netns_desc.set_attribute_value(DC.DEPLOYMENT_MODE, DC.MODE_DAEMON)
-        netns_root_dir = os.path.join(self.root_dir, "netns_instance")
-        os.mkdir(netns_root_dir)
-        netns_desc.set_attribute_value(DC.ROOT_DIRECTORY, netns_root_dir)
-        netns_desc.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
-        netns_desc.set_attribute_value(DC.USE_SUDO, True)
+            net = 64 + i*4
+            pl_nodei, pl_ifacei = self.add_pl_node(pl_desc, pl_inet, 
+                    "node2%d_pl"%i)
 
-        server = netns_desc.create("Node")
-        server.set_attribute_value("forward_X11", True)
+            pl_addr = (self.base_addr%(net+1))
+            ns3_addr = (self.base_addr%(net+2))
+            self.add_pl_ns3_tunchan_connection(pl_desc, pl_nodei, pl_addr,
+                ns3_desc, stai, ns3_addr)
+            self.add_route(pl_nodei, (self.base_addr%32), 27, ns3_addr)
+            self.add_route(pl_nodei, (self.base_addr%0), 30, ns3_addr)
+            self.add_route(pl_nodei, (self.base_addr%4), 30, ns3_addr)
 
-        #command = "xterm" 
-        #app = netns_desc.create("Application")
-        #app.set_attribute_value("command", command)
-        #app.set_attribute_value("user", self.user)
-        #app.connector("node").connect(server.connector("apps"))
+            network = (self.base_addr%net)
+            self.add_route(netns_node, network, 30, (self.base_addr%2))
+            self.add_route(pl_node1, network, 30, (self.base_addr%6))
+            self.add_route(ap_node, network, 30, wifi_addr)
+        
+        # connection PL1/NETNS
+        pl_addr = (self.base_addr%2)
+        netns_addr = (self.base_addr%1)
+        self.add_pl_netns_connection(pl_desc, pl_node1, pl_addr,
+            netns_desc, netns_node, netns_addr)
 
-        # INTERCONNECTION NETNS/NS3
+        # connection PL1/NS3
+        pl_addr = (self.base_addr%5)
+        ns3_addr = (self.base_addr%6)
+        self.add_pl_ns3_connection(pl_desc, pl_node1, pl_addr,
+            ns3_desc, ap_node, ns3_addr)
 
-        tap = self.add_netns_tap(netns_desc, server)
-        fdnd_ap = self.add_ns3_fdnd(ns3_desc, ap)
-        fdnd_ap.connector("->fd").connect(tap.connector("fd->"))
-        ## net NS3::fdnd/NETNS::tap 224/30
-        self.add_ip_address(fdnd_ap, (self.base_addr%225), 30)
-        self.add_ip_address(tap, (self.base_addr%226), 30)
+        # APPLICATIONS
+        command = "xterm" 
+        app = netns_desc.create("Application")
+        app.set_attribute_value("command", command)
+        app.set_attribute_value("user", self.user)
+        app.connector("node").connect(netns_node.connector("apps"))
 
         # ROUTES
-        self.add_route(server, (self.base_addr%32), 27, (self.base_addr%225))
+        self.add_route(netns_node, (self.base_addr%32), 27, (self.base_addr%2))
+        self.add_route(netns_node, (self.base_addr%4), 30, (self.base_addr%2))
+        
+        self.add_route(pl_node1, (self.base_addr%32), 27, (self.base_addr%6))
 
-        servers = []
-        clients = []
-        i = 0
-        for (stai, wifi_addr) in sta_nodes:
-            # fdnd - netns tap
-            nodei = netns_desc.create("Node")
-            nodei.set_attribute_value("forward_X11", True)
-            label = "client%d" % i
-            nodei.set_attribute_value("label", label)
-            tapi = self.add_netns_tap(netns_desc, nodei)
-            fdndi = self.add_ns3_fdnd(ns3_desc, stai)
-            fdndi.connector("->fd").connect(tapi.connector("fd->"))
-            
-            ## net NS3::fdnd/NETNS::tap subnets of 64/27
-            net = 64 + i
-            self.add_ip_address(tapi, (self.base_addr%(net + 1)), 30)
-            self.add_ip_address(fdndi, (self.base_addr%(net + 2)), 30)
-            
-            # routes
-            self.add_route(nodei, (self.base_addr%32), 27, (self.base_addr%(net+2)))
-            self.add_route(nodei, (self.base_addr%224), 30, (self.base_addr%(net+2)))
-            self.add_route(stai, (self.base_addr%224), 30, (self.base_addr%33))
-            
-            self.add_route(ap, (self.base_addr%net), 30, wifi_addr)
-            self.add_route(server, (self.base_addr%net), 30, (self.base_addr%225))
+        self.add_route(ap_node, (self.base_addr%0), 30, (self.base_addr%5))
 
+        xml = exp_desc.to_xml()
+        controller = ExperimentController(xml, self.root_dir)
+        controller.start()
+        while not controller.is_finished(app.guid):
+            time.sleep(0.5)
+        time.sleep(0.1)
+        controller.stop()
+        controller.shutdown()
+
+        """
             # applications
             #target = "{#[%s].addr[0].[Address]#}" % label
             target = self.base_addr%(net+1)
@@ -260,8 +388,6 @@ class WirelessOverlay(object):
             vlc_client.connector("node").connect(nodei.connector("apps"))
             clients.append(vlc_client.guid)
 
-            i += 4
-
         xml = exp_desc.to_xml()
         controller = ExperimentController(xml, self.root_dir)
         controller.start()
@@ -275,6 +401,7 @@ class WirelessOverlay(object):
         time.sleep(0.1)
         controller.stop()
         controller.shutdown()
+        """
 
     def clean(self):
         shutil.rmtree(self.root_dir)

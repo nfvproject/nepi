@@ -94,7 +94,12 @@ class _CrossIface(object):
         self.tun_addr = addr
         self.tun_port = port
         self.tun_cipher = cipher
-        
+
+        # Attributes
+        self.address = None
+        self.netprefix = None
+        self.netmask = None
+ 
         # Cannot access cross peers
         self.peer_proto_impl = None
     
