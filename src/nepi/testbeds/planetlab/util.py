@@ -31,6 +31,24 @@ def getAPI(user, pass_):
     import plcapi
     return plcapi.PLCAPI(username=user, password=pass_)
 
+def filterBlacklist(candidates):
+    blpath = environ.homepath('plblacklist')
+    
+    try:
+        bl = open(blpath, "r")
+    except:
+        return candidates
+        
+    try:
+        blacklist = set(
+            map(int,
+                map(str.strip, bl.readlines())
+            )
+        )
+        return [ x for x in candidates if x not in blacklist ]
+    finally:
+        bl.close()
+
 def getNodes(api, num, **constraints):
     # Now do the backtracking search for a suitable solution
     # First with existing slice nodes
@@ -45,7 +63,7 @@ def getNodes(api, num, **constraints):
         nodes.append(node)
     
     node = nodes[0]
-    candidates = node.find_candidates()
+    candidates = filterBlacklist(node.find_candidates())
     reqs = [candidates] * num
 
     def pickbest(fullset, nreq, node=nodes[0]):
@@ -60,8 +78,10 @@ def getNodes(api, num, **constraints):
     solution = resourcealloc.alloc(reqs, sample=pickbest)
     
     # Do assign nodes
+    runner = ParallelRun(maxthreads=4)
     for node, node_id in zip(nodes, solution):
-        node.assign_node_id(node_id)
+        runner.put(node.assign_node_id, node_id)
+    runner.join()
     
     return nodes
 
