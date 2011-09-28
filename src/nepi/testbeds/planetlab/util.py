@@ -49,6 +49,19 @@ def filterBlacklist(candidates):
     finally:
         bl.close()
 
+def appendBlacklist(node_ids):
+    if not isinstance(node_ids, list):
+        node_ids = [ node_ids ]
+    
+    blpath = environ.homepath('plblacklist')
+    bl = open(blpath, "a")
+    
+    try:
+        for node_id in node_ids:
+            bl.write("%s\n" % (node_id,))
+    finally:
+        bl.close()
+
 def getNodes(api, num, **constraints):
     # Now do the backtracking search for a suitable solution
     # First with existing slice nodes
