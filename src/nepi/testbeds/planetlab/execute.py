@@ -327,7 +327,7 @@ class TestbedController(testbed_impl.TestbedController):
                 self._logger.info("PlanetLab Node %s configured at %s", guid, node.hostname)
         
         try:
-            runner = ParallelRun(maxqueue=1)
+            runner = ParallelRun(maxthreads=64, maxqueue=1)
             abort = []
             def waitforit(guid, node):
                 try:
