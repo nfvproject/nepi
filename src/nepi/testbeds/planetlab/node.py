@@ -514,6 +514,12 @@ class Node(object):
         if self.enable_cleanup:
             self.do_cleanup()
     
+    def blacklist(self):
+        if self._node_id:
+            self._logger.warn("Blacklisting malfunctioning node %s", self.hostname)
+            import util
+            util.appendBlacklist(self._node_id)
+    
     def do_cleanup(self):
         if self.testbed().recovering:
             # WOW - not now

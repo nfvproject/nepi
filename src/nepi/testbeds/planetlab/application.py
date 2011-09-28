@@ -16,6 +16,7 @@ import time
 import socket
 import threading
 import logging
+import re
 
 from nepi.util.constants import ApplicationStatus as AS
 
@@ -103,6 +104,13 @@ class Dependency(object):
             raise AssertionError, "Misconfigured application: misconfigured node"
         if self.node.slicename is None:
             raise AssertionError, "Misconfigured application: unspecified slice"
+    
+    def check_bad_host(self, out, err):
+        """
+        Called whenever an operation fails, it's given the output to be checked for
+        telltale signs of unhealthy hosts.
+        """
+        return False
     
     def remote_trace_path(self, whichtrace):
         if whichtrace in self.TRACES:
@@ -271,6 +279,8 @@ class Dependency(object):
                     os.path.join(self._master.home_path, 'build.tar.gz'),)
             )
         
+        sshopts = "-o ConnectTimeout=30 -o ConnectionAttempts=3 -o ServerAliveInterval=30 -o TCPKeepAlive=yes"
+        
         launch_agent = "{ ( echo -e '#!/bin/sh\\ncat' > .ssh-askpass ) && chmod u+x .ssh-askpass"\
                         " && export SSH_ASKPASS=$(pwd)/.ssh-askpass "\
                         " && ssh-agent > .ssh-agent.sh ; } && . ./.ssh-agent.sh && ( echo $NEPI_MASTER_PASSPHRASE | ssh-add %(prk)s ) && rm -rf %(prk)s %(puk)s" %  \
@@ -281,20 +291,28 @@ class Dependency(object):
         
         kill_agent = "kill $SSH_AGENT_PID"
         
-        waitmaster = "{ . ./.ssh-agent.sh ; while [[ $(ssh -q -o UserKnownHostsFile=%(hostkey)s %(master)s cat %(token_path)s) != %(token)s ]] ; do sleep 5 ; done ; }" % {
+        waitmaster = (
+            "{ . ./.ssh-agent.sh ; "
+            "while [[ $(ssh -q -o UserKnownHostsFile=%(hostkey)s %(sshopts)s %(master)s cat %(token_path)s.retcode || /bin/true) != %(token)s ]] ; do sleep 5 ; done ; "
+            "if [[ $(ssh -q -o UserKnownHostsFile=%(hostkey)s %(sshopts)s %(master)s cat %(token_path)s || /bin/true) != %(token)s ]] ; then echo BAD TOKEN ; exit 1 ; fi ; "
+            "}" 
+        ) % {
             'hostkey' : 'master_known_hosts',
             'master' : "%s@%s" % (self._master.node.slicename, self._master.node.hostname),
             'token_path' : os.path.join(self._master.home_path, 'build.token'),
             'token' : server.shell_escape(self._master._master_token),
+            'sshopts' : sshopts,
         }
         
-        syncfiles = "scp -p -o UserKnownHostsFile=%(hostkey)s %(files)s ." % {
+        syncfiles = "scp -p -o UserKnownHostsFile=%(hostkey)s %(sshopts)s %(files)s ." % {
             'hostkey' : 'master_known_hosts',
             'files' : ' '.join(files),
+            'sshopts' : sshopts,
         }
         if self.build:
             syncfiles += " && tar xzf build.tar.gz"
         syncfiles += " && ( echo %s > build.token )" % (server.shell_escape(self._master_token),)
+        syncfiles += " && ( echo %s > build.token.retcode )" % (server.shell_escape(self._master_token),)
         syncfiles = "{ . ./.ssh-agent.sh ; %s ; }" % (syncfiles,)
         
         cleanup = "{ . ./.ssh-agent.sh ; kill $SSH_AGENT_PID ; rm -rf %(prk)s %(puk)s master_known_hosts .ssh-askpass ; }" % {
@@ -302,13 +320,14 @@ class Dependency(object):
             'puk' : server.shell_escape(self._master_puk_name),
         }
         
-        slavescript = "( ( %(launch_agent)s && %(waitmaster)s && %(syncfiles)s && %(kill_agent)s && %(cleanup)s ) || %(cleanup)s )" % {
+        slavescript = "( ( %(launch_agent)s && %(waitmaster)s && %(syncfiles)s && %(kill_agent)s && %(cleanup)s ) || %(cleanup)s ) ; echo %(token)s > build.token.retcode" % {
             'waitmaster' : waitmaster,
             'syncfiles' : syncfiles,
             'cleanup' : cleanup,
             'kill_agent' : kill_agent,
             'launch_agent' : launch_agent,
             'home' : server.shell_escape(self.home_path),
+            'token' : server.shell_escape(self._master_token),
         }
         
         return cStringIO.StringIO(slavescript)
@@ -337,6 +356,8 @@ class Dependency(object):
             )
         
         if proc.wait():
+            if self.check_bad_host(out, err):
+                self.node.blacklist()
             raise RuntimeError, "Failed to set up build slave %s: %s %s" % (self.home_path, out,err,)
         
         
@@ -395,12 +416,13 @@ class Dependency(object):
                         break
                 else:
                     if first:
-                        self._logger.info("Waiting for %s to finish building %s", self,
+                        self._logger.info("Waiting for %s to finish building at %s %s", self, self.node.hostname,
                             "(build slave)" if self._master is not None else "(build master)")
                         
                         first = False
                     time.sleep(delay*(0.5+random.random()))
                     delay = min(30,delay*1.2)
+                    bustspin = 0
             
             # check build token
             slave_token = ""
@@ -432,12 +454,15 @@ class Dependency(object):
                 
                 proc.wait()
                 
+                if self.check_bad_host(buildlog, err):
+                    self.node.blacklist()
+                
                 raise RuntimeError, "Failed to set up application %s: "\
                         "build failed, got wrong token from pid %s/%s "\
-                        "(expected %r, got %r), see buildlog: %s" % (
-                    self.home_path, pid, ppid, self._master_token, slave_token, buildlog)
+                        "(expected %r, got %r), see buildlog at %s:\n%s" % (
+                    self.home_path, pid, ppid, self._master_token, slave_token, self.node.hostname, buildlog)
 
-            self._logger.info("Built %s", self)
+            self._logger.info("Built %s at %s", self, self.node.hostname)
 
     def _do_kill_build(self):
         pid = self._build_pid
@@ -475,6 +500,8 @@ class Dependency(object):
             
         buildscript = cStringIO.StringIO()
         
+        buildscript.write("(\n")
+        
         if self.buildDepends:
             # Install build dependencies
             buildscript.write(
@@ -497,7 +524,7 @@ class Dependency(object):
             buildscript.write("tar czf build.tar.gz build\n")
         
         # Write token
-        buildscript.write("echo %(master_token)s > build.token" % {
+        buildscript.write("echo %(master_token)s > build.token ) ; echo %(master_token)s > build.token.retcode" % {
             'master_token' : server.shell_escape(self._master_token)
         })
         
@@ -519,6 +546,8 @@ class Dependency(object):
                         },
                     )
             except RuntimeError, e:
+                if self.check_bad_host(e.args[0], e.args[1]):
+                    self.node.blacklist()
                 raise RuntimeError, "Failed install build sources: %s %s" % (e.args[0], e.args[1],)
 
     def set_master(self, master):
@@ -696,6 +725,8 @@ class Application(Dependency):
             )
         
         if proc.wait():
+            if self.check_bad_host(out, err):
+                self.node.blacklist()
             raise RuntimeError, "Failed to set up application: %s %s" % (out,err,)
 
         self._started = True
@@ -1020,4 +1051,11 @@ class YumDependency(Dependency):
         return
     install = property(_install_get, _install_set)
         
-
+    def check_bad_host(self, out, err):
+        badre = re.compile(r'(?:'
+                           r'The GPG keys listed for the ".*" repository are already installed but they are not correct for this package'
+                           r'|Error: Cannot retrieve repository metadata (repomd.xml) for repository: .*[.] Please verify its path and try again'
+                           r'|Error: disk I/O error'
+                           r')', 
+                           re.I)
+        return badre.search(out) or badre.search(err)
