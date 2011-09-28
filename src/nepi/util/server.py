@@ -33,12 +33,28 @@ STOP_MSG = "STOP"
 
 TRACE = os.environ.get("NEPI_TRACE", "false").lower() in ("true", "1", "on")
 
+OPENSSH_HAS_PERSIST = None
+
 if hasattr(os, "devnull"):
     DEV_NULL = os.devnull
 else:
     DEV_NULL = "/dev/null"
 
 SHELL_SAFE = re.compile('^[-a-zA-Z0-9_=+:.,/]*$')
+
+def openssh_has_persist():
+    global OPENSSH_HAS_PERSIST
+    if OPENSSH_HAS_PERSIST is None:
+        proc = subprocess.Popen(["ssh","-v"],
+            stdout = subprocess.PIPE,
+            stderr = subprocess.STDOUT,
+            stdin = open("/dev/null","r") )
+        out,err = proc.communicate()
+        proc.wait()
+        
+        vre = re.compile(r'OpenSSH_(?:[6-9]|5[.][8-9]|5[.][1-9][0-9]|[1-9][0-9]).*', re.I)
+        OPENSSH_HAS_PERSIST = bool(vre.match(out))
+    return OPENSSH_HAS_PERSIST
 
 def shell_escape(s):
     """ Escapes strings so that they are safe to use as command-line arguments """
@@ -604,7 +620,7 @@ def popen_ssh_command(command, host, port, user, agent,
             '-o', 'ServerAliveInterval=30',
             '-o', 'TCPKeepAlive=yes',
             '-l', user, host]
-    if persistent:
+    if persistent and openssh_has_persist():
         args.extend([
             '-o', 'ControlMaster=auto',
             '-o', 'ControlPath=/tmp/nepi_ssh_pl_%s' % ( connkey, ),
@@ -636,9 +652,13 @@ def popen_ssh_command(command, host, port, user, agent,
         
         try:
             out, err = _communicate(proc, stdin, timeout, err_on_timeout)
-            if proc.poll() and err.strip().startswith('ssh: '):
-                # SSH error, can safely retry
-                continue
+            if proc.poll():
+                if err.strip().startswith('ssh: '):
+                    # SSH error, can safely retry
+                    continue
+                elif retry:
+                    # Probably timed out or plain failed but can retry
+                    continue
             break
         except RuntimeError,e:
             if retry <= 0:
@@ -714,10 +734,12 @@ def popen_scp(source, dest,
                 '-o', 'ConnectionAttempts=3',
                 '-o', 'ServerAliveInterval=30',
                 '-o', 'TCPKeepAlive=yes',
+                host ]
+        if openssh_has_persist():
+            args.extend([
                 '-o', 'ControlMaster=auto',
                 '-o', 'ControlPath=/tmp/nepi_ssh_pl_%s' % ( connkey, ),
-                '-o', 'ControlPersist=60',
-                host ]
+                '-o', 'ControlPersist=60' ])
         if port:
             args.append('-P%d' % port)
         if ident_key:
