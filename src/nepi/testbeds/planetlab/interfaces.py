@@ -170,11 +170,7 @@ class TunIface(object):
         # Generate an initial random cryptographic key to use for tunnelling
         # Upon connection, both endpoints will agree on a common one based on
         # this one.
-        self.tun_key = ( ''.join(map(chr, [ 
-                    r.getrandbits(8) 
-                    for i in xrange(32) 
-                    for r in (random.SystemRandom(),) ])
-                ).encode("base64").strip() )        
+        self.tun_key = os.urandom(32).encode("base64").strip()
         
 
     def __str__(self):

@@ -77,9 +77,7 @@ class Dependency(object):
         self._master_passphrase = None
         self._master_prk = None
         self._master_puk = None
-        self._master_token = ''.join(map(chr,[rng.randint(0,255) 
-                                      for rng in (random.SystemRandom(),)
-                                      for i in xrange(8)] )).encode("hex")
+        self._master_token = os.urandom(8).encode("hex")
         self._build_pid = None
         self._build_ppid = None
         
@@ -190,7 +188,7 @@ class Dependency(object):
                     else:
                         raise RuntimeError, "Failed to setup application"
                 else:
-                    self._logger.info("Setup ready: %s", self)
+                    self._logger.info("Setup ready: %s at %s", self, self.node.hostname)
             else:
                 self.setup()
         
@@ -238,7 +236,7 @@ class Dependency(object):
             buildscript = self._do_build_master()
             
         if buildscript is not None:
-            self._logger.info("Building %s", self)
+            self._logger.info("Building %s at %s", self, self.node.hostname)
             
             # upload build script
             try:
@@ -293,8 +291,8 @@ class Dependency(object):
         
         waitmaster = (
             "{ . ./.ssh-agent.sh ; "
-            "while [[ $(ssh -q -o UserKnownHostsFile=%(hostkey)s %(sshopts)s %(master)s cat %(token_path)s.retcode || /bin/true) != %(token)s ]] ; do sleep 5 ; done ; "
-            "if [[ $(ssh -q -o UserKnownHostsFile=%(hostkey)s %(sshopts)s %(master)s cat %(token_path)s || /bin/true) != %(token)s ]] ; then echo BAD TOKEN ; exit 1 ; fi ; "
+            "while [[ $(. ./.ssh-agent.sh > /dev/null ; ssh -q -o UserKnownHostsFile=%(hostkey)s %(sshopts)s %(master)s cat %(token_path)s.retcode || /bin/true) != %(token)s ]] ; do sleep 5 ; done ; "
+            "if [[ $(. ./.ssh-agent.sh > /dev/null ; ssh -q -o UserKnownHostsFile=%(hostkey)s %(sshopts)s %(master)s cat %(token_path)s || /bin/true) != %(token)s ]] ; then echo BAD TOKEN ; exit 1 ; fi ; "
             "}" 
         ) % {
             'hostkey' : 'master_known_hosts',
@@ -304,7 +302,7 @@ class Dependency(object):
             'sshopts' : sshopts,
         }
         
-        syncfiles = "scp -p -o UserKnownHostsFile=%(hostkey)s %(sshopts)s %(files)s ." % {
+        syncfiles = ". ./.ssh-agent.sh && scp -p -o UserKnownHostsFile=%(hostkey)s %(sshopts)s %(files)s ." % {
             'hostkey' : 'master_known_hosts',
             'files' : ' '.join(files),
             'sshopts' : sshopts,
@@ -384,7 +382,7 @@ class Dependency(object):
         else:
             raise RuntimeError, "Failed to set up build slave %s: cannot get pid" % (self.home_path,)
 
-        self._logger.info("Deploying %s", self)
+        self._logger.info("Deploying %s at %s", self, self.node.hostname)
         
     def _do_wait_build(self):
         pid = self._build_pid
@@ -410,7 +408,7 @@ class Dependency(object):
                     break
                 elif status is not rspawn.RUNNING:
                     bustspin += 1
-                    time.sleep(5)
+                    time.sleep(delay*(5.5+random.random()))
                     if bustspin > 12:
                         self._build_pid = self._build_ppid = None
                         break
@@ -534,7 +532,7 @@ class Dependency(object):
 
     def _do_install(self):
         if self.install:
-            self._logger.info("Installing %s", self)
+            self._logger.info("Installing %s at %s", self, self.node.hostname)
             
             # Install application
             try:

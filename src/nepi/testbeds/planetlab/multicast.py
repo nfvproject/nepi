@@ -144,7 +144,7 @@ class MulticastRouter(application.Application):
         
         # download rpms and pack into a tar archive
         return command % {
-            'nonifaces' : ' '.join([iface.if_name for iface in self.nonifaces]),
+            'nonifaces' : ' '.join([iface.if_name for iface in self.nonifaces if iface.if_name]),
             'debugbit' : (debugbit if self.stderr else ""),
         }
     command = property(_command_get, _non_set)
