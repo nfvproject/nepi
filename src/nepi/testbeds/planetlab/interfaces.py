@@ -201,7 +201,7 @@ class TunIface(object):
         if self.address and self.netprefix:
             addr, prefix = self.address, self.netprefix
             pointopoint = self.pointopoint
-            if not pointopoint:
+            if not pointopoint and self.peer_iface:
                 pointopoint = self.peer_iface.address
             
             if pointopoint:
