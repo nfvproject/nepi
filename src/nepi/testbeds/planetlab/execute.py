@@ -387,6 +387,7 @@ class TestbedController(testbed_impl.TestbedController):
                 app.node.architecture,
                 app.node.operatingSystem,
                 app.node.pl_distro,
+                app.__class__,
             )
         
         depgroups = collections.defaultdict(list)
@@ -469,9 +470,7 @@ class TestbedController(testbed_impl.TestbedController):
             suffix = ".pub")
             
         # Create secure 256-bits temporary passphrase
-        passphrase = ''.join(map(chr,[rng.randint(0,255) 
-                                      for rng in (random.SystemRandom(),)
-                                      for i in xrange(32)] )).encode("hex")
+        passphrase = os.urandom(32).encode("hex")
                 
         # Copy keys
         oprk = open(self.sliceSSHKey, "rb")
