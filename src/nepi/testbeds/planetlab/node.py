@@ -322,7 +322,15 @@ class Node(object):
     
     def unassign_node(self):
         self._node_id = None
-        self.__dict__.update(self.__orig_attrs)
+        
+        try:
+            orig_attrs = self.__orig_attrs
+        except AttributeError:
+            return
+            
+        for key, value in __orig_attrs.iteritems():
+            setattr(self, key, value)
+        del self.__orig_attrs
     
     def rate_nodes(self, nodes):
         rates = collections.defaultdict(int)
@@ -396,7 +404,10 @@ class Node(object):
             orig_attrs['server_key'] = self.server_key
             self.server_key = info['ssh_rsa_key']
         
-        self.__orig_attrs = orig_attrs
+        try:
+            self.__orig_attrs
+        except AttributeError:
+            self.__orig_attrs = orig_attrs
 
     def validate(self):
         if self.home_path is None:

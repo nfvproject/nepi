@@ -290,13 +290,22 @@ class Dependency(object):
         kill_agent = "kill $SSH_AGENT_PID"
         
         waitmaster = (
-            "{ . ./.ssh-agent.sh ; "
+            "{ "
+            "echo 'Checking master reachability' ; "
+            "if ping -c 3 %(master_host)s ; then "
+            "echo 'Master node reachable' ; "
+            "else "
+            "echo 'MASTER NODE UNREACHABLE' && "
+            "exit 1 ; "
+            "fi ; "
+            ". ./.ssh-agent.sh ; "
             "while [[ $(. ./.ssh-agent.sh > /dev/null ; ssh -q -o UserKnownHostsFile=%(hostkey)s %(sshopts)s %(master)s cat %(token_path)s.retcode || /bin/true) != %(token)s ]] ; do sleep 5 ; done ; "
             "if [[ $(. ./.ssh-agent.sh > /dev/null ; ssh -q -o UserKnownHostsFile=%(hostkey)s %(sshopts)s %(master)s cat %(token_path)s || /bin/true) != %(token)s ]] ; then echo BAD TOKEN ; exit 1 ; fi ; "
             "}" 
         ) % {
             'hostkey' : 'master_known_hosts',
             'master' : "%s@%s" % (self._master.node.slicename, self._master.node.hostname),
+            'master_host' : self._master.node.hostname,
             'token_path' : os.path.join(self._master.home_path, 'build.token'),
             'token' : server.shell_escape(self._master._master_token),
             'sshopts' : sshopts,
@@ -1054,6 +1063,7 @@ class YumDependency(Dependency):
                            r'The GPG keys listed for the ".*" repository are already installed but they are not correct for this package'
                            r'|Error: Cannot retrieve repository metadata (repomd.xml) for repository: .*[.] Please verify its path and try again'
                            r'|Error: disk I/O error'
+                           r'|MASTER NODE UNREACHABLE'
                            r')', 
                            re.I)
         return badre.search(out) or badre.search(err)
