@@ -113,7 +113,7 @@ def _pullPacket(buf, ether_mode=False, len=len):
     else:
         _,totallen = struct.unpack('HH',buf[0][:4])
         totallen = socket.htons(totallen)
-        if len(buf[0]) < totallen:
+        if len(buf[0]) > totallen:
             rv = buf[0][:totallen]
             buf[0] = buf[0][totallen:]
         else:
