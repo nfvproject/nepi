@@ -85,7 +85,7 @@ def formatPacket(packet, ether_mode):
             packet[48:] if (int(packet[1],16) > 5) else packet[40:], # payload
         ) ) )
 
-def _packetReady(buf, ether_mode=False, len=len):
+def _packetReady(buf, ether_mode=False, len=len, str=str):
     if not buf:
         return False
         
@@ -100,22 +100,23 @@ def _packetReady(buf, ether_mode=False, len=len):
             totallen = socket.htons(totallen)
             rv = len(buf[0]) >= totallen
         if not rv and len(buf) > 1:
-            nbuf = ''.join(buf)
-            buf.clear()
-            buf.append(nbuf)
+            # collapse only first two buffers
+            # as needed, to mantain len(buf) meaningful
+            p1 = buf.popleft()
+            buf[0] = p1+str(buf[0])
         else:
             return rv
     return rv
 
-def _pullPacket(buf, ether_mode=False, len=len):
+def _pullPacket(buf, ether_mode=False, len=len, buffer=buffer):
     if ether_mode:
         return buf.popleft()
     else:
         _,totallen = struct.unpack('HH',buf[0][:4])
         totallen = socket.htons(totallen)
         if len(buf[0]) > totallen:
-            rv = buf[0][:totallen]
-            buf[0] = buf[0][totallen:]
+            rv = buffer(buf[0],0,totallen)
+            buf[0] = buffer(buf[0],totallen)
         else:
             rv = buf.popleft()
         return rv
@@ -195,7 +196,7 @@ def nonblock(fd):
 
 def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr=sys.stderr, reconnect=None, rwrite=None, rread=None, tunqueue=1000, tunkqueue=1000,
         cipher='AES', accept_local=None, accept_remote=None, slowlocal=True, queueclass=None, bwlimit=None,
-        len=len, max=max, min=min, OSError=OSError, select=select.select, selecterror=select.error, os=os, socket=socket,
+        len=len, max=max, min=min, buffer=buffer, OSError=OSError, select=select.select, selecterror=select.error, os=os, socket=socket,
         retrycodes=(os.errno.EWOULDBLOCK, os.errno.EAGAIN, os.errno.EINTR) ):
     crypto_mode = False
     crypter = None
@@ -311,6 +312,10 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
     bkbuf = queueclass()
     nfwbuf = 0
     nbkbuf = 0
+    
+    # backwards queue functions
+    # they may need packet inspection to 
+    # reconstruct packet boundaries
     if ether_mode or udp:
         packetReady = bool
         pullPacket = queueclass.popleft
@@ -319,6 +324,13 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
         packetReady = _packetReady
         pullPacket = _pullPacket
         reschedule = queueclass.appendleft
+    
+    # forward queue functions
+    # no packet inspection needed
+    fpacketReady = bool
+    fpullPacket = queueclass.popleft
+    freschedule = queueclass.appendleft
+    
     tunfd = tun.fileno()
     os_read = os.read
     os_write = os.write
@@ -334,7 +346,7 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
         wset = []
         if packetReady(bkbuf):
             wset.append(tun)
-        if remoteok and packetReady(fwbuf) and (not bwlimit or bwfree > 0):
+        if remoteok and fpacketReady(fwbuf) and (not bwlimit or bwfree > 0):
             wset.append(remote)
         
         rset = []
@@ -389,10 +401,17 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
                         if crypto_mode:
                             packet = encrypt_(packet, crypter)
                         
-                        sent += rwrite(remote, packet)
+                        sentnow = rwrite(remote, packet)
+                        sent += sentnow
                         #wr += 1
                         
-                        if not rnonblock or not packetReady(fwbuf):
+                        if not udp and 0 <= sentnow < len(packet):
+                            # packet partially sent
+                            # reschedule the remaining part
+                            # this doesn't happen ever in udp mode
+                            freschedule(fwbuf, buffer(packet,sentnow))
+                        
+                        if not rnonblock or not fpacketReady(fwbuf):
                             break
                 except OSError,e:
                     # This except handles the entire While block on PURPOSE
@@ -400,7 +419,7 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
                     # The only operation that can raise this exception is rwrite
                     if e.errno in retrycodes:
                         # re-schedule packet
-                        reschedule(fwbuf, packet)
+                        freschedule(fwbuf, packet)
                     else:
                         raise
             except:
