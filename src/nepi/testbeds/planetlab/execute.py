@@ -214,7 +214,7 @@ class TestbedController(testbed_impl.TestbedController):
         # Initial algo:
         #   look for perfectly defined nodes
         #   (ie: those with only one candidate)
-        reserve_lock = threading.Lock()
+        reserve_lock = threading.RLock()
         def assignifunique(guid, node):
             # Try existing nodes first
             # If we have only one candidate, simply use it
