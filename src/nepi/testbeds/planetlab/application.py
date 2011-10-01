@@ -228,9 +228,10 @@ class Dependency(object):
             .replace("${SOURCES}", root+server.shell_escape(self.home_path))
             .replace("${BUILD}", root+server.shell_escape(os.path.join(self.home_path,'build'))) )
 
-    def _launch_build(self):
+    def _launch_build(self, trial=0):
         if self._master is not None:
-            self._do_install_keys()
+            if not trial:
+                self._do_install_keys()
             buildscript = self._do_build_slave()
         else:
             buildscript = self._do_build_master()
@@ -467,7 +468,7 @@ class Dependency(object):
                     # bad sync with master, may try again
                     # but first wait for master
                     self._master.async_setup_wait()
-                    self._launch_build()
+                    self._launch_build(trial+1)
                     self._do_wait_build(trial+1)
                 else:
                     raise RuntimeError, "Failed to set up application %s: "\
