@@ -44,6 +44,7 @@ class MulticastForwarder(application.Application):
         if not self.router:
             cmd += "-R "
         cmd += ' '.join([iface.address for iface in self.ifaces])
+        return cmd
     def _command_set(self, value):
         # ignore
         return
