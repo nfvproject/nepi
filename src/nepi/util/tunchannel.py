@@ -617,6 +617,9 @@ def tcp_connect(TERMINATE, stop, rsock, peer_addr, peer_port):
     if sock:
         print >>sys.stderr, "tcp_connect: TCP sock connected to remote %s:%s" % (peer_addr, peer_port)
         sock.settimeout(0) 
+        
+        print >>sys.stderr, "tcp_connect: disabling NAGLE"
+        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     return sock
 
 def tcp_listen(TERMINATE, stop, lsock, local_addr, local_port):
