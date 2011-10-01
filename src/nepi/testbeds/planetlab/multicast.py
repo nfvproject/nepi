@@ -40,13 +40,10 @@ class MulticastForwarder(application.Application):
         self.router = None
     
     def _command_get(self):
-        # canonical representation of dependencies
-        depends = ' '.join( sorted( (self.depends or "").split(' ') ) )
-        
-        # download rpms and pack into a tar archive
-        return (
-            "python mcastfwd.py %s"
-        ) % ( ' '.join([iface.address for iface in self.ifaces]), )
+        cmd = "python mcastfwd.py "
+        if not self.router:
+            cmd += "-R "
+        cmd += ' '.join([iface.address for iface in self.ifaces])
     def _command_set(self, value):
         # ignore
         return
@@ -77,10 +74,6 @@ class MulticastAnnouncer(application.Application):
         self.router = None
     
     def _command_get(self):
-        # canonical representation of dependencies
-        depends = ' '.join( sorted( (self.depends or "").split(' ') ) )
-        
-        # download rpms and pack into a tar archive
         return (
             "python mcastfwd.py -A %s"
         ) % ( ' '.join([iface.address for iface in self.ifaces]), )
