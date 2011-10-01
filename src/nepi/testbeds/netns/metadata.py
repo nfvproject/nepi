@@ -52,7 +52,10 @@ def connect_fd(testbed_instance, tap_guid, cross_data):
     passfd.sendfd(sock, tap.fd, '0')
     # TODO: after succesful transfer, the tap device should close the fd
 
-def connect_tunchannel_tap(testbed_instance, chan_guid, tap_guid):
+def connect_tunchannel_tun(testbed_instance, chan_guid, tap_guid):
+    connect_tunchannel_tap(testbed_instance, chan_guid, tap_guid, ethernet_mode=False)
+
+def connect_tunchannel_tap(testbed_instance, chan_guid, tap_guid, ethernet_mode=True):
     tap = testbed_instance._elements[tap_guid]
     chan = testbed_instance._elements[chan_guid]
 
@@ -63,7 +66,7 @@ def connect_tunchannel_tap(testbed_instance, chan_guid, tap_guid):
     chan.tun_socket = os.fdopen(tap.fd)
     
     # Set the channel to ethernet mode (it's a tap)
-    chan.ethernet_mode = True
+    chan.ethernet_mode = ethernet_mode
     
     # Check to see if the device uses PI headers
     # It's normally so
@@ -364,7 +367,7 @@ connections = [
     dict({
         "from": (TESTBED_ID, TUNCHANNEL, "->fd" ),
         "to":   (TESTBED_ID, TUNIFACE, "fd->" ),
-        "init_code": connect_tunchannel_tap,
+        "init_code": connect_tunchannel_tun,
         "can_cross": False
     }),
     dict({
