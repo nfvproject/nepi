@@ -110,7 +110,7 @@ class WirelessOverlay(object):
     def add_ns3_fdnd(self, ns3_desc, node):
         fdnd = ns3_desc.create("ns3::FdNetDevice")
         node.connector("devs").connect(fdnd.connector("node"))
-        fdnd.enable_trace("FdPcapTrace")
+        #fdnd.enable_trace("FdPcapTrace")
         return fdnd
 
     def add_ns3_node(self, ns3_desc):
@@ -144,7 +144,7 @@ class WirelessOverlay(object):
         wifi.connector("mac").connect(mac.connector("dev"))
         wifi.connector("manager").connect(manager.connector("dev"))
 
-        phy.enable_trace("YansWifiPhyPcapTrace")
+        #phy.enable_trace("YansWifiPhyPcapTrace")
         return wifi, phy
 
     def add_ns3_constant_mobility(self, ns3_desc, node, x, y, z):
@@ -265,8 +265,8 @@ class WirelessOverlay(object):
             netns_desc, netns_node, netns_addr):
         pl_tap = pl_desc.create("TunInterface")
         pl_tap.set_attribute_value("tun_cipher", "PLAIN") 
-        pl_tap.enable_trace("pcap")
-        pl_tap.enable_trace("packets")
+        #pl_tap.enable_trace("pcap")
+        #pl_tap.enable_trace("packets")
         self.add_ip_address(pl_tap, pl_addr, 30)
         pl_node.connector("devs").connect(pl_tap.connector("node"))
         netns_tap = netns_desc.create("TunNodeInterface")
@@ -357,15 +357,14 @@ class WirelessOverlay(object):
         app.set_attribute_value("user", self.user)
         app.connector("node").connect(netns_node.connector("apps"))
         
-        """
         # applications
         #target = "{#[%s].addr[0].[Address]#}" % label
         servers = []
         clients = []
         net = 0
         target = self.base_addr%2
-        port = 5001
-        command = "sleep 2; vlc -I dummy %s --sout '#rtp{dst=%s,port=%d,mux=ts}' vlc://quit" \
+        port = 5065
+        command = "sleep 2; vlc -I dummy %s --sout '#udp{dst=%s:%d}' vlc://quit" \
             % (self.movie, target, port)
         vlc_server = netns_desc.create("Application")
         vlc_server.set_attribute_value("command", command)
@@ -373,7 +372,7 @@ class WirelessOverlay(object):
         vlc_server.connector("node").connect(netns_node.connector("apps"))
         servers.append(vlc_server.guid)
 
-        command = "sudo dbus-uuidgen --ensure; vlc -vvv -I dummy rtp://%s:%d/test.ts --sout '#std{access=file,mux=ts,dst=big_buck_bunny_stream.ts}' "  % (target, port)
+        command = "sudo dbus-uuidgen --ensure; vlc -vvv -I dummy udp://@%s:%d --sout '#std{access=file,mux=ts,dst=big_buck_bunny_stream.ts}' "  % (target, port)
         vlc_client = pl_desc.create("Application")
         vlc_client.set_attribute_value("buildDepends", "vlc")
         vlc_client.set_attribute_value("rpmFusion", True)
@@ -382,7 +381,6 @@ class WirelessOverlay(object):
         vlc_client.enable_trace("stderr")
         vlc_client.connector("node").connect(pl_node1.connector("apps"))
         clients.append(vlc_client.guid)
-        """
 
         """
         # ROUTES
