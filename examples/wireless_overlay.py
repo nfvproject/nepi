@@ -180,7 +180,7 @@ class WirelessOverlay(object):
         pl_desc.set_attribute_value("plcHost", plchost)
         pl_desc.set_attribute_value("tapPortBase", port_base)
         pl_desc.set_attribute_value("p2pDeployment", False) # it's interactive, we don't want it in tests
-        pl_desc.set_attribute_value("dedicatedSlice", True)
+        #pl_desc.set_attribute_value("dedicatedSlice", True)
         pl_desc.set_attribute_value("plLogLevel", "DEBUG")
         return pl_desc
 
@@ -240,7 +240,7 @@ class WirelessOverlay(object):
 
     def add_pl_ns3_connection(self, pl_desc, pl_node, pl_addr,
             ns3_desc, ns3_node, ns3_addr):
-        pl_tap = pl_desc.create("TapInterface")
+        pl_tap = pl_desc.create("TunInterface")
         pl_tap.set_attribute_value("tun_cipher", "PLAIN") 
         self.add_ip_address(pl_tap, pl_addr, 30)
         pl_node.connector("devs").connect(pl_tap.connector("node"))
@@ -251,7 +251,7 @@ class WirelessOverlay(object):
 
     def add_pl_ns3_tunchan_connection(self, pl_desc, pl_node, pl_addr,
             ns3_desc, ns3_node, ns3_addr):
-        pl_tap = pl_desc.create("TapInterface")
+        pl_tap = pl_desc.create("TunInterface")
         self.add_ip_address(pl_tap, pl_addr, 30)
         pl_node.connector("devs").connect(pl_tap.connector("node"))
         ns3_fdnd = ns3_desc.create("ns3::FdNetDevice")
@@ -263,14 +263,19 @@ class WirelessOverlay(object):
 
     def add_pl_netns_connection(self, pl_desc, pl_node, pl_addr,
             netns_desc, netns_node, netns_addr):
-        pl_tap = pl_desc.create("TapInterface")
+        pl_tap = pl_desc.create("TunInterface")
+        pl_tap.set_attribute_value("tun_cipher", "PLAIN") 
+        pl_tap.enable_trace("pcap")
+        pl_tap.enable_trace("packets")
         self.add_ip_address(pl_tap, pl_addr, 30)
         pl_node.connector("devs").connect(pl_tap.connector("node"))
-        netns_tap = netns_desc.create("TapNodeInterface")
+        netns_tap = netns_desc.create("TunNodeInterface")
         netns_tap.set_attribute_value("up", True)
+        netns_tap.set_attribute_value("mtu", 1448)
         self.add_ip_address(netns_tap, netns_addr, 30)
         netns_node.connector("devs").connect(netns_tap.connector("node"))
         netns_tunchannel = netns_desc.create("TunChannel")
+        netns_tunchannel.set_attribute_value("tun_cipher", "PLAIN") 
         netns_tunchannel.connector("->fd").connect(netns_tap.connector("fd->"))
         pl_tap.connector("tcp").connect(netns_tunchannel.connector("tcp"))
 
@@ -351,7 +356,8 @@ class WirelessOverlay(object):
         app.set_attribute_value("command", command)
         app.set_attribute_value("user", self.user)
         app.connector("node").connect(netns_node.connector("apps"))
-
+        
+        """
         # applications
         #target = "{#[%s].addr[0].[Address]#}" % label
         servers = []
@@ -367,13 +373,16 @@ class WirelessOverlay(object):
         vlc_server.connector("node").connect(netns_node.connector("apps"))
         servers.append(vlc_server.guid)
 
-        command = "sudo dbus-uuidgen --ensure; vlc -I dummy rtp://%s:%d/test.ts --sout '#std{access=file,mux=ts,dst=big_buck_bunny_stream.ts}' "  % (target, port)
+        command = "sudo dbus-uuidgen --ensure; vlc -vvv -I dummy rtp://%s:%d/test.ts --sout '#std{access=file,mux=ts,dst=big_buck_bunny_stream.ts}' "  % (target, port)
         vlc_client = pl_desc.create("Application")
         vlc_client.set_attribute_value("buildDepends", "vlc")
         vlc_client.set_attribute_value("rpmFusion", True)
         vlc_client.set_attribute_value("command", command)
+        vlc_client.enable_trace("stdout")
+        vlc_client.enable_trace("stderr")
         vlc_client.connector("node").connect(pl_node1.connector("apps"))
         clients.append(vlc_client.guid)
+        """
 
         """
         # ROUTES
