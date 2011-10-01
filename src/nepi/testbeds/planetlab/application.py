@@ -292,7 +292,7 @@ class Dependency(object):
         waitmaster = (
             "{ "
             "echo 'Checking master reachability' ; "
-            "if ping -c 3 %(master_host)s ; then "
+            "if ping -c 3 %(master_host)s && (. ./.ssh-agent.sh > /dev/null ; ssh -o UserKnownHostsFile=%(hostkey)s %(sshopts)s %(master)s echo MASTER SAYS HI ) ; then "
             "echo 'Master node reachable' ; "
             "else "
             "echo 'MASTER NODE UNREACHABLE' && "
@@ -393,7 +393,7 @@ class Dependency(object):
 
         self._logger.info("Deploying %s at %s", self, self.node.hostname)
         
-    def _do_wait_build(self):
+    def _do_wait_build(self, trial=0):
         pid = self._build_pid
         ppid = self._build_ppid
         
@@ -463,11 +463,17 @@ class Dependency(object):
                 
                 if self.check_bad_host(buildlog, err):
                     self.node.blacklist()
-                
-                raise RuntimeError, "Failed to set up application %s: "\
-                        "build failed, got wrong token from pid %s/%s "\
-                        "(expected %r, got %r), see buildlog at %s:\n%s" % (
-                    self.home_path, pid, ppid, self._master_token, slave_token, self.node.hostname, buildlog)
+                elif self._master and trial < 3 and 'BAD TOKEN' in buildlog or 'BAD TOKEN' in err:
+                    # bad sync with master, may try again
+                    # but first wait for master
+                    self._master.async_setup_wait()
+                    self._launch_build()
+                    self._do_wait_build(trial+1)
+                else:
+                    raise RuntimeError, "Failed to set up application %s: "\
+                            "build failed, got wrong token from pid %s/%s "\
+                            "(expected %r, got %r), see buildlog at %s:\n%s" % (
+                        self.home_path, pid, ppid, self._master_token, slave_token, self.node.hostname, buildlog)
 
             self._logger.info("Built %s at %s", self, self.node.hostname)
 

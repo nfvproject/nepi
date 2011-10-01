@@ -328,7 +328,7 @@ class Node(object):
         except AttributeError:
             return
             
-        for key, value in __orig_attrs.iteritems():
+        for key, value in orig_attrs.iteritems():
             setattr(self, key, value)
         del self.__orig_attrs
     
