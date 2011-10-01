@@ -623,7 +623,7 @@ connector_types = dict({
                 "help": "Connector to a routing daemon", 
                 "name": "router",
                 "max": 1, 
-                "min": 1
+                "min": 0
             }),
     "fwd": dict({
                 "help": "Forwarder this routing daemon communicates with", 
