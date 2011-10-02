@@ -360,7 +360,8 @@ class Dependency(object):
             user = self.node.slicename,
             agent = None,
             ident_key = self.node.ident_path,
-            server_key = self.node.server_key
+            server_key = self.node.server_key,
+            hostip = self.node.hostip,
             )
         
         if proc.wait():
@@ -379,7 +380,8 @@ class Dependency(object):
                 user = self.node.slicename,
                 agent = None,
                 ident_key = self.node.ident_path,
-                server_key = self.node.server_key
+                server_key = self.node.server_key,
+                hostip = self.node.hostip
                 )
             
             if pidtuple:
@@ -410,13 +412,16 @@ class Dependency(object):
                     user = self.node.slicename,
                     agent = None,
                     ident_key = self.node.ident_path,
-                    server_key = self.node.server_key
+                    server_key = self.node.server_key,
+                    hostip = self.node.hostip
                     )
                 
                 if status is rspawn.FINISHED:
                     self._build_pid = self._build_ppid = None
                     break
                 elif status is not rspawn.RUNNING:
+                    self._logger.warn("Busted waiting for %s to finish building at %s %s", self, self.node.hostname,
+                            "(build slave)" if self._master is not None else "(build master)")
                     bustspin += 1
                     time.sleep(delay*(5.5+random.random()))
                     if bustspin > 12:
@@ -498,7 +503,8 @@ class Dependency(object):
                 port = None,
                 user = self.node.slicename,
                 agent = None,
-                ident_key = self.node.ident_path
+                ident_key = self.node.ident_path,
+                hostip = self.node.hostip
                 )
         
         

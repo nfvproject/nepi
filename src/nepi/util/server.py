@@ -603,7 +603,8 @@ def popen_ssh_command(command, host, port, user, agent,
         retry = 0,
         err_on_timeout = True,
         connect_timeout = 30,
-        persistent = True):
+        persistent = True,
+        hostip = None):
     """
     Executes a remote commands, returns ((stdout,stderr),process)
     """
@@ -619,7 +620,7 @@ def popen_ssh_command(command, host, port, user, agent,
             '-o', 'ConnectionAttempts=3',
             '-o', 'ServerAliveInterval=30',
             '-o', 'TCPKeepAlive=yes',
-            '-l', user, host]
+            '-l', user, hostip or host]
     if persistent and openssh_has_persist():
         args.extend([
             '-o', 'ControlMaster=auto',
@@ -653,7 +654,7 @@ def popen_ssh_command(command, host, port, user, agent,
         try:
             out, err = _communicate(proc, stdin, timeout, err_on_timeout)
             if proc.poll():
-                if err.strip().startswith('ssh: '):
+                if err.strip().startswith('ssh: ') or err.strip().startswith('mux_client_hello_exchange: '):
                     # SSH error, can safely retry
                     continue
                 elif retry:
