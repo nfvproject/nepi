@@ -180,7 +180,7 @@ class WirelessOverlay(object):
         pl_desc.set_attribute_value("plcHost", plchost)
         pl_desc.set_attribute_value("tapPortBase", port_base)
         pl_desc.set_attribute_value("p2pDeployment", False) # it's interactive, we don't want it in tests
-        #pl_desc.set_attribute_value("dedicatedSlice", True)
+        pl_desc.set_attribute_value("dedicatedSlice", True)
         pl_desc.set_attribute_value("plLogLevel", "DEBUG")
         return pl_desc
 
@@ -243,7 +243,7 @@ class WirelessOverlay(object):
 
     def add_pl_ns3_connection(self, pl_desc, pl_node, pl_addr,
             ns3_desc, ns3_node, ns3_addr):
-        pl_tap = pl_desc.create("TunInterface")
+        pl_tap = pl_desc.create("TapInterface")
         pl_tap.set_attribute_value("tun_cipher", "PLAIN") 
         self.add_ip_address(pl_tap, pl_addr, 30)
         pl_node.connector("devs").connect(pl_tap.connector("node"))
@@ -258,6 +258,7 @@ class WirelessOverlay(object):
         self.add_ip_address(pl_tap, pl_addr, 30)
         pl_node.connector("devs").connect(pl_tap.connector("node"))
         ns3_fdnd = ns3_desc.create("ns3::FdNetDevice")
+        ns3_fdnd.enable_trace("FdPcapTrace")
         self.add_ip_address(ns3_fdnd, ns3_addr, 30)
         ns3_node.connector("devs").connect(ns3_fdnd.connector("node"))
         ns3_tc = ns3_desc.create("ns3::Nepi::TunChannel")
@@ -296,7 +297,6 @@ class WirelessOverlay(object):
         netns_desc = self.add_netns_testbed(exp_desc)
         netns_node = self.add_netns_node(netns_desc)
 
-        """
         ## NS3 ##
         ns3_desc = self.add_ns3_in_pl(exp_desc, pl_desc, pl_node1, pl_iface1, "ns3")
         wifi_chan = self.add_ns3_wifi_channel(ns3_desc)
@@ -341,19 +341,19 @@ class WirelessOverlay(object):
             self.add_route(netns_node, network, 30, (self.base_addr%2))
             self.add_route(pl_node1, network, 30, (self.base_addr%6))
             self.add_route(ap_node, network, 30, wifi_addr)
-        """ 
+        
         # connection PL1/NETNS
         pl_addr = (self.base_addr%2)
         netns_addr = (self.base_addr%1)
         self.add_pl_netns_connection(pl_desc, pl_node1, pl_addr,
             netns_desc, netns_node, netns_addr)
-        """
+        
         # connection PL1/NS3
         pl_addr = (self.base_addr%5)
         ns3_addr = (self.base_addr%6)
         self.add_pl_ns3_connection(pl_desc, pl_node1, pl_addr,
             ns3_desc, ap_node, ns3_addr)
-        """
+        
         # APPLICATIONS
         command = "xterm" 
         app = netns_desc.create("Application")
@@ -361,24 +361,22 @@ class WirelessOverlay(object):
         app.set_attribute_value("user", self.user)
         app.connector("node").connect(netns_node.connector("apps"))
 
-        """
         # applications
         #target = "{#[%s].addr[0].[Address]#}" % label
         servers = []
         clients = []
         net = 0
         target = self.base_addr%2
+        local = self.base_addr%1
         port = 5065
-        # vlc -vvv -I dummy /home/alina/repos/nepi/examples/big_buck_bunny_240p_mpeg4.ts --miface-addr '192.168.4.1'  --sout '#udp{dst=239.255.12.42}'
-        command = "sleep 2; vlc -I dummy %s --sout '#udp{dst=%s:%d}' vlc://quit" \
-            % (self.movie, target, port)
+        command = "sleep 2; vlc -I dummy %s --miface-addr=%s --sout '#udp{dst=%s:%d}' vlc://quit" \
+            % (local,self.movie, target, port)
         vlc_server = netns_desc.create("Application")
         vlc_server.set_attribute_value("command", command)
         vlc_server.set_attribute_value("user", self.user)
         vlc_server.connector("node").connect(netns_node.connector("apps"))
         servers.append(vlc_server.guid)
 
-        # vlc -vvv -I dummy udp://@239.255.12.42 --sout '#std{access=file,mux=ts,dst=coco.ts}'
         command = "sudo dbus-uuidgen --ensure; vlc -vvv -I dummy udp://@%s:%d --sout '#std{access=file,mux=ts,dst=big_buck_bunny_stream.ts}' "  % (target, port)
         vlc_client = pl_desc.create("Application")
         vlc_client.set_attribute_value("buildDepends", "vlc")
@@ -388,9 +386,7 @@ class WirelessOverlay(object):
         vlc_client.enable_trace("stderr")
         vlc_client.connector("node").connect(pl_node1.connector("apps"))
         clients.append(vlc_client.guid)
-        """
 
-        """
         # ROUTES
         self.add_route(netns_node, (self.base_addr%32), 27, (self.base_addr%2))
         self.add_route(netns_node, (self.base_addr%4), 30, (self.base_addr%2))
@@ -398,7 +394,7 @@ class WirelessOverlay(object):
         self.add_route(pl_node1, (self.base_addr%32), 27, (self.base_addr%6))
 
         self.add_route(ap_node, (self.base_addr%0), 30, (self.base_addr%5))
-        """
+        
         xml = exp_desc.to_xml()
         controller = ExperimentController(xml, self.root_dir)
         controller.start()
