@@ -192,6 +192,7 @@ class WirelessOverlay(object):
         iface.connector("inet").connect(inet.connector("devs"))
         node.connector("devs").connect(iface.connector("node"))
         forwarder = pl_desc.create("MulticastForwarder")
+        forwarder.enable_trace("stderr")
         node.connector("apps").connect(forwarder.connector("node"))
         return node, iface
 
