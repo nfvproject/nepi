@@ -267,14 +267,14 @@ class Dependency(object):
         if self.sources:
             sources = self.sources.split(' ')
             files.update(
-                "%s@%s:%s" % (self._master.node.slicename, self._master.node.hostname, 
+                "%s@%s:%s" % (self._master.node.slicename, self._master.node.hostip, 
                     os.path.join(self._master.home_path, os.path.basename(source)),)
                 for source in sources
             )
         
         if self.build:
             files.add(
-                "%s@%s:%s" % (self._master.node.slicename, self._master.node.hostname, 
+                "%s@%s:%s" % (self._master.node.slicename, self._master.node.hostip, 
                     os.path.join(self._master.home_path, 'build.tar.gz'),)
             )
         
@@ -305,8 +305,8 @@ class Dependency(object):
             "}" 
         ) % {
             'hostkey' : 'master_known_hosts',
-            'master' : "%s@%s" % (self._master.node.slicename, self._master.node.hostname),
-            'master_host' : self._master.node.hostname,
+            'master' : "%s@%s" % (self._master.node.slicename, self._master.node.hostip),
+            'master_host' : self._master.node.hostip,
             'token_path' : os.path.join(self._master.home_path, 'build.token'),
             'token' : server.shell_escape(self._master._master_token),
             'sshopts' : sshopts,
@@ -599,7 +599,7 @@ class Dependency(object):
         try:
             self._popen_scp(
                 cStringIO.StringIO('%s,%s %s\n' % (
-                    self._master.node.hostname, socket.gethostbyname(self._master.node.hostname), 
+                    self._master.node.hostname, self._master.node.hostip, 
                     self._master.node.server_key)),
                 '%s@%s:%s' % (self.node.slicename, self.node.hostname, 
                     os.path.join(self.home_path,"master_known_hosts") )
