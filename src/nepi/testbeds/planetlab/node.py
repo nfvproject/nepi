@@ -322,6 +322,7 @@ class Node(object):
     
     def unassign_node(self):
         self._node_id = None
+        self.hostip = None
         
         try:
             orig_attrs = self.__orig_attrs
@@ -403,6 +404,8 @@ class Node(object):
         if 'ssh_rsa_key' in info:
             orig_attrs['server_key'] = self.server_key
             self.server_key = info['ssh_rsa_key']
+        
+        self.hostip = socket.gethostbyname(self.hostname)
         
         try:
             self.__orig_attrs
