@@ -1,6 +1,7 @@
 # Utility library for spawning remote asynchronous tasks
 from nepi.util import server
 import getpass
+import logging
 
 class STDOUT: 
     """
@@ -26,7 +27,7 @@ class NOT_STARTED:
 def remote_spawn(command, pidfile, stdout='/dev/null', stderr=STDOUT, stdin='/dev/null', home=None, create_home=False, sudo=False,
         host = None, port = None, user = None, agent = None, 
         ident_key = None, server_key = None,
-        tty = False):
+        tty = False, hostip = None):
     """
     Spawn a remote command such that it will continue working asynchronously.
     
@@ -88,7 +89,8 @@ def remote_spawn(command, pidfile, stdout='/dev/null', stderr=STDOUT, stdin='/de
         agent = agent,
         ident_key = ident_key,
         server_key = server_key,
-        tty = tty 
+        tty = tty ,
+        hostip = hostip
         )
     
     if proc.wait():
@@ -99,7 +101,7 @@ def remote_spawn(command, pidfile, stdout='/dev/null', stderr=STDOUT, stdin='/de
 @server.eintr_retry
 def remote_check_pid(pidfile,
         host = None, port = None, user = None, agent = None, 
-        ident_key = None, server_key = None):
+        ident_key = None, server_key = None, hostip = None):
     """
     Check the pidfile of a process spawned with remote_spawn.
     
@@ -123,7 +125,8 @@ def remote_check_pid(pidfile,
         user = user,
         agent = agent,
         ident_key = ident_key,
-        server_key = server_key
+        server_key = server_key,
+        hostip = hostip
         )
         
     if proc.wait():
@@ -140,7 +143,7 @@ def remote_check_pid(pidfile,
 @server.eintr_retry
 def remote_status(pid, ppid, 
         host = None, port = None, user = None, agent = None, 
-        ident_key = None, server_key = None):
+        ident_key = None, server_key = None, hostip = None):
     """
     Check the status of a process spawned with remote_spawn.
     
@@ -155,7 +158,7 @@ def remote_status(pid, ppid,
     """
 
     (out,err),proc = server.popen_ssh_command(
-        "ps --ppid %(ppid)d -o pid | grep -c %(pid)d ; true" % {
+        "ps --pid %(pid)d -o pid | grep -c %(pid)d ; true" % {
             'ppid' : ppid,
             'pid' : pid,
         },
@@ -164,7 +167,8 @@ def remote_status(pid, ppid,
         user = user,
         agent = agent,
         ident_key = ident_key,
-        server_key = server_key
+        server_key = server_key,
+        hostip = hostip
         )
     
     if proc.wait():
@@ -175,6 +179,8 @@ def remote_status(pid, ppid,
         try:
             status = bool(int(out.strip()))
         except:
+            if out or err:
+                logging.warn("Error checking remote status:\n%s%s\n", out, err)
             # Ignore, many ways to fail that don't matter that much
             return NOT_STARTED
     return RUNNING if status else FINISHED
@@ -183,7 +189,7 @@ def remote_status(pid, ppid,
 @server.eintr_retry
 def remote_kill(pid, ppid, sudo = False,
         host = None, port = None, user = None, agent = None, 
-        ident_key = None, server_key = None,
+        ident_key = None, server_key = None, hostip = None,
         nowait = False):
     """
     Kill a process spawned with remote_spawn.
@@ -203,22 +209,27 @@ def remote_kill(pid, ppid, sudo = False,
         Nothing, should have killed the process
     """
     
+    if sudo:
+        subkill = "$(ps --ppid %(pid)d -o pid h)" % { 'pid' : pid }
+    else:
+        subkill = ""
     cmd = """
-%(sudo)s kill -- -%(pid)d || /bin/true
-%(sudo)s kill %(pid)d || /bin/true
+SUBKILL="%(subkill)s" ;
+%(sudo)s kill -- -%(pid)d $SUBKILL || /bin/true
+%(sudo)s kill %(pid)d $SUBKILL || /bin/true
 for x in 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 ; do 
     sleep 0.2 
-    if [ `ps --ppid %(ppid)d -o pid | grep -c %(pid)d` == '0' ]; then
+    if [ `ps --pid %(pid)d -o pid | grep -c %(pid)d` == '0' ]; then
         break
     else
-        %(sudo)s kill -- -%(pid)d || /bin/true
-        %(sudo)s kill %(pid)d || /bin/true
+        %(sudo)s kill -- -%(pid)d $SUBKILL || /bin/true
+        %(sudo)s kill %(pid)d $SUBKILL || /bin/true
     fi
     sleep 1.8
 done
-if [ `ps --ppid %(ppid)d -o pid | grep -c %(pid)d` != '0' ]; then
-    %(sudo)s kill -9 -- -%(pid)d || /bin/true
-    %(sudo)s kill -9 %(pid)d || /bin/true
+if [ `ps --pid %(pid)d -o pid | grep -c %(pid)d` != '0' ]; then
+    %(sudo)s kill -9 -- -%(pid)d $SUBKILL || /bin/true
+    %(sudo)s kill -9 %(pid)d $SUBKILL || /bin/true
 fi
 """
     if nowait:
@@ -228,14 +239,16 @@ fi
         cmd % {
             'ppid' : ppid,
             'pid' : pid,
-            'sudo' : 'sudo -S' if sudo else ''
+            'sudo' : 'sudo -S' if sudo else '',
+            'subkill' : subkill,
         },
         host = host,
         port = port,
         user = user,
         agent = agent,
         ident_key = ident_key,
-        server_key = server_key
+        server_key = server_key,
+        hostip = hostip
         )
     
     # wait, don't leave zombies around
