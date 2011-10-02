@@ -268,7 +268,7 @@ class WirelessOverlay(object):
     def add_pl_netns_connection(self, pl_desc, pl_node, pl_addr,
             netns_desc, netns_node, netns_addr):
         pl_tap = pl_desc.create("TunInterface")
-        pl_tap.set_attribute_value("tun_cipher", "PLAIN") 
+        #pl_tap.set_attribute_value("tun_cipher", "PLAIN") 
         pl_tap.set_attribute_value("multicast", True) 
         #pl_tap.enable_trace("pcap")
         #pl_tap.enable_trace("packets")
@@ -280,7 +280,7 @@ class WirelessOverlay(object):
         self.add_ip_address(netns_tap, netns_addr, 30)
         netns_node.connector("devs").connect(netns_tap.connector("node"))
         netns_tunchannel = netns_desc.create("TunChannel")
-        netns_tunchannel.set_attribute_value("tun_cipher", "PLAIN") 
+        #netns_tunchannel.set_attribute_value("tun_cipher", "PLAIN") 
         netns_tunchannel.connector("->fd").connect(netns_tap.connector("fd->"))
         pl_tap.connector("tcp").connect(netns_tunchannel.connector("tcp"))
 
