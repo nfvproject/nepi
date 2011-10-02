@@ -230,7 +230,7 @@ class Dependency(object):
 
     def _launch_build(self, trial=0):
         if self._master is not None:
-            if not trial:
+            if not trial or self._master_prk is not None:
                 self._do_install_keys()
             buildscript = self._do_build_slave()
         else:
@@ -471,11 +471,19 @@ class Dependency(object):
                     self._launch_build(trial+1)
                     self._do_wait_build(trial+1)
                 else:
+                    # No longer need'em
+                    self._master_prk = None
+                    self._master_puk = None
+        
                     raise RuntimeError, "Failed to set up application %s: "\
                             "build failed, got wrong token from pid %s/%s "\
                             "(expected %r, got %r), see buildlog at %s:\n%s" % (
                         self.home_path, pid, ppid, self._master_token, slave_token, self.node.hostname, buildlog)
 
+            # No longer need'em
+            self._master_prk = None
+            self._master_puk = None
+        
             self._logger.info("Built %s at %s", self, self.node.hostname)
 
     def _do_kill_build(self):
@@ -600,13 +608,14 @@ class Dependency(object):
             raise RuntimeError, "Failed to set up application deployment keys: %s %s" \
                     % (e.args[0], e.args[1],)
         
-        # No longer need'em
-        self._master_prk = None
-        self._master_puk = None
     
     def cleanup(self):
         # make sure there's no leftover build processes
         self._do_kill_build()
+        
+        # No longer need'em
+        self._master_prk = None
+        self._master_puk = None
 
     @server.eintr_retry
     def _popen_scp(self, src, dst, retry = 3):
