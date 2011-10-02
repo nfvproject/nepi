@@ -48,7 +48,7 @@ parser.add_option(
 parser.add_option(
     "-v", "--verbose", dest="verbose", action="store_true",
     default = False,
-    help = "Path of the unix socket in which the program will listen for routing changes")
+    help = "Log more verbosely")
 
 (options, remaining_args) = parser.parse_args(sys.argv[1:])
 
@@ -229,6 +229,7 @@ class FWDThread(threading.Thread):
         fwd_sockets = self.fwd_sockets
         npending = 0
         noent = (None,None)
+        def_socket = fwd_sockets['\x00\x00\x00\x00']
         
         while not self._stop:
             # Get packet
@@ -251,7 +252,8 @@ class FWDThread(threading.Thread):
             
             if packet[9] == '\x02':
                 # IGMP packet? It's for mrouted
-                self.router_socket.send(packet)
+                if router_socket:
+                    router_socket.send(packet)
             elif packet[9] == '\x00':
                 # LOOPING packet, discard
                 continue
@@ -273,16 +275,22 @@ class FWDThread(threading.Thread):
                         ttl_thresh = ord_(fwd_targets[vifi])
                         if ttl_thresh > 0 and ttl > ttl_thresh:
                             if vif[4] in fwd_sockets:
-                                print >>sys.stderr, socket.inet_ntoa(vif[4]),
-                                fwd_socket = fwd_sockets[vif[4]]
-                                fwd_socket.sendto(packet, 0, tgt_group)
+                                try:
+                                    print >>sys.stderr, socket.inet_ntoa(vif[4]),
+                                    fwd_socket = fwd_sockets[vif[4]]
+                                    fwd_socket.sendto(packet, 0, tgt_group)
+                                except:
+                                    pass
                 
                 # Forward to eth0
-                fwd_socket = fwd_sockets[vif[4]]
-                fwd_socket.sendto(packet, 0, tgt_group)
+                try:
+                    print >>sys.stderr, 'default',
+                    def_socket.sendto(packet, 0, tgt_group)
+                except:
+                    pass
                 
                 print >>sys.stderr, "."
-            else:
+            elif router_socket:
                 # Mark pending
                 if len_(pending) < self.maxpending:
                     tgt_group = addrinfo[4:]
@@ -293,6 +301,16 @@ class FWDThread(threading.Thread):
                     # Notify mrouted by forwarding it with protocol 0
                     router_socket.send(''.join(
                         (packet[:9],'\x00',packet[10:]) ))
+            else:
+                # Forward to eth0
+                ttl = ord_(packet[8])
+                tgt_group = (socket.inet_ntoa(addrinfo[4:]),0)
+                
+                try:
+                    print >>sys.stderr, map(socket.inet_ntoa, (parent, addrinfo[:4], addrinfo[4:])), "-> ttl", ttl, 'default'
+                    def_socket.sendto(packet, 0, tgt_group)
+                except:
+                    pass
     
     def stop(self):
         self._stop = True
