@@ -864,7 +864,12 @@ def popen_scp(source, dest,
         tmp_known_hosts = None
         args = ['scp', '-q', '-p', '-C',
                 # Don't bother with localhost. Makes test easier
-                '-o', 'NoHostAuthenticationForLocalhost=yes' ]
+                '-o', 'NoHostAuthenticationForLocalhost=yes',
+                '-o', 'ConnectTimeout=30',
+                '-o', 'ConnectionAttempts=3',
+                '-o', 'ServerAliveInterval=30',
+                '-o', 'TCPKeepAlive=yes' ]
+                
         if port:
             args.append('-P%d' % port)
         if recursive:
@@ -878,6 +883,11 @@ def popen_scp(source, dest,
         if isinstance(source,list):
             args.extend(source)
         else:
+            if openssh_has_persist():
+                connkey = make_connkey(user,host,port)
+                args.extend([
+                    '-o', 'ControlMaster=no',
+                    '-o', 'ControlPath=/tmp/nepi_ssh_pl_%s' % ( connkey, ) ])
             args.append(source)
         args.append(dest)
 
