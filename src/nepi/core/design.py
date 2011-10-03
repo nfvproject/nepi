@@ -371,7 +371,7 @@ class ExperimentDescription(object):
             for box in tbd_desc.boxes:
                 l = box.get_attribute_value("label")
                 if label == l:
-                    return tbd_desc
+                    return box
         return None
     
     def add_testbed_description(self, provider, guid = None):
