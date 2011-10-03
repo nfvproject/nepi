@@ -15,6 +15,7 @@ import sys
 import logging
 import ipaddr
 import operator
+import re
 
 from nepi.util import server
 from nepi.util import parallel
@@ -466,6 +467,8 @@ class Node(object):
                     )
                 
                 if proc.wait():
+                    if self.check_bad_host(out,err):
+                        self.blacklist()
                     raise RuntimeError, "Failed to set up application: %s %s" % (out,err,)
             
             # Launch p2p yum dependency installer
@@ -753,3 +756,10 @@ class Node(object):
         elif out or err:
             logger.debug("%s said: %s%s", method, out, err)
 
+    def check_bad_host(self, out, err):
+        badre = re.compile(r'(?:'
+                           r"curl: [(]\d+[)] Couldn't resolve host 'download1[.]rpmfusion[.]org'"
+                           r'|Error: disk I/O error'
+                           r')', 
+                           re.I)
+        return badre.search(out) or badre.search(err)
