@@ -474,7 +474,9 @@ class Dependency(object):
                     # but first wait for master
                     self._master.async_setup_wait()
                     self._launch_build(trial+1)
-                    self._do_wait_build(trial+1)
+                    return self._do_wait_build(trial+1)
+                elif trial < 3:
+                    return self._do_wait_build(trial+1)
                 else:
                     # No longer need'em
                     self._master_prk = None
@@ -1088,4 +1090,4 @@ class YumDependency(Dependency):
                            r'|MASTER NODE UNREACHABLE'
                            r')', 
                            re.I)
-        return badre.search(out) or badre.search(err)
+        return badre.search(out) or badre.search(err) or self.node.check_bad_host(out,err)
