@@ -27,9 +27,9 @@ import logging
 import metadata
 import weakref
 
-def getAPI(user, pass_):
+def getAPI(user, pass_, **kw):
     import plcapi
-    return plcapi.PLCAPI(username=user, password=pass_)
+    return plcapi.PLCAPI(username=user, password=pass_, **kw)
 
 def filterBlacklist(candidates):
     blpath = environ.homepath('plblacklist')
@@ -61,6 +61,16 @@ def appendBlacklist(node_ids):
             bl.write("%s\n" % (node_id,))
     finally:
         bl.close()
+
+def getVnet(api, slicename):
+    slicetags = api.GetSliceTags(
+        name = slicename,
+        tagname = 'vsys_vnet',
+        fields=('value',))
+    if slicetags:
+        return slicetags[0]['value']
+    else:
+        return None
 
 def getNodes(api, num, **constraints):
     # Now do the backtracking search for a suitable solution

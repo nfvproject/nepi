@@ -108,7 +108,10 @@ class IGMPThread(threading.Thread):
         maddr_re = re.compile(r"\s*inet\s*(\d{1,3}[.]\d{1,3}[.]\d{1,3}[.]\d{1,3})\s*")
         cur_maddr = set()
         lastfullrefresh = time.time()
+        vif_addr_i = socket.inet_aton(self.vif_addr)
         while not self._stop:
+            mirror_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            
             # Get current subscriptions @ vif
             proc = subprocess.Popen(['ip','maddr','show',self.tun_name],
                 stdout = subprocess.PIPE,
@@ -132,6 +135,13 @@ class IGMPThread(threading.Thread):
                 match = maddr_re.match(line)
                 if match:
                     new_maddr.add(match.group(1))
+                    try:
+                        mirror_socket.setsockopt(
+                            socket.IPPROTO_IP,
+                            socket.IP_ADD_MEMBERSHIP,
+                            socket.inet_aton(match.group(1))+vif_addr_i )
+                    except:
+                        traceback.print_exc(file=sys.stderr)
             proc.wait()
             
             # Every now and then, send a full report
@@ -252,8 +262,16 @@ class FWDThread(threading.Thread):
             
             if packet[9] == '\x02':
                 # IGMP packet? It's for mrouted
-                if router_socket:
-                    router_socket.send(packet)
+                # unless it's coming from it
+                # NOTE: mrouted already picks it up when it's sent
+                #       to the virtual interface. Injecting it would
+                #       only duplicate it.
+                #if router_socket and packet[12:16] not in fwd_sockets:
+                #    try:
+                #        router_socket.send(packet)
+                #    except:
+                #        traceback.print_exc(file=sys.stderr)
+                continue
             elif packet[9] == '\x00':
                 # LOOPING packet, discard
                 continue
@@ -300,7 +318,7 @@ class FWDThread(threading.Thread):
                     
                     # Notify mrouted by forwarding it with protocol 0
                     router_socket.send(''.join(
-                        (packet[:9],'\x00',packet[10:]) ))
+                        (packet[:9],'\x00',packet[10:1500]) ))
             else:
                 # Forward to eth0
                 ttl = ord_(packet[8])
@@ -437,8 +455,16 @@ class RouterThread(threading.Thread):
 
 
 igmp_threads = []
+valid_vifs = []
 for vif_addr in remaining_args:
-    igmp_threads.append(IGMPThread(vif_addr))
+    try:
+        igmp_threads.append(IGMPThread(vif_addr))
+        valid_vifs.append(vif_addr)
+    except:
+        traceback.print_exc()
+        print >>sys.stderr, "WARNING: could not listen on interface", vif_addr
+
+remaining_args = valid_vifs
 
 rt_cache = {}
 vifs = {}
