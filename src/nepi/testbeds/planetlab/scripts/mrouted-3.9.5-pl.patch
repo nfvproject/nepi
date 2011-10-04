@@ -9,8 +9,8 @@ diff -ur --exclude='*.o' --exclude=cfparse.c --exclude='*~' mrouted-3.9.5/config
 +	if (flags & IFF_POINTOPOINT) {
  	    v->uv_flags |= VIFF_REXMIT_PRUNES;
 +	    v->uv_ptp_addr = ((struct sockaddr_in *)ifa->ifa_dstaddr)->sin_addr.s_addr;
-+	} else if (flags & IFF_BROADCAST) {
-+	    /* getifaddr doesn't give us the p2p link in this case */
++	} 
++	{   /* getifaddr doesn't give us the p2p link reliably */
 +	    /* So use ip, which uses netlink, to query it */
 +	    char buf[1024];
 +        size_t rode;
@@ -455,7 +455,7 @@ diff -ur --exclude='*.o' --exclude=cfparse.c --exclude='*~' mrouted-3.9.5/main.c
 +		    if (errno != EINTR) logit(LOG_ERR, errno, "recvfrom");
 +		    continue;
 +		}
-+		accept_igmp(recvlen);
++		if (did_final_init) accept_igmp(recvlen);
 +	    }
 +#endif
 +
