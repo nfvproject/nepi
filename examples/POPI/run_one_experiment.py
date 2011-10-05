@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from nepi.core.execute import ExperimentController
 import os
+import os.path
 import re
 import time
 import commands
@@ -14,6 +14,10 @@ import shutil
 import sys
 import cPickle
 import gzip
+
+sys.path.append(os.path.abspath("../../src"))
+
+from nepi.core.execute import ExperimentController
 
 class PopiExperiment(object):
     def run(self, duration, xml_filepath, testset, results_dir, iteration):
