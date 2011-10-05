@@ -3,6 +3,7 @@
 
 import getpass
 import os
+import os.path
 import re
 import sys
 import shutil
@@ -19,7 +20,7 @@ import traceback
 import math
 import subprocess
 
-sys.path.append("../../src")
+sys.path.append(os.path.abspath("../../src"))
 
 from nepi.core.design import ExperimentDescription, FactoriesProvider
 from nepi.core.execute import ExperimentController
