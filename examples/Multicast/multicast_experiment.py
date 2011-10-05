@@ -769,7 +769,7 @@ if __name__ == '__main__':
         exp.plpass = getpass.getpass("Password for %s: " % (exp.pluser,))
     
     # Fix some distro's environment to work well with netns
-    if re.match(r"[^:]*:\d+", os.environ['DISPLAY']):
+    if re.match(r"[^:]*:\d+$", os.environ['DISPLAY']):
         os.environ['DISPLAY'] += '.0'
     if not os.environ.get('XAUTHORITY'):
         os.environ['XAUTHORITY'] = os.path.join(os.environ['HOME'], '.Xauthority')
