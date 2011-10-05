@@ -131,7 +131,7 @@ class TunIface(object):
         self.up = None
         self.mtu = None
         self.snat = False
-        self.txqueuelen = None
+        self.txqueuelen = 1000
         self.pointopoint = None
         self.multicast = False
         self.bwlimit = None
