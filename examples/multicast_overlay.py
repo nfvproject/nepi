@@ -2,11 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import getpass
-from nepi.core.design import ExperimentDescription, FactoriesProvider
-from nepi.core.execute import ExperimentController
-from nepi.util import proxy
-from nepi.util.constants import DeploymentConfiguration as DC, ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP
-from nepi.testbeds.planetlab import util as plutil
 from optparse import OptionParser
 import os
 import sys
@@ -20,6 +15,14 @@ import ipaddr
 import gzip
 import random
 import math
+
+sys.path.append("../../src")
+
+from nepi.core.design import ExperimentDescription, FactoriesProvider
+from nepi.core.execute import ExperimentController
+from nepi.util import proxy
+from nepi.util.constants import DeploymentConfiguration as DC, ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP
+from nepi.testbeds.planetlab import util as plutil
 
 class PlanetLabMulticastOverlay:
     testbed_id = "planetlab"
