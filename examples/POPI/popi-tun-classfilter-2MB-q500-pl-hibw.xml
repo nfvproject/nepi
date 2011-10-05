@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<experiment>
+    <testbeds>
+        <testbed guid="1" testbed_id="planetlab" testbed_version="0.1">
+            <graphical_info height="580.0" width="872.882843778" x="-317.0" y="-124.0"/>
+            <attributes>
+                <attribute name="slice" type="STRING" value="##plslice##"/>
+                <attribute name="plLogLevel" type="STRING" value="INFO"/>
+                <attribute name="logLevel" type="STRING" value="Debug"/>
+                <attribute name="dedicatedSlice" type="BOOL" value="True"/>
+                <attribute name="plcUrl" type="STRING" value="https://%(hostname)s:443/PLCAPI/"/>
+                <attribute name="recoveryPolicy" type="STRING" value="Recover"/>
+                <attribute name="p2pDeployment" type="BOOL" value="False"/>
+                <attribute name="label" type="STRING" value=""/>
+                <attribute name="tapPortBase" type="INTEGER" value="16000"/>
+                <attribute name="authUser" type="STRING" value="##pluser##"/>
+                <attribute name="sliceSSHKey" type="STRING" value="##plkey##"/>
+                <attribute name="authPass" type="STRING" value="##plpass##"/>
+                <attribute name="plcHost" type="STRING" value="www.planet-lab.eu"/>
+            </attributes>
+            <elements>
+                <element factory_id="Node" guid="2">
+                    <graphical_info height="100.0" width="100.0" x="-256.0" y="-223.0"/>
+                    <attributes>
+                        <attribute name="maxBandwidth" type="DOUBLE" value="1024.0"/>
+                        <attribute name="minCpu" type="DOUBLE" value="30.0"/>
+                        <attribute name="operatingSystem" type="STRING" value="f12"/>
+                    </attributes>
+                    <routes>
+                        <route Destination="192.168.2.32" Metric="0" NetPrefix="27" NextHop="192.168.2.3"/>
+                    </routes>
+                    <connections>
+                        <connection connector="devs" other_connector="node" other_guid="11"/>
+                        <connection connector="devs" other_connector="node" other_guid="21"/>
+                        <connection connector="apps" other_connector="node" other_guid="8"/>
+                    </connections>
+                </element>
+                <element factory_id="Node" guid="3">
+                    <graphical_info height="100.0" width="100.0" x="263.0" y="-222.0"/>
+                    <attributes>
+                        <attribute name="maxBandwidth" type="DOUBLE" value="1024.0"/>
+                        <attribute name="forward_X11" type="BOOL" value="False"/>
+                        <attribute name="minCpu" type="DOUBLE" value="30.0"/>
+                        <attribute name="operatingSystem" type="STRING" value="f12"/>
+                    </attributes>
+                    <routes>
+                        <route Destination="192.168.2.0" Metric="0" NetPrefix="27" NextHop="192.168.2.34"/>
+                    </routes>
+                    <connections>
+                        <connection connector="devs" other_connector="node" other_guid="24"/>
+                        <connection connector="devs" other_connector="node" other_guid="12"/>
+                        <connection connector="apps" other_connector="node" other_guid="10"/>
+                    </connections>
+                </element>
+                <element factory_id="Application" guid="8">
+                    <graphical_info height="100.0" width="100.0" x="-365.684303842" y="-223.842151921"/>
+                    <attributes>
+                        <attribute name="buildDepends" type="STRING" value="libpcap-devel make gcc "/>
+                        <attribute name="sudo" type="BOOL" value="True"/>
+                        <attribute name="label" type="STRING" value="popi-cli"/>
+                        <attribute name="sources" type="STRING" value="popi-0.9.tar.gz"/>
+                        <attribute name="depends" type="STRING" value="libpcap"/>
+                        <attribute name="command" type="STRING" value="sleep 2; ./popi -et 136/2004/30002,6/2000/30002,17/2002/30002,1/30002/8 -b 32 -r 2000  -o {#[popi-cli].trace[output].[name]#} -i {#[tap-cli].[if_name]#} {#[tap-srv].addr[0].[Address]#}"/>
+                        <attribute name="build" type="STRING" value="tar xzf ${SOURCES}/popi-0.9.tar.gz &amp;&amp; cd popi-0.9 &amp;&amp; ./configure --enable-debug --with-host=planetlab &amp;&amp; make"/>
+                        <attribute name="install" type="STRING" value="cp ./popi-0.9/popi ${SOURCES}"/>
+                    </attributes>
+                    <traces>
+                        <trace name="output"/>
+                        <trace name="stderr"/>
+                        <trace name="stdout"/>
+                    </traces>
+                    <connections>
+                        <connection connector="node" other_connector="apps" other_guid="2"/>
+                    </connections>
+                </element>
+                <element factory_id="Internet" guid="9">
+                    <graphical_info height="100.0" width="100.0" x="8.0" y="211.0"/>
+                    <connections>
+                        <connection connector="devs" other_connector="inet" other_guid="16"/>
+                        <connection connector="devs" other_connector="inet" other_guid="11"/>
+                        <connection connector="devs" other_connector="inet" other_guid="12"/>
+                    </connections>
+                </element>
+                <element factory_id="Application" guid="10">
+                    <graphical_info height="100.0" width="100.0" x="374.0" y="-222.0"/>
+                    <attributes>
+                        <attribute name="buildDepends" type="STRING" value="libpcap-devel make gcc "/>
+                        <attribute name="sudo" type="BOOL" value="True"/>
+                        <attribute name="label" type="STRING" value="popi-srv"/>
+                        <attribute name="sources" type="STRING" value="popi-0.9.tar.gz"/>
+                        <attribute name="depends" type="STRING" value="libpcap"/>
+			<attribute name="command" type="STRING" value="./popid -v -i {#[tap-srv].[if_name]#} -b 136/30002,6/30002,17/30002,1/30002"/>
+                        <attribute name="build" type="STRING" value="tar xzf ${SOURCES}/popi-0.9.tar.gz &amp;&amp; cd popi-0.9 &amp;&amp; ./configure --enable-debug --with-host=planetlab &amp;&amp; make"/>
+                        <attribute name="install" type="STRING" value="cp ./popi-0.9/popid ${SOURCES}"/>
+                    </attributes>
+                    <traces>
+                        <trace name="stderr"/>
+                        <trace name="stdout"/>
+                    </traces>
+                    <connections>
+                        <connection connector="node" other_connector="apps" other_guid="3"/>
+                    </connections>
+                </element>
+                <element factory_id="NodeInterface" guid="11">
+                    <graphical_info height="100.0" width="100.0" x="-355.87051993" y="67.7927863957"/>
+                    <factory_attributes>
+                        <factory_attribute name="maxAddresses" type="INTEGER" value="1"/>
+                    </factory_attributes>
+                    <attributes>
+                        <attribute name="maxAddresses" type="INTEGER" value="1"/>
+                    </attributes>
+                    <connections>
+                        <connection connector="node" other_connector="devs" other_guid="2"/>
+                        <connection connector="inet" other_connector="devs" other_guid="9"/>
+                    </connections>
+                </element>
+                <element factory_id="NodeInterface" guid="12">
+                    <graphical_info height="100.0" width="100.0" x="356.0" y="76.0"/>
+                    <factory_attributes>
+                        <factory_attribute name="maxAddresses" type="INTEGER" value="1"/>
+                    </factory_attributes>
+                    <attributes>
+                        <attribute name="maxAddresses" type="INTEGER" value="1"/>
+                    </attributes>
+                    <connections>
+                        <connection connector="node" other_connector="devs" other_guid="3"/>
+                        <connection connector="inet" other_connector="devs" other_guid="9"/>
+                    </connections>
+                </element>
+                <element factory_id="Node" guid="15">
+                    <graphical_info height="100.0" width="100.0" x="1.0" y="-216.0"/>
+                    <attributes>
+                        <attribute name="maxBandwidth" type="DOUBLE" value="512.0"/>
+                        <attribute name="forward_X11" type="BOOL" value="False"/>
+                        <attribute name="minCpu" type="DOUBLE" value="50.0"/>
+                        <attribute name="operatingSystem" type="STRING" value="f12"/>
+                    </attributes>
+                    <connections>
+                        <connection connector="devs" other_connector="node" other_guid="16"/>
+                        <connection connector="devs" other_connector="node" other_guid="22"/>
+                        <connection connector="devs" other_connector="node" other_guid="23"/>
+                    </connections>
+                </element>
+                <element factory_id="NodeInterface" guid="16">
+                    <graphical_info height="100.0" width="100.0" x="6.0" y="72.0"/>
+                    <factory_attributes>
+                        <factory_attribute name="maxAddresses" type="INTEGER" value="1"/>
+                    </factory_attributes>
+                    <attributes>
+                        <attribute name="maxAddresses" type="INTEGER" value="1"/>
+                    </attributes>
+                    <connections>
+                        <connection connector="node" other_connector="devs" other_guid="15"/>
+                        <connection connector="inet" other_connector="devs" other_guid="9"/>
+                    </connections>
+                </element>
+                <element factory_id="TunInterface" guid="21">
+                    <graphical_info height="100.0" width="100.0" x="-255.0" y="-110.0"/>
+                    <factory_attributes>
+                        <factory_attribute name="maxAddresses" type="INTEGER" value="1"/>
+                    </factory_attributes>
+                    <attributes>
+                        <attribute name="up" type="BOOL" value="True"/>
+                        <attribute name="maxAddresses" type="INTEGER" value="1"/>
+                        <attribute name="label" type="STRING" value="tap-cli"/>
+                        <attribute name="bwlimit" type="INTEGER" value="256"/>
+                    </attributes>
+                    <traces>
+                        <trace name="pcap"/>
+                    </traces>
+                    <addresses>
+                        <address Address="192.168.2.2" NetPrefix="27"/>
+                    </addresses>
+                    <connections>
+                        <connection connector="node" other_connector="devs" other_guid="2"/>
+                        <connection connector="udp" other_connector="udp" other_guid="22"/>
+                    </connections>
+                </element>
+                <element factory_id="TunInterface" guid="22">
+                    <graphical_info height="100.0" width="100.0" x="-56.0" y="-105.0"/>
+                    <factory_attributes>
+                        <factory_attribute name="maxAddresses" type="INTEGER" value="1"/>
+                    </factory_attributes>
+                    <attributes>
+                        <attribute name="up" type="BOOL" value="True"/>
+                        <attribute name="maxAddresses" type="INTEGER" value="1"/>
+                        <attribute name="bwlimit" type="INTEGER" value="256"/>
+                    </attributes>
+                    <traces>
+                        <trace name="pcap"/>
+                    </traces>
+                    <addresses>
+                        <address Address="192.168.2.3" NetPrefix="27"/>
+                    </addresses>
+                    <connections>
+                        <connection connector="node" other_connector="devs" other_guid="15"/>
+                        <connection connector="udp" other_connector="udp" other_guid="21"/>
+                    </connections>
+                </element>
+                <element factory_id="TunInterface" guid="23">
+                    <graphical_info height="100.0" width="100.0" x="77.0" y="-104.0"/>
+                    <factory_attributes>
+                        <factory_attribute name="maxAddresses" type="INTEGER" value="1"/>
+                    </factory_attributes>
+                    <attributes>
+                        <attribute name="up" type="BOOL" value="True"/>
+                        <attribute name="maxAddresses" type="INTEGER" value="1"/>
+                        <attribute name="bwlimit" type="INTEGER" value="##bwlimit##"/>
+                    </attributes>
+                    <traces>
+                        <trace name="pcap"/>
+                    </traces>
+                    <addresses>
+                        <address Address="192.168.2.34" NetPrefix="27"/>
+                    </addresses>
+                    <connections>
+                        <connection connector="node" other_connector="devs" other_guid="15"/>
+                        <connection connector="fd-&gt;" other_connector="-&gt;fd" other_guid="26"/>
+                    </connections>
+                </element>
+                <element factory_id="TunInterface" guid="24">
+                    <graphical_info height="100.0" width="100.0" x="264.0" y="-107.0"/>
+                    <factory_attributes>
+                        <factory_attribute name="maxAddresses" type="INTEGER" value="1"/>
+                    </factory_attributes>
+                    <attributes>
+                        <attribute name="up" type="BOOL" value="True"/>
+                        <attribute name="maxAddresses" type="INTEGER" value="1"/>
+                        <attribute name="label" type="STRING" value="tap-srv"/>
+                        <attribute name="bwlimit" type="INTEGER" value="256"/>
+                    </attributes>
+                    <traces>
+                        <trace name="pcap"/>
+                    </traces>
+                    <addresses>
+                        <address Address="192.168.2.35" NetPrefix="27"/>
+                    </addresses>
+                    <connections>
+                        <connection connector="node" other_connector="devs" other_guid="3"/>
+                        <connection connector="udp" other_connector="udp" other_guid="26"/>
+                    </connections>
+                </element>
+                <element factory_id="ClassQueueFilter" guid="26">
+                    <graphical_info height="100.0" width="100.0" x="174.0" y="19.0"/>
+                    <attributes>
+                        <attribute name="args" type="STRING" value="size=500,classes=##classes##"/>
+                    </attributes>
+                    <traces>
+                        <trace name="dropped_stats"/>
+                    </traces>
+                    <connections>
+                        <connection connector="udp" other_connector="udp" other_guid="24"/>
+                        <connection connector="-&gt;fd" other_connector="fd-&gt;" other_guid="23"/>
+                    </connections>
+                </element>
+            </elements>
+        </testbed>
+    </testbeds>
+</experiment>
