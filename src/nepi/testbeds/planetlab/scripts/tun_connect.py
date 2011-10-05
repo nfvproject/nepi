@@ -642,7 +642,9 @@ else:
 if options.multicast_fwd:
     print >>sys.stderr, "Connecting to mcast filter"
     mcfwd_sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-    tunchannel.nonblock(mcfwd_sock.fileno())
+    #disable nonblocking, cannot handle EWOULDBLOCK
+    #tunchannel.nonblock(mcfwd_sock.fileno())
+    mcfwd_sock.settimeout(0.1) # 100ms tops - packet lost if it blocks more than that
 
 # be careful to roll back stuff on exceptions
 tun_path, tun_name = modeinfo['alloc'](tun_path, tun_name)
@@ -693,6 +695,7 @@ try:
                 multicast_fwd = options.multicast_fwd,
                 vif_addr = socket.inet_aton(options.vif_addr),
                 connected = [], writev=writev,
+                retrycodes=(os.errno.EWOULDBLOCK, os.errno.EAGAIN, os.errno.EINTR),
                 len=len, ord=ord):
             if _up_accept:
                 rv = _up_accept(packet, direction)
@@ -720,6 +723,9 @@ try:
                         if connected:
                             try:
                                 writev(sockno, vif_addr,fwd)
+                            except OSError,e:
+                                if e.errno not in retrycodes:
+                                    traceback.print_exc(file=sys.stderr)
                             except:
                                 traceback.print_exc(file=sys.stderr)
             return 1
