@@ -141,13 +141,17 @@ class PlanetLabMulticastOverlay:
             r1.set_attribute_value("NextHop", nexthop)
         
         if mcast:
-            fwd = pl.create("MulticastForwarder")
-            fwd.enable_trace("stderr")
-            fwd.connector("node").connect(node1.connector("apps"))
             if mcastrouter:
+                fwd = pl.create("MulticastForwarder")
+                fwd.enable_trace("stderr")
+                fwd.connector("node").connect(node1.connector("apps"))
                 mrt = pl.create("MulticastRouter")
                 mrt.connector("fwd").connect(fwd.connector("router"))
                 mrt.enable_trace("stderr")
+            else:
+                ann = pl.create("MulticastAnnouncer")
+                ann.enable_trace("stderr")
+                ann.connector("node").connect(node1.connector("apps"))
                 
         return node1, iface1, tap1, tap1ip, inet
     
@@ -529,20 +533,22 @@ class PlanetLabMulticastOverlay:
         ap_wifi, ap_phy = self.add_ns_wifi_dev(ns, ap_node, access_point = True)
         ap_phy.connector("chan").connect(wifi_chan.connector("phys"))
 
+        # Net range free for WiFi
+        wifi_net_prefix = 32-int(math.floor(math.log(256-nextip[0]&0xff) / math.log(2)))
+        wifi_net = vnet_i | (256 - (1<<(32-wifi_net_prefix)))
+
         # connect AP to PL
-        pl_addr = str(ipaddr.IPAddress(vnet_i | 254))
-        ns_addr = str(ipaddr.IPAddress(vnet_i | 253))
+        pl_addr = str(ipaddr.IPAddress(wifi_net | 1))
+        ns_addr = str(ipaddr.IPAddress(wifi_net | 2))
         self.add_pl_ns_connection(
             pl, pl_ns_root, pl_addr, 
             ns, ap_node, ns_addr, 
             fd = True, ptp = True, prefix=30)
 
-        wifi_net_prefix = 32-int(math.floor(math.log(256-nextip[0]&0xff) / math.log(2)))
-        wifi_net = vnet_i | (256 - (1<<(32-wifi_net_prefix)))
         
         # AP ip
-        ap_addr = str(ipaddr.IPAddress(vnet_i | 251))
-        ap_addr_prefix = 32-int(math.ceil(math.log(self.nsta+6) / math.log(2)))
+        ap_addr = str(ipaddr.IPAddress(vnet_i | 254))
+        ap_addr_prefix = 32-int(math.ceil(math.log(self.nsta+3) / math.log(2)))
         self.add_ip_address(ap_wifi, ap_addr, ap_addr_prefix)
         
         # route for PL->wifi
@@ -556,7 +562,7 @@ class PlanetLabMulticastOverlay:
         print " |                  R %s/%d --> %s" % (str(ipaddr.IPAddress(wifi_net)), wifi_net_prefix, ns_addr)
        
         nextpip = (vnet_i | 255) >> (32-ap_addr_prefix) << (32-ap_addr_prefix)
-        nextdip = vnet_i | 250
+        nextdip = vnet_i | 253
         ap_net = nextpip - (1<<(32-ap_addr_prefix))
         r = 50
         # STA nodes
