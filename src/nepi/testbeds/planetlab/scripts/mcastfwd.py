@@ -206,21 +206,6 @@ class FWDThread(threading.Thread):
             fwd_socket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 1)
             self.fwd_sockets[fwd_target] = fwd_socket
         
-        # we always forward to eth0
-        # In PL, we cannot join the multicast routers in eth0,
-        # that would bring a lot of trouble. But we can
-        # listen there for subscriptions and forward interesting
-        # packets, partially joining the mbone
-        # TODO: IGMP messages from eth0 should be selectively
-        #       replicated in all vifs to propagate external
-        #       subscriptions. It is complex though.
-        fwd_target = '\x00'*4
-        fwd_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_RAW)
-        fwd_socket.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
-        fwd_socket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF, fwd_target)
-        fwd_socket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 1)
-        self.fwd_sockets[fwd_target] = fwd_socket
-        
         self._stop = False
         self.setDaemon(True)
     
@@ -239,7 +224,7 @@ class FWDThread(threading.Thread):
         fwd_sockets = self.fwd_sockets
         npending = 0
         noent = (None,None)
-        def_socket = fwd_sockets['\x00\x00\x00\x00']
+        verbose = options.verbose
         
         while not self._stop:
             # Get packet
@@ -286,7 +271,8 @@ class FWDThread(threading.Thread):
                 # Forward to vifs
                 ttl = ord_(packet[8])
                 tgt_group = (socket.inet_ntoa(addrinfo[4:]),0)
-                print >>sys.stderr, map(socket.inet_ntoa, (parent, addrinfo[:4], addrinfo[4:])), "-> ttl", ttl,
+                if verbose:
+                    print >>sys.stderr, map(socket.inet_ntoa, (parent, addrinfo[:4], addrinfo[4:])), "-> ttl", ttl,
                 nfwd_targets = len_(fwd_targets)
                 for vifi, vif in vifs.iteritems():
                     if vifi < nfwd_targets:
@@ -294,41 +280,27 @@ class FWDThread(threading.Thread):
                         if ttl_thresh > 0 and ttl > ttl_thresh:
                             if vif[4] in fwd_sockets:
                                 try:
-                                    print >>sys.stderr, socket.inet_ntoa(vif[4]),
+                                    if verbose:
+                                        print >>sys.stderr, socket.inet_ntoa(vif[4]),
                                     fwd_socket = fwd_sockets[vif[4]]
                                     fwd_socket.sendto(packet, 0, tgt_group)
                                 except:
                                     pass
                 
-                # Forward to eth0
-                try:
-                    print >>sys.stderr, 'default',
-                    def_socket.sendto(packet, 0, tgt_group)
-                except:
-                    pass
-                
-                print >>sys.stderr, "."
+                if verbose:
+                    print >>sys.stderr, "."
             elif router_socket:
                 # Mark pending
                 if len_(pending) < self.maxpending:
-                    tgt_group = addrinfo[4:]
-                    print >>sys.stderr, map(socket.inet_ntoa, (parent, addrinfo[:4], addrinfo[4:])), "-> ?"
+                    if verbose:
+                        tgt_group = addrinfo[4:]
+                        print >>sys.stderr, map(socket.inet_ntoa, (parent, addrinfo[:4], addrinfo[4:])), "-> ?"
                     
                     pending.append(fullpacket)
                     
                     # Notify mrouted by forwarding it with protocol 0
                     router_socket.send(''.join(
-                        (packet[:9],'\x00',packet[10:1500]) ))
-            else:
-                # Forward to eth0
-                ttl = ord_(packet[8])
-                tgt_group = (socket.inet_ntoa(addrinfo[4:]),0)
-                
-                try:
-                    print >>sys.stderr, map(socket.inet_ntoa, (parent, addrinfo[:4], addrinfo[4:])), "-> ttl", ttl, 'default'
-                    def_socket.sendto(packet, 0, tgt_group)
-                except:
-                    pass
+                        (packet[:9],'\x00',packet[10:]) ))
     
     def stop(self):
         self._stop = True
