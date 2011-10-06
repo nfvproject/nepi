@@ -167,9 +167,11 @@ class PlanetLabMulticastOverlay:
         app.set_attribute_value("label","vlc_restreamer_%d" % (node.guid,))
         app.set_attribute_value("command",
             "sudo -S dbus-uuidgen --ensure ; "
+            "while true ; do if "
             "vlc -vvv -I dummy"
             " udp/ts://@239.255.12.42"
-            " --sout '#std{access=http,mux=ts,dst="+hostname+":8080}'")
+            " --sout '#std{access=http,mux=ts,dst="+hostname+":8080}'"
+            " ; then break ; else sleep 5 ; fi ; done ")
         return app
     
     def add_vlc_dumper(self, pl, node, hostname=None, labelprefix = "vlc_dumper", precmd = "sleep 5 ; "):
@@ -181,9 +183,11 @@ class PlanetLabMulticastOverlay:
         app.set_attribute_value("command",
             precmd+
             "sudo -S dbus-uuidgen --ensure ; "
+            "while true ; do if "
             "vlc -vvv -I dummy"
             " http://"+hostname+":8080"
-            " --sout '#std{access=file,mux=ts,dst={#["+mylabel+"].trace[output].[name]#}}'")
+            " --sout '#std{access=file,mux=ts,dst={#["+mylabel+"].trace[output].[name]#}}'"
+            " ; then break ; else sleep 5 ; fi ; done ")
         app.enable_trace("output")
         return app
     
@@ -375,7 +379,7 @@ class PlanetLabMulticastOverlay:
 
     def add_pl_ns_connection(self, pl_desc, pl_node, pl_addr,
             ns, ns_node, ns_addr, prefix = 30,
-            fd = False):
+            fd = False, ptp = False):
         pl_tap = pl_desc.create("TapInterface")
         if fd:
             pl_tap.set_attribute_value("tun_cipher", "PLAIN") 
@@ -391,6 +395,9 @@ class PlanetLabMulticastOverlay:
             tunchannel = ns.create("ns3::Nepi::TunChannel")
             tunchannel.connector("fd->").connect(ns_fdnd.connector("->fd"))
             pl_tap.connector("udp").connect(tunchannel.connector("udp"))
+        
+        if ptp:
+            pl_tap.set_attribute_value("pointopoint", ns_addr)
 
     def make_pl_overlay(self, numnodes):
         ns3_testbed_id = "ns3"
@@ -525,26 +532,31 @@ class PlanetLabMulticastOverlay:
         # connect AP to PL
         pl_addr = str(ipaddr.IPAddress(vnet_i | 254))
         ns_addr = str(ipaddr.IPAddress(vnet_i | 253))
-        self.add_pl_ns_connection(pl, pl_ns_root, pl_addr, ns, ap_node, ns_addr, fd = True)
+        self.add_pl_ns_connection(
+            pl, pl_ns_root, pl_addr, 
+            ns, ap_node, ns_addr, 
+            fd = True, ptp = True, prefix=30)
 
         wifi_net_prefix = 32-int(math.floor(math.log(256-nextip[0]&0xff) / math.log(2)))
         wifi_net = vnet_i | (256 - (1<<(32-wifi_net_prefix)))
         
         # AP ip
-        ap_addr = str(ipaddr.IPAddress(vnet_i | 253))
-        ap_addr_prefix = 32-int(math.ceil(math.log(self.nsta+3) / math.log(2)))
+        ap_addr = str(ipaddr.IPAddress(vnet_i | 251))
+        ap_addr_prefix = 32-int(math.ceil(math.log(self.nsta+6) / math.log(2)))
         self.add_ip_address(ap_wifi, ap_addr, ap_addr_prefix)
         
         # route for PL->wifi
         self.add_route(pl_ns_root, 
             str(ipaddr.IPAddress(wifi_net)), wifi_net_prefix,
-            ap_addr)
+            ns_addr)
         
-        print "NS-3 AP\t%s/%s <--> PL AP %s" % (ap_addr, ap_addr_prefix, pl_addr)
+        print "NS-3 AP\t%s/%s <--> PL AP %s" % (ns_addr, 30, pl_addr)
+        print " | (|) %s/%s" % (ap_addr, ap_addr_prefix)
         print " |"
+        print " |                  R %s/%d --> %s" % (str(ipaddr.IPAddress(wifi_net)), wifi_net_prefix, ns_addr)
        
         nextpip = (vnet_i | 255) >> (32-ap_addr_prefix) << (32-ap_addr_prefix)
-        nextdip = vnet_i | 252
+        nextdip = vnet_i | 250
         ap_net = nextpip - (1<<(32-ap_addr_prefix))
         r = 50
         # STA nodes
