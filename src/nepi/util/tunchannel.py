@@ -669,17 +669,20 @@ def tcp_handshake(rsock, listen, hand):
     rsock.settimeout(10)
     try:
         rsock.send(hand)
-        peer_hand = rsock.recv(1)
-        print >>sys.stderr, "tcp_handshake: hand %s, peer_hand %s" % (hand, peer_hand)
+        peer_hand = rsock.recv(4)
+        if not peer_hand:
+            print >>sys.stderr, "tcp_handshake: connection reset by peer"
+            return False
+        else:
+            print >>sys.stderr, "tcp_handshake: hand %r, peer_hand %r" % (hand, peer_hand)
         if hand < peer_hand:
             if listen:
                 win = True
         elif hand > peer_hand:
             if not listen:
                 win = True
-    except socket.timeout:
-        pass
-    rsock.settimeout(0)
+    finally:
+        rsock.settimeout(0)
     return win
 
 def tcp_establish(TERMINATE, local_addr, local_port, peer_addr, peer_port):
@@ -706,7 +709,7 @@ def tcp_establish(TERMINATE, local_addr, local_port, peer_addr, peer_port):
             break
         if TERMINATE:
             raise OSError, "Killed"
-        hand = str(random.randint(1, 6))
+        hand = struct.pack("!L", random.randint(0, 2**30))
         stop = []
         lresult = []
         rresult = []
