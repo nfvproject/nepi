@@ -730,7 +730,7 @@ try:
                         traceback.print_exc(file=sys.stderr)
                 
                 mcfwd_queue.task_done()
-        mcfwd_thread = threading.Thread(target=mcfwd_thread)
+        mcfwd_thread = threading.Thread(target=mcfwd_thread_fn)
         mcfwd_thread.start()
         
         def accept_packet(packet, direction, 

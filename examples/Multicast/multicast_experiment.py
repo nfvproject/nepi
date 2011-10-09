@@ -171,11 +171,11 @@ class PlanetLabMulticastOverlay:
         app.set_attribute_value("label","vlc_restreamer_%d" % (node.guid,))
         app.set_attribute_value("command",
             "sudo -S dbus-uuidgen --ensure ; "
-            "while true ; do if "
+            "while true ; do "
             "vlc -vvv -I dummy"
             " udp/ts://@239.255.12.42"
-            " --sout '#std{access=http,mux=ts,dst="+hostname+":8080}'"
-            " ; then break ; else sleep 5 ; fi ; done ")
+            " --sout '#std{access=http,mux=ts,dst=:8080}'"
+            " ; sleep 5 ; done ")
         return app
     
     def add_vlc_dumper(self, pl, node, hostname=None, labelprefix = "vlc_dumper", precmd = "sleep 5 ; "):
@@ -187,11 +187,12 @@ class PlanetLabMulticastOverlay:
         app.set_attribute_value("command",
             precmd+
             "sudo -S dbus-uuidgen --ensure ; "
-            "while true ; do if "
+            "cat /dev/null > {#["+mylabel+"].trace[output].[name]#} ; "
+            "while [[ $(stat -c '%s' {#["+mylabel+"].trace[output].[name]#}) == '0' ]] ; do "
             "vlc -vvv -I dummy"
-            " http://"+hostname+":8080"
+            " http://"+hostname+":8080 vlc://quit"
             " --sout '#std{access=file,mux=ts,dst={#["+mylabel+"].trace[output].[name]#}}'"
-            " ; then break ; else sleep 5 ; fi ; done ")
+            " ; sleep 5 ; done ")
         app.enable_trace("output")
         return app
     
@@ -612,7 +613,7 @@ class PlanetLabMulticastOverlay:
                 prefix = 30)
             
             self.add_vlc_dumper(pl, pl_nodei,
-                hostname = pl_addr2,
+                hostname = pl_addr,
                 labelprefix = "vlc_dumper_ns",
                 precmd = "sleep 15 ; ")
 
