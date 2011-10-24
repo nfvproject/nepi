@@ -14,7 +14,7 @@ try:
     l.reverse()
     if sum( int(l[i])*pow(10,i) for i in xrange(len(l))) < 217:
         raise RuntimeError("ipaddr >= 2.1.7 is required")
-except:
+except ImportError:
     raise RuntimeError("ipaddr >= 2.1.7 is required. You can download from http://ipaddr-py.googlecode.com/files/ipaddr-2.1.7.tar.gz")
 
 setup(
