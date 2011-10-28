@@ -3,20 +3,6 @@
 from distutils.core import setup
 import sys
 
-# CHECK dependencies
-# Python >= 2.6
-if sys.hexversion < 0x2060000:
-    raise RuntimeError("Python version >= 2.6 required")
-# ipaddr >= 2.1.7
-try:
-    import ipaddr
-    l = ipaddr.__version__.split('.')
-    l.reverse()
-    if sum( int(l[i])*pow(10,i) for i in xrange(len(l))) < 217:
-        raise RuntimeError("ipaddr >= 2.1.7 is required")
-except ImportError:
-    raise RuntimeError("ipaddr >= 2.1.7 is required. You can download from http://ipaddr-py.googlecode.com/files/ipaddr-2.1.7.tar.gz")
-
 setup(
         name        = "nepi",
         version     = "0.2",
