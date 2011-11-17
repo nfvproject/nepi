@@ -10,9 +10,10 @@ import uuid
 
 class NetnsDesignTestCase(unittest.TestCase):
     def test_design_if(self):
-        exp_desc = ExperimentDescription()
         testbed_id = "netns"
+        exp_desc = ExperimentDescription()
         provider = FactoriesProvider(testbed_id)
+        
         tstbd_desc = exp_desc.add_testbed_description(provider)
         tstbd_desc.set_attribute_value("enableDebug", True)
         node1 = tstbd_desc.create("Node")
@@ -34,6 +35,7 @@ class NetnsDesignTestCase(unittest.TestCase):
         app = tstbd_desc.create("Application")
         app.set_attribute_value("command", "ping -qc10 10.0.0.2")
         app.connector("node").connect(node1.connector("apps"))
+        
         xml = exp_desc.to_xml()
         exp_desc2 = ExperimentDescription()
         exp_desc2.from_xml(xml)

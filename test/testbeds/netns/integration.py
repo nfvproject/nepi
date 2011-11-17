@@ -19,10 +19,11 @@ class NetnsIntegrationTestCase(unittest.TestCase):
 
     def _test_switched(self, controller_access_config = None,
             testbed_access_config = None):
-        exp_desc = ExperimentDescription()
         testbed_id = "netns"
+        exp_desc = ExperimentDescription()
         user = getpass.getuser()
         netns_provider = FactoriesProvider(testbed_id)
+        
         netns_desc = exp_desc.add_testbed_description(netns_provider)
         netns_desc.set_attribute_value("homeDirectory", self.root_dir)
         #netns_desc.set_attribute_value("enableDebug", True)

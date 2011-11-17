@@ -70,6 +70,7 @@ class Ns3ExecuteTestCase(unittest.TestCase):
         instance.do_configure()
         instance.do_prestart()
         instance.start()
+
         while instance.status(17) != AS.STATUS_FINISHED:
             time.sleep(0.1)
         ping_result = instance.trace(14, "P2PAsciiTrace")

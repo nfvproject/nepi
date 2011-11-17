@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import getpass
 from nepi.core.design import ExperimentDescription, FactoriesProvider
 from nepi.util import proxy
 from nepi.util.constants import DeploymentConfiguration as DC
-import getpass
 import mock
 import mock.metadata
 import mock2

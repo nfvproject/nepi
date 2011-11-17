@@ -2,19 +2,19 @@
 # -*- coding: utf-8 -*-
 
 import getpass
+import logging
 from nepi.core.design import ExperimentDescription, FactoriesProvider
 from nepi.core.execute import ExperimentController
 from nepi.util import proxy
 from nepi.util.constants import DeploymentConfiguration as DC
 import os
+import re
 import shutil
+import sys
 import tempfile
 import test_util
 import time
 import unittest
-import re
-import sys
-import logging
 
 class PlanetLabIntegrationTestCase(unittest.TestCase):
     testbed_id = "planetlab"

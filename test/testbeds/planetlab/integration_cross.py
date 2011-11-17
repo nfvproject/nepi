@@ -7,12 +7,12 @@ from nepi.core.execute import ExperimentController
 from nepi.util import proxy
 from nepi.util.constants import DeploymentConfiguration as DC, ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP
 import os
+import re
 import shutil
 import tempfile
 import test_util
 import time
 import unittest
-import re
 
 class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
     testbed_id = "planetlab"
