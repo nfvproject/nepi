@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 from factories_metadata import wifi_standards, l4_protocols, \

@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import getpass
 from nepi.util import tags
 from nepi.util.constants import ApplicationStatus as AS
-import getpass
 import mock
 import mock.metadata 
 import sys

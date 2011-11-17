@@ -48,6 +48,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.do_configure()
         instance.do_prestart()
         instance.start()
+
         while instance.status(7) != AS.STATUS_FINISHED:
             time.sleep(0.5)
         ping_result = instance.trace(7, "stdout")
@@ -90,6 +91,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.do_configure()
         instance.do_prestart()
         instance.start()
+
         while instance.status(6) != AS.STATUS_FINISHED:
             time.sleep(0.5)
         ping_result = instance.trace(6, "stdout")
@@ -151,6 +153,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.do_configure()
         instance.do_prestart()
         instance.start()
+
         while instance.status(11) != AS.STATUS_FINISHED:
             time.sleep(0.5)
         ping_result = instance.trace(11, "stdout")
@@ -194,6 +197,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
         instance.do_configure()
         instance.do_prestart()
         instance.start()
+
         while instance.status(6) != AS.STATUS_FINISHED:
             time.sleep(0.5)
         pcap_result = instance.trace(2, "pcap")

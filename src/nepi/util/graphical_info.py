@@ -1,6 +1,4 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# vim:ts=4:sw=4:et:ai:sts=4
 
 class GraphicalInfo(object):
     """ This class allows to describe the position and dimensions of a 

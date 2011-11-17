@@ -9,6 +9,7 @@ import unittest
 
 class DesignTestCase(unittest.TestCase):
     def setUp(self):
+        # hack to add the mock testbed on the correct module path
         sys.modules["nepi.testbeds.mock.metadata"] = mock.metadata
 
     def test_design(self):

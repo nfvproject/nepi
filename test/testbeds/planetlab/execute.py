@@ -5,13 +5,13 @@ import getpass
 from nepi.util.constants import ApplicationStatus as AS
 from nepi.testbeds import planetlab
 import os
+import re
 import shutil
+import sys
 import tempfile
+import test_util
 import time
 import unittest
-import re
-import test_util
-import sys
 
 class PlanetLabExecuteTestCase(unittest.TestCase):
     testbed_id = "planetlab"

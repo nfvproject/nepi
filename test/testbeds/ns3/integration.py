@@ -20,8 +20,8 @@ class Ns3IntegrationTestCase(unittest.TestCase):
 
     def _test_fd_net_device(self, daemonize_testbed,
             controller_access_configuration):
-        exp_desc = ExperimentDescription()
         testbed_id = "ns3"
+        exp_desc = ExperimentDescription()
         ns3_provider = FactoriesProvider(testbed_id)
         ns3_desc1 = exp_desc.add_testbed_description(ns3_provider)
         root_dir1 = os.path.join(self.root_dir, "1")

@@ -10,8 +10,8 @@ import uuid
 
 class Ns3DesignTestCase(unittest.TestCase):
     def test_design_if(self):
-        exp_desc = ExperimentDescription()
         testbed_id = "ns3"
+        exp_desc = ExperimentDescription()
         provider = FactoriesProvider(testbed_id)
         tstbd_desc = exp_desc.add_testbed_description(provider)
 
