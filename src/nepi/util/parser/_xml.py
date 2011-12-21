@@ -6,6 +6,10 @@ from xml.dom import minidom
 
 import sys
 
+class XMLBoxParser(object):
+    def to_xml(self, box):
+        return "TODO"
+
 def xmlencode(s):
     if isinstance(s, str):
         rv = s.decode("latin1")
