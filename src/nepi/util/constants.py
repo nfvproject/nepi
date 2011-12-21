@@ -1,36 +1,5 @@
 # -*- coding: utf-8 -*-
 
-AF_INET = 0
-AF_INET6 = 1
-
-TIME_NOW = "0s"
-
-CONNECTION_DELAY = 0
-
-ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP = "_nepi_testbed_environment_setup"
-
-class AttributeCategories:
-    CATEGORY_DEPLOYMENT = "Deployment"
-   
-class FactoryCategories:
-    CATEGORY_APPLICATIONS = "Applications"
-    CATEGORY_CHANNELS = "Channels"
-    CATEGORY_DEVICES = "Devices"
-    CATEGORY_DELAY_MODELS = "Delay models"
-    CATEGORY_ENERGY_MODELS = "Energy models"
-    CATEGORY_ERROR_MODELS = "Error models"
-    CATEGORY_MAC_MODELS = "Mac models"
-    CATEGORY_MANAGERS = "Managers"
-    CATEGORY_MOBILITY_MODELS = "Mobility models"
-    CATEGORY_NODES = "Nodes"
-    CATEGORY_LOSS_MODELS = "Loss models"
-    CATEGORY_PHY_MODELS = "Phy models"
-    CATEGORY_PROTOCOLS = "Protocols"
-    CATEGORY_ROUTING = "Routing"
-    CATEGORY_QUEUES = "Queues"
-    CATEGORY_SERVICE_FLOWS = "Service Flows"
-    CATEGORY_TUNNELS = "Tunnels"
-
 class ApplicationStatus:
     STATUS_NOT_STARTED = 0
     STATUS_RUNNING = 1
