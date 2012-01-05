@@ -4,7 +4,7 @@ import ipaddr
 import logging
 import re
 
-from nepi.core.tags import Taggable
+from nepi.design.tags import Taggable
 
 
 class AttributeTypes(object):
@@ -73,6 +73,10 @@ class AttributeInfo(Taggable):
         return self._name
 
     @property
+    def default_value(self):
+        return self._default_value
+
+    @property
     def type(self):
         return self._type
 
@@ -86,7 +90,9 @@ class AttributeInfo(Taggable):
 
     @property
     def args(self):
-        return self._args
+        # Is it more optimal to store an empty dict in args
+        # or to create one on demand that will soon be derreferenced?
+        return dict() if not self._args else self._args
 
     @property
     def flags(self):
@@ -178,7 +184,7 @@ class Attribute(object):
 
 class EnumAttribute(Attribute):
     def __init__(self, attr_info):
-        super(EnumAttribute, self).__init__()
+        super(EnumAttribute, self).__init__(attr_info)
         if self.type != AttributeTypes.ENUM:
             raise AttributeError("invalid type %s for EnumAttribute" % 
                     self.type)
@@ -191,14 +197,14 @@ class EnumAttribute(Attribute):
     def is_valid(self, value):
         if isinstance(value, str) and value in self.allowed:
             return True
-        self._logger.warn("EnumAttribute.is_valid(): Wrong value %r for attribute %s. Allowed are %s.", 
+        self._logger.error("Wrong value %r for EnumAttribute %s. Allowed are %s.", 
                 str(value), self.name, self.allowed)
         return False
 
 
 class BoolAttribute(Attribute):
     def __init__(self, attr_info):
-        super(BoolAttribute, self).__init__()
+        super(BoolAttribute, self).__init__(attr_info)
         if self.type != AttributeTypes.BOOL:
             raise AttributeError("invalid type %s for BoolAttribute" % 
                     self.type)
@@ -206,14 +212,14 @@ class BoolAttribute(Attribute):
     def is_valid(self, value):
         if isinstance(value, bool):
             return True
-        self._logger.warn("BoolAttribute.is_valid(): Wrong value %r for attribute %s",
+        self._logger.error("Wrong value %r for BoolAttribute %s",
                 str(value), self.name)
         return False
 
 
 class RangeAttribute(Attribute):
     def __init__(self, attr_info):
-        super(RangeAttribute, self).__init__()
+        super(RangeAttribute, self).__init__(attr_info)
         self._min = self._attr_info.args.get("min")
         self._max = self._attr_info.args.get("max")
 
@@ -232,7 +238,7 @@ class RangeAttribute(Attribute):
 
 class DoubleAttribute(RangeAttribute):
     def __init__(self, attr_info):
-        super(DoubleAttribute, self).__init__()
+        super(DoubleAttribute, self).__init__(attr_info)
         if self.type != AttributeTypes.DOUBLE:
             raise AttributeError("invalid type %s for DoubleAttribute" % 
                     self.type)
@@ -240,14 +246,14 @@ class DoubleAttribute(RangeAttribute):
     def is_valid(self, value):
         if self._is_in_range(value) and isinstance(value, float):
             return True
-        self._logger.warn("DoubleAttribute.is_valid(): Wrong value %r for attribute %s",
+        self._logger.error("Wrong value %r for DoubleAttribute %s",
                 str(value), self.name)
         return False
 
 
 class IntegerAttribute(RangeAttribute):
     def __init__(self, attr_info):
-        super(IntegerAttribute, self).__init__()
+        super(IntegerAttribute, self).__init__(attr_info)
         if self.type != AttributeTypes.INTEGER:
             raise AttributeError("invalid type %s for IntegerAttribute" % 
                     self.type)
@@ -255,28 +261,28 @@ class IntegerAttribute(RangeAttribute):
     def is_valid(self, value):
         if self._is_in_range(value) and isinstance(value, int):
             return True
-        self._logger.warn("IntegerAttribute.is_valid(): Wrong value %r for attribute %s",
+        self._logger.error("Wrong value %r for IntegerAttribute %s",
                 str(value), self.name)
         return False
 
 class NumberAttribute(RangeAttribute):
     def __init__(self, attr_info):
-        super(NumberAttribute, self).__init__()
+        super(NumberAttribute, self).__init__(attr_info)
         if self.type not in [AttributeTypes.INTEGER, AttributeTypes.DOUBLE]:
             raise AttributeError("invalid type %s for NumberAttribute" % 
                     self.type)
 
     def is_valid(self, value):
-        if self._is_in_range(value) and isinstance(value, (float,int, long)):
+        if self._is_in_range(value) and isinstance(value, (float, int, long)):
             return True
-        self._logger.warn("NumberAttribute.is_valid(): Wrong value %r for attribute %s",
+        self._logger.error("Wrong value %r for NumberAttribute %s",
                 str(value), self.name)
         return False
 
 
 class StringAttribute(Attribute):
     def __init__(self, attr_info):
-        super(StringAttribute, self).__init__()
+        super(StringAttribute, self).__init__(attr_info)
         if self.type != AttributeTypes.STRING:
             raise AttributeError("invalid type %s for StringAttribute" % 
                     self.type)
@@ -284,14 +290,14 @@ class StringAttribute(Attribute):
     def is_valid(self, value):
         if isinstance(value, str):
             return True
-        self._logger.warn("StringAttribute.is_valid(): Wrong value %r for attribute %s",
+        self._logger.error("Wrong value %r for StringAttribute %s",
                 str(value), self.name)
         return False
 
 
 class TimeAttribute(Attribute):
     def __init__(self, attr_info):
-        super(TimeAttribute, self).__init__()
+        super(TimeAttribute, self).__init__(attr_info)
         if self.type != AttributeTypes.STRING:
             raise AttributeError("invalid type %s for TimeAttribute" % 
                     self.type)
@@ -300,14 +306,14 @@ class TimeAttribute(Attribute):
         # TODO: Missing validation
         if isinstance(value, str):
             return True
-        self._logger.warn("TimeAttribute.is_valid(): Wrong value %r for attribute %s",
+        self._logger.error("Wrong value %r for TimeAttribute %s",
                 str(value), self.name)
         return False
 
 
 class IPv4Attribute(Attribute):
     def __init__(self, attr_info):
-        super(IPv4Attribute, self).__init__()
+        super(IPv4Attribute, self).__init__(attr_info)
         if self.type != AttributeTypes.STRING:
             raise AttributeError("invalid type %s for IPv4Attribute" % 
                     self.type)
@@ -321,7 +327,7 @@ class IPv4Attribute(Attribute):
 
     def is_valid(self, value):
         if not self._is_valid_ipv4(value):
-            self._logger.warn("IPv4Attribute.is_valid(): Wrong value %r for attribute %s",
+            self._logger.error("Wrong value %r for IPV4Attribute %s",
                     str(value), self.name)
             return False
         return True
@@ -329,7 +335,7 @@ class IPv4Attribute(Attribute):
 
 class IPv6Attribute(Attribute):
     def __init__(self, attr_info):
-        super(IPv6Attribute, self).__init__()
+        super(IPv6Attribute, self).__init__(attr_info)
         if self.type != AttributeTypes.STRING:
             raise AttributeError("invalid type %s for IPv6Attribute" % 
                     self.type)
@@ -343,7 +349,7 @@ class IPv6Attribute(Attribute):
 
     def is_valid(self, value):
         if not self._is_valid_ipv6(value):
-            self._logger.warn("IPv6Attribute.is_valid(): Wrong value %r for attribute %s",
+            self._logger.error("Wrong value %r for IPv6Attribute %s",
                     str(value), self.name)
             return False
         return True
@@ -351,15 +357,15 @@ class IPv6Attribute(Attribute):
 
 class IPAttribute(IPv4Attribute, IPv6Attribute):
     def __init__(self, attr_info):
-        super(IPAttribute, self).__init__()
+        super(IPAttribute, self).__init__(attr_info)
         if self.type != AttributeTypes.STRING:
             raise AttributeError("invalid type %s for IPAttribute" % 
                     self.type)
 
     def is_valid(self, value):
-        if not self._is_ip4_address(attribute, value) and \
-            not self._is_ip6_address(attribute, value):
-            self._logger.warn("IPAttribute.is_valid(): Wrong value %r for attribute %s",
+        if not self._is_valid_ipv4(value) and \
+            not self._is_valid_ipv6(value):
+            self._logger.error("Wrong value %r for IPAttribute %s",
                     str(value), self.name)
             return False
         return True
@@ -367,7 +373,7 @@ class IPAttribute(IPv4Attribute, IPv6Attribute):
 
 class NetRefAttribute(IPAttribute):
     def __init__(self, attr_info):
-        super(IPAttribute, self).__init__()
+        super(IPAttribute, self).__init__(attr_info)
         if self.type != AttributeTypes.STRING:
             raise AttributeError("invalid type %s for NetRefAttribute" % 
                     self.type)
@@ -376,14 +382,14 @@ class NetRefAttribute(IPAttribute):
         # TODO: Allow netrefs!
         if isinstance(value, str):
             return True
-        self._logger.warn("NetRefAttribute.is_valid(): Wrong value %r for attribute %s",
+        self._logger.error("Wrong value %r for NetRefAttribute %s",
                 str(value), self.name)
         return False
 
 
 class MacAddressAttribute(Attribute):
     def __init__(self, attr_info):
-        super(MacAddressAttribute, self).__init__()
+        super(MacAddressAttribute, self).__init__(attr_info)
         if self.type != AttributeTypes.STRING:
             raise AttributeError("invalid type %s for MacAddressAttribute" % 
                     self.type)
@@ -393,7 +399,7 @@ class MacAddressAttribute(Attribute):
         found = re.search(regex, value)
         if not found or value.count(':') != 5:
             return False
-            self._logger.warn("NetRefAttribute.is_valid(): Wrong value %r for attribute %s",
+            self._logger.error("Wrong value %r for MacAddressAttribute %s",
                     str(value), self.name)
         return True
 

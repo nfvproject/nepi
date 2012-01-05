@@ -27,19 +27,19 @@ SERVICE_FLOW = "service flow"
 SWITCH = "switch"
 TUNNEL = "tunnel"
 WIRELESS = "wireless"
-
+TRACE = "trace"
 
 class Taggable(object):
     def __init__(self):
         super(Taggable, self).__init__()
-        self._tags = list()
+        self._tags = set()
 
     @property
     def tags(self):
         return self._tags
 
     def add_tag(self, tag_id):
-        self._tags.append(tag_id)
+        self._tags.add(tag_id)
 
     def has_tag(self, tag_id):
         return tag_id in self._tags

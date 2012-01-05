@@ -19,9 +19,8 @@ from nepi.util.parser._xml import XMLBoxParser
 class BoxFactoryProvider(object):
     """Holds references to available box factory instances"""
     def __init__(self, experiment = None):
-        super(FactoriesProvider, self).__init__()
+        super(BoxFactoryProvider, self).__init__()
         self._factories = dict()
-        self.experiment = experiment
 
     @property
     def factories(self):
@@ -34,20 +33,30 @@ class BoxFactoryProvider(object):
         if factory.box_id not in self._factories.keys():
                 self._factories[factory.box_id] = factory
 
+    def add_factories(self, module):
+        for factory in module.factories:
+            self.add_factory(factory)
+
     def remove_factory(self, factory):
         del self._factories[factory.box_id]
 
-    def create(self, box_id, guid = None):
-        guid = self.experiment.guid_generator.next(guid)
+    def create(self, experiment, box_id, guid = None):
+        guid = experiment.next_guid(guid)
         factory = self.factory(box_id)
-        box = factory.create(guid, self.experiment)
+        box = factory.create(guid, experiment)
+        return box
+
+    def create_add(self, experiment, box_id, container, guid = None):
+        """ Creates a box and aggregates it to a box container """
+        box = self.create(self, experiment, box_id, guid)
+        container.add_box(box)
         return box
 
 
 class BoxFactory(tags.Taggable):
     """ The Factory instances hold information about a Box class
     and 'know' how to create a box instance."""
-    def __init__(self, tesbed_id, box_id, clazz):
+    def __init__(self, testbed_id, box_id, clazz):
         super(BoxFactory, self).__init__()
         # Testbed identifier
         self._testbed_id = testbed_id
@@ -58,20 +67,21 @@ class BoxFactory(tags.Taggable):
         # Static (metadata) attributes info. Doesn't hold values
         # -- dict(attr_id: attr_info_ref)
         self._attrs_info = dict()
-        # List of boxes types that can be aggregated to the object
-        self._box_ids = list()
         # connectors -- list of available connectors for the box
         self._connectors = dict()
+        # List of box types that can contain this box id -- if None is 
+        # included in the list then the box can be uncontained
+        self._container_box_ids = list()
 
         self.add_attribute_info(
-                attribute.AttributeInfo(
+                attributes.AttributeInfo(
                     "label", 
                     "A unique user-defined identifier for referring to this box",
-                    attribute.AttributeTypes.STRING,
-                    attribute.StringAttribute,
-                    flags = attribute.AttributeFlags.ExecReadOnly |\
-                        attribute.AttributeFlags.ExecImmutable |\
-                        attribute.AttributeFlags.Metadata
+                    attributes.AttributeTypes.STRING,
+                    attributes.StringAttribute,
+                    flags = attributes.AttributeFlags.ExecReadOnly |\
+                        attributes.AttributeFlags.ExecImmutable |\
+                        attributes.AttributeFlags.Metadata
                     )
                 )
     
@@ -90,7 +100,7 @@ class BoxFactory(tags.Taggable):
         return self._connectors[connector_name]
 
     def add_connector(self, connector):
-        self._connectors[connector.connector_type.name] = connector
+        self._connectors[connector.name] = connector
 
     def add_attribute_info(self, attr_info):
         self._attrs_info[attr_info.name] = attr_info
@@ -102,18 +112,16 @@ class BoxFactory(tags.Taggable):
     def list_attributes(self):
         return self._attrs_info.keys()
 
-    def add_box_id(self, box_id):
-        self._aggr_boxes.append(box_id)
+    def add_container_box_id(self, box_id):
+        self._container_box_ids.append(box_id)
 
-    def list_box_ids(self):
-        return self._box_ids
+    def list_container_box_ids(self):
+        return self._container_box_ids
 
-    def create(self, guid, experiment, container = None):
+    def create(self, guid, experiment):
         box = self._clazz(guid, self, experiment)
-        if container:
-            container.add_box(box)
         # add attributes
-        for attr_info in self._attrs_info:
+        for attr_info in self._attrs_info.values():
             attr = attr_info.clazz(attr_info)
             box.add_attribute(attr)
         # add connector
@@ -150,13 +158,21 @@ class Box(object):
         self._logger = logging.getLogger("nepi.design.boxes")
 
     def __str__(self):
-        return "Box(%s, %s, %s)" % (self.guid, self.factory.type_id, 
-                self.factory.testbed_id)
+        return "Box(%s, %s, %s)" % (self.guid, self.box_id, 
+                self.testbed_id)
 
     @property
     def guid(self):
         return self._guid
 
+    @property
+    def box_id(self):
+        return self._factory.box_id
+
+    @property
+    def testbed_id(self):
+        return self._factory.testbed_id
+ 
     @property
     def factory(self):
         return self._factory
@@ -164,6 +180,10 @@ class Box(object):
     @property
     def graphical_info(self):
         return self._graphical_info
+
+    @property
+    def tags(self):
+        return self._factory.tags
 
     @property
     def experiment(self):
@@ -187,7 +207,7 @@ class Box(object):
     def connect(self, connector_name, other_box, other_connector_name, 
             connect_other_side = True):
         connector = self.factory.connector(connector_name)
-        if connector.can_connect():
+        if connector.can_connect(self, connector_name, other_box, other_connector_name):
             could_connect = True
             if connect_other_side:
                 could_connect = other_box.connect(other_connector_name, self, 
@@ -195,7 +215,7 @@ class Box(object):
             if could_connect:
                 self._connections[connector_name].append((other_box, other_connector_name))
                 return True
-        self._logger.warn("connect(): could not connect %d %s from %d %s.", 
+        self._logger.error("could not connect %d %s from %d %s.", 
                     self.guid, connector_name, other_box.guid, other_connector_name)
         return False
 
@@ -209,11 +229,13 @@ class Box(object):
             if could_disconnect:
                 self._connections[connector_name].remove((other_box, other_connector_name))
                 return True
-        self._logger.warn("disconnect(): could not disconnect %d %s from %d %s.", 
+        self._logger.error("could not disconnect %d %s from %d %s.", 
                     self.guid, connector_name, other_box.guid, other_connector_name)
         return False
 
-    def list_connections(self):
+    def list_connections(self, connector = None):
+        if connector:
+            return self._connections[connector]
         connections = list()
         for connector_name in self._connections.keys():
             for (other_box, other_connector_name) in self._connections[connector_name]:
@@ -238,14 +260,12 @@ class Box(object):
         return self._attributes.keys()
 
     def add_box(self, box):
-        box_id = box.factory.box_id
-        box_ids = self.factory.list_box_ids()
-        if bid in box_ids:
+        if self.box_id in box.factory.list_container_box_ids():
             box.container = self
-            self._boxes[guid] = box
+            self._boxes[box.guid] = box
         else:
-            self._logger.warn("add_box(): Wrong box type %s to add to box type %s.", 
-                    box_id, self.factory.box_id)
+            self._logger.error("Wrong box type %s to add to box type %s.", 
+                    box.box_id, self.box_id)
 
     def remove_box(self, box):
         if box.guid in self.list_boxes():
@@ -263,394 +283,410 @@ class Box(object):
         return parser.to_xml(self)
 
 
-class IPAdressBoxFactory(BoxFactory):
-    def __init__(self, tesbed_id, box_id, clazz):
+class IPAddressBoxFactory(BoxFactory):
+    def __init__(self, testbed_id, box_id, clazz):
         super(IPAddressBoxFactory, self).__init__(testbed_id, box_id, clazz)
         
         self.add_tag(tags.ADDRESS)
         
         self.add_attribute_info(
-                attribute.AttributeInfo(
+                attributes.AttributeInfo(
                     "Address", 
                     "IP Address number", 
-                    attribute.AttributeTypes.STRING,
-                    attribute.IPAttribute,
-                    flags = attribute.AttributeFlags.NoDefaultValue
+                    attributes.AttributeTypes.STRING,
+                    attributes.IPAttribute,
+                    flags = attributes.AttributeFlags.NoDefaultValue
                     )
                 )
         self.add_attribute_info(
-                attribute.AttributeInfo(
+                attributes.AttributeInfo(
                     "NetPrefix", 
                     "Network prefix for the address", 
-                    attribute.AttributeTypes.INTEGER,
-                    attribute.IntegerAttribute,
+                    attributes.AttributeTypes.INTEGER,
+                    attributes.IntegerAttribute,
                     args = {"min":0, "max":128},
                     default_value = 24,
-                    flags = attribute.AttributeFlags.NoDefaultValue
+                    flags = attributes.AttributeFlags.NoDefaultValue
                     )
                 )
         self.add_attribute_info(
-                attribute.AttributeInfo(
+                attributes.AttributeInfo(
                     "Broadcast", 
                     "Broadcast network address", 
-                    attribute.AttributeTypes.STRING,
-                    attribute.IPv4Attribute,
-                    flags = attribute.AttributeFlags.NoDefaultValue
+                    attributes.AttributeTypes.STRING,
+                    attributes.IPv4Attribute,
+                    flags = attributes.AttributeFlags.NoDefaultValue
                     )
                 )
 
 
 class RouteBoxFactory(BoxFactory):
-    def __init__(self, tesbed_id, box_id, clazz):
+    def __init__(self, testbed_id, box_id, clazz):
         super(RouteBoxFactory, self).__init__(testbed_id, box_id, clazz)
         
         self.add_tag(tags.ROUTE)
 
         self.add_attribute_info(
-                attribute.AttributeInfo(
+                attributes.AttributeInfo(
                     "Destination", 
                     "Network destination address", 
-                    attribute.AttributeTypes.STRING,
-                    attribute.NetRefAttribute,
-                    flags = attribute.AttributeFlags.NoDefaultValue
+                    attributes.AttributeTypes.STRING,
+                    attributes.NetRefAttribute,
+                    flags = attributes.AttributeFlags.NoDefaultValue
                     )
                 )
         self.add_attribute_info(
-                attribute.AttributeInfo(
+                attributes.AttributeInfo(
                     "NetPrefix", 
                     "Network prefix for the address", 
-                    attribute.AttributeTypes.INTEGER,
-                    attribute.IntegerAttribute,
+                    attributes.AttributeTypes.INTEGER,
+                    attributes.IntegerAttribute,
                     args = {"min":0, "max":128},
                     default_value = 24,
-                    flags = attribute.AttributeFlags.NoDefaultValue
+                    flags = attributes.AttributeFlags.NoDefaultValue
                     )
                 )
         self.add_attribute_info(
-                attribute.AttributeInfo(
+                attributes.AttributeInfo(
                     "NextHop", 
                     "Address of the next hop", 
-                    attribute.AttributeTypes.STRING,
-                    attribute.IPAttribute,
-                    flags = attribute.AttributeFlags.NoDefaultValue
+                    attributes.AttributeTypes.STRING,
+                    attributes.IPAttribute,
+                    flags = attributes.AttributeFlags.NoDefaultValue
                     )
                 )
         self.add_attribute_info(
-                attribute.AttributeInfo(
+                attributes.AttributeInfo(
                     "Metric", 
                     "Routing metric", 
-                    attribute.AttributeTypes.INTEGER,
-                    attribute.IntegerAttribute,
-                    flags = attribute.AttributeFlags.NoDefaultValue
+                    attributes.AttributeTypes.INTEGER,
+                    attributes.IntegerAttribute,
+                    flags = attributes.AttributeFlags.NoDefaultValue
                     )
                 )
         self.add_attribute_info(
-                attribute.AttributeInfo(
+                attributes.AttributeInfo(
                     "Default gateway", 
                     "Indicate if this route points to the default gateway", 
-                    attribute.AttributeTypes.BOOL,
-                    attribute.BoolAttribute,
+                    attributes.AttributeTypes.BOOL,
+                    attributes.BoolAttribute,
                     default_value = False,
-                    flags = attribute.AttributeFlags.NoDefaultValue
+                    flags = attributes.AttributeFlags.NoDefaultValue
                     )
                 )
 
 
 class TunnelBoxFactory(BoxFactory):
-    def __init__(self, tesbed_id, box_id, clazz):
+    def __init__(self, testbed_id, box_id, clazz):
         super(TunnelBoxFactory, self).__init__(testbed_id, box_id, clazz)
 
         self.add_tag(tags.TUNNEL)
 
         self.add_attribute_info(
-                attribute.AttributeInfo(
+                attributes.AttributeInfo(
                     "tunProto", 
                     "TUNneling protocol used",
-                    attribute.AttributeTypes.STRING,
-                    attribute.StringAttribute,
-                    flags = attribute.AttributeFlags.ExecReadOnly | \
-                            attribute.AttributeFlags.ExecImmutable | \
-                            attribute.AttributeFlags.Metadata
+                    attributes.AttributeTypes.STRING,
+                    attributes.StringAttribute,
+                    flags = attributes.AttributeFlags.ExecReadOnly | \
+                            attributes.AttributeFlags.ExecImmutable | \
+                            attributes.AttributeFlags.Metadata
                     )
                 )
         self.add_attribute_info(
-                attribute.AttributeInfo(
+                attributes.AttributeInfo(
                     "tunKey",
                     "Randomly selected TUNneling protocol cryptographic key. "
                      "Endpoints must agree to use the minimum (in lexicographic order) "
                      "of both the remote and local sides.",
-                    attribute.AttributeTypes.STRING,
-                    attribute.StringAttribute,
-                    flags = attribute.AttributeFlags.ExecReadOnly | \
-                            attribute.AttributeFlags.ExecImmutable | \
-                            attribute.AttributeFlags.Metadata
+                    attributes.AttributeTypes.STRING,
+                    attributes.StringAttribute,
+                    flags = attributes.AttributeFlags.ExecReadOnly | \
+                            attributes.AttributeFlags.ExecImmutable | \
+                            attributes.AttributeFlags.Metadata
                     )
                 )
         self.add_attribute_info(
-                attribute.AttributeInfo(
+                attributes.AttributeInfo(
                     "tunAddr",
                     "Address (IP, unix socket, whatever) of the tunnel endpoint",
-                    attribute.AttributeTypes.STRING,
-                    attribute.StringAttribute,
-                    flags = attribute.AttributeFlags.ExecReadOnly | \
-                            attribute.AttributeFlags.ExecImmutable | \
-                            attribute.AttributeFlags.Metadata
+                    attributes.AttributeTypes.STRING,
+                    attributes.StringAttribute,
+                    flags = attributes.AttributeFlags.ExecReadOnly | \
+                            attributes.AttributeFlags.ExecImmutable | \
+                            attributes.AttributeFlags.Metadata
                     )
                 )
         self.add_attribute_info(
-                attribute.AttributeInfo(
+                attributes.AttributeInfo(
                     "tunPort",
                     "IP port of the tunnel endpoint",
-                    attribute.AttributeTypes.INTEGER,
-                    attribute.IntegerAttribute,
-                    flags = attribute.AttributeFlags.ExecReadOnly | \
-                            attribute.AttributeFlags.ExecImmutable | \
-                            attribute.AttributeFlags.Metadata
+                    attributes.AttributeTypes.INTEGER,
+                    attributes.IntegerAttribute,
+                    flags = attributes.AttributeFlags.ExecReadOnly | \
+                            attributes.AttributeFlags.ExecImmutable | \
+                            attributes.AttributeFlags.Metadata
                     )
                 )
         self.add_attribute_info(
-                attribute.AttributeInfo(
+                attributes.AttributeInfo(
                     "tunCipher",
                     "Cryptographic cipher used for tunnelling",
-                    attribute.AttributeTypes.ENUM,
-                    attribute.EnumAttribute,
+                    attributes.AttributeTypes.ENUM,
+                    attributes.EnumAttribute,
                     args = {'allowed': ["AES", "Blowfish", "DES3", "DES", "PLAIN"]},
                     default_value = "AES",
-                    flags = attribute.AttributeFlags.ExecReadOnly | \
-                            attribute.AttributeFlags.ExecImmutable | \
-                            attribute.AttributeFlags.Metadata
+                    flags = attributes.AttributeFlags.ExecReadOnly | \
+                            attributes.AttributeFlags.ExecImmutable | \
+                            attributes.AttributeFlags.Metadata
                     )
                 )
 
 
 class ControllerBoxFactory(BoxFactory):
-    def __init__(self, tesbed_id, box_id, clazz):
+    def __init__(self, testbed_id, box_id, clazz):
         super(ControllerBoxFactory, self).__init__(testbed_id, box_id, clazz)
 
         self.add_tag(tags.CONTROLLER)
 
         self.add_attribute_info(
-                attribute.AttributeInfo(
+                attributes.AttributeInfo(
                     "homeDirectory", 
                     "Path to the directory where traces and other files will be stored",
-                    attribute.AttributeTypes.STRING,
-                    attribute.StringAttribute,
+                    attributes.AttributeTypes.STRING,
+                    attributes.StringAttribute,
                     default_value = "",
-                    flags = attribute.AttributeFlags.ExecReadOnly | \
-                            attribute.AttributeFlags.ExecImmutable | \
-                            attribute.AttributeFlags.Metadata
+                    flags = attributes.AttributeFlags.ExecReadOnly | \
+                            attributes.AttributeFlags.ExecImmutable | \
+                            attributes.AttributeFlags.Metadata
                     )
                 )
         self.add_attribute_info(
-                attribute.AttributeInfo(
+                attributes.AttributeInfo(
                     DC.DEPLOYMENT_ENVIRONMENT_SETUP,
                     "Shell commands to run before spawning Controller processes",
-                    attribute.AttributeTypes.STRING,
-                    attribute.StringAttribute,
-                    flags = attribute.AttributeFlags.ExecReadOnly | \
-                            attribute.AttributeFlags.ExecImmutable | \
-                            attribute.AttributeFlags.Metadata,
+                    attributes.AttributeTypes.STRING,
+                    attributes.StringAttribute,
+                    flags = attributes.AttributeFlags.ExecReadOnly | \
+                            attributes.AttributeFlags.ExecImmutable | \
+                            attributes.AttributeFlags.Metadata,
                     tags = [tags.DEPLOYMENT],
                     )
                 )
         self.add_attribute_info(
-                attribute.AttributeInfo(
-                    DC.DEPLOYMENT_ENVIRONMENT_MODE,
+                attributes.AttributeInfo(
+                    DC.DEPLOYMENT_MODE,
                     "Controller execution mode",
-                    attribute.AttributeTypes.ENUM,
-                    attribute.EnumAttribute,
+                    attributes.AttributeTypes.ENUM,
+                    attributes.EnumAttribute,
                     args = {"allowed": [DC.MODE_DAEMON, DC.MODE_SINGLE_PROCESS]},
                     default_value = DC.MODE_SINGLE_PROCESS,
-                    flags = attribute.AttributeFlags.ExecReadOnly | \
-                            attribute.AttributeFlags.ExecImmutable | \
-                            attribute.AttributeFlags.Metadata,
+                    flags = attributes.AttributeFlags.ExecReadOnly | \
+                            attributes.AttributeFlags.ExecImmutable | \
+                            attributes.AttributeFlags.Metadata,
                     tags = [tags.DEPLOYMENT],
                     )
                 )
         self.add_attribute_info(
-                attribute.AttributeInfo(
-                    DC.DEPLOYMENT_ENVIRONMENT_COMMUNICATION,
+                attributes.AttributeInfo(
+                    DC.DEPLOYMENT_COMMUNICATION,
                     "Controller communication mode",
-                    attribute.AttributeTypes.ENUM,
-                    attribute.EnumAttribute,
+                    attributes.AttributeTypes.ENUM,
+                    attributes.EnumAttribute,
                     args = {"allowed": [DC.ACCESS_LOCAL, DC.ACCESS_SSH]},
                     default_value = DC.ACCESS_LOCAL,
-                    flags = attribute.AttributeFlags.ExecReadOnly | \
-                            attribute.AttributeFlags.ExecImmutable | \
-                            attribute.AttributeFlags.Metadata,
+                    flags = attributes.AttributeFlags.ExecReadOnly | \
+                            attributes.AttributeFlags.ExecImmutable | \
+                            attributes.AttributeFlags.Metadata,
                     tags = [tags.DEPLOYMENT],
                     )
                 )
         self.add_attribute_info(
-                attribute.AttributeInfo(
+                attributes.AttributeInfo(
                     DC.DEPLOYMENT_HOST,
                     "Host where the testbed will be executed",
-                    attribute.AttributeTypes.STRING,
-                    attribute.StringAttribute,
+                    attributes.AttributeTypes.STRING,
+                    attributes.StringAttribute,
                     default_value = "localhost",
-                    flags = attribute.AttributeFlags.ExecReadOnly | \
-                            attribute.AttributeFlags.ExecImmutable | \
-                            attribute.AttributeFlags.Metadata,
+                    flags = attributes.AttributeFlags.ExecReadOnly | \
+                            attributes.AttributeFlags.ExecImmutable | \
+                            attributes.AttributeFlags.Metadata,
                     tags = [tags.DEPLOYMENT],
                     )
                 )
         self.add_attribute_info(
-                attribute.AttributeInfo(
+                attributes.AttributeInfo(
                     DC.DEPLOYMENT_USER,
                     "User on the Host to execute the testbed",
-                    attribute.AttributeTypes.STRING,
-                    attribute.StringAttribute,
+                    attributes.AttributeTypes.STRING,
+                    attributes.StringAttribute,
                     default_value = getpass.getuser(),
-                    flags = attribute.AttributeFlags.ExecReadOnly | \
-                            attribute.AttributeFlags.ExecImmutable | \
-                            attribute.AttributeFlags.Metadata,
+                    flags = attributes.AttributeFlags.ExecReadOnly | \
+                            attributes.AttributeFlags.ExecImmutable | \
+                            attributes.AttributeFlags.Metadata,
                     tags = [tags.DEPLOYMENT],
                     )
                 )
         self.add_attribute_info(
-                attribute.AttributeInfo(
+                attributes.AttributeInfo(
                     DC.DEPLOYMENT_KEY,
                     "Path to SSH key to use for connecting",
-                    attribute.AttributeTypes.STRING,
-                    attribute.StringAttribute,
-                    flags = attribute.AttributeFlags.ExecReadOnly | \
-                            attribute.AttributeFlags.ExecImmutable | \
-                            attribute.AttributeFlags.Metadata,
+                    attributes.AttributeTypes.STRING,
+                    attributes.StringAttribute,
+                    flags = attributes.AttributeFlags.ExecReadOnly | \
+                            attributes.AttributeFlags.ExecImmutable | \
+                            attributes.AttributeFlags.Metadata,
                     tags = [tags.DEPLOYMENT],
                     )
                 )
         self.add_attribute_info(
-                attribute.AttributeInfo(
+                attributes.AttributeInfo(
                     DC.DEPLOYMENT_PORT,
                     "Port on the Host",
-                    attribute.AttributeTypes.INTEGER,
-                    attribute.IntegerAttribute,
+                    attributes.AttributeTypes.INTEGER,
+                    attributes.IntegerAttribute,
                     default_value = 22,
-                    flags = attribute.AttributeFlags.ExecReadOnly | \
-                            attribute.AttributeFlags.ExecImmutable | \
-                            attribute.AttributeFlags.Metadata,
+                    flags = attributes.AttributeFlags.ExecReadOnly | \
+                            attributes.AttributeFlags.ExecImmutable | \
+                            attributes.AttributeFlags.Metadata,
                     tags = [tags.DEPLOYMENT],
                     )
                 )
         self.add_attribute_info(
-                attribute.AttributeInfo(
+                attributes.AttributeInfo(
                     DC.ROOT_DIRECTORY,
                     "Root directory for storing process files",
-                    attribute.AttributeTypes.STRING,
-                    attribute.StringAttribute,
+                    attributes.AttributeTypes.STRING,
+                    attributes.StringAttribute,
                     default_value = ".",
-                    flags = attribute.AttributeFlags.ExecReadOnly | \
-                            attribute.AttributeFlags.ExecImmutable | \
-                            attribute.AttributeFlags.Metadata,
+                    flags = attributes.AttributeFlags.ExecReadOnly | \
+                            attributes.AttributeFlags.ExecImmutable | \
+                            attributes.AttributeFlags.Metadata,
                     tags = [tags.DEPLOYMENT],
                     )
                 )
         self.add_attribute_info(
-                attribute.AttributeInfo(
+                attributes.AttributeInfo(
                     DC.USE_AGENT,
                     "Use -A option for forwarding of the authentication agent, if ssh access is used", 
-                    attribute.AttributeTypes.BOOL,
-                    attribute.BoolAttribute,
+                    attributes.AttributeTypes.BOOL,
+                    attributes.BoolAttribute,
                     default_value = False,
-                    flags = attribute.AttributeFlags.ExecReadOnly | \
-                            attribute.AttributeFlags.ExecImmutable | \
-                            attribute.AttributeFlags.Metadata,
+                    flags = attributes.AttributeFlags.ExecReadOnly | \
+                            attributes.AttributeFlags.ExecImmutable | \
+                            attributes.AttributeFlags.Metadata,
                     tags = [tags.DEPLOYMENT],
                     )
                 )
         self.add_attribute_info(
-                attribute.AttributeInfo(
+                attributes.AttributeInfo(
                     DC.USE_SUDO,
                     "Use sudo to run the deamon process. This option only take flace when the server runs in daemon mode.", 
-                    attribute.AttributeTypes.BOOL,
-                    attribute.BoolAttribute,
+                    attributes.AttributeTypes.BOOL,
+                    attributes.BoolAttribute,
                     default_value = False,
-                    flags = attribute.AttributeFlags.ExecReadOnly | \
-                            attribute.AttributeFlags.ExecImmutable | \
-                            attribute.AttributeFlags.Metadata,
+                    flags = attributes.AttributeFlags.ExecReadOnly | \
+                            attributes.AttributeFlags.ExecImmutable | \
+                            attributes.AttributeFlags.Metadata,
                     tags = [tags.DEPLOYMENT],
                     )
                 )
         self.add_attribute_info(
-                attribute.AttributeInfo(
+                attributes.AttributeInfo(
                     DC.CLEAN_ROOT,
                     "Clean server root directory (Warning: This will erase previous data).", 
-                    attribute.AttributeTypes.BOOL,
-                    attribute.BoolAttribute,
+                    attributes.AttributeTypes.BOOL,
+                    attributes.BoolAttribute,
                     default_value = False,
-                    flags = attribute.AttributeFlags.ExecReadOnly | \
-                            attribute.AttributeFlags.ExecImmutable | \
-                            attribute.AttributeFlags.Metadata,
+                    flags = attributes.AttributeFlags.ExecReadOnly | \
+                            attributes.AttributeFlags.ExecImmutable | \
+                            attributes.AttributeFlags.Metadata,
                     tags = [tags.DEPLOYMENT],
                     )
                 )
         self.add_attribute_info(
-                attribute.AttributeInfo(
+                attributes.AttributeInfo(
                     DC.LOG_LEVEL,
                     "Log level for controller",
-                    attribute.AttributeTypes.ENUM,
-                    attribute.EnumAttribute,
+                    attributes.AttributeTypes.ENUM,
+                    attributes.EnumAttribute,
                     args = {"allowed": [DC.ERROR_LEVEL, DC.DEBUG_LEVEL]},
                     default_value = DC.ERROR_LEVEL,
-                    flags = attribute.AttributeFlags.ExecReadOnly | \
-                            attribute.AttributeFlags.ExecImmutable | \
-                            attribute.AttributeFlags.Metadata,
+                    flags = attributes.AttributeFlags.ExecReadOnly | \
+                            attributes.AttributeFlags.ExecImmutable | \
+                            attributes.AttributeFlags.Metadata,
                     tags = [tags.DEPLOYMENT],
                     )
                 )
         self.add_attribute_info(
-                attribute.AttributeInfo(
+                attributes.AttributeInfo(
                     DC.RECOVERY_POLICY,
                     "Specifies what action to take in the event of a failure.", 
-                    attribute.AttributeTypes.ENUM,
-                    attribute.EnumAttribute,
+                    attributes.AttributeTypes.ENUM,
+                    attributes.EnumAttribute,
                     args = {"allowed": [DC.POLICY_FAIL, DC.POLICY_RECOVER, DC.POLICY_RESTART]},
                     default_value = DC.POLICY_FAIL,
-                    flags = attribute.AttributeFlags.ExecReadOnly | \
-                            attribute.AttributeFlags.ExecImmutable | \
-                            attribute.AttributeFlags.Metadata,
+                    flags = attributes.AttributeFlags.ExecReadOnly | \
+                            attributes.AttributeFlags.ExecImmutable | \
+                            attributes.AttributeFlags.Metadata,
                     tags = [tags.DEPLOYMENT],
                     )
                 )
         self.add_attribute_info(
-                attribute.AttributeInfo(
-                    DC.RECOVERY,
+                attributes.AttributeInfo(
+                    DC.RECOVER,
                     "Do not intantiate testbeds, rather, reconnect to already-running instances. Used to recover from a dead controller.", 
-                    attribute.AttributeTypes.BOOL,
-                    attribute.BoolAttribute,
+                    attributes.AttributeTypes.BOOL,
+                    attributes.BoolAttribute,
                     default_value = False,
-                    flags = attribute.AttributeFlags.ExecReadOnly | \
-                            attribute.AttributeFlags.ExecImmutable | \
-                            attribute.AttributeFlags.DesignInvisible | \
-                            attribute.AttributeFlags.Metadata,
+                    flags = attributes.AttributeFlags.ExecReadOnly | \
+                            attributes.AttributeFlags.ExecImmutable | \
+                            attributes.AttributeFlags.DesignInvisible | \
+                            attributes.AttributeFlags.Metadata,
                     tags = [tags.DEPLOYMENT],
                     )
                 )
 
 
 class TestbedBoxFactory(ControllerBoxFactory):
-    def create(self, guid, experiment, container = None):
-        box = super(TestbedBoxFactory, self).create(guid, experiment, None)
+    def __init__(self, testbed_id, box_id, clazz):
+        super(TestbedBoxFactory, self).__init__(testbed_id, box_id, clazz)
+        self.add_container_box_id("Experiment")
+
+    def create(self, guid, experiment):
+        box = super(TestbedBoxFactory, self).create(guid, experiment)
         experiment.add_box(box)
         return box
 
 
 class ExperimentBox(Box):
-    def __init__(self, guid, factory, None):
-        super(ExperimentBox, self).__init__(guid, factory, None)
+    def __init__(self, factory):
+        super(ExperimentBox, self).__init__(0, factory, None)
         self._guid_generator = GuidGenerator()
 
-    def add_box(self, box):
-        if tags.CONTROLLER not in box.tags:
-            self._logger.warn("ExperimentBox.add_box(): wrong box %d, can only add boxes with tag CONTROLLER", 
-                    box.factory.box_id)
-            return 
-        super(ExperimentBox, self).add_box(box)
- 
+    def next_guid(self, guid):
+        return self._guid_generator.next(guid)
+
+class ExperimentBoxFactory(ControllerBoxFactory):
+    def __init__(self):
+        super(ExperimentBoxFactory, self).__init__(None, "Experiment", ExperimentBox)
+
+    def create(self):
+        box = ExperimentBox(self)
+        # add attributes
+        for attr_info in self._attrs_info.values():
+            clazz = attr_info.clazz
+            attr = clazz(attr_info)
+            box.add_attribute(attr)
+        # add connector
+        for connector_name in self._connectors.keys():
+            box.add_connector(connector_name)
+        return box
+
 
 def create_experiment():
-    factory = ControllerFactory("all", "Experiment", ExperimentBox)
-    return factory.create(0, None)
+    factory = ExperimentBoxFactory()
+    return factory.create()
 
 def create_provider():
     # this factory provider instance will hold reference to all available factories 
