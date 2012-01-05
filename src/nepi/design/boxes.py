@@ -13,7 +13,7 @@ from nepi.design.graphical import GraphicalInfo
 
 from nepi.util.constants import DeploymentConfiguration as DC
 from nepi.util.guid import GuidGenerator
-from nepi.util.parser._xml import XMLBoxParser
+from nepi.util.parser import XMLBoxParser
 
 
 class BoxFactoryProvider(object):
