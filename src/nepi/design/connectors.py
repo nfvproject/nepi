@@ -1,14 +1,91 @@
 # -*- coding: utf-8 -*-
 
-"""
-Common connector class
-"""
-
+import copy
 import logging
 import sys
+import weakref
+
+
+class ConnectorMapProxy(object):
+    """ ConnectorMapProxy is used to admit expressions such as:
+        box.c.connector1.connect(box2.c.connector2)
+    """
+    def __init__(self, owner):
+        self.owner = weakref.ref(owner)
+    
+    def __getattr__(self, conn_name):
+        return self.owner._connectors[conn_name]
+
+
+class ConnectionsProxy(object):
+    """ ConnectionProxy is used to admit experssions such as:
+        [connected_box1, connected_box2] = box.cn.connector1
+    """
+    def __init__(self, owner):
+        self.owner = weakref.ref(owner)
+    
+    def __getattr__(self, conn_name):
+         return [ box for (box, conn_name2) in self.owner._connections[conn_name] ]
+
+
+class ConnectorsMap(object):
+    def __init__(self):
+        super(ConnectorsMap, self).__init__()
+        self._connectors = dict()
+        self._c = ConnectorsMapProxy(self)
+        # connections -- list of all connected objects by connector
+        self._connections = dict()
+        self._cn = ConnectionsProxy(self)
+
+    @property
+    def connectors(self):
+        return self._connectors.keys()
+
+    @property
+    def c(self):
+        return self._c
+
+    @property
+    def cn(self):
+        return self._cn
+
+    def add_connector(self, connector):
+        self._connectors[connector.name] = connector
+        self._connections[connector.name] = list()
+        connector.owner = self
+
+    def copy_connectors(self, other):
+        self._c = ConnectorsMapProxy(self)
+        self._connectors = dict()
+        self._cn = ConnectionProxy(self)
+        self._connections = dict()
+        for conn in other._connectors:
+            new = conn.clone()
+            new._box = self
+            self.add_connector(new)
+
+    @property
+    def connections(self):
+        connections = list()
+        for connector_name in self._connections.keys():
+            for (other_box, other_connector_name) in self._connections[connector_name]:
+                connections.append(self, connector_name, other_box, other_connector_name)
+        return connections
+
+    def is_connected(self, connector, other_connector):
+        return (other_connector.owner, other_connector.name) in self._connections[connector.name]
+
+    def connect(self, connector, other_connector):
+        cn = (other_connector.owner, other_connector.name)
+        self._connections[connector.name].append(cn)
+
+    def disconnect(self, connector, other_connector):
+        cn = (other_connector.owner, other_connector.name)
+        self._connections[connector.name].remove(cn)
+
 
 class Connector(object):
-    def __init__(self, box_id, name, help, max = -1, min = 0):
+    def __init__(self, box, name, help, max = -1, min = 0):
         super(Connector, self).__init__()
         if max == -1:
             max = sys.maxint
@@ -21,8 +98,8 @@ class Connector(object):
         self._max = max
         # min -- minimum amount of connections required by this type of connector
         self._min = min
-        # Box typed identified
-        self._box_id = box_id
+        # Box owner
+        self._owner = owner
         # name -- display name for the connector type
         self._name = name
         # help -- help text
@@ -31,10 +108,6 @@ class Connector(object):
         self._connection_rules = list()
 
         self._logger = logging.getLogger("nepi.design.connectors")
-
-    @property
-    def box_id(self):
-        return self._box_id
 
     @property
     def name(self):
@@ -51,45 +124,85 @@ class Connector(object):
     @property
     def min(self):
         return self._min
-    
+
+    def get_owner(self):
+        # Gives back a strong-reference not a weak one
+        return self._owner()
+
+    def set_owner(self, owner):
+        self._owner = weakref.ref(owner)
+
+    owner = property(get_owner, set_owner)
+
     def list_connection_rules(self):
         return self._connection_rules
 
     def add_connection_rule(self, rule):
         self._connection_rules.append(rule)
 
-    def is_full(self, box, connector_name):
+    def is_full(self):
         """Return True if the connector has the maximum number of connections
         """
-        return len(box.list_connections(connector_name)) == self.max
+        return len(self.owner._connections[self.name]) == self.max
 
-    def is_complete(self, box, connector_name):
+    def is_complete(self):
         """Return True if the connector has the minimum number of connections
         """
-        return len(box.list_connections(connector_name)) >= self.min
+        return len(self.owner._connections[self.name]) >= self.min
 
-    def can_connect(self, box, connector_name, other_box, other_connector_name):
+    def connect(self, other_connector, connect_other_side = True):
+        if self.can_connect(other_connector):
+            could_connect = True
+            if connect_other_side:
+                could_connect = other_connector.connect(self, False)
+            if could_connect:
+                self.owner.connect(self, other_connector)
+                return True
+        self._logger.error("could not connect %d %s from %d %s.", 
+                    self.owner.guid, self.name, 
+                    other_connector.owner.guid, other_connector.name)
+        return False
+
+    def disconnect(self, connector, other_connector, disconect_other_side = True):
+        if (other_connector.owner, other_connector.name) in self._connections[connector.name]:
+            could_disconnect = True
+            if disconnect_other_side:
+                could_disconnect = other_connector.disconnect(connector, False)
+            if could_disconnect:
+                self._connections[connector_name].remove((other_connectir.owner, other_connector.name))
+                return True
+        self._logger.error("could not disconnect %d %s from %d %s.", 
+                    connector.owner.guid, connector.name, 
+                    other_connector.owner.guid, other_connector.name)
+        return False
+
+    def can_connect(self, other_connector):
         # can't connect with self
-        if box.guid == other_box.guid:
+        if self.owner.guid == other_connector.owner.guid:
             self._logger.error("can't connect box with self %s %d.", 
-                    box.box_id, box.guid)
+                    self.owner.box_id, self.owner.guid)
             return False
         # can't add more connections
-        if self.is_full(box, connector_name):
+        if self.is_full():
             self._logger.error("Connector %s for %s %d is full.", 
-                    connector_name, box.box_id, box.guid)
+                    self.name, self.owner.box_id, self.owner.guid)
             return False
         # is already connected
-        if box.is_connected(connector_name, other_box, other_connector_name):
+        if self.owner.is_connected(self, other_connector):
             return False
         # look over all connection rules
         for rule in self._connection_rules:
-            if rule.can_connect(box, connector_name, other_box, other_connector_name):
+            if rule.can_connect(self.owner, self.name, other_connector.owner, 
+                    other_connector.name):
                 return True
         self._logger.error("No connection rule found for %s %d %s to %s %d %s.", 
-                    box.box_id, box.guid, connector_name, other_box.box_id,
-                    other_box.guid, other_connector_name)
+                    self.owner.box_id, self.owner.guid, self.name, 
+                    other_connector.owner.box_id, other_connector.owner.guid, 
+                    other_connector.name)
         return False
+
+    def clone(self):
+        return copy.copy(self)
 
 
 class ConnectionRule(object):
