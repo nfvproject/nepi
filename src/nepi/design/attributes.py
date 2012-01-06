@@ -1,10 +1,45 @@
 # -*- coding: utf-8 -*-
 
+import copy
 import ipaddr
 import logging
 import re
+import weakref
 
 from nepi.design.tags import Taggable
+
+
+class AttributesMapProxy(object):
+    def __init__(self, owner):
+        self.owner = weakref.ref(owner)
+    
+    def __getattr__(self, attr_name):
+        return self.owner._attributes[attr_name]
+
+
+class AttributesMap(object):
+    def __init__(self):
+        super(AttributesMap, self).__init__()
+        self._attributes = dict()
+        self._a = AttributesMapProxy(self)
+
+    @property
+    def attributes(self):
+        return self._attributes.keys()
+
+    @property
+    def a(self):
+        return self._a
+
+    def add_attr(self, attr):
+        self._attributes[attr.name] = attr
+        attr.owner = self
+
+    def copy_attrs(self, other):
+        self._a = AttributesMapProxy(self)
+        for attr in other._attributes:
+            new = attr.clone()
+            self.add_attr(new)
 
 
 class AttributeTypes(object):
@@ -49,24 +84,48 @@ class AttributeFlags(object):
     Metadata         = 0x40
 
 
-class AttributeInfo(Taggable):
-    """ The responsability of an AttributeInfo class is to provide attribute
-    information but not attribute state """
-    def __init__(self, name, help, type, clazz, args = None, 
-            default_value = None, flags = None, tags = []):
-        super(AttributeInfo, self).__init__()
+flags_t = dict({
+    "NoFlags": AttributeFlags.NoFlags,
+    "DesignReadOnly": AttributeFlags.DesignReadOnly,
+    "DesignInvisible": AttributeFlags.DesignInvisible,
+    "ExecReadOnly": AttributeFlags.ExecReadOnly,
+    "ExecInvisible": AttributeFlags.ExecInvisible,
+    "ExecImmutable": AttributeFlags.ExecImmutable,
+    "NoDefaultValue": AttributeFlags.NoDefaultValue,
+    "Metadata": AttributeFlags.Metadata,
+    })
+
+
+class FlagProxy(object):
+    def __init__(self, owner):
+        self.owner = weakref.ref(owner)
+    
+    def __getattr__(self, flagname):
+        return self.owner.has_flag(getattr(AttributeFlags, flagname))
+
+
+class Attribute(Taggable):
+    """ The responsability of an Attribute class is to provide attribute
+    value validation """
+    def __init__(self, name, help, type, default_value = None, 
+            flags = None, tags = []):
+        super(Attribute, self).__init__()
         if not type in AttributeTypes.types:
             raise AttributeError("invalid type %s " % type)
         self._name = name
         self._type = type
         self._help = help
-        # attribute construction class
-        self._clazz = clazz
-        self._args = args
         self._default_value = default_value
         self._flags = flags if flags != None else AttributeFlags.NoFlags
+        self._flag_proxy = FlagProxy(self)
+        self._value = default_value
+        self._modified = False
+        self._owner = None
+        
         for tag in tags:
             self.add_tag(tag)
+    
+        self._logger = logging.getLogger("nepi.design.attributes")
 
     @property
     def name(self):
@@ -85,35 +144,25 @@ class AttributeInfo(Taggable):
         return self._help
 
     @property
-    def clazz(self):
-        return self._clazz
-
-    @property
-    def args(self):
-        # Is it more optimal to store an empty dict in args
-        # or to create one on demand that will soon be derreferenced?
-        return dict() if not self._args else self._args
+    def f(self):
+        return self._flag_proxy
 
     @property
     def flags(self):
-        return self._flags
-
-
-class Attribute(object):
-    """ The responsability of an Attribute class is to provide attribute
-    value validation """
-    def __init__(self, attr_info):
-        super(Attribute, self).__init__()
-        self._attr_info = attr_info
-        self._value = attr_info.default_value
-        self._modified = False
-        self.container = None
-      
-        self._logger = logging.getLogger("nepi.design.attributes")
+        return [fn for fn in flags_t.keys() if getattr(self.f, fn)]
 
     @property
     def modified(self):
         return self._modified
+
+    def get_owner(self):
+        # Gives back a strong-reference not a weak one
+        return self._owner()
+
+    def set_owner(self, owner):
+        self._owner = weakref.ref(owner)
+
+    owner = property(get_owner, set_owner)
 
     def get_value(self):
         return self._value
@@ -130,65 +179,23 @@ class Attribute(object):
     def is_valid(self, value):
         raise NotImplementedError
 
-    @property
-    def name(self):
-        return self._attr_info.name
-
-    @property
-    def type(self):
-        return self._attr_info.type
-
-    @property
-    def help(self):
-        return self._attr_info.help
-
-    @property
-    def default_value(self):
-        return self._attr_info.default_value
-
-    @property
-    def tags(self):
-        return self._attr_info.tags
-
     def has_flag(self, flag):
-        return (self._attr_info.flags & flag) == flag
+        return (self._flags & flag) == flag
 
-    @property
-    def is_design_invisible(self):
-        return self.has_flag(Attribute.DesignInvisible)
-
-    @property
-    def is_design_read_only(self):
-        return self.has_flag(Attribute.DesignReadOnly)
-
-    @property
-    def is_exec_invisible(self):
-        return self.has_flag(Attribute.ExecInvisible)
-
-    @property
-    def is_exec_read_only(self):
-        return self.has_flag(Attribute.ExecReadOnly)
-
-    @property
-    def is_exec_immutable(self):
-        return self.has_flag(Attribute.ExecImmutable)
-
-    @property
-    def is_metadata(self):
-        return self.has_flag(Attribute.Metadata)
-
-    @property
-    def has_no_default_value(self):
-        return self.has_flag(Attribute.NoDefaultValue)
+    def clone(self):
+        new = copy.copy(self)
+        # need to make a new FlagProxy
+        new._flag_proxy = FlagProxy(new)
+        return new
 
 
 class EnumAttribute(Attribute):
-    def __init__(self, attr_info):
-        super(EnumAttribute, self).__init__(attr_info)
-        if self.type != AttributeTypes.ENUM:
-            raise AttributeError("invalid type %s for EnumAttribute" % 
-                    self.type)
-        self._allowed = self._attr_info.args.get("allowed", [])
+    def __init__(self, name, help, default_value = None, 
+            flags = None, tags = [], allowed = []):
+        type = AttributeTypes.ENUM
+        super(EnumAttribute, self).__init__(name, help, type, 
+                default_value, flags, tags)
+        self._allowed = allowed
 
     @property
     def allowed(self):
@@ -203,11 +210,11 @@ class EnumAttribute(Attribute):
 
 
 class BoolAttribute(Attribute):
-    def __init__(self, attr_info):
-        super(BoolAttribute, self).__init__(attr_info)
-        if self.type != AttributeTypes.BOOL:
-            raise AttributeError("invalid type %s for BoolAttribute" % 
-                    self.type)
+    def __init__(self, name, help, default_value = None, 
+            flags = None, tags = []):
+        type = AttributeTypes.BOOL
+        super(BoolAttribute, self).__init__(name, help, type, 
+                default_value, flags, tags)
 
     def is_valid(self, value):
         if isinstance(value, bool):
@@ -218,10 +225,12 @@ class BoolAttribute(Attribute):
 
 
 class RangeAttribute(Attribute):
-    def __init__(self, attr_info):
-        super(RangeAttribute, self).__init__(attr_info)
-        self._min = self._attr_info.args.get("min")
-        self._max = self._attr_info.args.get("max")
+    def __init__(self, name, help, type, default_value = None, 
+            flags = None, tags = [], min = None, max = None):
+        super(RangeAttribute, self).__init__(name, help, type, 
+                default_value, flags, tags)
+        self._min = min
+        self._max = max
 
     @property
     def min(self):
@@ -237,11 +246,11 @@ class RangeAttribute(Attribute):
 
 
 class DoubleAttribute(RangeAttribute):
-    def __init__(self, attr_info):
-        super(DoubleAttribute, self).__init__(attr_info)
-        if self.type != AttributeTypes.DOUBLE:
-            raise AttributeError("invalid type %s for DoubleAttribute" % 
-                    self.type)
+    def __init__(self, name, help, default_value = None, 
+            flags = None, tags = [], min = None, max = None):
+        type = AttributeTypes.DOUBLE
+        super(DoubleAttribute, self).__init__(name, help, type, 
+                default_value, flags, tags, min, max)
 
     def is_valid(self, value):
         if self._is_in_range(value) and isinstance(value, float):
@@ -252,11 +261,11 @@ class DoubleAttribute(RangeAttribute):
 
 
 class IntegerAttribute(RangeAttribute):
-    def __init__(self, attr_info):
-        super(IntegerAttribute, self).__init__(attr_info)
-        if self.type != AttributeTypes.INTEGER:
-            raise AttributeError("invalid type %s for IntegerAttribute" % 
-                    self.type)
+    def __init__(self, name, help, default_value = None, 
+            flags = None, tags = [], min = None, max = None):
+        type = AttributeTypes.INTEGER
+        super(IntegerAttribute, self).__init__(name, help, type, 
+                default_value, flags, tags, min, max)
 
     def is_valid(self, value):
         if self._is_in_range(value) and isinstance(value, int):
@@ -265,12 +274,15 @@ class IntegerAttribute(RangeAttribute):
                 str(value), self.name)
         return False
 
+
 class NumberAttribute(RangeAttribute):
-    def __init__(self, attr_info):
-        super(NumberAttribute, self).__init__(attr_info)
+    def __init__(self, name, help, type, default_value = None, 
+            flags = None, tags = [], min = None, max = None):
         if self.type not in [AttributeTypes.INTEGER, AttributeTypes.DOUBLE]:
             raise AttributeError("invalid type %s for NumberAttribute" % 
                     self.type)
+        super(NumberAttribute, self).__init__(name, help, type, 
+                default_value, flags, tags, min, max)
 
     def is_valid(self, value):
         if self._is_in_range(value) and isinstance(value, (float, int, long)):
@@ -281,11 +293,11 @@ class NumberAttribute(RangeAttribute):
 
 
 class StringAttribute(Attribute):
-    def __init__(self, attr_info):
-        super(StringAttribute, self).__init__(attr_info)
-        if self.type != AttributeTypes.STRING:
-            raise AttributeError("invalid type %s for StringAttribute" % 
-                    self.type)
+    def __init__(self, name, help, default_value = None, 
+            flags = None, tags = []):
+        type = AttributeTypes.STRING
+        super(StringAttribute, self).__init__(name, help, type, 
+                default_value, flags, tags)
 
     def is_valid(self, value):
         if isinstance(value, str):
@@ -296,11 +308,11 @@ class StringAttribute(Attribute):
 
 
 class TimeAttribute(Attribute):
-    def __init__(self, attr_info):
-        super(TimeAttribute, self).__init__(attr_info)
-        if self.type != AttributeTypes.STRING:
-            raise AttributeError("invalid type %s for TimeAttribute" % 
-                    self.type)
+    def __init__(self, name, help, type, default_value = None, 
+            flags = None, tags = []):
+        type = AttributeTypes.STRING
+        super(TimeAttribute, self).__init__(name, help, type, 
+                default_value, flags, tags)
 
     def is_valid(self, value):
         # TODO: Missing validation
@@ -312,11 +324,11 @@ class TimeAttribute(Attribute):
 
 
 class IPv4Attribute(Attribute):
-    def __init__(self, attr_info):
-        super(IPv4Attribute, self).__init__(attr_info)
-        if self.type != AttributeTypes.STRING:
-            raise AttributeError("invalid type %s for IPv4Attribute" % 
-                    self.type)
+    def __init__(self, name, help, default_value = None, 
+            flags = None, tags = []):
+        type = AttributeTypes.STRING
+        super(IPv4Attribute, self).__init__(name, help, type, 
+                default_value, flags, tags)
 
     def _is_valid_ipv4(self, value):
         try:
@@ -334,11 +346,11 @@ class IPv4Attribute(Attribute):
 
 
 class IPv6Attribute(Attribute):
-    def __init__(self, attr_info):
-        super(IPv6Attribute, self).__init__(attr_info)
-        if self.type != AttributeTypes.STRING:
-            raise AttributeError("invalid type %s for IPv6Attribute" % 
-                    self.type)
+    def __init__(self, name, help, default_value = None, 
+            flags = None, tags = []):
+        type = AttributeTypes.STRING
+        super(IPv6Attribute, self).__init__(name, help, type, 
+                default_value, flags, tags)
 
     def _is_valid_ipv6(self, value):
         try:
@@ -356,11 +368,11 @@ class IPv6Attribute(Attribute):
 
 
 class IPAttribute(IPv4Attribute, IPv6Attribute):
-    def __init__(self, attr_info):
-        super(IPAttribute, self).__init__(attr_info)
-        if self.type != AttributeTypes.STRING:
-            raise AttributeError("invalid type %s for IPAttribute" % 
-                    self.type)
+    def __init__(self, name, help, default_value = None, 
+            flags = None, tags = []):
+        type = AttributeTypes.STRING
+        super(IPAttribute, self).__init__(name, help, type, 
+                default_value, flags, tags)
 
     def is_valid(self, value):
         if not self._is_valid_ipv4(value) and \
@@ -372,11 +384,11 @@ class IPAttribute(IPv4Attribute, IPv6Attribute):
 
 
 class NetRefAttribute(IPAttribute):
-    def __init__(self, attr_info):
-        super(IPAttribute, self).__init__(attr_info)
-        if self.type != AttributeTypes.STRING:
-            raise AttributeError("invalid type %s for NetRefAttribute" % 
-                    self.type)
+    def __init__(self, name, help, default_value = None, 
+            flags = None, tags = []):
+        type = AttributeTypes.STRING
+        super(NetRefAttribute, self).__init__(name, help, type, 
+                default_value, flags, tags)
 
     def is_valid(self, value):
         # TODO: Allow netrefs!
@@ -388,11 +400,11 @@ class NetRefAttribute(IPAttribute):
 
 
 class MacAddressAttribute(Attribute):
-    def __init__(self, attr_info):
-        super(MacAddressAttribute, self).__init__(attr_info)
-        if self.type != AttributeTypes.STRING:
-            raise AttributeError("invalid type %s for MacAddressAttribute" % 
-                    self.type)
+    def __init__(self, name, help, default_value = None, 
+            flags = None, tags = []):
+        type = AttributeTypes.STRING
+        super(MacAddressAttribute, self).__init__(name, help, type, 
+                default_value, flags, tags)
 
     def is_valid(self, value):
         regex = r'^([0-9a-zA-Z]{0,2}:)*[0-9a-zA-Z]{0,2}'
@@ -402,4 +414,5 @@ class MacAddressAttribute(Attribute):
             self._logger.error("Wrong value %r for MacAddressAttribute %s",
                     str(value), self.name)
         return True
+
 
