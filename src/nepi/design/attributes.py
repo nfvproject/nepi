@@ -23,44 +23,6 @@ def _is_valid_ipv4(value):
     return True
 
 
-class AttributesMapProxy(object):
-    def __init__(self, owner):
-        self._owner = weakref.ref(owner)
-    
-    def __getattr__(self, name):
-        return self._owner()._attributes[name]
-
-    def __setattr__(self, name, value):
-        if name != "_owner":
-            raise RuntimeError("Can't override attribute")
-        super(AttributesMapProxy, self).__setattr__(name, value)
-
-
-class AttributesMap(object):
-    def __init__(self):
-        super(AttributesMap, self).__init__()
-        self._attributes = dict()
-        self._a = AttributesMapProxy(self)
-
-    @property
-    def attributes(self):
-        return self._attributes.keys()
-
-    @property
-    def a(self):
-        return self._a
-
-    def add_attr(self, attr):
-        self._attributes[attr.name] = attr
-        attr.owner = self
-
-    def clone_attrs(self, other):
-        self._a = AttributesMapProxy(self)
-        for attr in other._attributes.values():
-            new = attr.clone()
-            self.add_attr(new)
-
-
 class AttributeTypes(object):
     STRING  = "STRING"
     BOOL    = "BOOL"
@@ -103,16 +65,55 @@ class AttributeFlags(object):
     Metadata         = 0x40
 
 
-flags_t = dict({
-    "NoFlags": AttributeFlags.NoFlags,
-    "DesignReadOnly": AttributeFlags.DesignReadOnly,
-    "DesignInvisible": AttributeFlags.DesignInvisible,
-    "ExecReadOnly": AttributeFlags.ExecReadOnly,
-    "ExecInvisible": AttributeFlags.ExecInvisible,
-    "ExecImmutable": AttributeFlags.ExecImmutable,
-    "NoDefaultValue": AttributeFlags.NoDefaultValue,
-    "Metadata": AttributeFlags.Metadata,
-    })
+    flags_t = dict({
+        "NoFlags": NoFlags,
+        "DesignReadOnly": DesignReadOnly,
+        "DesignInvisible": DesignInvisible,
+        "ExecReadOnly": ExecReadOnly,
+        "ExecInvisible": ExecInvisible,
+        "ExecImmutable": ExecImmutable,
+        "NoDefaultValue": NoDefaultValue,
+        "Metadata": Metadata,
+        })
+
+
+class AttributesMapProxy(object):
+    def __init__(self, owner):
+        self._owner = weakref.ref(owner)
+    
+    def __getattr__(self, name):
+        return self._owner()._attributes[name]
+
+    def __setattr__(self, name, value):
+        if name != "_owner":
+            raise RuntimeError("Can't override attribute")
+        super(AttributesMapProxy, self).__setattr__(name, value)
+
+
+class AttributesMap(object):
+    def __init__(self):
+        super(AttributesMap, self).__init__()
+        self._attributes = dict()
+        self._a = AttributesMapProxy(self)
+
+    @property
+    def attributes(self):
+        return self._attributes.keys()
+
+    @property
+    def a(self):
+        return self._a
+
+    def add_attr(self, attr):
+        self._attributes[attr.name] = attr
+        attr.owner = self
+
+    def clone_attrs(self, other):
+        self._a = AttributesMapProxy(self)
+        for attr in other._attributes.values():
+            new = attr.clone()
+            self.add_attr(new)
+
 
 
 class FlagProxy(object):
@@ -173,7 +174,7 @@ class Attribute(Taggable):
 
     @property
     def flags(self):
-        return [fn for fn in flags_t.keys() if getattr(self.f, fn)]
+        return [fn for fn in AttributeFlags.flags_t.keys() if getattr(self.f, fn)]
 
     @property
     def modified(self):
