@@ -7,6 +7,7 @@ Experiment design API
 import copy
 import getpass
 import logging
+import weakref 
 
 from nepi.design import attributes, connectors, tags 
 from nepi.design.graphical import GraphicalInfo
@@ -16,63 +17,8 @@ from nepi.util.guid import GuidGenerator
 from nepi.util.parser import XMLBoxParser
 
 
-class BoxFactory(tags.Taggable, attributes.AttributesMap, 
-        connectors.ConnectorsMap):
-    """ The Factory instances hold information about a Box class
-    and 'know' how to create a box instance."""
-    def __init__(self, testbed_id, box_id, clazz = Box):
-        super(BoxFactory, self).__init__()
-        # Testbed identifier
-        self._testbed_id = testbed_id
-        # Box type identifier -- the box type
-        self._box_id = box_id
-        # Box class to instantiate
-        self._clazz = clazz
-        # List of box types that can contain this box type -- if None is 
-        # included in the list then the box can be uncontained
-        self._container_box_ids = list()
-
-        self.add_attr(
-                attributes.StringAttribute(
-                    "label", 
-                    "A unique user-defined identifier for referring to this box",
-                    flags = attributes.AttributeFlags.ExecReadOnly |\
-                        attributes.AttributeFlags.ExecImmutable |\
-                        attributes.AttributeFlags.Metadata
-                    )
-                )
-    
-    @property
-    def testbed_id(self):
-        return self._testbed_id
-
-    @property
-    def box_id(self):
-         return self._box_id
-
-    def add_container_box_id(self, box_id):
-        self._container_box_ids.append(box_id)
-
-    @properties
-    def container_box_ids(self):
-        return self._container_box_ids
-
-    def create(self, guid):
-        box = self._clazz(guid, self)
-        new.clone_attrs(self)
-        new.clone_connectors(self)
-        return box
-
-    def clone(self, guid, box):
-        new = copy.copy(box)
-        new._guid = guid
-        new.clone_attrs(box)
-        new.clone_connectors(box)
-        return new
-
-
 class Box(attributes.AttributesMap, connectors.ConnectorsMap):
-    def __init__(self, guid, factory):
+    def __init__(self, guid, factory, **kwargs):
         super(Box, self).__init__()
         # guid -- global unique identifier
         self._guid = guid
@@ -113,6 +59,15 @@ class Box(attributes.AttributesMap, connectors.ConnectorsMap):
         return self._graphical_info
 
     @property
+    def boxes(self):
+        return self._boxes.values()
+
+    @property
+    def xml(self):
+        parser = XMLBoxParser()
+        return parser.to_xml(self)
+
+    @property
     def tags(self):
         return self._factory.tags
 
@@ -132,7 +87,7 @@ class Box(attributes.AttributesMap, connectors.ConnectorsMap):
 
     container = property(get_container, set_container)
 
-    def add_box(self, box):
+    def add(self, box):
         if self.box_id in box.factory.container_box_ids:
             box.container = self
             self._boxes[box.guid] = box
@@ -140,18 +95,65 @@ class Box(attributes.AttributesMap, connectors.ConnectorsMap):
             self._logger.error("Wrong box type %s to add to box type %s.", 
                     box.box_id, self.box_id)
 
-    def remove_box(self, box):
+    def remove(self, box):
         if box.guid in self.list_boxes():
             del self._boxes[box.guid]
             box.container = None
 
-    @property
-    def boxes(self):
-        return self._boxes
 
-    def to_xml(self):
-        parser = XMLBoxParser()
-        return parser.to_xml(self)
+class BoxFactory(tags.Taggable, attributes.AttributesMap, 
+        connectors.ConnectorsMap):
+    """ The Factory instances hold information about a Box class
+    and 'know' how to create a box instance."""
+    def __init__(self, testbed_id, box_id, clazz = Box):
+        super(BoxFactory, self).__init__()
+        # Testbed identifier
+        self._testbed_id = testbed_id
+        # Box type identifier -- the box type
+        self._box_id = box_id
+        # Box class to instantiate
+        self._clazz = clazz
+        # List of box types that can contain this box type -- if None is 
+        # included in the list then the box can be uncontained
+        self._container_box_ids = list()
+
+        self.add_attr(
+                attributes.StringAttribute(
+                    "label", 
+                    "A unique user-defined identifier for referring to this box",
+                    flags = attributes.AttributeFlags.ExecReadOnly |\
+                        attributes.AttributeFlags.ExecImmutable |\
+                        attributes.AttributeFlags.Metadata
+                    )
+                )
+    
+    @property
+    def testbed_id(self):
+        return self._testbed_id
+
+    @property
+    def box_id(self):
+         return self._box_id
+
+    def add_container_box_id(self, box_id):
+        self._container_box_ids.append(box_id)
+
+    @property
+    def container_box_ids(self):
+        return self._container_box_ids
+
+    def create(self, guid, **kwargs):
+        new = self._clazz(guid, self, **kwargs)
+        new.clone_attrs(self)
+        new.clone_connectors(self)
+        return new
+
+    def clone(self, guid, box):
+        new = copy.copy(box)
+        new._guid = guid
+        new.clone_attrs(box)
+        new.clone_connectors(box)
+        return new
 
 
 class IPAddressBoxFactory(BoxFactory):
@@ -203,7 +205,8 @@ class RouteBoxFactory(BoxFactory):
                 attributes.IntegerAttribute(
                     "NetPrefix", 
                     "Network prefix for the address", 
-                    args = {"min":0, "max":128},
+                    min = 0,
+                    max = 128,
                     default_value = 24,
                     flags = attributes.AttributeFlags.NoDefaultValue
                     )
@@ -280,7 +283,7 @@ class TunnelBoxFactory(BoxFactory):
                 attributes.EnumAttribute(
                     "tunCipher",
                     "Cryptographic cipher used for tunnelling",
-                    args = {'allowed': ["AES", "Blowfish", "DES3", "DES", "PLAIN"]},
+                    allowed = ["AES", "Blowfish", "DES3", "DES", "PLAIN"],
                     default_value = "AES",
                     flags = attributes.AttributeFlags.ExecReadOnly | \
                             attributes.AttributeFlags.ExecImmutable | \
@@ -319,7 +322,7 @@ class ControllerBoxFactory(BoxFactory):
                 attributes.EnumAttribute(
                     DC.DEPLOYMENT_MODE,
                     "Controller execution mode",
-                    args = {"allowed": [DC.MODE_DAEMON, DC.MODE_SINGLE_PROCESS]},
+                    allowed = [DC.MODE_DAEMON, DC.MODE_SINGLE_PROCESS],
                     default_value = DC.MODE_SINGLE_PROCESS,
                     flags = attributes.AttributeFlags.ExecReadOnly | \
                             attributes.AttributeFlags.ExecImmutable | \
@@ -331,7 +334,7 @@ class ControllerBoxFactory(BoxFactory):
                 attributes.EnumAttribute(
                     DC.DEPLOYMENT_COMMUNICATION,
                     "Controller communication mode",
-                    args = {"allowed": [DC.ACCESS_LOCAL, DC.ACCESS_SSH]},
+                    allowed = [DC.ACCESS_LOCAL, DC.ACCESS_SSH],
                     default_value = DC.ACCESS_LOCAL,
                     flags = attributes.AttributeFlags.ExecReadOnly | \
                             attributes.AttributeFlags.ExecImmutable | \
@@ -427,10 +430,10 @@ class ControllerBoxFactory(BoxFactory):
                     )
                 )
         self.add_attr(
-                attributes.BoolAttribute(
+                attributes.EnumAttribute(
                     DC.LOG_LEVEL,
                     "Log level for controller",
-                    args = {"allowed": [DC.ERROR_LEVEL, DC.DEBUG_LEVEL]},
+                    allowed = [DC.ERROR_LEVEL, DC.DEBUG_LEVEL],
                     default_value = DC.ERROR_LEVEL,
                     flags = attributes.AttributeFlags.ExecReadOnly | \
                             attributes.AttributeFlags.ExecImmutable | \
@@ -442,7 +445,7 @@ class ControllerBoxFactory(BoxFactory):
                 attributes.EnumAttribute(
                     DC.RECOVERY_POLICY,
                     "Specifies what action to take in the event of a failure.", 
-                    args = {"allowed": [DC.POLICY_FAIL, DC.POLICY_RECOVER, DC.POLICY_RESTART]},
+                    allowed = [DC.POLICY_FAIL, DC.POLICY_RECOVER, DC.POLICY_RESTART],
                     default_value = DC.POLICY_FAIL,
                     flags = attributes.AttributeFlags.ExecReadOnly | \
                             attributes.AttributeFlags.ExecImmutable | \
@@ -474,12 +477,13 @@ class ExperimentBoxFactory(ControllerBoxFactory):
     def __init__(self):
         super(ExperimentBoxFactory, self).__init__("", "Experiment", Box)
 
+
 class BoxFactoryProvider(object):
     """Holds references to available box factory instances"""
     def __init__(self):
         super(BoxFactoryProvider, self).__init__()
         self._guid_generator = GuidGenerator()
-        self._factories = dict({ExperimentBoxFactory()})
+        self._factories = dict({"Experiment": ExperimentBoxFactory()})
 
     def factory(self, factory):
         return self._factories[box_id]
@@ -510,7 +514,7 @@ class BoxFactoryProvider(object):
             del kwargs["container_"]
         guid = self._guid_generator.next(guid)
         factory = self._factories[box_id]
-        box = factory.create(guid, kwargs)
+        box = factory.create(guid, **kwargs)
         if container:
             container.add_box(box)
         return box

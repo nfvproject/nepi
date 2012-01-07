@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from nepi.design import attributes, tags
-from nepi.design.boxes import TestbedBoxFactory, BoxFactory, IPAddressBoxFactory, Box
+from nepi.design.boxes import TestbedBoxFactory, BoxFactory, IPAddressBoxFactory
 from nepi.design.connectors import Connector, ConnectionRule
 
 TESTBED_ID = "mock"
@@ -18,12 +18,12 @@ factories = list()
 
 
 # CONTROLLER
-factory = TestbedBoxFactory(TESTBED_ID, TESTBED, Box)
+factory = TestbedBoxFactory(TESTBED_ID, TESTBED)
 factories.append(factory)
 
 
 # NODE
-factory = BoxFactory(TESTBED_ID, NODE, Box)
+factory = BoxFactory(TESTBED_ID, NODE)
 factories.append(factory)
 ## CONNECTORS
 conn = Connector(NODE, "devs", "Connector from node to intefaces", max = -1, min = 0)
@@ -43,12 +43,10 @@ factory.add_connector(conn)
 ## CONTAINER BOX ID
 factory.add_container_box_id(TESTBED)
 ## ATTRIBUTES INFO
-factory.add_attribute_info(
-        attributes.AttributeInfo(
+factory.add_attr(
+        attributes.BoolAttribute(
             "boolAttr", 
             "Test bool attr", 
-            attributes.AttributeTypes.BOOL,
-            attributes.BoolAttribute, 
             default_value = False,
             )
         )
@@ -57,7 +55,7 @@ factory.add_tag(tags.NODE)
 
 
 #IFACE
-factory = BoxFactory(TESTBED_ID, IFACE, Box)
+factory = BoxFactory(TESTBED_ID, IFACE)
 factories.append(factory)
 ## Connector
 conn = Connector(IFACE, "node", "Connector from interface to node", max = 1, min = 1)
@@ -81,7 +79,7 @@ factory.add_tag(tags.INTERFACE)
 
 
 # APPLICATION
-factory = BoxFactory(TESTBED_ID, APP, Box)
+factory = BoxFactory(TESTBED_ID, APP)
 factories.append(factory)
 ## Connector
 conn = Connector(APP, "node", "Connector from application to node", max = 1, min = 1)
@@ -89,12 +87,10 @@ rule = ConnectionRule(APP, "node", NODE, "apps", False)
 conn.add_connection_rule(rule)
 factory.add_connector(conn)
 ## ATTRIBUTES INFO
-factory.add_attribute_info(
-        attributes.AttributeInfo(
+factory.add_attr(
+        attributes.TimeAttribute(
             "start", 
             "Test start attr", 
-            attributes.AttributeTypes.STRING,
-            attributes.TimeAttribute, 
             default_value = "0s",
             )
         )
@@ -105,7 +101,7 @@ factory.add_tag(tags.APPLICATION)
 
 
 # TRACE
-factory = BoxFactory(TESTBED_ID, TRACE, Box)
+factory = BoxFactory(TESTBED_ID, TRACE)
 factories.append(factory)
 ## Connector
 conn = Connector(TRACE, "node", "Connector from trace to node", max = 1, min = 1)
@@ -113,12 +109,10 @@ rule = ConnectionRule(TRACE, "node", NODE, "traces", False)
 conn.add_connection_rule(rule)
 factory.add_connector(conn)
 ## ATTRIBUTES INFO
-factory.add_attribute_info(
-        attributes.AttributeInfo(
+factory.add_attr(
+        attributes.StringAttribute(
             "stringAttr", 
             "Test string attr", 
-            attributes.AttributeTypes.STRING,
-            attributes.StringAttribute, 
             default_value = "empty",
             )
         )
@@ -129,7 +123,7 @@ factory.add_tag(tags.TRACE)
 
 
 # ADDRESS
-factory = IPAddressBoxFactory(TESTBED_ID, ADDRESS, Box)
+factory = IPAddressBoxFactory(TESTBED_ID, ADDRESS)
 factories.append(factory)
 ## Connector
 conn = Connector(ADDRESS, "iface", "Connector from address to interface", max = 1, min = 1)
