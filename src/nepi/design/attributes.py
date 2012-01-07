@@ -8,13 +8,32 @@ import weakref
 
 from nepi.design.tags import Taggable
 
+def _is_valid_ipv6(value):
+    try:
+        ipaddr.IPv6Address(value)
+    except ipaddr.AddressValueError:
+        return False
+    return True
+
+def _is_valid_ipv4(value):
+    try:
+        ipaddr.IPv4Address(value)
+    except ipaddr.AddressValueError:
+        return False
+    return True
+
 
 class AttributesMapProxy(object):
     def __init__(self, owner):
-        self.owner = weakref.ref(owner)
+        self._owner = weakref.ref(owner)
     
-    def __getattr__(self, attr_name):
-        return self.owner._attributes[attr_name]
+    def __getattr__(self, name):
+        return self._owner()._attributes[name]
+
+    def __setattr__(self, name, value):
+        if name != "_owner":
+            raise RuntimeError("Can't override attribute")
+        super(AttributesMapProxy, self).__setattr__(name, value)
 
 
 class AttributesMap(object):
@@ -35,9 +54,9 @@ class AttributesMap(object):
         self._attributes[attr.name] = attr
         attr.owner = self
 
-    def copy_attrs(self, other):
+    def clone_attrs(self, other):
         self._a = AttributesMapProxy(self)
-        for attr in other._attributes:
+        for attr in other._attributes.values():
             new = attr.clone()
             self.add_attr(new)
 
@@ -98,10 +117,15 @@ flags_t = dict({
 
 class FlagProxy(object):
     def __init__(self, owner):
-        self.owner = weakref.ref(owner)
+        self._owner = weakref.ref(owner)
     
-    def __getattr__(self, flagname):
-        return self.owner.has_flag(getattr(AttributeFlags, flagname))
+    def __getattr__(self, name):
+        return self._owner().has_flag(getattr(AttributeFlags, name))
+
+    def __setattr__(self, name, value):
+        if name != "_owner":
+            raise RuntimeError("Can't override attribute")
+        super(FlagProxy, self).__setattr__(name, value)
 
 
 class Attribute(Taggable):
@@ -308,7 +332,7 @@ class StringAttribute(Attribute):
 
 
 class TimeAttribute(Attribute):
-    def __init__(self, name, help, type, default_value = None, 
+    def __init__(self, name, help, default_value = None, 
             flags = None, tags = []):
         type = AttributeTypes.STRING
         super(TimeAttribute, self).__init__(name, help, type, 
@@ -330,15 +354,8 @@ class IPv4Attribute(Attribute):
         super(IPv4Attribute, self).__init__(name, help, type, 
                 default_value, flags, tags)
 
-    def _is_valid_ipv4(self, value):
-        try:
-            ipaddr.IPv4Address(value)
-        except ipaddr.AddressValueError:
-            return False
-        return True
-
     def is_valid(self, value):
-        if not self._is_valid_ipv4(value):
+        if not _is_valid_ipv4(value):
             self._logger.error("Wrong value %r for IPV4Attribute %s",
                     str(value), self.name)
             return False
@@ -352,22 +369,15 @@ class IPv6Attribute(Attribute):
         super(IPv6Attribute, self).__init__(name, help, type, 
                 default_value, flags, tags)
 
-    def _is_valid_ipv6(self, value):
-        try:
-            ipaddr.IPv6Address(value)
-        except ipaddr.AddressValueError:
-            return False
-        return True
-
     def is_valid(self, value):
-        if not self._is_valid_ipv6(value):
+        if not _is_valid_ipv6(value):
             self._logger.error("Wrong value %r for IPv6Attribute %s",
                     str(value), self.name)
             return False
         return True
 
 
-class IPAttribute(IPv4Attribute, IPv6Attribute):
+class IPAttribute(Attribute):
     def __init__(self, name, help, default_value = None, 
             flags = None, tags = []):
         type = AttributeTypes.STRING
@@ -375,8 +385,8 @@ class IPAttribute(IPv4Attribute, IPv6Attribute):
                 default_value, flags, tags)
 
     def is_valid(self, value):
-        if not self._is_valid_ipv4(value) and \
-            not self._is_valid_ipv6(value):
+        if not _is_valid_ipv4(value) and \
+            not _is_valid_ipv6(value):
             self._logger.error("Wrong value %r for IPAttribute %s",
                     str(value), self.name)
             return False
@@ -387,7 +397,7 @@ class NetRefAttribute(IPAttribute):
     def __init__(self, name, help, default_value = None, 
             flags = None, tags = []):
         type = AttributeTypes.STRING
-        super(NetRefAttribute, self).__init__(name, help, type, 
+        super(NetRefAttribute, self).__init__(name, help,  
                 default_value, flags, tags)
 
     def is_valid(self, value):

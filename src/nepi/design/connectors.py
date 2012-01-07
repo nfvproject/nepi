@@ -6,15 +6,20 @@ import sys
 import weakref
 
 
-class ConnectorMapProxy(object):
+class ConnectorsMapProxy(object):
     """ ConnectorMapProxy is used to admit expressions such as:
         box.c.connector1.connect(box2.c.connector2)
     """
     def __init__(self, owner):
-        self.owner = weakref.ref(owner)
+        self._owner = weakref.ref(owner)
     
-    def __getattr__(self, conn_name):
-        return self.owner._connectors[conn_name]
+    def __getattr__(self, name):
+        return self._owner()._connectors[name]
+
+    def __setattr__(self, name, value):
+        if name != "_owner":
+            raise RuntimeError("Can't override attribute")
+        super(ConnectorsMapProxy, self).__setattr__(name, value)
 
 
 class ConnectionsProxy(object):
@@ -22,10 +27,15 @@ class ConnectionsProxy(object):
         [connected_box1, connected_box2] = box.cn.connector1
     """
     def __init__(self, owner):
-        self.owner = weakref.ref(owner)
+        self._owner = weakref.ref(owner)
     
-    def __getattr__(self, conn_name):
-         return [ box for (box, conn_name2) in self.owner._connections[conn_name] ]
+    def __getattr__(self, name):
+         return [ box for (box, name2) in self._owner()._connections[name] ]
+
+    def __setattr__(self, name, value):
+        if name != "_owner":
+            raise RuntimeError("Can't override attribute")
+        super(ConnectionsProxy, self).__setattr__(name, value)
 
 
 class ConnectorsMap(object):
@@ -54,12 +64,12 @@ class ConnectorsMap(object):
         self._connections[connector.name] = list()
         connector.owner = self
 
-    def copy_connectors(self, other):
+    def clone_connectors(self, other):
         self._c = ConnectorsMapProxy(self)
         self._connectors = dict()
-        self._cn = ConnectionProxy(self)
+        self._cn = ConnectionsProxy(self)
         self._connections = dict()
-        for conn in other._connectors:
+        for conn in other._connectors.values():
             new = conn.clone()
             new._box = self
             self.add_connector(new)
@@ -99,7 +109,7 @@ class Connector(object):
         # min -- minimum amount of connections required by this type of connector
         self._min = min
         # Box owner
-        self._owner = owner
+        self._owner = None
         # name -- display name for the connector type
         self._name = name
         # help -- help text
