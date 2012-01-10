@@ -318,7 +318,18 @@ class PLCAPI(object):
         slices = self.GetSlices(slicename, fields=('slice_id',))
         if slices:
                 slice_id = slices[0]['slice_id']
+        # If it wasn't found, don't remember this failure, keep trying
         return slice_id
+
+    def GetSliceVnetSysTag(self, slicename):
+        slicetags = self.GetSliceTags(
+            name = slicename,
+            tagname = 'vsys_vnet',
+            fields=('value',))
+        if slicetags:
+            return slicetags[0]['value']
+        else:
+            return None
  
 def plcapi(auth_user, auth_string, plc_host, plc_url):
     api = None
