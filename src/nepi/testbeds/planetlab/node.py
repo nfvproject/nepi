@@ -88,10 +88,11 @@ class Node(object):
     minLoad = _castproperty(float, '_minLoad')
     maxLoad = _castproperty(float, '_maxLoad')
     
-    def __init__(self, api=None):
+    def __init__(self, api=None, sliceapi=None):
         if not api:
             api = plcapi.PLCAPI()
         self._api = api
+        self._sliceapi = sliceapi
         
         # Attributes
         self.hostname = None
@@ -197,7 +198,7 @@ class Node(object):
             extra['peer'] = self.site
             
         candidates = set(map(operator.itemgetter('node_id'), 
-            self._api.GetNodes(filters=basefilters, fields=fields, **extra)))
+            self._sliceapi.GetNodes(filters=basefilters, fields=fields, **extra)))
         
         # filter by tag, one tag at a time
         applicable = self.applicable_filters
@@ -212,18 +213,18 @@ class Node(object):
                 tagfilter['node_id'] = list(candidates)
                 
                 candidates &= set(map(operator.itemgetter('node_id'),
-                    self._api.GetNodeTags(filters=tagfilter, fields=fields)))
+                    self._sliceapi.GetNodeTags(filters=tagfilter, fields=fields)))
         
         # filter by vsys tags - special case since it doesn't follow
         # the usual semantics
         if self.required_vsys:
             newcandidates = collections.defaultdict(set)
             
-            vsys_tags = self._api.GetNodeTags(
+            vsys_tags = self._sliceapi.GetNodeTags(
                 tagname='vsys', 
                 node_id = list(candidates), 
                 fields = ['node_id','value'])
-            
+
             vsys_tags = map(
                 operator.itemgetter(['node_id','value']),
                 vsys_tags)
@@ -245,7 +246,7 @@ class Node(object):
             filters = basefilters.copy()
             filters['node_id'] = list(candidates)
             ifaces = dict(map(operator.itemgetter('node_id','interface_ids'),
-                self._api.GetNodes(filters=basefilters, fields=('node_id','interface_ids')) ))
+                self._sliceapi.GetNodes(filters=basefilters, fields=('node_id','interface_ids')) ))
             
             # filter candidates by interface count
             if self.min_num_external_ifaces is not None and self.max_num_external_ifaces is not None:
@@ -340,11 +341,11 @@ class Node(object):
         tagnames = [ tagname % replacements 
                      for tagname, weight, default in self.RATE_FACTORS ]
         
-        taginfo = self._api.GetNodeTags(
+        taginfo = self._sliceapi.GetNodeTags(
             node_id=list(nodes), 
             tagname=tagnames,
             fields=('node_id','tagname','value'))
-        
+
         unpack = operator.itemgetter('node_id','tagname','value')
         for value in taginfo:
             node, tagname, value = unpack(value)
@@ -361,10 +362,7 @@ class Node(object):
     def fetch_node_info(self):
         orig_attrs = {}
         
-        self._api.StartMulticall()
-        info = self._api.GetNodes(self._node_id)
-        tags = self._api.GetNodeTags(node_id=self._node_id, fields=('tagname','value'))
-        info, tags = self._api.FinishMulticall()
+        info, tags = self._sliceapi.GetNodeInfo(self._node_id)
         info = info[0]
         
         tags = dict( (t['tagname'],t['value'])

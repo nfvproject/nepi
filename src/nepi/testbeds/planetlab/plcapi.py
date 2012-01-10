@@ -16,6 +16,7 @@ def _retry(fn):
     return rv
 
 class PLCAPI(object):
+
     _expected_methods = set(
         ['AddNodeTag', 'AddConfFile', 'DeletePersonTag', 'AddNodeType', 'DeleteBootState', 'SliceListNames', 'DeleteKey', 
          'SliceGetTicket', 'SliceUsersList', 'SliceUpdate', 'GetNodeGroups', 'SliceCreate', 'GetNetworkMethods', 'GetNodeFlavour', 
@@ -298,3 +299,39 @@ class PLCAPI(object):
         mc = self.threadlocal.mc
         del self.threadlocal.mc
         return _retry(mc)()
+
+    def GetSliceNodes(self, slicename):
+        return self.GetSlices(slicename, ['node_ids'])[0]['node_ids']
+
+    def AddSliceNodes(self, slicename,  nodes = None):
+        self.UpdateSlice(slicename, nodes = nodes)
+
+    def GetNodeInfo(self, node_id):
+        self.StartMulticall()
+        info = self.GetNodes(node_id)
+        tags = self.GetNodeTags(node_id=node_id, fields=('tagname','value'))
+        info, tags = self.FinishMulticall()
+        return info, tags
+
+    def GetSliceId(self, slicename):
+        slice_id = None
+        slices = self.GetSlices(slicename, fields=('slice_id',))
+        if slices:
+                slice_id = slices[0]['slice_id']
+        return slice_id
+ 
+def plcapi(auth_user, auth_string, plc_host, plc_url):
+    api = None
+    if auth_user:
+        api = PLCAPI(
+            username = auth_user,
+            password = auth_string,
+            hostname = plc_host,
+            urlpattern = plc_url
+        )
+    else:
+        # anonymous access - may not be enough for much
+        api = PLCAPI()
+    return api
+
+

@@ -48,6 +48,10 @@ class TestbedController(testbed_impl.TestbedController):
         self._just_provisioned = set()
         
         self._load_blacklist()
+
+        self._sliceapi = None
+        self._plcapi = None
+        self._slice_id = None
         
         self._logger = logging.getLogger('nepi.testbeds.planetlab')
         
@@ -58,41 +62,41 @@ class TestbedController(testbed_impl.TestbedController):
         return self._home_directory
 
     @property
-    def plapi(self):
-        if not hasattr(self, '_plapi'):
+    def plcapi(self):
+        if not self._plcapi:
             import plcapi
-
-            if self.authUser:
-                self._plapi = plcapi.PLCAPI(
-                    username = self.authUser,
-                    password = self.authString,
-                    hostname = self.plcHost,
-                    urlpattern = self.plcUrl
+            self._plcapi = plcapi.plcapi(
+                    self.authUser,
+                    self.authString,
+                    self.plcHost,
+                    self.plcUrl
                     )
+        return self._plcapi
+
+    @property
+    def sliceapi(self):
+        if not self._sliceapi:
+            if not self.sfa:
+                self._sliceapi = self.plcapi
             else:
-                # anonymous access - may not be enough for much
-                self._plapi = plcapi.PLCAPI()
-        return self._plapi
+                import sfiapi
+                self._sliceapi = sfiapi.sfiapi()
+        return self._sliceapi
 
     @property
     def slice_id(self):
-        if not hasattr(self, '_slice_id'):
-            slices = self.plapi.GetSlices(self.slicename, fields=('slice_id',))
-            if slices:
-                self._slice_id = slices[0]['slice_id']
-            else:
-                # If it wasn't found, don't remember this failure, keep trying
-                return None
+        if not self._slice_id:
+            self._slice_id = self.plcapi.GetSliceId(self.slicename)
         return self._slice_id
     
     @property
     def vsys_vnet(self):
         if not hasattr(self, '_vsys_vnet'):
             self._vsys_vnet = plutil.getVnet(
-                self.plapi,
+                self.plcapi,
                 self.slicename)
         return self._vsys_vnet
-    
+
     def _load_blacklist(self):
         blpath = environ.homepath('plblacklist')
         
@@ -144,7 +148,12 @@ class TestbedController(testbed_impl.TestbedController):
             get_attribute_value("p2pDeployment")
         self.dedicatedSlice = self._attributes.\
             get_attribute_value("dedicatedSlice")
-        
+        self.sfa = self._attributes.\
+            get_attribute_value("sfa")
+        if self.sfa:
+            self._slice_id = self._attributes.\
+            get_attribute_value("sliceHrn")
+
         if not self.slicename:
             raise RuntimeError, "Slice not set"
         if not self.authUser:
@@ -301,9 +310,9 @@ class TestbedController(testbed_impl.TestbedController):
     def do_provisioning(self):
         if self._to_provision:
             # Add new nodes to the slice
-            cur_nodes = self.plapi.GetSlices(self.slicename, ['node_ids'])[0]['node_ids']
+            cur_nodes = self.sliceapi.GetSliceNodes(self.slicename)
             new_nodes = list(set(cur_nodes) | self._to_provision)
-            self.plapi.UpdateSlice(self.slicename, nodes=new_nodes)
+            self.sliceapi.AddSliceNodes(self.slicename, nodes=new_nodes)
 
         # cleanup
         self._just_provisioned = self._to_provision
@@ -694,8 +703,10 @@ class TestbedController(testbed_impl.TestbedController):
         finally:
             self.recovering = True
     
-    def _make_generic(self, parameters, kind):
-        app = kind(self.plapi)
+    def _make_generic(self, parameters, kind, **kwargs):
+        args = dict({'api': self.plcapi})
+        args.update(kwargs)
+        app = kind(**args)
         app.testbed = weakref.ref(self)
 
         # Note: there is 1-to-1 correspondence between attribute names
@@ -714,7 +725,8 @@ class TestbedController(testbed_impl.TestbedController):
         return app
 
     def _make_node(self, parameters):
-        node = self._make_generic(parameters, self._node.Node)
+        args = dict({'sliceapi': self.sliceapi})
+        node = self._make_generic(parameters, self._node.Node, **args)
         node.enable_cleanup = self.dedicatedSlice
         return node
 

@@ -1621,6 +1621,20 @@ factories_info = dict({
 })
 
 testbed_attributes = dict({
+        "slice_hrn": dict({
+            "name": "sliceHrn",
+            "help": "The hierarchical Resource Name (HRN) for the PlanetLab slice.",
+            "type": Attribute.STRING,
+            "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable | Attribute.NoDefaultValue,
+            "validation_function": validation.is_string
+        }),
+        "sfa": dict({
+            "name": "sfa",
+            "help": "Activates the use of SFA for node reservation.",
+            "type": Attribute.BOOL,
+            "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable | Attribute.NoDefaultValue,
+            "validation_function": validation.is_bool
+        }),
         "slice": dict({
             "name": "slice",
             "help": "The name of the PlanetLab slice to use",
