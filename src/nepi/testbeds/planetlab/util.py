@@ -62,14 +62,7 @@ def appendBlacklist(node_ids):
         bl.close()
 
 def getVnet(api, slicename):
-    slicetags = api.GetSliceTags(
-        name = slicename,
-        tagname = 'vsys_vnet',
-        fields=('value',))
-    if slicetags:
-        return slicetags[0]['value']
-    else:
-        return None
+    return api.GetSliceVsysNetTag(slicename)
 
 def getNodes(api, num, **constraints):
     # Now do the backtracking search for a suitable solution

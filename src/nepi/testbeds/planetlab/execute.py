@@ -49,10 +49,11 @@ class TestbedController(testbed_impl.TestbedController):
         
         self._load_blacklist()
 
-        self._sliceapi = None
-        self._plcapi = None
         self._slice_id = None
-        
+        self._plcapi = None
+        self._sliceapi = None
+        self._vsys_vnet = None
+
         self._logger = logging.getLogger('nepi.testbeds.planetlab')
         
         self.recovering = False
@@ -91,10 +92,8 @@ class TestbedController(testbed_impl.TestbedController):
     
     @property
     def vsys_vnet(self):
-        if not hasattr(self, '_vsys_vnet'):
-            self._vsys_vnet = plutil.getVnet(
-                self.plcapi,
-                self.slicename)
+        if not self._vsys_vnet:
+            self._vsys_vnet = self.sliceapi.GetSliceVnetSysTag(self.slicename)
         return self._vsys_vnet
 
     def _load_blacklist(self):
@@ -108,9 +107,7 @@ class TestbedController(testbed_impl.TestbedController):
             
         try:
             self._blacklist = set(
-                map(int,
-                    map(str.strip, bl.readlines())
-                )
+                map(str.strip, bl.readlines())
             )
         finally:
             bl.close()
@@ -212,7 +209,7 @@ class TestbedController(testbed_impl.TestbedController):
         reserved = set(self._blacklist)
         for guid, node in self._elements.iteritems():
             if isinstance(node, self._node.Node) and node._node_id is not None:
-                reserved.add(node._node_id)
+                reserved.add(node.hostname)
         
         # Initial algo:
         #   look for perfectly defined nodes
@@ -225,32 +222,36 @@ class TestbedController(testbed_impl.TestbedController):
                 filter_slice_id = self.slice_id)
             
             node_id = None
+            candidate_hosts = set(candidates.keys() if candidates else [])
             reserve_lock.acquire()
             try:
-                candidates -= reserved
-                if len(candidates) == 1:
-                    node_id = iter(candidates).next()
-                    reserved.add(node_id)
-                elif not candidates:
+                candidate_hosts -= reserved
+                if len(candidate_hosts) == 1:
+                    hostname = iter(candidate_hosts).next()
+                    node_id = candidates[hostname]
+                    reserved.add(hostname)
+                elif not candidate_hosts:
                     # Try again including unassigned nodes
                     reserve_lock.release()
                     try:
                         candidates = node.find_candidates()
                     finally:
                         reserve_lock.acquire()
-                    candidates -= reserved
-                    if len(candidates) > 1:
+                    candidate_hosts = set(candidates.keys() if candidates else [])
+                    candidate_hosts -= reserved
+                    if len(candidate_hosts) > 1:
                         return
-                    if len(candidates) == 1:
-                        node_id = iter(candidates).next()
+                    if len(candidate_hosts) == 1:
+                        hostname = iter(candidate_hosts).next()
+                        node_id = candidates[hostname]
                         to_provision.add(node_id)
-                        reserved.add(node_id)
+                        reserved.add(hostname)
                     elif not candidates:
                         raise RuntimeError, "Cannot assign resources for node %s, no candidates sith %s" % (guid,
                             node.make_filter_description())
             finally:
                 reserve_lock.release()
-            
+           
             if node_id is not None:
                 node.assign_node_id(node_id)
         
@@ -270,14 +271,16 @@ class TestbedController(testbed_impl.TestbedController):
             # If we have only one candidate, simply use it
             candidates = node.find_candidates(
                 filter_slice_id = filter_slice_id)
-            candidates -= reserved
-            reqs.append(candidates)
+            for r in reserved:
+                if candidates.has_key(r):
+                    del candidates[r]
+            reqs.append(candidates.values())
             nodes.append(node)
         for guid, node in self._elements.iteritems():
             if isinstance(node, self._node.Node) and node._node_id is None:
                 runner.put(genreqs, node, self.slice_id)
         runner.sync()
-        
+       
         if nodes and reqs:
             if recover:
                 raise RuntimeError, "Impossible to recover: unassigned host for Nodes %r" % (nodes,)
@@ -310,9 +313,9 @@ class TestbedController(testbed_impl.TestbedController):
     def do_provisioning(self):
         if self._to_provision:
             # Add new nodes to the slice
-            cur_nodes = self.sliceapi.GetSliceNodes(self.slicename)
+            cur_nodes = self.sliceapi.GetSliceNodes(self.slice_id)
             new_nodes = list(set(cur_nodes) | self._to_provision)
-            self.sliceapi.AddSliceNodes(self.slicename, nodes=new_nodes)
+            self.sliceapi.AddSliceNodes(self.slice_id, nodes=new_nodes)
 
         # cleanup
         self._just_provisioned = self._to_provision
@@ -364,7 +367,7 @@ class TestbedController(testbed_impl.TestbedController):
                 if isinstance(node, self._node.Node):
                     if not node.is_alive():
                         self._logger.warn("Blacklisting %s for unresponsiveness", node.hostname)
-                        self._blacklist.add(node._node_id)
+                        self._blacklist.add(node.hostname)
                         node.unassign_node()
             
             try:

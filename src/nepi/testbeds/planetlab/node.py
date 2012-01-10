@@ -199,7 +199,7 @@ class Node(object):
             
         candidates = set(map(operator.itemgetter('node_id'), 
             self._sliceapi.GetNodes(filters=basefilters, fields=fields, **extra)))
-        
+
         # filter by tag, one tag at a time
         applicable = self.applicable_filters
         for tagfilter in self.TAGFILTERS.iteritems():
@@ -260,8 +260,9 @@ class Node(object):
                     len(ifaces.get(node_id,())) <= self.max_num_external_ifaces )
             
             candidates = set(filter(predicate, candidates))
-        
+       
         # make sure hostnames are resolvable
+        hostnames = None
         if candidates:
             self._logger.info("  Found %s candidates. Checking for reachability...", len(candidates))
             
@@ -278,8 +279,14 @@ class Node(object):
                 maxthreads = 16))
 
             self._logger.info("  Found %s reachable candidates.", len(candidates))
-            
-        return candidates
+
+            for h in hostnames.keys():
+                if h not in candidates:
+                    del hostnames[h]
+
+            hostnames = dict((v,k) for k, v in hostnames.iteritems())
+
+        return hostnames
     
     def make_filter_description(self):
         """
@@ -532,7 +539,7 @@ class Node(object):
         if self._node_id:
             self._logger.warn("Blacklisting malfunctioning node %s", self.hostname)
             import util
-            util.appendBlacklist(self._node_id)
+            util.appendBlacklist(self.hostname)
     
     def do_cleanup(self):
         if self.testbed().recovering:
