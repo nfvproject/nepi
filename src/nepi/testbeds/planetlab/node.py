@@ -214,7 +214,7 @@ class Node(object):
                 
                 candidates &= set(map(operator.itemgetter('node_id'),
                     self._sliceapi.GetNodeTags(filters=tagfilter, fields=fields)))
-        
+
         # filter by vsys tags - special case since it doesn't follow
         # the usual semantics
         if self.required_vsys:
@@ -269,6 +269,7 @@ class Node(object):
             hostnames = dict(map(operator.itemgetter('node_id','hostname'),
                 self._api.GetNodes(list(candidates), ['node_id','hostname'])
             ))
+
             def resolvable(node_id):
                 try:
                     addr = socket.gethostbyname(hostnames[node_id])

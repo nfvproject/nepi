@@ -262,7 +262,6 @@ class PLCAPI(object):
             filters = kw.pop('filters',{})
             filters.update(kw)
             return _retry(self.mcapi.GetSliceTags)(self.auth, filters, *fieldstuple)
-        
     
     def GetInterfaces(self, interfaceIdOrIp=None, fields=None, **kw):
         if fields is not None:
@@ -290,7 +289,6 @@ class PLCAPI(object):
         
     def UpdateSlice(self, sliceIdOrName, **kw):
         return _retry(self.mcapi.UpdateSlice)(self.auth, sliceIdOrName, kw)
-        
 
     def StartMulticall(self):
         self.threadlocal.mc = xmlrpclib.MultiCall(self.mcapi)
@@ -317,7 +315,7 @@ class PLCAPI(object):
         slice_id = None
         slices = self.GetSlices(slicename, fields=('slice_id',))
         if slices:
-                slice_id = slices[0]['slice_id']
+            slice_id = slices[0]['slice_id']
         # If it wasn't found, don't remember this failure, keep trying
         return slice_id
 
