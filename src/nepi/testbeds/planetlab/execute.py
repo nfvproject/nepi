@@ -80,14 +80,14 @@ class TestbedController(testbed_impl.TestbedController):
             if not self.sfa:
                 self._sliceapi = self.plcapi
             else:
-                import sfiapi
-                self._sliceapi = sfiapi.sfiapi()
+                from nepi.util import sfiapi
+                self._sliceapi = sfiapi.sfiapi(self.slice_id)
         return self._sliceapi
 
     @property
     def slice_id(self):
         if not self._slice_id:
-            self._slice_id = self.plcapi.GetSliceId(self.slicename)
+            self._slice_id = self.sliceapi.GetSliceId(self.slicename)
         return self._slice_id
     
     @property
