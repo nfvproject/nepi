@@ -265,9 +265,9 @@ class Node(object):
         hostnames = None
         if candidates:
             self._logger.info("  Found %s candidates. Checking for reachability...", len(candidates))
-            
+           
             hostnames = dict(map(operator.itemgetter('node_id','hostname'),
-                self._api.GetNodes(list(candidates), ['node_id','hostname'])
+                self._sliceapi.GetNodes(list(candidates), ['node_id','hostname'])
             ))
 
             def resolvable(node_id):
@@ -348,7 +348,7 @@ class Node(object):
         replacements = {'timeframe':self.timeframe}
         tagnames = [ tagname % replacements 
                      for tagname, weight, default in self.RATE_FACTORS ]
-        
+       
         taginfo = self._sliceapi.GetNodeTags(
             node_id=list(nodes), 
             tagname=tagnames,
@@ -358,7 +358,7 @@ class Node(object):
         for value in taginfo:
             node, tagname, value = unpack(value)
             if value and value.lower() != 'n/a':
-                tags[tagname][int(node)] = float(value)
+                tags[tagname][node] = float(value)
         
         for tagname, weight, default in self.RATE_FACTORS:
             taginfo = tags[tagname % replacements].get
@@ -383,6 +383,7 @@ class Node(object):
         self.timeframe = 'm'
         
         replacements = {'timeframe':self.timeframe}
+
         for attr, tag in self.BASEFILTERS.iteritems():
             if tag in info:
                 value = info[tag]
@@ -401,7 +402,7 @@ class Node(object):
         
         if 'peer_id' in info:
             orig_attrs['site'] = self.site
-            self.site = self._api.peer_map[info['peer_id']]
+            self.site = self._sliceapi.peer_map[info['peer_id']]
         
         if 'interface_ids' in info:
             self.min_num_external_ifaces = \

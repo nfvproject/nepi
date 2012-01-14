@@ -60,9 +60,16 @@ class NodeIface(object):
         
         if self.node is None or self.node._node_id is None:
             raise RuntimeError, "Cannot pick interface without an assigned node"
-        
+      
+        # HACK: SFA doesnt give the node_id!!
+        if not isinstance(self.node._node_id, int):
+            node_data = self._api.GetNodes(filters={'hostname':self.node.hostname}, fields=('node_id',))[0]
+            node_id = node_data['node_id']
+        else:
+            node_id = self.node._node_id
+
         avail = self._api.GetInterfaces(
-            node_id=self.node._node_id, 
+            node_id=node_id, 
             is_primary=self.primary,
             fields=('interface_id','mac','netmask','ip') )
         
