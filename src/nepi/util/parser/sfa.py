@@ -95,11 +95,16 @@ class SFAResourcesParser(object):
                     node_data[name] = get_child_text(node_tag, name)
                 iface_tags =  node_tag.getElementsByTagName('interface')
                 ifaces_data = dict()
+                iface_ids = list()
                 for iface_tag in iface_tags: 
                     if iface_tag.nodeType == doc.ELEMENT_NODE:
                         for name in ['component_id', 'ipv4']:
-                            ifaces_data[name] = get_attribute(iface_tag, name)
+                            value = get_attribute(iface_tag, name)
+                            ifaces_data[name] = value
+                            if name == 'component_id':
+                                iface_ids.append(value)
                 node_data['interfaces'] = ifaces_data
+                node_data['interface_ids'] = iface_ids
         return nodes_data
 
     def slice_tags_from_xml(self, doc, rspec_tag):

@@ -22,6 +22,7 @@ class SFIAPI(object):
         return list(self._slice_nodes)
 
     def GetNodeInfo(self, node_id):
+        # TODO: thread-unsafe!! sanitize!
         info = self.GetNodes(node_id)
         tags = self.GetNodeTags(node_id=node_id, fields=('tagname','value'))
         return info, tags
@@ -50,7 +51,6 @@ class SFIAPI(object):
 
     def GetNodes(self, nodeIdOrName=None, fields=[], **kw):
         #TODO: filter - peer
-        #      field - interface_ids
         nodes = self._all_nodes
         if nodeIdOrName is not None:
             node_ids = nodeIdOrName
@@ -62,8 +62,12 @@ class SFIAPI(object):
             if '|slice_ids' in filters:
                 nodes = self._FilterByNodeId(nodes, self._slice_nodes)
                 del filters['|slice_ids']
+            # TODO: Remove this!! need to allow filter '>last_contact' !!!
+            for f in ['>last_contact', 'node_type', 'run_level']:
+                if f in filters:
+                    del filters[f]
             nodes = self._FilterByFilters(nodes, filters)
-        return self._GetNodeInfo(nodes, fields)
+        return self._GetNodeFieldsInfo(nodes, fields)
     
     def _FilterByNodeId(self, nodes, node_ids):
         return dict((k, nodes[k]) for k in node_ids if k in nodes)
@@ -73,22 +77,25 @@ class SFIAPI(object):
             data = nodes[node_id]
             for name, value in filters.iteritems():
                 #if  (name == '>last_contact' and data['lastcontact'] > value) or \
-                if (not name in data or data[tag] != value):
+                if (not name in data or data[name] != value):
                     return False
             return True
         return dict((k, value) for k, value in nodes.iteritems() if has_all_tags(k))
 
-    def _GetNodeInfo(self, nodes, fields):
+    def _GetNodeFieldsInfo(self, nodes, fields):
         result = list()
         for k, data in nodes.iteritems():
+            if not fields:
+                result.append(data)
+                continue
             r_data = dict()
-            result.append(r_data)
             for f in fields:
                 if f == "node_id":
                     value = k
                 else:
                     value = data[f]
                 r_data[f] = value
+            result.append(r_data)
         return result
 
     def _GetTagInfo(self, nodes, tagnames, fields):

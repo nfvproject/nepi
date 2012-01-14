@@ -247,7 +247,7 @@ class TestbedController(testbed_impl.TestbedController):
                         to_provision.add(node_id)
                         reserved.add(hostname)
                     elif not candidates:
-                        raise RuntimeError, "Cannot assign resources for node %s, no candidates sith %s" % (guid,
+                        raise RuntimeError, "Cannot assign resources for node %s, no candidates with %s" % (guid,
                             node.make_filter_description())
             finally:
                 reserve_lock.release()
