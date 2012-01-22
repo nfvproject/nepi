@@ -19,6 +19,7 @@ import unittest
 class PlanetLabIntegrationTestCase(unittest.TestCase):
     testbed_id = "planetlab"
     slicename = "inria_nepi"
+    slicehrn = "nepi.inria.nepi"
     plchost = "nepiplc.pl.sophia.inria.fr"
     
     host1 = "nepi1.pl.sophia.inria.fr"
@@ -40,7 +41,7 @@ class PlanetLabIntegrationTestCase(unittest.TestCase):
             time.sleep(0.1)
             shutil.rmtree(self.root_dir)
 
-    def make_experiment_desc(self):
+    def make_experiment_desc(self, use_sfa = False):
         testbed_id = self.testbed_id
         slicename = self.slicename
         plchost = self.plchost
@@ -62,11 +63,15 @@ class PlanetLabIntegrationTestCase(unittest.TestCase):
         pl_desc.set_attribute_value("p2pDeployment", False) # it's interactive, we don't want it in tests
         pl_desc.set_attribute_value("dedicatedSlice", True)
         #pl_desc.set_attribute_value("plLogLevel", "DEBUG")
+        if use_sfa:
+            pl_desc.set_attribute_value("sfa", True)
+            pl_desc.set_attribute_value("sliceHrn", self.slicehrn)
         
         return pl_desc, exp_desc
     
-    def _test_simple(self, daemonize_testbed, controller_access_configuration, environ = None):
-        pl, exp = self.make_experiment_desc()
+    def _test_simple(self, daemonize_testbed, controller_access_configuration,
+            environ = None, use_sfa = False):
+        pl, exp = self.make_experiment_desc(use_sfa)
         
         node1 = pl.create("Node")
         node2 = pl.create("Node")
@@ -90,7 +95,7 @@ class PlanetLabIntegrationTestCase(unittest.TestCase):
             inst_root_dir = os.path.join(self.root_dir, "instance")
             os.mkdir(inst_root_dir)
             pl.set_attribute_value(DC.ROOT_DIRECTORY, inst_root_dir)
-            pl.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
+            #pl.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
 
             if environ:
                 pl.set_attribute_value(DC.DEPLOYMENT_ENVIRONMENT_SETUP, environ)
@@ -128,11 +133,8 @@ class PlanetLabIntegrationTestCase(unittest.TestCase):
                 import traceback
                 traceback.print_exc()
 
-    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
-    @test_util.skipUnless(os.environ.get('NEPI_FULL_TESTS','').lower() in ('1','yes','true','on'),
-        "Test is interactive, requires NEPI_FULL_TESTS=yes")
-    def test_spanning_deployment(self):
-        pl, exp = self.make_experiment_desc()
+    def _test_spanning_deployment(self, use_sfa = False):
+        pl, exp = self.make_experiment_desc(use_sfa)
 
         pl.set_attribute_value("p2pDeployment", True) # we do want it here - even if interactive
         
@@ -207,49 +209,9 @@ FIONREAD = 0x[0-9a-fA-F]{8}.*
                 import traceback
                 traceback.print_exc()
 
-    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
-    def test_simple(self):
-        self._test_simple(
-            daemonize_testbed = False,
-            controller_access_configuration = None)
-
-    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
-    def test_simple_daemonized(self):
-        access_config = proxy.AccessConfiguration({
-            DC.DEPLOYMENT_MODE : DC.MODE_DAEMON,
-            DC.ROOT_DIRECTORY : self.root_dir,
-            DC.LOG_LEVEL : DC.DEBUG_LEVEL,
-        })
-
-        self._test_simple(
-            daemonize_testbed = False,
-            controller_access_configuration = access_config)
-
-    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
-    def test_z_simple_ssh(self): # _z_ cause we want it last - it messes up the process :(
-        # Recreate environment
-        environ = ' ; '.join( map("export %s=%r".__mod__, os.environ.iteritems()) )
-
-        env = test_util.test_environment()
-
-        access_config = proxy.AccessConfiguration({
-            DC.DEPLOYMENT_MODE : DC.MODE_DAEMON,
-            DC.ROOT_DIRECTORY : self.root_dir,
-            DC.LOG_LEVEL : DC.DEBUG_LEVEL,
-            DC.DEPLOYMENT_COMMUNICATION : DC.ACCESS_SSH,
-            DC.DEPLOYMENT_PORT : env.port,
-            DC.USE_AGENT : True,
-            DC.DEPLOYMENT_ENVIRONMENT_SETUP : environ,
-        })
-
-        self._test_simple(
-            daemonize_testbed = False,
-            controller_access_configuration = access_config,
-            environ = environ)
-
-
-    def _test_recover(self, daemonize_testbed, controller_access_configuration, environ = None):
-        pl, exp = self.make_experiment_desc()
+    def _test_recover(self, daemonize_testbed, controller_access_configuration, 
+            environ = None, use_sfa = False):
+        pl, exp = self.make_experiment_desc(use_sfa)
         
         pl.set_attribute_value(DC.RECOVERY_POLICY, DC.POLICY_RECOVER)
         
@@ -292,7 +254,7 @@ FIONREAD = 0x[0-9a-fA-F]{8}.*
             inst_root_dir = os.path.join(self.root_dir, "instance")
             os.mkdir(inst_root_dir)
             pl.set_attribute_value(DC.ROOT_DIRECTORY, inst_root_dir)
-            pl.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
+            #pl.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
 
             if environ:
                 pl.set_attribute_value(DC.DEPLOYMENT_ENVIRONMENT_SETUP, environ)
@@ -346,10 +308,89 @@ FIONREAD = 0x[0-9a-fA-F]{8}.*
                     traceback.print_exc()
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    def test_simple(self):
+        self._test_simple(
+            daemonize_testbed = False,
+            controller_access_configuration = None)
+
+    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    def test_simple_sfa(self):
+        self._test_simple(
+            daemonize_testbed = False,
+            controller_access_configuration = None,
+            use_sfa = True)
+
+    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    @test_util.skipUnless(os.environ.get('NEPI_FULL_TESTS','').lower() in ('1','yes','true','on'),
+        "Test is interactive, requires NEPI_FULL_TESTS=yes")
+    def test_spanning_deployment(self):
+        self._test_spanning_deployment()
+
+    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    @test_util.skipUnless(os.environ.get('NEPI_FULL_TESTS','').lower() in ('1','yes','true','on'),
+        "Test is interactive, requires NEPI_FULL_TESTS=yes")
+    def test_spanning_deployment_sfa(self):
+        self._test_spanning_deployment(use_sfa = True)
+
+    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    def test_simple_daemonized(self):
+        access_config = proxy.AccessConfiguration({
+            DC.DEPLOYMENT_MODE : DC.MODE_DAEMON,
+            DC.ROOT_DIRECTORY : self.root_dir,
+            DC.LOG_LEVEL : DC.DEBUG_LEVEL,
+        })
+
+        self._test_simple(
+            daemonize_testbed = False,
+            controller_access_configuration = access_config)
+
+    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    def test_simple_daemonized_sfa(self):
+        access_config = proxy.AccessConfiguration({
+            DC.DEPLOYMENT_MODE : DC.MODE_DAEMON,
+            DC.ROOT_DIRECTORY : self.root_dir,
+            DC.LOG_LEVEL : DC.DEBUG_LEVEL,
+        })
+
+        self._test_simple(
+            daemonize_testbed = False,
+            controller_access_configuration = access_config,
+            use_sfa = True)
+
+    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    def test_z_simple_ssh(self): # _z_ cause we want it last - it messes up the process :(
+        # Recreate environment
+        environ = ' ; '.join( map("export %s=%r".__mod__, os.environ.iteritems()) )
+
+        env = test_util.test_environment()
+
+        access_config = proxy.AccessConfiguration({
+            DC.DEPLOYMENT_MODE : DC.MODE_DAEMON,
+            DC.ROOT_DIRECTORY : self.root_dir,
+            DC.LOG_LEVEL : DC.DEBUG_LEVEL,
+            DC.DEPLOYMENT_COMMUNICATION : DC.ACCESS_SSH,
+            DC.DEPLOYMENT_PORT : env.port,
+            DC.USE_AGENT : True,
+            DC.DEPLOYMENT_ENVIRONMENT_SETUP : environ,
+        })
+
+        self._test_simple(
+            daemonize_testbed = False,
+            controller_access_configuration = access_config,
+            environ = environ)
+
+    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_recover(self):
         self._test_recover(
             daemonize_testbed = False,
             controller_access_configuration = None)
+
+    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    def test_recover_sfa(self):
+        self._test_recover(
+            daemonize_testbed = False,
+            controller_access_configuration = None,
+            use_sfa = True)
 
     @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
     def test_recover_daemonized(self):
@@ -362,7 +403,20 @@ FIONREAD = 0x[0-9a-fA-F]{8}.*
         self._test_recover(
             daemonize_testbed = False,
             controller_access_configuration = access_config)
-        
+
+    @test_util.skipUnless(test_util.pl_auth() is not None, "Test requires PlanetLab authentication info (PL_USER and PL_PASS environment variables)")
+    def test_recover_daemonized_sfa(self):
+        access_config = proxy.AccessConfiguration({
+            DC.DEPLOYMENT_MODE : DC.MODE_DAEMON,
+            DC.ROOT_DIRECTORY : self.root_dir,
+            DC.LOG_LEVEL : DC.DEBUG_LEVEL,
+        })
+
+        self._test_recover(
+            daemonize_testbed = False,
+            controller_access_configuration = access_config,
+            use_sfa = True)
+
 
 if __name__ == '__main__':
     unittest.main()
