@@ -2,20 +2,26 @@
 
 from nepi.util.parser import sfa
 
+###
+# TODO: This API is a mega hack to adapt the sfa interface to the plc interface.
+#       The right way to implement this would be to make node.py invoke generic 
+#       methods and to adapt the sfa and plc APIs to provide the reuired 
+#       data.
+
 class SFIAPI(object):
-    def __init__(self):
+    def __init__(self, slice_id):
         self._slice_tags = dict()
         self._slice_nodes = set()
         self._all_nodes = dict()
-        self._slice_id = None
-
-    def FetchSliceInfo(self, slice_id):
         self._slice_id = slice_id
+        self.FetchSliceInfo()
+
+    def FetchSliceInfo(self):
         p = sfa.SFAResourcesParser()
         import commands
         xml = commands.getoutput("sfi.py resources")
         self._all_nodes = p.resources_from_xml(xml)
-        xml = commands.getoutput("sfi.py resources %s" % slice_id)
+        xml = commands.getoutput("sfi.py resources %s" % self._slice_id)
         self._slice_tags, self._slice_nodes = p.slice_info_from_xml(xml)
     
     def GetSliceNodes(self, slicename):
@@ -76,9 +82,19 @@ class SFIAPI(object):
         def has_all_tags(node_id):
             data = nodes[node_id]
             for name, value in filters.iteritems():
-                #if  (name == '>last_contact' and data['lastcontact'] > value) or \
-                if (not name in data or data[name] != value):
-                    return False
+                if name == 'value' or name == 'tagname':
+                    tagname = filters['tagname']
+                    tagval = filters['value']
+                    if data[tagname] != tagval:
+                        return False
+                elif name == 'node_id':
+                    node_ids = list(value)
+                    if node_id not in node_ids:
+                        return False
+                else:
+                    #if  (name == '>last_contact' and data['lastcontact'] > value) or \
+                    if (not name in data or data[name] != value):
+                        return False
             return True
         return dict((k, value) for k, value in nodes.iteritems() if has_all_tags(k))
 
@@ -131,7 +147,6 @@ class SFIAPI(object):
         #print out
 
 def sfiapi(slice_id):
-    api = SFIAPI()
-    api.FetchSliceInfo(slice_id)
+    api = SFIAPI(slice_id)
     return api
 
