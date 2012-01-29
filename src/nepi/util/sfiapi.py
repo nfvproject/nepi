@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 
+
+import logging
+
 from nepi.util.parser import sfa
 
 ###
@@ -14,15 +17,22 @@ class SFIAPI(object):
         self._slice_nodes = set()
         self._all_nodes = dict()
         self._slice_id = slice_id
+
+        self._logger = logging.getLogger('nepi.utils.sfiapi')
+        
         self.FetchSliceInfo()
 
     def FetchSliceInfo(self):
         p = sfa.SFAResourcesParser()
         import commands
         xml = commands.getoutput("sfi.py resources")
-        self._all_nodes = p.resources_from_xml(xml)
-        xml = commands.getoutput("sfi.py resources %s" % self._slice_id)
-        self._slice_tags, self._slice_nodes = p.slice_info_from_xml(xml)
+        try:
+            self._all_nodes = p.resources_from_xml(xml)
+            xml = commands.getoutput("sfi.py resources %s" % self._slice_id)
+            self._slice_tags, self._slice_nodes = p.slice_info_from_xml(xml)
+        except:
+            self._logger.error("Error in SFA responds: %s", xml)
+            raise
     
     def GetSliceNodes(self, slicename):
         return list(self._slice_nodes)
