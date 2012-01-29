@@ -262,7 +262,7 @@ class Node(object):
             candidates = set(filter(predicate, candidates))
        
         # make sure hostnames are resolvable
-        hostnames = None
+        hostnames = dict() 
         if candidates:
             self._logger.info("  Found %s candidates. Checking for reachability...", len(candidates))
            

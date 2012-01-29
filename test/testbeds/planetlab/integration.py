@@ -62,7 +62,7 @@ class PlanetLabIntegrationTestCase(unittest.TestCase):
         pl_desc.set_attribute_value("tapPortBase", self.port_base)
         pl_desc.set_attribute_value("p2pDeployment", False) # it's interactive, we don't want it in tests
         pl_desc.set_attribute_value("dedicatedSlice", True)
-        #pl_desc.set_attribute_value("plLogLevel", "DEBUG")
+        pl_desc.set_attribute_value("plLogLevel", "DEBUG")
         if use_sfa:
             pl_desc.set_attribute_value("sfa", True)
             pl_desc.set_attribute_value("sliceHrn", self.slicehrn)
@@ -95,7 +95,7 @@ class PlanetLabIntegrationTestCase(unittest.TestCase):
             inst_root_dir = os.path.join(self.root_dir, "instance")
             os.mkdir(inst_root_dir)
             pl.set_attribute_value(DC.ROOT_DIRECTORY, inst_root_dir)
-            #pl.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
+            pl.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
 
             if environ:
                 pl.set_attribute_value(DC.DEPLOYMENT_ENVIRONMENT_SETUP, environ)
@@ -254,7 +254,7 @@ FIONREAD = 0x[0-9a-fA-F]{8}.*
             inst_root_dir = os.path.join(self.root_dir, "instance")
             os.mkdir(inst_root_dir)
             pl.set_attribute_value(DC.ROOT_DIRECTORY, inst_root_dir)
-            #pl.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
+            pl.set_attribute_value(DC.LOG_LEVEL, DC.DEBUG_LEVEL)
 
             if environ:
                 pl.set_attribute_value(DC.DEPLOYMENT_ENVIRONMENT_SETUP, environ)
