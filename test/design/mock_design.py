@@ -6,8 +6,7 @@ from nepi.design import create_provider
 # mock testbed
 import mock
 
-provider = create_provider()
-provider.add_all(mock.factories)
+provider = create_provider(mods=[mock])
 
 exp = provider.create("Experiment")
 mocki = provider.create("mock::MockInstance")

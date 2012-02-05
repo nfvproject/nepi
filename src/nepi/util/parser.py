@@ -49,8 +49,8 @@ class XMLBoxParser(object):
         b_tag.setAttribute("guid", xmlencode(box.guid))
         b_tag.setAttribute("testbed_id", xmlencode(box.testbed_id))
         b_tag.setAttribute("box_id", xmlencode(box.box_id))
-        self.graphical_info_to_xml(box, p_tag, doc)
-        self.attributes_to_xml(box, p_tag, doc)
+        self.graphical_info_to_xml(box, b_tag, doc)
+        self.attributes_to_xml(box, b_tag, doc)
 
         for b in box.boxes:
             self.box_to_xml(b, b_tag, doc)
@@ -61,6 +61,8 @@ class XMLBoxParser(object):
         attrs_tag = doc.createElement("attributes")
         for name in box.attributes:
             attr = getattr(box.a, name)
+            if not attr.value:
+                continue
             attr_type = to_attribute_type(attr.value)
             attr_tag = doc.createElement("attribute") 
             attr_tag.setAttribute("name", attr.name)
