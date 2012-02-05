@@ -59,6 +59,7 @@ class XMLBoxParser(object):
         b_tag.setAttribute("box_id", xmlencode(box.box_id))
         self.graphical_info_to_xml(box, b_tag, doc)
         self.attributes_to_xml(box, b_tag, doc)
+        self.connections_to_xml(box, b_tag, doc)
 
         for b in box.boxes:
             self.box_to_xml(b, b_tag, doc)
@@ -89,6 +90,18 @@ class XMLBoxParser(object):
         gi_tag.setAttribute("height", xmlencode(gi.height))
         tag.appendChild(gi_tag)
 
+    def connections_to_xml(self, box, tag, doc):
+        conns_tag = doc.createElement("connections")
+        for conn in box.connections:
+            (box, connector_name, other_box, other_connector_name) = conn
+            conn_tag = doc.createElement("connection") 
+            conns_tag.appendChild(conn_tag)
+            conn_tag.setAttribute("connector", connector_name)
+            conn_tag.setAttribute("other_guid", xmlencode(other_box.guid))
+            conn_tag.setAttribute("other_connector", other_connector_name)
+        if conns_tag.hasChildNodes():
+            tag.appendChild(conns_tag)
+
     def from_xml(self, provider, xml):
         doc = minidom.parseString(xml)
         scenario_tag = doc.getElementsByTagName("scenario")
@@ -98,57 +111,92 @@ class XMLBoxParser(object):
             box_tags = doc.childNodes
 
         box = None
+        connections = []
         for b_tag in box_tags:
             if b_tag.nodeType == doc.ELEMENT_NODE and \
                     xmldecode(b_tag.nodeName) == 'box':
-                box = self.box_from_xml(provider, b_tag)
+                box = self.box_from_xml(provider, b_tag, connections)
                 break
+        self.connect_boxes(box, connections)
         return box
 
-    def box_from_xml(self, provider, b_tag):
+    def box_from_xml(self, provider, b_tag, connections):
         guid = xmldecode(b_tag.getAttribute("guid"))
         if guid: guid = int(guid)
         box_id = xmldecode(b_tag.getAttribute("box_id"))
         box = provider.create(box_id, guid = guid)
         self.graphical_info_from_xml(box, b_tag)
         self.attributes_from_xml(box, b_tag)
-      
+        self.connections_from_xml(box, b_tag, connections)
+
         for tag in b_tag.childNodes:
             if tag.nodeType == tag.ELEMENT_NODE and \
                     xmldecode(tag.nodeName) == 'box':
-                child_box = self.box_from_xml(provider, tag)
+                child_box = self.box_from_xml(provider, tag, connections)
                 box.add(child_box)
         return box
 
     def attributes_from_xml(self, box, b_tag):
-        attributes_tags = b_tag.getElementsByTagName("attributes")
-        if len(attributes_tags) == 0:
-            return
+        attributes_tag = None
+        for tag in b_tag.childNodes:
+            if tag.nodeType == tag.ELEMENT_NODE and \
+                    xmldecode(tag.nodeName) == 'attributes':
+                attributes_tag = tag
+                break
+        if not attributes_tag: 
+            return 
 
-        attribute_tags = attributes_tags[0].getElementsByTagName("attribute")
-        for attribute_tag in attribute_tags:
-             if attribute_tag.nodeType == b_tag.ELEMENT_NODE:
-                name = xmldecode(attribute_tag.getAttribute("name"))
-                value = xmldecode(attribute_tag.getAttribute("value"))
-                type = xmldecode(attribute_tag.getAttribute("type"))
+        for tag in attributes_tag.childNodes:
+            if tag.nodeType == tag.ELEMENT_NODE and \
+                    xmldecode(tag.nodeName) == 'attribute':
+                name = xmldecode(tag.getAttribute("name"))
+                value = xmldecode(tag.getAttribute("value"))
+                type = xmldecode(tag.getAttribute("type"))
                 value = from_attribute_type(type, value)
                 attr = getattr(box.a, name)
                 attr.value = value
 
     def graphical_info_from_xml(self, box, b_tag):
-        graphical_info_tag = b_tag.getElementsByTagName("graphical_info")
-        if len(graphical_info_tag) == 0:
-            return
+        for tag in b_tag.childNodes:
+            if tag.nodeType == tag.ELEMENT_NODE and \
+                    xmldecode(tag.nodeName) == 'graphical_info':
+                x = float(tag.getAttribute("x"))
+                y = float(tag.getAttribute("y"))
+                width = float(tag.getAttribute("width"))
+                height = float(tag.getAttribute("height"))
+                box.graphical_info.x = x
+                box.graphical_info.y = y
+                box.graphical_info.width = width
+                box.graphical_info.width = width
+                break
 
-        graphical_info_tag = graphical_info_tag[0]
-        if graphical_info_tag.nodeType == b_tag.ELEMENT_NODE:
-            x = float(graphical_info_tag.getAttribute("x"))
-            y = float(graphical_info_tag.getAttribute("y"))
-            width = float(graphical_info_tag.getAttribute("width"))
-            height = float(graphical_info_tag.getAttribute("height"))
-            box.graphical_info.x = x
-            box.graphical_info.y = y
-            box.graphical_info.width = width
-            box.graphical_info.width = width
+    def connections_from_xml(self, box, b_tag, connections):
+        connections_tag = None
+        for tag in b_tag.childNodes:
+            if tag.nodeType == tag.ELEMENT_NODE and \
+                    xmldecode(tag.nodeName) == 'connections':
+                connections_tag = tag
+                break
+        if not connections_tag: 
+            return 
+        
+        for tag in connections_tag.childNodes:
+            if tag.nodeType == tag.ELEMENT_NODE and \
+                    xmldecode(tag.nodeName) == 'connection':
+                 connector = xmldecode(tag.getAttribute("connector"))
+                 other_connector = xmldecode(tag.getAttribute("other_connector"))
+                 other_guid = int(tag.getAttribute("other_guid"))
+                 connections.append((box.guid, connector, other_guid, other_connector))
 
-
+    def connect_boxes(self, box, connections):
+        dejafait = set()
+        for conn in connections:
+            (guid, connector, other_guid, other_connector) = conn
+            if not (guid, connector) in dejafait:
+                b = box.box(guid)
+                other_b = box.box(other_guid)
+                conn = getattr(b.c, connector)
+                other_conn = getattr(other_b.c, other_connector)
+                conn.connect(other_conn)
+                dejafait.add((other_guid, other_connector))
+    

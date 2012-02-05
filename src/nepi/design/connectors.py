@@ -71,7 +71,6 @@ class ConnectorsMap(object):
         self._connections = dict()
         for conn in other._connectors.values():
             new = conn.clone()
-            new._box = self
             self.add_connector(new)
 
     @property
@@ -79,7 +78,7 @@ class ConnectorsMap(object):
         connections = list()
         for connector_name in self._connections.keys():
             for (other_box, other_connector_name) in self._connections[connector_name]:
-                connections.append(self, connector_name, other_box, other_connector_name)
+                connections.append((self, connector_name, other_box, other_connector_name))
         return connections
 
     def is_connected(self, connector, other_connector):
@@ -95,7 +94,7 @@ class ConnectorsMap(object):
 
 
 class Connector(object):
-    def __init__(self, box, name, help, max = -1, min = 0):
+    def __init__(self, name, help, max = -1, min = 0):
         super(Connector, self).__init__()
         if max == -1:
             max = sys.maxint
@@ -168,7 +167,7 @@ class Connector(object):
             if could_connect:
                 self.owner.connect(self, other_connector)
                 return True
-        self._logger.error("could not connect %d %s from %d %s.", 
+        self._logger.error("could not connect guid(%d).c.%s with guid(%d).c.%s.", 
                     self.owner.guid, self.name, 
                     other_connector.owner.guid, other_connector.name)
         return False
@@ -181,7 +180,7 @@ class Connector(object):
             if could_disconnect:
                 self._connections[connector_name].remove((other_connectir.owner, other_connector.name))
                 return True
-        self._logger.error("could not disconnect %d %s from %d %s.", 
+        self._logger.error("could not disconnect guid(%d).c.%s from guid(%d).c.%s .", 
                     connector.owner.guid, connector.name, 
                     other_connector.owner.guid, other_connector.name)
         return False
@@ -205,7 +204,7 @@ class Connector(object):
             if rule.can_connect(self.owner, self.name, other_connector.owner, 
                     other_connector.name):
                 return True
-        self._logger.error("No connection rule found for %s %d %s to %s %d %s.", 
+        self._logger.error("No connection rule found for %s guid(%d).%s to %s guid(%d).%s. ", 
                     self.owner.box_id, self.owner.guid, self.name, 
                     other_connector.owner.box_id, other_connector.owner.guid, 
                     other_connector.name)

@@ -59,8 +59,6 @@ class DesignIntegrationTestCase(unittest.TestCase):
         xml2 = exp2.xml
         self.assertTrue(xml == xml2)
 
-        #TODO: Serialize connections!!
-
 
 if __name__ == '__main__':
     unittest.main()

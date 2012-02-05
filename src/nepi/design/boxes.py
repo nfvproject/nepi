@@ -73,14 +73,6 @@ class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap):
         return self._guid
 
     @property
-    def box_id(self):
-        return self._box_id
-
-    @property
-    def testbed_id(self):
-        return self._testbed_id
- 
-    @property
     def graphical_info(self):
         return self._graphical_info
 
@@ -125,6 +117,19 @@ class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap):
         if box.guid in self.list_boxes():
             del self._boxes[box.guid]
             box.container = None
+    
+    def box(self, guid):
+        if self.guid == guid:
+            return self
+        if not self._boxes:
+            return None
+        if guid in self._boxes:
+            return self._boxes[guid]
+        box = None
+        for b in self._boxes.values():
+             box = b.box(guid)
+             if box: break
+        return box
 
     def clone(self, **kwargs):
         guid = None
@@ -536,9 +541,6 @@ class BoxProvider(object):
         parser = XMLBoxParser()
         box = parser.from_xml(self, xml)
         return box
-
-    def box(self, box_id):
-        return self._boxes[box_id]
 
     def add(self, box):
         if box.box_id not in self._boxes.keys():
