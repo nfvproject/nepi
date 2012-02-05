@@ -27,6 +27,15 @@ def to_attribute_type(value):
     if isinstance(value, float):
         return attributes.AttributeTypes.DOUBLE
 
+def from_attribute_type(type, value):
+    if type == attributes.AttributeTypes.STRING:
+        return str(value)
+    if type == attributes.AttributeTypes.BOOL:
+        return value == "True"
+    if type == attributes.AttributeTypes.INTEGER:
+        return int(value)
+    if type == attributes.AttributeTypes.DOUBLE:
+        return float(value)
 
 class XMLBoxParser(object):
     def to_xml(self, box):
@@ -42,7 +51,6 @@ class XMLBoxParser(object):
             raise
         
         return xml
-
 
     def box_to_xml(self, box, p_tag, doc):
         b_tag = doc.createElement("box")
@@ -81,5 +89,66 @@ class XMLBoxParser(object):
         gi_tag.setAttribute("height", xmlencode(gi.height))
         tag.appendChild(gi_tag)
 
+    def from_xml(self, provider, xml):
+        doc = minidom.parseString(xml)
+        scenario_tag = doc.getElementsByTagName("scenario")
+        if scenario_tag:
+            box_tags = scenario_tag[0].childNodes
+        else:
+            box_tags = doc.childNodes
+
+        box = None
+        for b_tag in box_tags:
+            if b_tag.nodeType == doc.ELEMENT_NODE and \
+                    xmldecode(b_tag.nodeName) == 'box':
+                box = self.box_from_xml(provider, b_tag)
+                break
+        return box
+
+    def box_from_xml(self, provider, b_tag):
+        guid = xmldecode(b_tag.getAttribute("guid"))
+        if guid: guid = int(guid)
+        box_id = xmldecode(b_tag.getAttribute("box_id"))
+        box = provider.create(box_id, guid = guid)
+        self.graphical_info_from_xml(box, b_tag)
+        self.attributes_from_xml(box, b_tag)
+      
+        for tag in b_tag.childNodes:
+            if tag.nodeType == tag.ELEMENT_NODE and \
+                    xmldecode(tag.nodeName) == 'box':
+                child_box = self.box_from_xml(provider, tag)
+                box.add(child_box)
+        return box
+
+    def attributes_from_xml(self, box, b_tag):
+        attributes_tags = b_tag.getElementsByTagName("attributes")
+        if len(attributes_tags) == 0:
+            return
+
+        attribute_tags = attributes_tags[0].getElementsByTagName("attribute")
+        for attribute_tag in attribute_tags:
+             if attribute_tag.nodeType == b_tag.ELEMENT_NODE:
+                name = xmldecode(attribute_tag.getAttribute("name"))
+                value = xmldecode(attribute_tag.getAttribute("value"))
+                type = xmldecode(attribute_tag.getAttribute("type"))
+                value = from_attribute_type(type, value)
+                attr = getattr(box.a, name)
+                attr.value = value
+
+    def graphical_info_from_xml(self, box, b_tag):
+        graphical_info_tag = b_tag.getElementsByTagName("graphical_info")
+        if len(graphical_info_tag) == 0:
+            return
+
+        graphical_info_tag = graphical_info_tag[0]
+        if graphical_info_tag.nodeType == b_tag.ELEMENT_NODE:
+            x = float(graphical_info_tag.getAttribute("x"))
+            y = float(graphical_info_tag.getAttribute("y"))
+            width = float(graphical_info_tag.getAttribute("width"))
+            height = float(graphical_info_tag.getAttribute("height"))
+            box.graphical_info.x = x
+            box.graphical_info.y = y
+            box.graphical_info.width = width
+            box.graphical_info.width = width
 
 
