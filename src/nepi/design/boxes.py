@@ -128,12 +128,14 @@ class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap):
 
     def clone(self, **kwargs):
         guid = None
-        if "guid_" in kwargs:
-            guid = kwargs["guid_"]
-            del kwargs["guid_"]
+        if "guid" in kwargs:
+            guid = kwargs["guid"]
+            del kwargs["guid"]
         new = copy.copy(self)
         guid = self._guid_generator.next(guid)
         new._guid = guid
+        new._graphical_info = GraphicalInfo()
+        new._boxes = dict() 
         new.clone_attrs(self)
         new.clone_connectors(self)
         return new
@@ -507,8 +509,6 @@ class BoxProvider(object):
         return self._boxes.keys()
 
     def load_user_containers(self, search_path):
-        from nepi.util.parser import XMLBoxParser
-        parser = XMLBoxParser()
         if not search_path:
             search_path = os.path.expanduser("~/user/.nepi/containers")
         if not os.path.exists(search_path):
@@ -518,7 +518,7 @@ class BoxProvider(object):
             f = fn.open(fn, "r")
             xml = f.read()
             f.close()
-            box = parser.from_xml(xml)
+            box = self.from_xml(xml)
             self.add(box)
 
     def load_testbed_boxes(self, mods = None):
@@ -530,6 +530,12 @@ class BoxProvider(object):
 
         for mod in mods:
             self.add_all(mod.boxes)
+
+    def from_xml(self, xml):
+        from nepi.util.parser import XMLBoxParser
+        parser = XMLBoxParser()
+        box = parser.from_xml(self, xml)
+        return box
 
     def box(self, box_id):
         return self._boxes[box_id]

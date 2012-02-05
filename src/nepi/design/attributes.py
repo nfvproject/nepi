@@ -110,6 +110,7 @@ class AttributesMap(object):
 
     def clone_attrs(self, other):
         self._a = AttributesMapProxy(self)
+        self._attributes = dict()
         for attr in other._attributes.values():
             new = attr.clone()
             self.add_attr(new)
