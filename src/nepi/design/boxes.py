@@ -7,6 +7,7 @@ Experiment design API
 import copy
 import getpass
 import logging
+import os
 import weakref 
 
 from nepi.design import attributes, connectors, tags 
@@ -14,16 +15,19 @@ from nepi.design.graphical import GraphicalInfo
 
 from nepi.util.constants import DeploymentConfiguration as DC
 from nepi.util.guid import GuidGenerator
-from nepi.util.parser import XMLBoxParser
 
 
-class Box(attributes.AttributesMap, connectors.ConnectorsMap):
-    def __init__(self, guid, factory, **kwargs):
+class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap):
+    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None):
         super(Box, self).__init__()
+        self._guid_generator = guid_generator
         # guid -- global unique identifier
         self._guid = guid
-        # factory_id -- factory instance
-        self._factory = factory
+        # Testbed identifier
+        self._testbed_id = testbed_id
+        # Box type identifier -- the box type
+        self._box_id = box_id
+        # Box class to instantiate
         # container -- container box instance
         self._container = None
         # graphical_info -- GUI position information
@@ -31,12 +35,38 @@ class Box(attributes.AttributesMap, connectors.ConnectorsMap):
         # aggregations -- dictionary of contained instances
         # -- dict(guid: box_ref)
         self._boxes = dict() 
+        # List of box types that can contain this box type -- if None is 
+        # included in the list then the box can be uncontained
+        self._containers = list()
+
+        self.add_attr(
+                attributes.StringAttribute(
+                    "label", 
+                    "A unique user-defined identifier for referring to this box",
+                    flags = attributes.AttributeFlags.ExecReadOnly |\
+                        attributes.AttributeFlags.ExecImmutable |\
+                        attributes.AttributeFlags.Metadata
+                    )
+                )
+ 
 
         self._logger = logging.getLogger("nepi.design.boxes")
 
     def __str__(self):
         return "Box(%s, %s, %s)" % (self.guid, self.box_id, 
                 self.testbed_id)
+    
+    @property
+    def testbed_id(self):
+        return self._testbed_id
+
+    @property
+    def box_id(self):
+         return self._box_id
+
+    @property
+    def containers(self):
+        return self._containers
 
     @property
     def guid(self):
@@ -44,16 +74,12 @@ class Box(attributes.AttributesMap, connectors.ConnectorsMap):
 
     @property
     def box_id(self):
-        return self._factory.box_id
+        return self._box_id
 
     @property
     def testbed_id(self):
-        return self._factory.testbed_id
+        return self._testbed_id
  
-    @property
-    def factory(self):
-        return self._factory
-
     @property
     def graphical_info(self):
         return self._graphical_info
@@ -64,12 +90,9 @@ class Box(attributes.AttributesMap, connectors.ConnectorsMap):
 
     @property
     def xml(self):
+        from nepi.util.parser import XMLBoxParser
         parser = XMLBoxParser()
         return parser.to_xml(self)
-
-    @property
-    def tags(self):
-        return self._factory.tags
 
     @property
     def controller(self):
@@ -87,8 +110,11 @@ class Box(attributes.AttributesMap, connectors.ConnectorsMap):
 
     container = property(get_container, set_container)
 
+    def add_container(self, box_id):
+        self._containers.append(box_id)
+
     def add(self, box):
-        if self.box_id in box.factory.container_box_ids:
+        if self.box_id in box.containers:
             box.container = self
             self._boxes[box.guid] = box
         else:
@@ -100,65 +126,46 @@ class Box(attributes.AttributesMap, connectors.ConnectorsMap):
             del self._boxes[box.guid]
             box.container = None
 
-
-class BoxFactory(tags.Taggable, attributes.AttributesMap, 
-        connectors.ConnectorsMap):
-    """ The Factory instances hold information about a Box class
-    and 'know' how to create a box instance."""
-    def __init__(self, testbed_id, box_id, clazz = Box):
-        super(BoxFactory, self).__init__()
-        # Testbed identifier
-        self._testbed_id = testbed_id
-        # Box type identifier -- the box type
-        self._box_id = box_id
-        # Box class to instantiate
-        self._clazz = clazz
-        # List of box types that can contain this box type -- if None is 
-        # included in the list then the box can be uncontained
-        self._container_box_ids = list()
-
-        self.add_attr(
-                attributes.StringAttribute(
-                    "label", 
-                    "A unique user-defined identifier for referring to this box",
-                    flags = attributes.AttributeFlags.ExecReadOnly |\
-                        attributes.AttributeFlags.ExecImmutable |\
-                        attributes.AttributeFlags.Metadata
-                    )
-                )
-    
-    @property
-    def testbed_id(self):
-        return self._testbed_id
-
-    @property
-    def box_id(self):
-         return self._box_id
-
-    def add_container_box_id(self, box_id):
-        self._container_box_ids.append(box_id)
-
-    @property
-    def container_box_ids(self):
-        return self._container_box_ids
-
-    def create(self, guid, **kwargs):
-        new = self._clazz(guid, self, **kwargs)
+    def clone(self, **kwargs):
+        guid = None
+        if "guid_" in kwargs:
+            guid = kwargs["guid_"]
+            del kwargs["guid_"]
+        new = copy.copy(self)
+        guid = self._guid_generator.next(guid)
+        new._guid = guid
         new.clone_attrs(self)
         new.clone_connectors(self)
         return new
 
-    def clone(self, guid, box):
+
+"""
+class ContainerBox(Box):
+    def __init__(self, box_id, testbed_id, guid_generator = None, guid = None, **kwargs):
+        super(ContainerBox).__init__(box_id, testbed_id, guid_generator, guid, **kwargs)
+        self._exposed_connectors = dict()
+
+
+    def expose_connector():
+
+    def unexpose_connector()
+
+
+    def copy(self, box):
+        # TODO: Copy connections!
         new = copy.copy(box)
+        guid = self._guid_generator.next(None)
         new._guid = guid
         new.clone_attrs(box)
         new.clone_connectors(box)
         return new
+"""
 
 
-class IPAddressBoxFactory(BoxFactory):
-    def __init__(self, testbed_id, box_id, clazz = Box):
-        super(IPAddressBoxFactory, self).__init__(testbed_id, box_id, clazz)
+class IPAddressBox(Box):
+    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None):
+        super(IPAddressBox, self).__init__(testbed_id, box_id, 
+                guid_generator = guid_generator, guid = guid)
         
         self.add_tag(tags.ADDRESS)
         
@@ -188,9 +195,10 @@ class IPAddressBoxFactory(BoxFactory):
                 )
 
 
-class RouteBoxFactory(BoxFactory):
-    def __init__(self, testbed_id, box_id, clazz = Box):
-        super(RouteBoxFactory, self).__init__(testbed_id, box_id, clazz)
+class RouteBox(Box):
+    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None):
+        super(RouteBox, self).__init__(testbed_id, box_id,
+                guid_generator = guid_generator, guid = guid)
         
         self.add_tag(tags.ROUTE)
 
@@ -235,9 +243,10 @@ class RouteBoxFactory(BoxFactory):
                 )
 
 
-class TunnelBoxFactory(BoxFactory):
-    def __init__(self, testbed_id, box_id, clazz = Box):
-        super(TunnelBoxFactory, self).__init__(testbed_id, box_id, clazz)
+class TunnelBox(Box):
+    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None):
+        super(TunnelBox, self).__init__(testbed_id, box_id,
+                guid_generator = guid_generator, guid = guid)
 
         self.add_tag(tags.TUNNEL)
 
@@ -292,9 +301,10 @@ class TunnelBoxFactory(BoxFactory):
                 )
 
 
-class ControllerBoxFactory(BoxFactory):
-    def __init__(self, testbed_id, box_id, clazz = Box):
-        super(ControllerBoxFactory, self).__init__(testbed_id, box_id, clazz)
+class ControllerBox(Box):
+    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None):
+        super(ControllerBox, self).__init__(testbed_id, box_id,
+                guid_generator = guid_generator, guid = guid)
 
         self.add_tag(tags.CONTROLLER)
 
@@ -467,68 +477,86 @@ class ControllerBoxFactory(BoxFactory):
                 )
 
 
-class TestbedBoxFactory(ControllerBoxFactory):
-    def __init__(self, testbed_id, box_id, clazz = Box):
-        super(TestbedBoxFactory, self).__init__(testbed_id, box_id, clazz)
-        self.add_container_box_id("Experiment")
+class TestbedBox(ControllerBox):
+    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None):
+        super(TestbedBox, self).__init__(testbed_id, box_id,
+                guid_generator = guid_generator, guid = guid)
+        self.add_container("Experiment")
 
 
-class ExperimentBoxFactory(ControllerBoxFactory):
-    def __init__(self):
-        super(ExperimentBoxFactory, self).__init__("", "Experiment", Box)
+class ExperimentBox(ControllerBox):
+    def __init__(self, guid_generator = None, guid = None):
+        super(ExperimentBox, self).__init__(None, "Experiment",
+                guid_generator = guid_generator, guid = guid)
+        self.add_tag(tags.EXPERIMENT)
 
 
-class BoxFactoryProvider(object):
+class BoxProvider(object):
     """Holds references to available box factory instances"""
-    def __init__(self):
-        super(BoxFactoryProvider, self).__init__()
+    def __init__(self, mods = None, search_path = None):
+        super(BoxProvider, self).__init__()
         self._guid_generator = GuidGenerator()
-        self._factories = dict({"Experiment": ExperimentBoxFactory()})
-
-    def factory(self, factory):
-        return self._factories[box_id]
+        exp = ExperimentBox(self._guid_generator, None)
+        self._boxes = dict({exp.box_id: exp})
+    
+        self.load_testbed_boxes(mods)
+        self.load_user_containers(search_path)
 
     @property
-    def factories(self):
-        return self._factories.keys()
+    def boxes(self):
+        return self._boxes.keys()
 
-    def add(self, factory):
-        if factory.box_id not in self._factories.keys():
-            self._factories[factory.box_id] = factory
+    def load_user_containers(self, search_path):
+        from nepi.util.parser import XMLBoxParser
+        parser = XMLBoxParser()
+        if not search_path:
+            search_path = os.path.expanduser("~/user/.nepi/containers")
+        if not os.path.exists(search_path):
+            return
+        files = [fn for fn in os.listdir(search_path) if fn.endswith('.xml')]
+        for fn in files:
+            f = fn.open(fn, "r")
+            xml = f.read()
+            f.close()
+            box = parser.from_xml(xml)
+            self.add(box)
 
-    def add_all(self, factories):
-        for factory in factories:
-            self.add(factory)
+    def load_testbed_boxes(self, mods = None):
+        if not mods:
+            import pkgutil
+            import nepi.testbeds
+            pkgpath = os.path.dirname(nepi.testbdes.__file__)
+            mods = [name for _, name, _ in pkgutil.iter_modules([pkgpath])]
 
-    def remove(self, factory):
-        del self._factories[factory.box_id]
+        for mod in mods:
+            self.add_all(mod.boxes)
+
+    def box(self, box_id):
+        return self._boxes[box_id]
+
+    def add(self, box):
+        if box.box_id not in self._boxes.keys():
+            box._guid_generator = self._guid_generator
+            self._boxes[box.box_id] = box
+
+    def add_all(self, boxes):
+        for box in boxes:
+            self.add(box)
 
     def create(self, box_id, **kwargs):
-        guid = None
-        if "guid_" in kwargs:
-            guid = kwargs["guid_"]
-            del kwargs["guid_"]
         container = None
         if "container_" in kwargs:
             container = kwargs["container_"]
             del kwargs["container_"]
-        guid = self._guid_generator.next(guid)
-        factory = self._factories[box_id]
-        box = factory.create(guid, **kwargs)
+        box = self._boxes[box_id]
+        new = box.clone(**kwargs)
         if container:
-            container.add_box(box)
-        return box
-
-    def clone(self, box):
-        guid = self._guid_generator.next(None)
-        new = box.factory.clone(guid, box)
-        if box.container:
-            box.container.add_box(new)
+            container.add_box(new)
         return new
 
 
-def create_provider():
+def create_provider(mods = None, search_path = None):
     # this factory provider instance will hold reference to all available factories 
-    return BoxFactoryProvider()
+    return BoxProvider(mods, search_path)
 
 
