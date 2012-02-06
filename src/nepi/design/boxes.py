@@ -95,6 +95,8 @@ class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap):
 
     def get_container(self):
         # Gives back a strong-reference not a weak one
+        if not self._container:
+            return None
         return self._container()
 
     def set_container(self, container):
@@ -111,7 +113,7 @@ class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap):
             box.container = self
             self._boxes[box.guid] = box
         else:
-            self._logger.error("Wrong box type %s to add to box type %s.", 
+            self._logger.error("Can't add box type %s to box type %s.", 
                     box.box_id, self.box_id)
 
     def remove(self, box):
@@ -146,7 +148,7 @@ class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap):
         new._guid = guid
         new._graphical_info = GraphicalInfo()
         if container:
-            container.add_box(new)
+            container.add(new)
         new._boxes = dict()
         new.clone_attrs(self)
         new.clone_connectors(self)
@@ -167,6 +169,16 @@ class ContainerBox(Box):
                 attributes.BoolAttribute(
                     "opaque", 
                     "Marks wether internal elements should be visible or not.",
+                    flags = attributes.AttributeFlags.ExecReadOnly |\
+                        attributes.AttributeFlags.ExecImmutable |\
+                        attributes.AttributeFlags.Metadata
+                    )
+                )
+
+        self.add_attr(
+                attributes.StringAttribute(
+                    "boxId", 
+                    "Id to identify the container type.",
                     flags = attributes.AttributeFlags.ExecReadOnly |\
                         attributes.AttributeFlags.ExecImmutable |\
                         attributes.AttributeFlags.Metadata
@@ -299,7 +311,7 @@ class ContainerBox(Box):
         new._guid = guid
         new._graphical_info = GraphicalInfo()
         if container:
-            container.add_box(new)
+            container.add(new)
         new.clone_attrs(self)
         new.clone_connectors(self)
         new.clone_boxes(self)
@@ -315,14 +327,14 @@ class IPAddressBox(Box):
         
         self.add_attr(
                 attributes.IPAttribute(
-                    "Address", 
+                    "address", 
                     "IP Address number", 
                     flags = attributes.AttributeFlags.NoDefaultValue
                     )
                 )
         self.add_attr(
                 attributes.IntegerAttribute(
-                    "NetPrefix", 
+                    "netPrefix", 
                     "Network prefix for the address", 
                     min = 0,
                     max = 128,
@@ -332,7 +344,7 @@ class IPAddressBox(Box):
                 )
         self.add_attr(
                 attributes.IPv4Attribute(
-                    "Broadcast", 
+                    "broadcast", 
                     "Broadcast network address", 
                     flags = attributes.AttributeFlags.NoDefaultValue
                     )
@@ -348,14 +360,14 @@ class RouteBox(Box):
 
         self.add_attr(
                 attributes.StringAttribute(
-                    "Destination", 
+                    "destination", 
                     "Network destination address", 
                     flags = attributes.AttributeFlags.NoDefaultValue
                     )
                 )
         self.add_attr(
                 attributes.IntegerAttribute(
-                    "NetPrefix", 
+                    "netPrefix", 
                     "Network prefix for the address", 
                     min = 0,
                     max = 128,
@@ -365,21 +377,21 @@ class RouteBox(Box):
                 )
         self.add_attr(
                 attributes.StringAttribute(
-                    "NextHop", 
+                    "nextHop", 
                     "Address of the next hop", 
                     flags = attributes.AttributeFlags.NoDefaultValue
                     )
                 )
         self.add_attr(
                 attributes.IntegerAttribute(
-                    "Metric", 
+                    "metric", 
                     "Routing metric", 
                     flags = attributes.AttributeFlags.NoDefaultValue
                     )
                 )
         self.add_attr(
                 attributes.BoolAttribute(
-                    "Default gateway", 
+                    "default gateway", 
                     "Indicate if this route points to the default gateway", 
                     default_value = False,
                     flags = attributes.AttributeFlags.NoDefaultValue
@@ -645,23 +657,52 @@ class BoxProvider(object):
     
         self.load_testbed_boxes(mods)
         self.load_user_containers(search_path)
+        self._logger = logging.getLogger("nepi.design.boxes.BoxProvider")
 
     @property
     def boxes(self):
         return self._boxes.keys()
 
-    def load_user_containers(self, search_path):
+    def load_user_containers(self, search_path = None):
         if not search_path:
             search_path = os.path.expanduser("~/user/.nepi/containers")
         if not os.path.exists(search_path):
             return
-        files = [fn for fn in os.listdir(search_path) if fn.endswith('.xml')]
+       
+        files = [os.path.join(search_path, fn) for fn in os.listdir(search_path) if fn.endswith('.xml')]
+        self._guid_generator.off = True
+       
         for fn in files:
-            f = fn.open(fn, "r")
+            f = open(fn, "r")
             xml = f.read()
             f.close()
             box = self.from_xml(xml)
+            box._box_id = box.a.boxId.value
             self.add(box)
+
+        self._guid_generator.off = False
+
+    def store_user_container(self, box, search_path = None):
+        if not search_path:
+            search_path = os.path.expanduser("~/user/.nepi/containers")
+        if not os.path.exists(search_path):
+            os.mkdirs(search_path)
+
+        if not box.a.boxId.value:
+            self._logger.error("Could not serialize container: Value is required for guid(%d).a.boxId .", 
+                    box.guid)
+            return False
+        
+        from nepi.util.parser import XMLBoxParser
+        parser = XMLBoxParser()
+        xml = parser.to_xml(box)
+        
+        fn = "%s.xml" % box.a.boxId.value.replace("::", "_")
+        fp = os.path.join(search_path, fn)
+        f = open(fp, "w")
+        f.write(xml)
+        f.close()
+        return True
 
     def load_testbed_boxes(self, mods = None):
         if not mods:

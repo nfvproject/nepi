@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from nepi.design import attributes
+from nepi.design import attributes, tags
 from xml.dom import minidom
 
 import sys
@@ -61,6 +61,10 @@ class XMLBoxParser(object):
         self.attributes_to_xml(box, b_tag, doc)
         self.connections_to_xml(box, b_tag, doc)
 
+        if tags.CONTAINER in box.tags:
+            self.exposed_attributes_to_xml(box, b_tag, doc)
+            self.exposed_connectors_to_xml(box, b_tag, doc)
+
         for b in box.boxes:
             self.box_to_xml(b, b_tag, doc)
         
@@ -68,8 +72,10 @@ class XMLBoxParser(object):
 
     def attributes_to_xml(self, box, tag, doc):
         attrs_tag = doc.createElement("attributes")
-        for name in box.attributes:
-            attr = getattr(box.a, name)
+        for name, attr in box._attributes.iteritems():
+            # Ignore exposed attributes
+            if name != attr.name:
+                continue
             if not attr.value:
                 continue
             attr_type = to_attribute_type(attr.value)
@@ -93,14 +99,45 @@ class XMLBoxParser(object):
     def connections_to_xml(self, box, tag, doc):
         conns_tag = doc.createElement("connections")
         for conn in box.connections:
-            (box, connector_name, other_box, other_connector_name) = conn
+            (b, connector_name, other_b, other_connector_name) = conn
+            # Ignore exposed connections
+            if b != box:
+                continue
             conn_tag = doc.createElement("connection") 
-            conns_tag.appendChild(conn_tag)
             conn_tag.setAttribute("connector", connector_name)
-            conn_tag.setAttribute("other_guid", xmlencode(other_box.guid))
+            conn_tag.setAttribute("other_guid", xmlencode(other_b.guid))
             conn_tag.setAttribute("other_connector", other_connector_name)
+            conns_tag.appendChild(conn_tag)
         if conns_tag.hasChildNodes():
             tag.appendChild(conns_tag)
+
+    def exposed_attributes_to_xml(self, box, tag, doc):
+        exp_attrs_tag = doc.createElement("exposed_attributes")
+        for name, attr in box._attributes.iteritems():
+            # It is not an exposed attribute
+            if name == attr.name:
+                continue
+            exp_attr_tag = doc.createElement("exposed_attribute") 
+            exp_attr_tag.setAttribute("exposed_name", name)
+            exp_attr_tag.setAttribute("attr_name", attr.name)
+            exp_attr_tag.setAttribute("owner_guid", xmlencode(attr.owner.guid))
+            exp_attrs_tag.appendChild(exp_attr_tag)
+        if exp_attrs_tag.hasChildNodes():
+            tag.appendChild(exp_attrs_tag)
+
+    def exposed_connectors_to_xml(self, box, tag, doc):
+        exp_conns_tag = doc.createElement("exposed_connectors")
+        for name, conn in box._connectors.iteritems():
+            # It is not an exposed connector
+            if name == conn.name:
+                continue
+            exp_conn_tag = doc.createElement("exposed_connector") 
+            exp_conn_tag.setAttribute("exposed_name", name)
+            exp_conn_tag.setAttribute("conn_name", conn.name)
+            exp_conn_tag.setAttribute("owner_guid", xmlencode(conn.owner.guid))
+            exp_conns_tag.appendChild(exp_conn_tag)
+        if exp_conns_tag.hasChildNodes():
+            tag.appendChild(exp_conns_tag)
 
     def from_xml(self, provider, xml):
         doc = minidom.parseString(xml)
@@ -134,15 +171,14 @@ class XMLBoxParser(object):
                     xmldecode(tag.nodeName) == 'box':
                 child_box = self.box_from_xml(provider, tag, connections)
                 box.add(child_box)
+
+        if tags.CONTAINER in box.tags:
+            self.exposed_attributes_from_xml(box, b_tag)
+            self.exposed_connectors_from_xml(box, b_tag)
         return box
 
     def attributes_from_xml(self, box, b_tag):
-        attributes_tag = None
-        for tag in b_tag.childNodes:
-            if tag.nodeType == tag.ELEMENT_NODE and \
-                    xmldecode(tag.nodeName) == 'attributes':
-                attributes_tag = tag
-                break
+        attributes_tag = self._find_subtag(b_tag, 'attributes')
         if not attributes_tag: 
             return 
 
@@ -171,12 +207,7 @@ class XMLBoxParser(object):
                 break
 
     def connections_from_xml(self, box, b_tag, connections):
-        connections_tag = None
-        for tag in b_tag.childNodes:
-            if tag.nodeType == tag.ELEMENT_NODE and \
-                    xmldecode(tag.nodeName) == 'connections':
-                connections_tag = tag
-                break
+        connections_tag = self._find_subtag(b_tag, 'connections')
         if not connections_tag: 
             return 
         
@@ -187,6 +218,45 @@ class XMLBoxParser(object):
                  other_connector = xmldecode(tag.getAttribute("other_connector"))
                  other_guid = int(tag.getAttribute("other_guid"))
                  connections.append((box.guid, connector, other_guid, other_connector))
+
+    def exposed_attributes_from_xml(self, box, b_tag):
+        exposed_attributes_tag = self._find_subtag(b_tag, 'exposed_attributes')
+        if not exposed_attributes_tag: 
+            return 
+        
+        for tag in exposed_attributes_tag.childNodes:
+            if tag.nodeType == tag.ELEMENT_NODE and \
+                    xmldecode(tag.nodeName) == 'exposed_attributes':
+                 exposed_name = xmldecode(tag.getAttribute('exposed_name'))
+                 attr_name = xmldecode(tag.getAttribute('attr_name'))
+                 owner_guid = int(tag.getAttribute('owner_guid'))
+                 b = box.box(owner_guid)
+                 attribute = getattr(b.a, attr_name)
+                 box.expose_attribute(exposed_name, attribute)
+
+    def exposed_connectors_from_xml(self, box, b_tag):
+        exposed_connections_tag = self._find_subtag(b_tag, 'exposed_connections')
+        if not exposed_connections_tag: 
+            return 
+        
+        for tag in exposed_connections_tag.childNodes:
+            if tag.nodeType == tag.ELEMENT_NODE and \
+                    xmldecode(tag.nodeName) == 'exposed_connection':
+                 exposed_name = xmldecode(tag.getAttribute('exposed_name'))
+                 conn_name = xmldecode(tag.getAttribute('conn_name'))
+                 owner_guid = int(tag.getAttribute('owner_guid'))
+                 b = box.box(owner_guid)
+                 connector = getattr(b.c, conn_name)
+                 box.expose_connector(exposed_name, connector)
+
+    def _find_subtag(self, b_tag, tag_name):
+        the_tag = None
+        for tag in b_tag.childNodes:
+            if tag.nodeType == tag.ELEMENT_NODE and \
+                    xmldecode(tag.nodeName) == tag_name:
+                the_tag = tag
+                break
+        return the_tag
 
     def connect_boxes(self, box, connections):
         dejafait = set()

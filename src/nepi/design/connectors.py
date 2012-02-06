@@ -251,18 +251,16 @@ class ConnectionRule(object):
 
     def can_connect(self, box, connector_name, other_box, other_connector_name):
         if not box.controller:
-            self._logger.error("No controller asociated to box %d.", box.guid)
-            return False
+             self._logger.error("No controller asociated to box %d, can not performe full validation.", box.guid)
 
         if not other_box.controller:
-            self._logger.error("No controller asociated to box %d.", other_box.guid)
-            return False
+            self._logger.error("No controller asociated to box %d, can not perform full validation.", other_box.guid)
 
-        if (self.can_cross_controllers or box.controller == other_box.controller) and \
+        if (self.can_cross_controllers or not box.controller or not other_box.controller or box.controller == other_box.controller) and \
                 (not self.box_id or self.box_id == box.box_id) and \
                 (not self.connector_name or self.connector_name == connector_name) and \
                 (not self.other_box_id or self.other_box_id == other_box.box_id) and \
                 (not self.other_connector_name or self.other_connector_name == other_connector_name):
-                return True
+            return True
         return False
 

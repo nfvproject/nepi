@@ -17,16 +17,16 @@ CONTAINER = "mock::Container"
 boxes = list()
 
 # CONTROLLER
-box = TestbedBox(TESTBED_ID, TESTBED, None, None)
+box = TestbedBox(TESTBED_ID, TESTBED)
 boxes.append(box)
 
 # CONTROLLER
-box = ContainerBox(TESTBED_ID, CONTAINER, None, None)
+box = ContainerBox(TESTBED_ID, CONTAINER)
 box.add_container(TESTBED)
 boxes.append(box)
 
 # NODE
-box = Box(TESTBED_ID, NODE, None, None)
+box = Box(TESTBED_ID, NODE)
 boxes.append(box)
 ## CONNECTORS
 conn = Connector("devs", "Connector from node to intefaces", max = -1, min = 0)
@@ -59,7 +59,7 @@ box.add_tag(tags.NODE)
 
 
 #IFACE
-box = Box(TESTBED_ID, IFACE, None, None)
+box = Box(TESTBED_ID, IFACE)
 boxes.append(box)
 ## Connector
 conn = Connector("node", "Connector from interface to node", max = 1, min = 1)
@@ -84,7 +84,7 @@ box.add_tag(tags.INTERFACE)
 
 
 # APPLICATION
-box = Box(TESTBED_ID, APP, None, None)
+box = Box(TESTBED_ID, APP)
 boxes.append(box)
 ## Connector
 conn = Connector("node", "Connector from application to node", max = 1, min = 1)
@@ -107,7 +107,7 @@ box.add_tag(tags.APPLICATION)
 
 
 # TRACE
-box = Box(TESTBED_ID, TRACE, None, None)
+box = Box(TESTBED_ID, TRACE)
 boxes.append(box)
 ## Connector
 conn = Connector("node", "Connector from trace to node", max = 1, min = 1)
@@ -130,7 +130,7 @@ box.add_tag(tags.TRACE)
 
 
 # ADDRESS
-box = IPAddressBox(TESTBED_ID, ADDRESS, None, None)
+box = IPAddressBox(TESTBED_ID, ADDRESS)
 boxes.append(box)
 ## Connector
 conn = Connector("iface", "Connector from address to interface", max = 1, min = 1)

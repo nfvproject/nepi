@@ -5,8 +5,16 @@
 class GuidGenerator(object):
     def __init__(self):
         self._guids = list()
+        self.off = False
 
     def next(self, guid = None):
+        # This mechanism allows to build Factory boxes without worring 
+        # about the actual assigned guids. 
+        # BoxProvider should always off the guid_generator when building 
+        # box factories.
+        if self.off:
+            return guid
+
         if guid != None:
             if guid in self._guids:
                 raise RuntimeError("guid %d is already assigned" % guid)
