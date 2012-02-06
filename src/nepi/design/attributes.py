@@ -116,7 +116,6 @@ class AttributesMap(object):
             self.add_attr(new)
 
 
-
 class FlagProxy(object):
     def __init__(self, owner):
         self._owner = weakref.ref(owner)

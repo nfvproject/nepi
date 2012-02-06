@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from nepi.design import attributes, tags
-from nepi.design.boxes import TestbedBox, Box, IPAddressBox
+from nepi.design.boxes import TestbedBox, Box, IPAddressBox, ContainerBox
 from nepi.design.connectors import Connector, ConnectionRule
 
 TESTBED_ID = "mock"
@@ -12,6 +12,7 @@ IFACE = "mock::Interface"
 APP = "mock::Application"
 TRACE = "mock::Trace"
 ADDRESS = "mock::IPv4Address"
+CONTAINER = "mock::Container"
 
 boxes = list()
 
@@ -19,6 +20,10 @@ boxes = list()
 box = TestbedBox(TESTBED_ID, TESTBED, None, None)
 boxes.append(box)
 
+# CONTROLLER
+box = ContainerBox(TESTBED_ID, CONTAINER, None, None)
+box.add_container(TESTBED)
+boxes.append(box)
 
 # NODE
 box = Box(TESTBED_ID, NODE, None, None)
@@ -40,6 +45,7 @@ conn.add_connection_rule(rule)
 box.add_connector(conn)
 ## CONTAINER BOX ID
 box.add_container(TESTBED)
+box.add_container(CONTAINER)
 ## ATTRIBUTES INFO
 box.add_attr(
         attributes.BoolAttribute(
@@ -72,6 +78,7 @@ conn.add_connection_rule(rule)
 box.add_connector(conn)
 ## CONTAINER BOX ID
 box.add_container(TESTBED)
+box.add_container(CONTAINER)
 ## TAGS
 box.add_tag(tags.INTERFACE)
 
@@ -94,6 +101,7 @@ box.add_attr(
         )
 ## CONTAINER BOX ID
 box.add_container(TESTBED)
+box.add_container(CONTAINER)
 ## TAGS
 box.add_tag(tags.APPLICATION)
 
@@ -116,6 +124,7 @@ box.add_attr(
         )
 ## CONTAINER BOX ID
 box.add_container(TESTBED)
+box.add_container(CONTAINER)
 ## TAGS
 box.add_tag(tags.TRACE)
 
@@ -130,6 +139,7 @@ conn.add_connection_rule(rule)
 box.add_connector(conn)
 ## CONTAINER BOX ID
 box.add_container(TESTBED)
+box.add_container(CONTAINER)
 ## TAGS
 box.add_tag(tags.ADDRESS)
 
