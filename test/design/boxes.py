@@ -137,7 +137,7 @@ class DesignBoxesTestCase(unittest.TestCase):
 
         addr1 = provider.create("mock::IPv4Address")
         mocki.add(addr1)
-        addr1.a.Address.value = "192.168.0.1"
+        addr1.a.address.value = "192.168.0.1"
         iface1.c.addrs.connect(addr1.c.iface)
 
         node2 = provider.create("mock::Node")
@@ -149,7 +149,7 @@ class DesignBoxesTestCase(unittest.TestCase):
 
         addr2 = provider.create("mock::IPv4Address")
         mocki.add(addr2)
-        addr2.a.Address.value = "192.168.0.2"
+        addr2.a.address.value = "192.168.0.2"
         iface2.c.addrs.connect(addr2.c.iface)
 
         trace = provider.create("mock::Trace")
@@ -173,6 +173,55 @@ class DesignBoxesTestCase(unittest.TestCase):
         
         xml2 = exp2.xml
         self.assertTrue(xml == xml2)
+
+
+    def test_container_serialization(self):
+        provider = create_provider(mods=[mock])
+
+        mocki = provider.create("mock::MockInstance")
+        cont1 = provider.create("mock::Container", container = mocki)
+
+        node1 = provider.create("mock::Node", container = cont1)
+        iface1 = provider.create("mock::Interface", container = cont1)
+        iface2 = provider.create("mock::Interface", container = cont1)
+        iface3 = provider.create("mock::Interface", container = cont1)
+        iface4 = provider.create("mock::Interface", container = cont1)
+        node1.c.devs.connect(iface1.c.node)
+        node1.c.devs.connect(iface2.c.node)
+        node1.c.devs.connect(iface3.c.node)
+        node1.c.devs.connect(iface4.c.node)
+
+        addr1 = provider.create("mock::IPv4Address", container = cont1)
+        addr1.a.address.value = "192.168.0.1"
+        iface1.c.addrs.connect(addr1.c.iface)
+        addr2 = provider.create("mock::IPv4Address", container = cont1)
+        addr2.a.address.value = "192.168.0.2"
+        iface2.c.addrs.connect(addr2.c.iface)
+        addr3 = provider.create("mock::IPv4Address", container = cont1)
+        addr3.a.address.value = "192.168.0.3"
+        iface3.c.addrs.connect(addr3.c.iface)
+        addr4 = provider.create("mock::IPv4Address", container = cont1)
+        addr4.a.address.value = "192.168.1.1"
+        iface4.c.addrs.connect(addr4.c.iface)
+
+        cont1.expose_connector("eth0", iface1.c.node)
+        cont1.expose_connector("eth1", iface2.c.node)
+        cont1.expose_connector("eth2", iface3.c.node)
+        cont1.expose_connector("eth3", iface4.c.node)
+
+        cont1.expose_attribute("out_address", addr4.a.address)
+
+        search_path = "/tmp"
+        ret = provider.store_user_container(cont1, search_path = search_path)
+        self.assertFalse(ret)
+
+        cont1.a.boxId.value = "mock::Switch"
+        ret = provider.store_user_container(cont1, search_path = search_path)
+        self.assertTrue(ret)
+
+        provider2 = create_provider(mods=[mock], search_path = search_path)
+        mocki = provider2.create("mock::MockInstance")
+        switch1 = provider2.create("mock::Switch", container = mocki)
 
 
 if __name__ == '__main__':
