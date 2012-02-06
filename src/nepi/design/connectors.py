@@ -159,6 +159,9 @@ class Connector(object):
         """
         return len(self.owner._connections[self.name]) >= self.min
 
+    def is_connected(self, other_connector):
+        return self.owner.is_connected(self, other_connector)
+
     def connect(self, other_connector, connect_other_side = True):
         if self.can_connect(other_connector):
             could_connect = True
@@ -172,13 +175,13 @@ class Connector(object):
                     other_connector.owner.guid, other_connector.name)
         return False
 
-    def disconnect(self, connector, other_connector, disconect_other_side = True):
-        if (other_connector.owner, other_connector.name) in self._connections[connector.name]:
+    def disconnect(self, other_connector, disconnect_other_side = True):
+        if (other_connector.owner, other_connector.name) in self.owner._connections[self.name]:
             could_disconnect = True
             if disconnect_other_side:
-                could_disconnect = other_connector.disconnect(connector, False)
+                could_disconnect = other_connector.disconnect(self, False)
             if could_disconnect:
-                self._connections[connector_name].remove((other_connectir.owner, other_connector.name))
+                self.owner.disconnect(self, other_connector)
                 return True
         self._logger.error("could not disconnect guid(%d).c.%s from guid(%d).c.%s .", 
                     connector.owner.guid, connector.name, 

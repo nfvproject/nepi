@@ -106,6 +106,7 @@ class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap):
         self._containers.append(box_id)
 
     def add(self, box):
+        # TODO: Check cycles in containers!
         if self.box_id in box.containers:
             box.container = self
             self._boxes[box.guid] = box
@@ -118,17 +119,15 @@ class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap):
             del self._boxes[box.guid]
             box.container = None
     
-    def box(self, guid):
-        if self.guid == guid:
+    def box(self, id):
+        if self.guid == id or self.a.label.value == id:
             return self
         if not self._boxes:
             return None
-        if guid in self._boxes:
-            return self._boxes[guid]
         box = None
         for b in self._boxes.values():
-             box = b.box(guid)
-             if box: break
+            box = b.box(id)
+            if box: break
         return box
 
     def clone(self, **kwargs):
@@ -136,37 +135,175 @@ class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap):
         if "guid" in kwargs:
             guid = kwargs["guid"]
             del kwargs["guid"]
+        
+        container = None
+        if "container" in kwargs:
+            container = kwargs["container"]
+            del kwargs["container"]
+        
         new = copy.copy(self)
         guid = self._guid_generator.next(guid)
         new._guid = guid
         new._graphical_info = GraphicalInfo()
-        new._boxes = dict() 
+        if container:
+            container.add_box(new)
+        new._boxes = dict()
         new.clone_attrs(self)
         new.clone_connectors(self)
+
+        for k,v in kwargs.iteritems():
+            attr = getattr(new.a, k)
+            attr.value = v
         return new
 
 
-"""
 class ContainerBox(Box):
-    def __init__(self, box_id, testbed_id, guid_generator = None, guid = None, **kwargs):
-        super(ContainerBox).__init__(box_id, testbed_id, guid_generator, guid, **kwargs)
-        self._exposed_connectors = dict()
+    def __init__(self, box_id, testbed_id, guid_generator = None, guid = None):
+        super(ContainerBox, self).__init__(box_id, testbed_id, guid_generator, guid)
+        
+        self.add_tag(tags.CONTAINER)
 
+        self.add_attr(
+                attributes.BoolAttribute(
+                    "opaque", 
+                    "Marks wether internal elements should be visible or not.",
+                    flags = attributes.AttributeFlags.ExecReadOnly |\
+                        attributes.AttributeFlags.ExecImmutable |\
+                        attributes.AttributeFlags.Metadata
+                    )
+                )
 
-    def expose_connector():
+    def expose_connector(self, name, connector):
+        if connector.owner in self.boxes:
+            self._connectors[name] = connector
 
-    def unexpose_connector()
+    def unexpose_connector(self, name):
+        if name in self._exposed_connectors:
+            del self._connectors[name]
 
+    def expose_attribute(self, name, attribute):
+        if attribute.owner in self.boxes:
+            self._attributes[name] = attribute
 
-    def copy(self, box):
-        # TODO: Copy connections!
-        new = copy.copy(box)
-        guid = self._guid_generator.next(None)
+    def unexpose_attribute(self, name):
+        if name in self._attributes:
+            del self._attributes[name]
+
+    def remove(self, box):
+        super(ContainerBox, self).remove(box)
+        for name, attr in self._attributes.iteritems():
+            if attr.owner == box:
+                self.unexpose_attribute(name)
+        for name, conn in self._connectors.iteritems():
+            if conn.owner == box:
+                self.unexpose_connector(name)
+
+    def is_connected(self, connector, other_connector):
+        if connector not in self._connectors.values():
+            return False
+        # It is not an exposed connector
+        if self._connectors.get(connector.name):
+            conn = self._connector[connector.name]
+            if conn == connector:
+                return super(ContainerBox, self).is_connected(connector, other_connector)
+        # It is an exposed connector... so go to the real owner for answers
+        return (other_connector.owner, other_connector.name) in connector.owner._connections[connector.name]
+
+    @property
+    def connections(self):
+        connections = list()
+        for name, connector in self._connectors.iteritems():
+            # It is not an exposed connector
+            if name == connector.name:
+                for (other_box, other_connector_name) in self._connections[name]:
+                    connections.append((self, name, other_box, other_connector_name))
+            # It is an exposed connector... so go to the real owner for answers
+            else:
+                for (other_box, other_connector_name) in connector.owner._connections[connector.name]:
+                    connections.append((connector.owner, connector.name, other_box, other_connector_name))
+        return connections
+
+    def clone_attrs(self, other):
+        self._a = attributes.AttributesMapProxy(self)
+        self._attributes = dict()
+        for name, attr in other._attributes.iteritems():
+            # Only clone natural attributes, not exposed ones
+            if name != attr.name:
+                continue
+            new = attr.clone()
+            self.add_attr(new)
+
+    def clone_connectors(self, other):
+        self._c = connectors.ConnectorsMapProxy(self)
+        self._connectors = dict()
+        self._cn = connectors.ConnectionsProxy(self)
+        self._connections = dict()
+
+    def clone_boxes(self, other):
+        cloned = dict()
+        connections = list()
+        self._boxes = dict()
+        for box in other.boxes:
+            new = box.clone()
+            cloned[box.guid] = new.guid
+            self.add(new)
+            for conx in box.connections:
+                (b, connector, other_b, other_connector) = conx
+                # Don't repeat connections are always pairwise
+                if not (other_b.guid, other_connector, b.guid, connector) in connections:
+                    connections.append((b.guid, connector, other_b.guid, other_connector))
+
+        # expose attributes
+        for name, attr in other._attributes.iteritems():
+            # Expose only foreign attributes
+            if name == attr.name:
+                continue
+            cloned_guid = cloned[attr.owner.guid]
+            box = self._boxes[cloned_guid]
+            attribute = getattr(box.a, attr.name)
+            self.expose_attribute(name, attribute)
+        # expose connectors
+        for name, conn in other._connectors.iteritems():
+            # Expose only foreign attributes
+            if name == conn.name:
+                continue
+            cloned_guid = cloned[conn.owner.guid]
+            box = self._boxes[cloned_guid]
+            connector = getattr(box.c, conn.name)
+            self.expose_connector(name, connector)
+        # clone internal connections
+        for conx in connections:
+            (guid, connector, other_guid, other_connector) = conx
+            if other_guid in cloned.keys():
+                cloned_guid = cloned[guid]
+                cloned_box = self._boxes[cloned_guid]
+                cloned_other_guid = cloned[other_guid]
+                cloned_other_box = self._boxes[cloned_other_guid]
+                conn = getattr(cloned_box.c, connector)
+                other_conn = getattr(cloned_other_box.c, other_connector)
+                conn.connect(other_conn)
+
+    def clone(self, **kwargs):
+        guid = None
+        if "guid" in kwargs:
+            guid = kwargs["guid"]
+            del kwargs["guid"]
+
+        container = None
+        if "container" in kwargs:
+            container = kwargs["container"]
+            del kwargs["container"]
+
+        new = copy.copy(self)
+        guid = self._guid_generator.next(guid)
         new._guid = guid
-        new.clone_attrs(box)
-        new.clone_connectors(box)
+        new._graphical_info = GraphicalInfo()
+        if container:
+            container.add_box(new)
+        new.clone_attrs(self)
+        new.clone_connectors(self)
+        new.clone_boxes(self)
         return new
-"""
 
 
 class IPAddressBox(Box):
@@ -552,14 +689,8 @@ class BoxProvider(object):
             self.add(box)
 
     def create(self, box_id, **kwargs):
-        container = None
-        if "container_" in kwargs:
-            container = kwargs["container_"]
-            del kwargs["container_"]
         box = self._boxes[box_id]
         new = box.clone(**kwargs)
-        if container:
-            container.add_box(new)
         return new
 
 
