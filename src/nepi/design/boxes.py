@@ -18,7 +18,8 @@ from nepi.util.guid import GuidGenerator
 
 
 class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None):
+    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None, 
+            help = None):
         super(Box, self).__init__()
         self._guid_generator = guid_generator
         # guid -- global unique identifier
@@ -27,6 +28,8 @@ class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap):
         self._testbed_id = testbed_id
         # Box type identifier -- the box type
         self._box_id = box_id
+        # Help text
+        self._help = help
         # Box class to instantiate
         # container -- container box instance
         self._container = None
@@ -75,6 +78,10 @@ class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap):
     @property
     def graphical_info(self):
         return self._graphical_info
+
+    @property
+    def help(self):
+        return self._help
 
     @property
     def boxes(self):
@@ -188,8 +195,10 @@ class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap):
 
 
 class ContainerBox(Box):
-    def __init__(self, box_id, testbed_id, guid_generator = None, guid = None):
-        super(ContainerBox, self).__init__(box_id, testbed_id, guid_generator, guid)
+    def __init__(self, box_id, testbed_id, guid_generator = None, guid = None,
+            help = None):
+        super(ContainerBox, self).__init__(box_id, testbed_id, guid_generator, 
+                guid, help)
         
         self.add_tag(tags.CONTAINER)
 
@@ -347,9 +356,10 @@ class ContainerBox(Box):
 
 
 class IPAddressBox(Box):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None):
-        super(IPAddressBox, self).__init__(testbed_id, box_id, 
-                guid_generator = guid_generator, guid = guid)
+    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
+            help = None):
+        super(IPAddressBox, self).__init__(testbed_id, box_id, guid_generator, 
+                guid, help)
         
         self.add_tag(tags.ADDRESS)
         
@@ -380,9 +390,10 @@ class IPAddressBox(Box):
 
 
 class RouteBox(Box):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None):
-        super(RouteBox, self).__init__(testbed_id, box_id,
-                guid_generator = guid_generator, guid = guid)
+    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
+            help = None):
+        super(RouteBox, self).__init__(testbed_id, box_id, guid_generator, 
+                guid, help)
         
         self.add_tag(tags.ROUTE)
 
@@ -428,11 +439,30 @@ class RouteBox(Box):
 
 
 class TunnelBox(Box):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None):
-        super(TunnelBox, self).__init__(testbed_id, box_id,
-                guid_generator = guid_generator, guid = guid)
+    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None, 
+            help = None):
+        super(TunnelBox, self).__init__(testbed_id, box_id, guid_generator,
+            guid, help)
 
         self.add_tag(tags.TUNNEL)
+
+        conn = Connector("->fd", help = "File descriptor receptor for devices with file descriptors",
+                max = 1, min = 0)
+        rule = ConnectionRule(self.box_id, "->fd", None, "->fd", False)
+        conn.add_connection_rule(rule)
+        self.add_connector(conn)
+
+        conn = Connector("tcp", help = "ip-ip tunneling over TCP link", 
+                max = 1, min = 0)
+        rule = ConnectionRule(self.box_id, "tcp", None, "tcp", True)
+        conn.add_connection_rule(rule)
+        self.add_connector(conn)
+
+        conn = Connector("udp", help = "ip-ip tunneling over UDP datagrams",
+                max = 1, min = 0)
+        rule = ConnectionRule(self.box_id, "tcp", None, "tcp", True)
+        conn.add_connection_rule(rule)
+        self.add_connector(conn)
 
         self.add_attr(
                 attributes.StringAttribute(
@@ -486,9 +516,10 @@ class TunnelBox(Box):
 
 
 class ControllerBox(Box):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None):
-        super(ControllerBox, self).__init__(testbed_id, box_id,
-                guid_generator = guid_generator, guid = guid)
+    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None, 
+            help = None):
+        super(ControllerBox, self).__init__(testbed_id, box_id, guid_generator,
+                guid, help)
 
         self.add_tag(tags.CONTROLLER)
 
@@ -662,16 +693,17 @@ class ControllerBox(Box):
 
 
 class TestbedBox(ControllerBox):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None):
-        super(TestbedBox, self).__init__(testbed_id, box_id,
-                guid_generator = guid_generator, guid = guid)
+    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
+            help = None):
+        super(TestbedBox, self).__init__(testbed_id, box_id, guid_generator,
+                guid, help)
         self.add_container_info(None, tags.EXPERIMENT)
 
 
 class ExperimentBox(ControllerBox):
     def __init__(self, guid_generator = None, guid = None):
         super(ExperimentBox, self).__init__(None, "Experiment",
-                guid_generator = guid_generator, guid = guid)
+                guid_generator, guid, "Experiment box")
         self.add_tag(tags.EXPERIMENT)
 
 
