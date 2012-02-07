@@ -41,7 +41,15 @@ class XMLBoxParser(object):
     def to_xml(self, box):
         doc = minidom.Document()        
         root_tag = doc.createElement("scenario")
-        self.box_to_xml(box, root_tag, doc)
+
+        # boxes in the serialization domain
+        def guids(box, l = []):
+            for b in box.boxes:
+                l = guids(b, l)
+            l.append(box.guid)
+            return l
+
+        self.box_to_xml(box, root_tag, doc, guids(box))
         doc.appendChild(root_tag)
         
         try:
@@ -52,21 +60,21 @@ class XMLBoxParser(object):
         
         return xml
 
-    def box_to_xml(self, box, p_tag, doc):
+    def box_to_xml(self, box, p_tag, doc, guids):
         b_tag = doc.createElement("box")
         b_tag.setAttribute("guid", xmlencode(box.guid))
         b_tag.setAttribute("testbed_id", xmlencode(box.testbed_id))
         b_tag.setAttribute("box_id", xmlencode(box.box_id))
         self.graphical_info_to_xml(box, b_tag, doc)
         self.attributes_to_xml(box, b_tag, doc)
-        self.connections_to_xml(box, b_tag, doc)
+        self.connections_to_xml(box, b_tag, doc, guids)
 
         if tags.CONTAINER in box.tags:
             self.exposed_attributes_to_xml(box, b_tag, doc)
             self.exposed_connectors_to_xml(box, b_tag, doc)
 
         for b in box.boxes:
-            self.box_to_xml(b, b_tag, doc)
+            self.box_to_xml(b, b_tag, doc, guids)
         
         p_tag.appendChild(b_tag)
 
@@ -96,12 +104,13 @@ class XMLBoxParser(object):
         gi_tag.setAttribute("height", xmlencode(gi.height))
         tag.appendChild(gi_tag)
 
-    def connections_to_xml(self, box, tag, doc):
+    def connections_to_xml(self, box, tag, doc, guids):
         conns_tag = doc.createElement("connections")
         for conn in box.connections:
             (b, connector_name, other_b, other_connector_name) = conn
-            # Ignore exposed connections
-            if b != box:
+            # Ignore exposed connections and boxes that are not in
+            # the serialization domain
+            if b != box or other_b.guid not in guids:
                 continue
             conn_tag = doc.createElement("connection") 
             conn_tag.setAttribute("connector", connector_name)
@@ -226,7 +235,7 @@ class XMLBoxParser(object):
         
         for tag in exposed_attributes_tag.childNodes:
             if tag.nodeType == tag.ELEMENT_NODE and \
-                    xmldecode(tag.nodeName) == 'exposed_attributes':
+                    xmldecode(tag.nodeName) == 'exposed_attribute':
                  exposed_name = xmldecode(tag.getAttribute('exposed_name'))
                  attr_name = xmldecode(tag.getAttribute('attr_name'))
                  owner_guid = int(tag.getAttribute('owner_guid'))
@@ -235,13 +244,13 @@ class XMLBoxParser(object):
                  box.expose_attribute(exposed_name, attribute)
 
     def exposed_connectors_from_xml(self, box, b_tag):
-        exposed_connections_tag = self._find_subtag(b_tag, 'exposed_connections')
+        exposed_connections_tag = self._find_subtag(b_tag, 'exposed_connectors')
         if not exposed_connections_tag: 
             return 
         
         for tag in exposed_connections_tag.childNodes:
             if tag.nodeType == tag.ELEMENT_NODE and \
-                    xmldecode(tag.nodeName) == 'exposed_connection':
+                    xmldecode(tag.nodeName) == 'exposed_connector':
                  exposed_name = xmldecode(tag.getAttribute('exposed_name'))
                  conn_name = xmldecode(tag.getAttribute('conn_name'))
                  owner_guid = int(tag.getAttribute('owner_guid'))

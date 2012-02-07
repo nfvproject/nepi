@@ -192,24 +192,32 @@ class DesignBoxesTestCase(unittest.TestCase):
         node1.c.devs.connect(iface4.c.node)
 
         addr1 = provider.create("mock::IPv4Address", container = cont1)
-        addr1.a.address.value = "192.168.0.1"
+        addr1.a.address.value = "192.168.1.1"
         iface1.c.addrs.connect(addr1.c.iface)
         addr2 = provider.create("mock::IPv4Address", container = cont1)
-        addr2.a.address.value = "192.168.0.2"
+        addr2.a.address.value = "192.168.2.1"
         iface2.c.addrs.connect(addr2.c.iface)
         addr3 = provider.create("mock::IPv4Address", container = cont1)
-        addr3.a.address.value = "192.168.0.3"
+        addr3.a.address.value = "192.168.3.1"
         iface3.c.addrs.connect(addr3.c.iface)
         addr4 = provider.create("mock::IPv4Address", container = cont1)
-        addr4.a.address.value = "192.168.1.1"
+        addr4.a.address.value = "192.168.4.1"
         iface4.c.addrs.connect(addr4.c.iface)
 
-        cont1.expose_connector("eth0", iface1.c.node)
-        cont1.expose_connector("eth1", iface2.c.node)
-        cont1.expose_connector("eth2", iface3.c.node)
-        cont1.expose_connector("eth3", iface4.c.node)
+        cont1.expose_connector("eth0", iface1.c.peer)
+        cont1.expose_connector("eth1", iface2.c.peer)
+        cont1.expose_connector("eth2", iface3.c.peer)
+        cont1.expose_connector("eth3", iface4.c.peer)
 
-        cont1.expose_attribute("out_address", addr4.a.address)
+        cont1.expose_attribute("eth0_address", addr1.a.address)
+        cont1.expose_attribute("eth1_address", addr2.a.address)
+        cont1.expose_attribute("eth2_address", addr3.a.address)
+        cont1.expose_attribute("eth3_address", addr4.a.address)
+
+        iface5 = provider.create("mock::Interface", container = mocki)
+        cont1.c.eth0.connect(iface5.c.peer)
+        self.assertTrue(cont1.c.eth0.is_connected(iface5.c.peer))
+        self.assertTrue(iface1.c.peer.is_connected(iface5.c.peer))
 
         search_path = "/tmp"
         ret = provider.store_user_container(cont1, search_path = search_path)
@@ -222,6 +230,10 @@ class DesignBoxesTestCase(unittest.TestCase):
         provider2 = create_provider(mods=[mock], search_path = search_path)
         mocki = provider2.create("mock::MockInstance")
         switch1 = provider2.create("mock::Switch", container = mocki)
+
+        switch1.a.eth0_address.value = "192.168.5.1"
+        self.assertTrue(switch1.a.eth0_address.value != cont1.a.eth0_address.value)
+        self.assertFalse(switch1.c.eth0.is_connected(iface5.c.peer))
 
 
 if __name__ == '__main__':

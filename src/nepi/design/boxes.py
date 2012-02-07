@@ -35,9 +35,9 @@ class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap):
         # aggregations -- dictionary of contained instances
         # -- dict(guid: box_ref)
         self._boxes = dict() 
-        # List of box types that can contain this box type -- if None is 
-        # included in the list then the box can be uncontained
-        self._containers = list()
+        # Information of containers that can contain this box type
+        # -- dict(testbed_id: tags)
+        self._container_info = dict()
 
         self.add_attr(
                 attributes.StringAttribute(
@@ -65,8 +65,8 @@ class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap):
          return self._box_id
 
     @property
-    def containers(self):
-        return self._containers
+    def container_info(self):
+        return self._container_info
 
     @property
     def guid(self):
@@ -104,12 +104,40 @@ class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap):
 
     container = property(get_container, set_container)
 
-    def add_container(self, box_id):
-        self._containers.append(box_id)
+    def add_container_info(self, testbed_id, must_have_one, must_have_all = None):
+        if testbed_id not in self._container_info:
+            self._container_info[testbed_id] = dict()
+
+        if must_have_one:
+            if not isinstance(must_have_one, list):
+                must_have_one = [must_have_one]
+            if 'must_have_one' not in self._container_info[testbed_id]:
+                self._container_info[testbed_id]['must_have_one'] = set(must_have_one)
+            else:
+                self._container_info[testbed_id]['must_have_one'].update(set(must_have_one))
+
+        if must_have_all:
+            if not isinstance(must_have_all, list):
+                must_have_all = [must_have_all]
+            if 'must_have_all' not in self._container_info[testbed_id]:
+                self._container_info[testbed_id]['must_have_all'] = set(must_have_all)
+            else:
+                self._container_info[testbed_id]['must_have_all'].update(set(must_have_all))
+
 
     def add(self, box):
         # TODO: Check cycles in containers!
-        if self.box_id in box.containers:
+        tags = box.container_info.get(self.testbed_id, 'miss')
+        must_have_one = tags.get('must_have_one', 'miss')
+        must_have_all = tags.get('must_have_all', 'miss')
+        # The testbed_id must be allowed
+        if tags != 'miss' and \
+                ( 
+                    # self must have at least one of the must_have_one tags
+                    (must_have_one != 'miss' and [t for t in self.tags if t in must_have_one]) or \
+                    # self must have all the must_have_all tags
+                    (must_have_all != 'miss' and  not [ t for t in tags if t not in self.tags ])
+                ):
             box.container = self
             self._boxes[box.guid] = box
         else:
@@ -637,7 +665,7 @@ class TestbedBox(ControllerBox):
     def __init__(self, testbed_id, box_id, guid_generator = None, guid = None):
         super(TestbedBox, self).__init__(testbed_id, box_id,
                 guid_generator = guid_generator, guid = guid)
-        self.add_container("Experiment")
+        self.add_container_info(None, tags.EXPERIMENT)
 
 
 class ExperimentBox(ControllerBox):
