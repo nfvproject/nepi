@@ -42,6 +42,7 @@ class XMLBoxParser(object):
         doc = minidom.Document()        
         root_tag = doc.createElement("scenario")
 
+        # guids = lambda box: reduce(operator.add, map(guids, box.boxes), [box.guid])
         # boxes in the serialization domain
         def guids(box, l = []):
             for b in box.boxes:
