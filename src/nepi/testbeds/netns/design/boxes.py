@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from nepi.design import attributes, tags
+from nepi.design import attributes, connectors, tags
 from nepi.design.boxes import TestbedBox, Box, IPAddressBox, ContainerBox, TunnelBox
-from nepi.design.connectors import Connector, ConnectionRule
 
 TESTBED_ID = "netns01"
 
@@ -19,14 +18,14 @@ CONTAINER = "netns::Container"
 PCAPTRACE = "netns::PcapTrace"
 OUTTRACE = "netns::StdoutTrace"
 ERRTRACE = "netns::StderrTrace"
-ADDRESS = "netns::IPv4Address"
+ADDRESS = "netns::IPAddress"
 
 boxes = list()
 
 class IfaceBox(Box):
     def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
             help = None):
-        super(InterfaceBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(IfaceBox, self).__init__(testbed_id, box_id, guid_generator,
                 guid, help)
         
         self.add_tag(tags.INTERFACE)
@@ -34,8 +33,13 @@ class IfaceBox(Box):
         self.add_container_info(TESTBED_ID, tags.CONTROLLER)
         self.add_container_info(TESTBED_ID, tags.CONTAINER)
 
-        conn = Connector("node", "Connector to netns::Node", max = 1, min = 1)
-        rule = ConnectionRule(self.box_id, "node", NODE, "devs", False)
+        conn = connectors.Connector("node", "Connector to netns::Node", max = 1, min = 1)
+        rule = connectors.ConnectionRule(self.box_id, "node", NODE, "ifaces", False)
+        conn.add_connection_rule(rule)
+        self.add_connector(conn)
+
+        conn = connectors.Connector("addrs", "Connector from interface to netns::IPAddress", max = 1, min = 1)
+        rule = connectors.ConnectionRule(self.box_id, "addrs", ADDRESS, "iface", False)    
         conn.add_connection_rule(rule)
         self.add_connector(conn)
 
@@ -121,14 +125,14 @@ box.add_container_info(TESTBED_ID, tags.CONTROLLER)
 box = IPAddressBox(TESTBED_ID, ADDRESS, help = "IP Address box.")
 boxes.append(box)
 
-conn = Connector("iface", "Connector from address to interface", max = 1, min = 1)
-rule = ConnectionRule(ADDRESS, "iface", P2PIFACE, "addrs", False)
+conn = connectors.Connector("iface", "Connector from address to interface", max = 1, min = 1)
+rule = connectors.ConnectionRule(ADDRESS, "iface", P2PIFACE, "addrs", False)
 conn.add_connection_rule(rule)
-rule = ConnectionRule(ADDRESS, "iface", NODEIFACE, "addrs", False)
+rule = connectors.ConnectionRule(ADDRESS, "iface", NODEIFACE, "addrs", False)
 conn.add_connection_rule(rule)
-rule = ConnectionRule(ADDRESS, "iface", TAPIFACE, "addrs", False)
+rule = connectors.ConnectionRule(ADDRESS, "iface", TAPIFACE, "addrs", False)
 conn.add_connection_rule(rule)
-rule = ConnectionRule(ADDRESS, "iface", TUNIFACE, "addrs", False)
+rule = connectors.ConnectionRule(ADDRESS, "iface", TUNIFACE, "addrs", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -154,24 +158,24 @@ box.add_attr(
         )
 
 ## CONNECTORS
-conn = Connector("ifaces", "Connector from netns::Node to netns intefaces", max = -1, min = 0)
-rule = ConnectionRule(NODE, "ifaces", P2PIFACE, "node", False)
+conn = connectors.Connector("ifaces", "Connector from netns::Node to netns intefaces", max = -1, min = 0)
+rule = connectors.ConnectionRule(NODE, "ifaces", P2PIFACE, "node", False)
 conn.add_connection_rule(rule)
-rule = ConnectionRule(NODE, "ifaces", NODEIFACE, "node", False)
+rule = connectors.ConnectionRule(NODE, "ifaces", NODEIFACE, "node", False)
 conn.add_connection_rule(rule)
-rule = ConnectionRule(NODE, "ifaces", TAPIFACE, "node", False)
+rule = connectors.ConnectionRule(NODE, "ifaces", TAPIFACE, "node", False)
 conn.add_connection_rule(rule)
-rule = ConnectionRule(NODE, "ifaces", TUNIFACE, "node", False)
-conn.add_connection_rule(rule)
-box.add_connector(conn)
-
-conn = Connector("apps", "Connector from netns::Node to netns::Application", max = -1, min = 0)
-rule = ConnectionRule(NODE, "apps", APPS, "node", False)
+rule = connectors.ConnectionRule(NODE, "ifaces", TUNIFACE, "node", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
-conn = Connector("traces", "Connector from netns::Node to netns::PcapTrace", max = -1, min = 0)
-rule = ConnectionRule(NODE, "traces", PCAPTRACE, "node", False)
+conn = connectors.Connector("apps", "Connector from netns::Node to netns::Application", max = -1, min = 0)
+rule = connectors.ConnectionRule(NODE, "apps", APPLICATION, "node", False)
+conn.add_connection_rule(rule)
+box.add_connector(conn)
+
+conn = connectors.Connector("traces", "Connector from netns::Node to netns::PcapTrace", max = -1, min = 0)
+rule = connectors.ConnectionRule(NODE, "traces", PCAPTRACE, "node", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -189,8 +193,8 @@ box = IfaceBox(TESTBED_ID, P2PIFACE, help = "Point to point network interface")
 boxes.append(box)
 
 ## CONNECTORS
-conn = Connector("p2p", "Connector to netns::P2PInterface", max = 1, min = 1)
-rule = ConnectionRule(P2PIFACE, "p2p", P2PIFACE, "p2p", False)
+conn = connectors.Connector("p2p", "Connector to netns::P2PInterface", max = 1, min = 1)
+rule = connectors.ConnectionRule(P2PIFACE, "p2p", P2PIFACE, "p2p", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -201,8 +205,8 @@ box = IfaceBox(TESTBED_ID, NODEIFACE, help = "Node network interface")
 boxes.append(box)
 
 ## CONNECTORS
-conn = Connector("switch", "Connector to netns::Switch", max = 1, min = 1)
-rule = ConnectionRule(NODEIFACE, "switch", SWITCH, "ifaces", False)
+conn = connectors.Connector("switch", "Connector to netns::Switch", max = 1, min = 1)
+rule = connectors.ConnectionRule(NODEIFACE, "switch", SWITCH, "ifaces", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -213,8 +217,8 @@ box = IfaceBox(TESTBED_ID, TAPIFACE, help = "TAP device network interface")
 boxes.append(box)
 
 ## CONNECTORS
-conn = Connector("fd->", "File descriptor provider for devices with file descriptors", max = 1, min = 0)
-rule = ConnectionRule(TAPIFACE, "fd->", None, "->fd", True)
+conn = connectors.Connector("fd->", "File descriptor provider for devices with file descriptors", max = 1, min = 0)
+rule = connectors.ConnectionRule(TAPIFACE, "fd->", None, "->fd", True)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -225,8 +229,8 @@ box = IfaceBox(TESTBED_ID, TUNIFACE, help = "TUN device network interface")
 boxes.append(box)
 
 ## CONNECTORS
-conn = Connector("fd->", "File descriptor provider for devices with file descriptors", max = 1, min = 0)
-rule = ConnectionRule(TUNIFACE, "fd->", None, "->fd", True)
+conn = connectors.Connector("fd->", "File descriptor provider for devices with file descriptors", max = 1, min = 0)
+rule = connectors.ConnectionRule(TUNIFACE, "fd->", None, "->fd", True)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -266,8 +270,8 @@ box.add_attr(
 )
 
 ## CONNECTORS
-conn = Connector("ifaces", "Connector from netns::Node to netns intefaces", max = -1, min = 0)
-rule = ConnectionRule(NODE, "ifaces", NODEIFACE, "node", False)
+conn = connectors.Connector("ifaces", "Connector from netns::Node to netns intefaces", max = -1, min = 0)
+rule = connectors.ConnectionRule(SWITCH, "ifaces", NODEIFACE, "switch", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -303,16 +307,16 @@ box.add_attr(
 )
 
 ## CONNECTORS
-conn = Connector("node", "Connector from netns::Application to netns::Node", max = -1, min = 0)
-rule = ConnectionRule(APPLICATION, "node", NODE, "apps", False)
+conn = connectors.Connector("node", "Connector from netns::Application to netns::Node", max = -1, min = 0)
+rule = connectors.ConnectionRule(APPLICATION, "node", NODE, "apps", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
-conn = Connector("traces", "Connector from netns::Application to traces", max = -1, min = 0)
-rule = ConnectionRule(APPLICATION, "traces", OUTTRACE, "app", False)
+conn = connectors.Connector("traces", "Connector from netns::Application to traces", max = -1, min = 0)
+rule = connectors.ConnectionRule(APPLICATION, "traces", OUTTRACE, "app", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
-rule = ConnectionRule(APPLICATION, "traces", ERRTRACE, "app", False)
+rule = connectors.ConnectionRule(APPLICATION, "traces", ERRTRACE, "app", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -340,8 +344,8 @@ box.add_container_info(TESTBED_ID, tags.CONTAINER)
 box = Box(TESTBED_ID, PCAPTRACE, help = "Trace to generate tcpdump on a node")
 boxes.append(box)
 
-conn = Connector("node", "Connector from netns::PcapTrace to netns::PcapTrace", max = 1, min = 0)
-rule = ConnectionRule(PCAPTRACE, "node", NODE, "traces", False)
+conn = connectors.Connector("node", "Connector from netns::PcapTrace to netns::PcapTrace", max = 1, min = 0)
+rule = connectors.ConnectionRule(PCAPTRACE, "node", NODE, "traces", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -356,8 +360,8 @@ box.add_tag(tags.TRACE)
 box = Box(TESTBED_ID, ERRTRACE, help = "Trace to capture errors from applications")
 boxes.append(box)
 
-conn = Connector("app", "Connector from netns::ErrTrace to netns::Application", max = 1, min = 0)
-rule = ConnectionRule(ERRTRACE, "app", APPLICATION, "traces", False)
+conn = connectors.Connector("app", "Connector from netns::ErrTrace to netns::Application", max = 1, min = 0)
+rule = connectors.ConnectionRule(ERRTRACE, "app", APPLICATION, "traces", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -372,8 +376,8 @@ box.add_tag(tags.TRACE)
 box = Box(TESTBED_ID, OUTTRACE, help = "Trace to capture output from applications")
 boxes.append(box)
 
-conn = Connector("app", "Connector from netns::OutTrace to netns::Application", max = 1, min = 0)
-rule = ConnectionRule(OUTTRACE, "app", APPLICATION, "traces", False)
+conn = connectors.Connector("app", "Connector from netns::OutTrace to netns::Application", max = 1, min = 0)
+rule = connectors.ConnectionRule(OUTTRACE, "app", APPLICATION, "traces", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
