@@ -8,6 +8,7 @@ import copy
 import getpass
 import logging
 import os
+import sys
 import weakref 
 
 from nepi.design import attributes, connectors, tags 
@@ -446,21 +447,21 @@ class TunnelBox(Box):
 
         self.add_tag(tags.TUNNEL)
 
-        conn = Connector("->fd", help = "File descriptor receptor for devices with file descriptors",
+        conn = connectors.Connector("->fd", help = "File descriptor receptor for devices with file descriptors",
                 max = 1, min = 0)
-        rule = ConnectionRule(self.box_id, "->fd", None, "->fd", False)
+        rule = connectors.ConnectionRule(self.box_id, "->fd", None, "->fd", False)
         conn.add_connection_rule(rule)
         self.add_connector(conn)
 
-        conn = Connector("tcp", help = "ip-ip tunneling over TCP link", 
+        conn = connectors.Connector("tcp", help = "ip-ip tunneling over TCP link", 
                 max = 1, min = 0)
-        rule = ConnectionRule(self.box_id, "tcp", None, "tcp", True)
+        rule = connectors.ConnectionRule(self.box_id, "tcp", None, "tcp", True)
         conn.add_connection_rule(rule)
         self.add_connector(conn)
 
-        conn = Connector("udp", help = "ip-ip tunneling over UDP datagrams",
+        conn = connectors.Connector("udp", help = "ip-ip tunneling over UDP datagrams",
                 max = 1, min = 0)
-        rule = ConnectionRule(self.box_id, "tcp", None, "tcp", True)
+        rule = connectors.ConnectionRule(self.box_id, "tcp", None, "tcp", True)
         conn.add_connection_rule(rule)
         self.add_connector(conn)
 
@@ -730,8 +731,7 @@ class BoxProvider(object):
             return
        
         files = [os.path.join(search_path, fn) for fn in os.listdir(search_path) if fn.endswith('.xml')]
-        self._guid_generator.off = True
-       
+        
         for fn in files:
             f = open(fn, "r")
             xml = f.read()
@@ -739,8 +739,6 @@ class BoxProvider(object):
             box = self.from_xml(xml)
             box._box_id = box.a.boxId.value
             self.add(box)
-
-        self._guid_generator.off = False
 
     def store_user_container(self, box, search_path = None):
         if not search_path:
@@ -768,8 +766,15 @@ class BoxProvider(object):
         if not mods:
             import pkgutil
             import nepi.testbeds
-            pkgpath = os.path.dirname(nepi.testbdes.__file__)
-            mods = [name for _, name, _ in pkgutil.iter_modules([pkgpath])]
+            pkgpath = os.path.dirname(nepi.testbeds.__file__)
+            modnames = ["nepi.testbeds.%s" % name for _, name, _ in pkgutil.iter_modules([pkgpath])]
+
+            mods = []
+            for modname in modnames:
+                if modname not in sys.modules:
+                    __import__(modname)
+                    mod = sys.modules[modname]
+                    mods.append(mod)
 
         for mod in mods:
             self.add_all(mod.boxes)
@@ -777,7 +782,9 @@ class BoxProvider(object):
     def from_xml(self, xml):
         from nepi.util.parser import XMLBoxParser
         parser = XMLBoxParser()
+        self._guid_generator.off = True
         box = parser.from_xml(self, xml)
+        self._guid_generator.off = False
         return box
 
     def add(self, box):
