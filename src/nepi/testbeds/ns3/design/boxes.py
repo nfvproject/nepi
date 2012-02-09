@@ -1,7 +1,6 @@
 
-from nepi.design import attributes, tags
+from nepi.design import attributes, connectors, tags
 from nepi.design.boxes import TestbedBox, Box, IPAddressBox, ContainerBox, TunnelBox
-from nepi.design.connectors import Connector, ConnectionRule
 
 TESTBED_ID = "ns3.11"
 
@@ -11,11 +10,11 @@ CONTAINER = "ns3::Container"
 NODE = "ns3::Node"
 
 UDPPROTO = "ns3::UdpL4Protocol"
-ICMP6PROTO = "ns3::Icmpv6L4Protocol"
-ICMP4PROTO = "ns3::Icmpv4L4Protocol"
+ICMP6PROTO = "ns3::Icmpv6L3Protocol"
+ICMP4PROTO = "ns3::Icmpv4L3Protocol"
 ARPPROTO = "ns3::ArpL3Protocol"
 IP6PROTO = "ns3::Ipv6L3Protocol"
-IPAPROTO = "ns3::Ipv4L3Protocol"
+IP4PROTO = "ns3::Ipv4L3Protocol"
 TCPPROTO ="ns3::TcpL4Protocol"
 
 PACKETSINK = "ns3::PacketSink"
@@ -58,12 +57,13 @@ MINSTWIFIMNGR = "ns3::MinstrelWifiManager"
 
 CONSTVELMOB = "ns3::ConstantVelocityMobilityModel"
 CONSTACCMOB = "ns3::ConstantAccelerationMobilityModel"
-WAYPMOB = "ns3::WaypointMobilityModel"
+WAYPOINTMOB = "ns3::WaypointMobilityModel"
 HIERARCHMOB = "ns3::HierarchicalMobilityModel"
 RANDWAYMOB = "ns3::RandomWaypointMobilityModel"
 CONSTPOSMOB = "ns3::ConstantPositionMobilityModel"
 RANDWALK2DMOB = "ns3::RandomWalk2dMobilityModel"
 RANDDIR2DMOB = "ns3::RandomDirection2dMobilityModel"
+GAUSSMARKMOB = "ns3::GaussMarkovMobilityModel"
 
 CONSTSPPRODELAY = "ns3::ConstantSpeedPropagationDelayModel"
 
@@ -104,6 +104,8 @@ RTTTRACE = "ns3::RttTrace"
 PCAPTRACE = "ns3::PcapTrace"
 ASCIITRACE = "ns3::AsciiTrace"
 
+IPV4ADDRESS = "ns3::Ipv4Address"
+
 boxes = list()
 
 
@@ -117,7 +119,7 @@ box.add_attr(
         "SimulatorImplementationType", 
         "The object class to use as the simulator implementation",
         default_value = "ns3::DefaultSimulatorImpl",
-        allowed = ["ns3::DefaultSimulatorImpl", "ns3::RealtimeSimulatorImpl"]
+        allowed = ["ns3::DefaultSimulatorImpl", "ns3::RealtimeSimulatorImpl"],
         flags = attributes.AttributeFlags.ExecReadOnly | 
                attributes.AttributeFlags.ExecImmutable
         )
@@ -151,7 +153,7 @@ box.add_attr(
 box.add_attr(
     attributes.TimeAttribute(
         "StopTime",
-        "Stop time for the simulation"
+        "Stop time for the simulation",
         default_value = None,
         )
     )
@@ -170,29 +172,29 @@ boxes.append(box)
 box = Box(TESTBED_ID, NODE, "ns-3 Node")
 boxes.append(box)
 
-conn = Connector("devs", "Connector from ns3::Node to ns-3 intefaces", max = -1, min = 1)
+conn = connectors.Connector("devs", "Connector from ns3::Node to ns-3 intefaces", max = -1, min = 1)
 for p in [FDNETDEV, TAPBRIDGE, PTPNETDEV, SSNETDEV, BSNETDEV, CSMANETDEV,
         LOOPNETDEV, EMUNETDEV, BRIDGENETDEV, WIFINETDEV]: 
-    rule = ConnectionRule(NODE, "devs", p, "node", False)
+    rule = connectors.ConnectionRule(NODE, "devs", p, "node", False)
     conn.add_connection_rule(rule)
 box.add_connector(conn)
 
-conn = Connector("apps", "Connector from ns3::Node to ns-3 applications", max = -1, min = 0)
+conn = connectors.Connector("apps", "Connector from ns3::Node to ns-3 applications", max = -1, min = 0)
 for a in [PACKETSINK, PING6, PING4, ONOFF, UDPSERVER, UDPCLIENT, UDPECHOCLIENT, UDPECHOSERVER]: 
-    rule = ConnectionRule(NODE, "apps", a, "node", False)
+    rule = connectors.ConnectionRule(NODE, "apps", a, "node", False)
     conn.add_connection_rule(rule)
 box.add_connector(conn)
 
-conn = Connector("protos", "Connector from ns3::Node to ns-3 protocols", max = -1, min = 1)
+conn = connectors.Connector("protos", "Connector from ns3::Node to ns-3 protocols", max = -1, min = 1)
 for p in [UDPPROTO, ICMP6PROTO, ICMP4PROTO, ARPPROTO, IP6PROTO, IP4PROTO, TCPPROTO]: 
-    rule = ConnectionRule(NODE, "protos", p, "node", False)
+    rule = connectors.ConnectionRule(NODE, "protos", p, "node", False)
     conn.add_connection_rule(rule)
 box.add_connector(conn)
 
-conn = Connector("mob", "Connector from ns3::Node to ns-3 mobility models", max = 1, min = 0)
-for m in [CONSTVELMOB, CONSTACCMOB, WAYPMOB, HIERARCHMOB, RANDWAYMOB, CONSTPOSMOB, 
-        RANDWALK2MOB, RANDDIR2MOB]: 
-    rule = ConnectionRule(NODE, "mob", m, "node", False)
+conn = connectors.Connector("mob", "Connector from ns3::Node to ns-3 mobility models", max = 1, min = 0)
+for m in [CONSTVELMOB, CONSTACCMOB, WAYPOINTMOB, HIERARCHMOB, RANDWAYMOB, CONSTPOSMOB, 
+        RANDWALK2DMOB, RANDDIR2DMOB]: 
+    rule = connectors.ConnectionRule(NODE, "mob", m, "node", False)
     conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -229,7 +231,7 @@ class IPProtocolBox(ProtocolBox):
         self.add_attr(
             attributes.IntegerAttribute(
                     "DeafultTtl", 
-                    "The TTL value set by default on all outgoing packets generated on this node."
+                    "The TTL value set by default on all outgoing packets generated on this node.",
                     default_value = 64
                 )
             )
@@ -237,7 +239,7 @@ class IPProtocolBox(ProtocolBox):
         self.add_attr(
             attributes.BoolAttribute(
                     "IpForward", 
-                    "Globally enable or disable IP forwarding for all current and future Ipv4 devices."
+                    "Globally enable or disable IP forwarding for all current and future Ipv4 devices.",
                     default_value = True
                 )
             )
@@ -245,13 +247,13 @@ class IPProtocolBox(ProtocolBox):
 class OverIPProtocolBox(ProtocolBox):
     def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
             help = None):
-        super(OverIPPotocolBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(OverIPProtocolBox, self).__init__(testbed_id, box_id, guid_generator,
                 guid, help)
  
         self.add_attr(
             attributes.IntegerAttribute(
                     "ProtocolNumber", 
-                    "The Ipv4 protocol number."
+                    "The Ipv4 protocol number.",
                     default_value = 0,
                     flags = attributes.AttributeFlags.ExecReadOnly | 
                             attributes.AttributeFlags.ExecImmutable
@@ -269,7 +271,7 @@ boxes.append(box)
 box.add_attr(
     attributes.BoolAttribute(
             "DAD", 
-            "Always do DAD check."
+            "Always do DAD check.",
             default_value = True,
         )
     )
@@ -292,7 +294,7 @@ boxes.append(box)
 box.add_attr(
     attributes.BoolAttribute(
             "WeakEsModel", 
-            "RFC1122 term for whether host accepts datagram with a dest. address on another interface"
+            "RFC1122 term for whether host accepts datagram with a dest. address on another interface",
             default_value = True
         )
     )
@@ -314,7 +316,7 @@ box.add_attr(
 class ApplicationBox(Box):
     def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
             help = None):
-        super(ApplicationsBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(ApplicationBox, self).__init__(testbed_id, box_id, guid_generator,
                 guid, help)
         
         self.add_tag(tags.APPLICATION)
@@ -330,8 +332,7 @@ class ApplicationBox(Box):
         self.add_attr(
             attributes.TimeAttribute(
                     "StartTime", 
-                    "Time at which the application will start"
-                    "The Ipv4 protocol number."
+                    "Time at which the application will start",
                     default_value = "0s",
                     flags = attributes.AttributeFlags.ExecReadOnly | 
                             attributes.AttributeFlags.ExecImmutable
@@ -341,7 +342,7 @@ class ApplicationBox(Box):
         self.add_attr(
             attributes.TimeAttribute(
                     "StopTime", 
-                    "Time at which the application will stop"
+                    "Time at which the application will stop",
                     default_value = "0s",
                 )
             )
@@ -352,43 +353,43 @@ class UdpClientBox(ApplicationBox):
         super(UdpClientBox, self).__init__(testbed_id, box_id, guid_generator,
                 guid, help)
 
-         self.add_attr(
+        self.add_attr(
             attributes.IntegerAttribute(
                     "MaxPackets",
-                    "The maximum number of packets accepted by this DropTailQueue."
+                    "The maximum number of packets accepted by this DropTailQueue.",
                     default_value = 100
                 )
             )
 
-          self.add_attr(
+        self.add_attr(
             attributes.StringAttribute(
                     "Interval",
                     "The time to wait between packets",
-                    default_value: "1000000000ns"
+                    default_value = "1000000000ns"
                 )
             )
 
-          self.add_attr(
-            attributes.IPv4AdddressAttribute(
+        self.add_attr(
+            attributes.IPv4Attribute(
                     "RemoteAddress",
                     "The destination Ipv4Address of the outbound packets",
-                    default_value: None
+                    default_value = None
                 )
             )
 
-          self.add_attr(
+        self.add_attr(
             attributes.IntegerAttribute(
                     "RemotePort",
                     "The destination port of the outbound packets",
-                    default_value: 0
+                    default_value = 0
                 )
             )
 
-          self.add_attr(
+        self.add_attr(
             attributes.IntegerAttribute(
                     "PacketSize",
                     "The size of packets sent in on state",
-                    default_value: 512
+                    default_value = 512
                 )
             )
 
@@ -398,7 +399,7 @@ class UdpServerBox(ApplicationBox):
         super(UdpServerBox, self).__init__(testbed_id, box_id, guid_generator,
                 guid, help)
 
-         self.add_attr(
+        self.add_attr(
             attributes.IntegerAttribute(
                     "Port",
                     "Port on which we listen for incoming packets.",
@@ -432,7 +433,7 @@ boxes.append(box)
 box.add_attr(
     attributes.IntegerAttribute(
             "MaxPackets",
-            "The maximum number of packets accepted by this DropTailQueue."
+            "The maximum number of packets accepted by this DropTailQueue.",
             default_value = 100 
         )
     )
@@ -441,7 +442,7 @@ box.add_attr(
     attributes.StringAttribute(
             "Interval",
             "The time to wait between packets",
-            default_value: "1000000000ns"
+            default_value = "1000000000ns"
         )
     )
 
@@ -449,7 +450,7 @@ box.add_attr(
     attributes.IntegerAttribute(
             "PacketSize",
             "The size of packets sent in on state",
-            default_value: 512
+            default_value = 512
         )
     )
 
@@ -476,15 +477,15 @@ box.add_attr(
     attributes.StringAttribute(
             "Interval",
             "The time to wait between packets",
-            default_value: "1000000000ns"
+            default_value = "1000000000ns"
         )
     )
 
 box.add_attr(
-    attributes.IPV4AddressAttribute(
+    attributes.IPv4Attribute(
             "Remote",
             "The address of the destination",
-            default_value: None
+            default_value = None
         )
     )
 
@@ -492,7 +493,7 @@ box.add_attr(
     attributes.BoolAttribute(
             "Verbose",
             "Produce usual output.",
-            default_value: False
+            default_value = False
         )
     )
 
@@ -500,12 +501,12 @@ box.add_attr(
     attributes.IntegerAttribute(
             "Size",
             "The number of data bytes to be sent, real packet will be 8 (ICMP) + 20 (IP) bytes longer.",
-            default_value: 56
+            default_value = 56
         )
     )
        
-conn = Connector("traces", "Connector from %s to %s " % (PING4, RTTTRACE), max = -1, min = 0)
-rule = ConnectionRule(PING4, "traces", RTTTRACE, "app", False)
+conn = connectors.Connector("traces", "Connector from %s to %s " % (PING4, RTTTRACE), max = -1, min = 0)
+rule = connectors.ConnectionRule(PING4, "traces", RTTTRACE, "app", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -516,15 +517,15 @@ box.add_attr(
     attributes.IntegerAttribute(
             "PacketSize",
             "The size of packets sent in on state",
-            default_value: 512
+            default_value = 512
         )
     )
 
 box.add_attr(
-    attributes.IPV4AddressAttribute(
+    attributes.IPv4Attribute(
             "Remote",
             "The address of the destination",
-            default_value: None
+            default_value = None
         )
     )
 
@@ -535,11 +536,6 @@ box.add_attr(
             default_value = "ns3::UdpSocketFactory"
         )
     )
-
-        "box_attributes": ["DataRate",
-            "OnTime",
-            "OffTime",
-            "MaxBytes",
 
 
 ############
@@ -584,6 +580,11 @@ class NetDeviceBox(Box):
         conn.add_connection_rule(rule)
         self.add_connector(conn)
 
+        conn = connectors.Connector("addrs", "Connector to %s" % IPV4ADDRESS, max = 1, min = 1)
+        rule = connectors.ConnectionRule(self.box_id, "addrs", IPV4ADDRESS, "dev", False)
+        conn.add_connection_rule(rule)
+        self.add_connector(conn)
+
 
 class TracesNetDeviceBox(NetDeviceBox):
     def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
@@ -613,12 +614,13 @@ class MacAddressNetDeviceBox(TracesNetDeviceBox):
         conn.add_connection_rule(rule)
         self.add_connector(conn)
 
-         self.add_attr(
+        self.add_attr(
                 attributes.MacAddressAttribute(
                     "Address", 
                     "The MAC address of this device.",
                     default_value = "ff:ff:ff:ff:ff:ff"
                 )
+        )
 
         self.add_attr(
                 attributes.IntegerAttribute(
@@ -731,7 +733,7 @@ class StationNetDeviceBox(NetDeviceBox):
                 )
 
 ############
-box = FdNetDeviceTunnelBox(TESTBED_ID, FDNETDEV, "Network interface associated to a file descriptor")
+box = FdNetDeviceBox(TESTBED_ID, FDNETDEV, "Network interface associated to a file descriptor")
 boxes.append(box)
 
 ############
@@ -762,7 +764,7 @@ box.add_attr(
         )
 
 box.add_attr(
-        attributes.IPv4AddressAttribute(
+        attributes.IPv4Attribute(
                 "Gateway",
                 "The IP address of the default gateway to assign to the host machine, when in ConfigureLocal mode.",
                 default_value = None
@@ -770,7 +772,7 @@ box.add_attr(
         )
 
 box.add_attr(
-        attributes.IPv4AddressAttribute(
+        attributes.IPv4Attribute(
                 "IpAddress",
                 "The IP address to assign to the tap device,  when in ConfigureLocal mode. This address will override the discovered IP address of the simulated device.",
                 default_value = None
@@ -778,7 +780,7 @@ box.add_attr(
         )
 
 box.add_attr(
-        attributes.IPv4AddressAttribute(
+        attributes.IPv4Attribute(
                 "Netmask",
                 "The network mask to assign to the tap device, when in ConfigureLocal mode. This address will override the discovered MAC address of the simulated device.",
                 default_value = "255.255.255.255"
@@ -933,9 +935,9 @@ boxes.append(box)
 
 conn = connectors.Connector("dwnlnk", help = "Connector to a dowlink scheduler",
         max = 1, min = 0)
-rule = connectors.ConnectionRule(BSNETDEV, "dwnlnk", BSSIMPLE, "dev", False)
+rule = connectors.ConnectionRule(BSNETDEV, "dwnlnk", BSSSIMPLE, "dev", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(BSNETDEV, "dwnlnk", BSRTPS, "dev", False)
+rule = connectors.ConnectionRule(BSNETDEV, "dwnlnk", BSSRTPS, "dev", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -993,7 +995,7 @@ box.add_attr(
 box.add_attr(
         attributes.TimeAttribute(
             "MaxRangCorrectionRetries",
-            "Number of retries on contention Ranging Requests"
+            "Number of retries on contention Ranging Requests",
             default_value = 16,
             )
         )
@@ -1106,7 +1108,9 @@ box.add_connector(conn)
 
 conn = connectors.Connector("mngr", help = "Connector to a wifi manager", 
         max = 1, min = 1)
-rule = connectors.ConnectionRule(WIFINETDEV, "phy", YANSWIFIMAC, "dev", False)
+rule = connectors.ConnectionRule(WIFINETDEV, "phy", APWIFIMAC, "dev", False)
+conn.add_connection_rule(rule)
+rule = connectors.ConnectionRule(WIFINETDEV, "phy", STAWIFIMAC, "dev", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -1266,7 +1270,7 @@ class RateControlManagerBox(Box):
         self.add_attr(
                 attributes.IntegerAttribute(
                     "MaxSlrc",
-                    "The maximum number of retransmission attempts for a DATA packet. This value will not have any effect on some rate control algorithms."
+                    "The maximum number of retransmission attempts for a DATA packet. This value will not have any effect on some rate control algorithms.",
                     default_value = 7
                     )
                 )
@@ -1274,7 +1278,7 @@ class RateControlManagerBox(Box):
         self.add_attr(
                 attributes.IntegerAttribute(
                     "RtsCtsThreshold",
-                    "If  the size of the data packet + LLC header + MAC header + FCS trailer is bigger than this value, we use an RTS/CTS handshake before sending the data, as per IEEE Std. 802.11-2007, Section 9.2.6. This value will not have any effect on some rate control algorithms."
+                    "If  the size of the data packet + LLC header + MAC header + FCS trailer is bigger than this value, we use an RTS/CTS handshake before sending the data, as per IEEE Std. 802.11-2007, Section 9.2.6. This value will not have any effect on some rate control algorithms.",
                     default_value = 2346,
                     )
                 )
@@ -1507,7 +1511,7 @@ box.add_attr(
        )
 
 box.add_attr(
-        attributes.DefaultAttribute(
+        attributes.DoubleAttribute(
             "SuccessRatio",
             "Ratio of maximum erroneous transmissions needed to switch to a higher rate",
             default_value = 0.10000000000000001
@@ -1559,6 +1563,7 @@ box.add_attr(
             "Timeout for the RRAA BASIC loss estimaton block (s)",
             default_value = "50000000ns"
             )
+    )
 
 box.add_attr(
         attributes.IntegerAttribute(
@@ -1569,7 +1574,7 @@ box.add_attr(
        )
 
 box.add_attr(
-        attributes.IntegereAttribute(
+        attributes.IntegerAttribute(
             "ewndFor9mbps",
             "ewnd parameter for 9 Mbs data mode",
             default_value = 10
@@ -1834,7 +1839,7 @@ box = MobilityModelBox(TESTBED_ID, CONSTACCMOB, "Constant acceleration mobility 
 boxes.append(box)
 
 ############
-box = MobilityModelBox(TESTBED_ID, WAYMOB, "Waypoint-based mobility model")
+box = MobilityModelBox(TESTBED_ID, WAYPOINTMOB, "Waypoint-based mobility model")
 boxes.append(box)
 
 box.add_attr(
@@ -1842,7 +1847,7 @@ box.add_attr(
             "WaypointsLeft",
             "The number of waypoints remaining.",
             default_value = 0,
-            flags =  attribute.Attribute.ExecReadOnly | attribute.Attribute.ExecImmutable
+            flags =  attributes.AttributeFlags.ExecReadOnly | attributes.AttributeFlags.ExecImmutable
             )
        )
 
@@ -1851,7 +1856,7 @@ box.add_attr(
             "WaypointList",
             "Comma separated list of waypoints in format t:x:y:z. Ex: 0s:0:0:0, 1s:1:0:0",
             default_value = "",
-            flags =  attribute.Attribute.ExecReadOnly | attribute.Attribute.ExecImmutable
+            flags =  attributes.AttributeFlags.ExecReadOnly | attributes.AttributeFlags.ExecImmutable
             )
        )
 
@@ -1884,7 +1889,7 @@ box = MobilityModelBox(TESTBED_ID, CONSTPOSMOB, "Constant position mobility mode
 boxes.append(box)
 
 ############
-box = MobilityModelBox(TESTBED_ID, RANDWALK2MOB, "Random walk 2D mobility model")
+box = MobilityModelBox(TESTBED_ID, RANDWALK2DMOB, "Random walk 2D mobility model")
 boxes.append(box)
 
 box.add_attr(
@@ -1961,7 +1966,6 @@ box.add_attr(
         attributes.StringAttribute(
             "Speed",
             "Random variable to control the speed (m/s).",
-            "A random variable used to pick the pause of a random waypoint model.",
             default_value = "Uniform:1:2"
             )
        )
@@ -2050,7 +2054,7 @@ boxes.append(box)
 
 conn = connectors.Connector("chan", help = "Connector to a wifi channel ",
         max = 1, min = 1)
-rule = connectors.ConnectionRule(self._box_id, "chan", YANSWIFICHAN, "delay", False)
+rule = connectors.ConnectionRule(CONSTSPPRODELAY, "chan", YANSWIFICHAN, "delay", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -2083,7 +2087,7 @@ class LossModelBox(Box):
 
         conn = connectors.Connector("prev", help = "Connector to the previous loss model", 
                 max = 1, min = 0)
-        rule = connectors.ConnectionRule(self._box_id, "prev", self._box_if, "next", False)
+        rule = connectors.ConnectionRule(self._box_id, "prev", self._box_id, "next", False)
         conn.add_connection_rule(rule)
         rule = connectors.ConnectionRule(self._box_id, "prev", YANSWIFICHAN, "loss", False)
         conn.add_connection_rule(rule)
@@ -2091,7 +2095,7 @@ class LossModelBox(Box):
 
         conn = connectors.Connector("next", help = "Connector to the next loss model", 
                 max = 1, min = 0)
-        rule = connectors.ConnectionRule(self._box_id, "next", self._box_if, "prev", False)
+        rule = connectors.ConnectionRule(self._box_id, "next", self._box_id, "prev", False)
         conn.add_connection_rule(rule)
         self.add_connector(conn)
 
@@ -2348,10 +2352,10 @@ class WifiMacModelBox(Box):
                         "WIFI_PHY_STANDARD_80211p_CCH",
                         "WIFI_PHY_STANDARD_80211a",
                         "WIFI_PHY_STANDARD_80211b"],
-                    flags = attributes.Attribute.ExecReadOnly | \
-                            attributes.Attribute.ExecImmutable | \
-                            attributes.Attribute.NoDefaultValue | \
-                            attributes.Attribute.Metadata,
+                    flags = attributes.AttributeFlags.ExecReadOnly | \
+                            attributes.AttributeFlags.ExecImmutable | \
+                            attributes.AttributeFlags.NoDefaultValue | \
+                            attributes.AttributeFlags.Metadata,
                     )
                )
 
@@ -2390,7 +2394,7 @@ boxes.append(box)
 
 box.add_attr(
         attributes.TimeAttribute(
-            "BeaconInterval"
+            "BeaconInterval",
             "Delay between two beacons",
             default_value = "102400000ns"
             )
@@ -2416,7 +2420,7 @@ box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 conn = connectors.Connector("dev", help = "Connector to a %s" % WIFINETDEV, 
         max = 1, min = 1)
-rule = connectors.ConnectionRule(self._box_id, "dev", WIFINETDEV, "phy", False)
+rule = connectors.ConnectionRule(YANSWIFIPHY, "dev", WIFINETDEV, "phy", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -2455,10 +2459,10 @@ box.add_attr(
                 "WIFI_PHY_STANDARD_80211p_CCH",
                 "WIFI_PHY_STANDARD_80211a",
                 "WIFI_PHY_STANDARD_80211b"],
-            flags = attributes.Attribute.ExecReadOnly | \
-                    attributes.Attribute.ExecImmutable | \
-                    attributes.Attribute.NoDefaultValue | \
-                    attributes.Attribute.Metadata,
+            flags = attributes.AttributeFlags.ExecReadOnly | \
+                    attributes.AttributeFlags.ExecImmutable | \
+                    attributes.AttributeFlags.NoDefaultValue | \
+                    attributes.AttributeFlags.Metadata,
             )
        )
 
@@ -2530,7 +2534,7 @@ box.add_attr(
 box.add_attr(
         attributes.TimeAttribute(
             "ChannelSwitchDelay",
-            "Delay between two short frames transmitted on different frequencies. NOTE: Unused now."
+            "Delay between two short frames transmitted on different frequencies. NOTE: Unused now.",
             default_value = "250000ns"
             )
        )
@@ -2546,7 +2550,7 @@ box.add_attr(
 
 ############ WIMAX PHY #############
 
-box = Box(TESTBED_ID, SIMOFDMWIFIPHY, help = "Simple OFDM Wimax PHY Model")
+box = Box(TESTBED_ID, SIMOFDMWIMAXPHY, help = "Simple OFDM Wimax PHY Model")
 boxes.append(box)
         
 box.add_tag(tags.PHY_MODEL)
@@ -2554,11 +2558,11 @@ box.add_tag(tags.PHY_MODEL)
 box.add_container_info(TESTBED_ID, tags.CONTROLLER)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
-conn = connectors.Connector("dev", help = "Connector to a wimax network device" % , 
+conn = connectors.Connector("dev", help = "Connector to a wimax network device", 
         max = 1, min = 1)
-rule = connectors.ConnectionRule(SIMOFDMWIFIPHY, "dev", SSNETDEV, "phy", False)
+rule = connectors.ConnectionRule(SIMOFDMWIMAXPHY, "dev", SSNETDEV, "phy", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(SIMOFDMWIFIPHY, "dev", BSNETDEV, "phy", False)
+rule = connectors.ConnectionRule(SIMOFDMWIMAXPHY, "dev", BSNETDEV, "phy", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -2632,7 +2636,7 @@ box.add_attr(
             "If a packet stays longer than this delay in the queue, it is dropped.",
             default_value = "10000000000ns"
             )
-
+    )
 
 ############ ERROR RATE MODEL #############
 
@@ -2700,7 +2704,7 @@ box = ErrorModelBox(TESTBED_ID, LISTERR, help = "List error model")
 boxes.append(box)
         
 ###############
-box = ErrorModelBox(TESTBED_ID, RECLISTSTERR, help = "Receive list error model")
+box = ErrorModelBox(TESTBED_ID, RECLISTERR, help = "Receive list error model")
 boxes.append(box)
 
 ###############
@@ -2752,7 +2756,7 @@ class DownlinkSchedulerBox(Box):
 
 
 #########
-box = DownlinkSchedulerBox(TESTBED_ID, BSSRTPS, help = "Simple downlink scheduler for rtPS flows",
+box = DownlinkSchedulerBox(TESTBED_ID, BSSRTPS, help = "Simple downlink scheduler for rtPS flows")
 boxes.append(box)
         
 #########
@@ -2779,11 +2783,11 @@ class UplinkSchedulerBox(Box):
 
 
 #########
-box = UplinkBox(TESTBED_ID, USSIMPLE, help = "Simple uplink scheduler for service flows")
+box = UplinkSchedulerBox(TESTBED_ID, USSIMPLE, help = "Simple uplink scheduler for service flows")
 boxes.append(box)
         
 #########
-box = UplinkBox(TESTBED_ID, USRTPS, help = "Simple uplink scheduler for rtPS flows")
+box = UplinkSchedulerBox(TESTBED_ID, USRTPS, help = "Simple uplink scheduler for rtPS flows")
 boxes.append(box)
         
 
@@ -2797,7 +2801,7 @@ box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 conn = connectors.Connector("sflow", help = "Connector to a %s" % SERVICEFLOW, 
         max = 1, min = 1)
-rule = connectors.ConnectionRule(self._box_id, "sflow", SERVICEFLOW, "classif", False)
+rule = connectors.ConnectionRule(IPCSCLASS, "sflow", SERVICEFLOW, "classif", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -2805,9 +2809,9 @@ box.add_attr(
         attributes.StringAttribute(
             "SrcAddress",
             "The source ip address for the IpcsClassifierRecord",
-            flags = attributes.Attribute.ExecReadOnly | \
-                    attributes.Attribute.ExecImmutable | \
-                    attributes.Attribute.Metadata,
+            flags = attributes.AttributeFlags.ExecReadOnly | \
+                    attributes.AttributeFlags.ExecImmutable | \
+                    attributes.AttributeFlags.Metadata,
             default_value = ""
             )
        )
@@ -2816,9 +2820,9 @@ box.add_attr(
         attributes.StringAttribute(
             "SrcMask", 
             "The mask to apply on the source ip address for the IpcsClassifierRecord",
-            flags = attributes.Attribute.ExecReadOnly | \
-                    attributes.Attribute.ExecImmutable | \
-                    attributes.Attribute.Metadata,
+            flags = attributes.AttributeFlags.ExecReadOnly | \
+                    attributes.AttributeFlags.ExecImmutable | \
+                    attributes.AttributeFlags.Metadata,
             default_value = ""
             )
        )
@@ -2827,9 +2831,9 @@ box.add_attr(
         attributes.StringAttribute(
             "DstAddress",
             "The destination ip address for the IpcsClassifierRecord",
-            flags = attributes.Attribute.ExecReadOnly | \
-                    attributes.Attribute.ExecImmutable | \
-                    attributes.Attribute.Metadata,
+            flags = attributes.AttributeFlags.ExecReadOnly | \
+                    attributes.AttributeFlags.ExecImmutable | \
+                    attributes.AttributeFlags.Metadata,
             default_value = ""
             )
        )
@@ -2838,9 +2842,9 @@ box.add_attr(
         attributes.StringAttribute(
             "DstMask",
             "The mask to apply on the destination ip address for the IpcsClassifierRecord",
-            flags = attributes.Attribute.ExecReadOnly | \
-                    attributes.Attribute.ExecImmutable | \
-                    attributes.Attribute.Metadata,
+            flags = attributes.AttributeFlags.ExecReadOnly | \
+                    attributes.AttributeFlags.ExecImmutable | \
+                    attributes.AttributeFlags.Metadata,
             default_value = ""
             )
        )
@@ -2849,9 +2853,9 @@ box.add_attr(
         attributes.IntegerAttribute(
             "SrcPortLow",
             "The lower boundary of the source port range for the IpcsClassifierRecord",
-            flags = attributes.Attribute.ExecReadOnly | \
-                    attributes.Attribute.ExecImmutable | \
-                    attributes.Attribute.Metadata,
+            flags = attributes.AttributeFlags.ExecReadOnly | \
+                    attributes.AttributeFlags.ExecImmutable | \
+                    attributes.AttributeFlags.Metadata,
             default_value = 0
             )
        )
@@ -2860,9 +2864,9 @@ box.add_attr(
         attributes.IntegerAttribute(
             "SrcPortHigh",
             "The higher boundary of the source port range for the IpcsClassifierRecord",
-            flags = attributes.Attribute.ExecReadOnly | \
-                    attributes.Attribute.ExecImmutable | \
-                    attributes.Attribute.Metadata,
+            flags = attributes.AttributeFlags.ExecReadOnly | \
+                    attributes.AttributeFlags.ExecImmutable | \
+                    attributes.AttributeFlags.Metadata,
             default_value = 65000
             )
        )
@@ -2871,9 +2875,9 @@ box.add_attr(
         attributes.IntegerAttribute(
             "DstPortLow",
             "The lower boundary of the destination port range for the IpcsClassifierRecord",
-            flags = attributes.Attribute.ExecReadOnly | \
-                    attributes.Attribute.ExecImmutable | \
-                    attributes.Attribute.Metadata,
+            flags = attributes.AttributeFlags.ExecReadOnly | \
+                    attributes.AttributeFlags.ExecImmutable | \
+                    attributes.AttributeFlags.Metadata,
             default_value = 0
             )
        )
@@ -2882,9 +2886,9 @@ box.add_attr(
         attributes.IntegerAttribute(
             "DstPortHigh",
             "The higher boundary of the destination port range for the IpcsClassifierRecord",
-            flags = attributes.Attribute.ExecReadOnly | \
-                    attributes.Attribute.ExecImmutable | \
-                    attributes.Attribute.Metadata,
+            flags = attributes.AttributeFlags.ExecReadOnly | \
+                    attributes.AttributeFlags.ExecImmutable | \
+                    attributes.AttributeFlags.Metadata,
             default_value = 65000
             )
        )
@@ -2894,9 +2898,9 @@ box.add_attr(
             "Protocol",
             "The L4 protocol for the IpcsClassifierRecord",
             allowed = ["Icmpv4L4Protocol", "UdpL4Protocol", "TcpL4Protocol"],
-            flags = attributes.Attribute.ExecReadOnly | \
-                    attributes.Attribute.ExecImmutable | \
-                    attributes.Attribute.Metadata,
+            flags = attributes.AttributeFlags.ExecReadOnly | \
+                    attributes.AttributeFlags.ExecImmutable | \
+                    attributes.AttributeFlags.Metadata,
             default_value = "UdpL4Protocol"
             )
        )
@@ -2905,9 +2909,9 @@ box.add_attr(
         attributes.IntegerAttribute(
             "Priority",
             "The priority of the IpcsClassifierRecord",
-            flags = attributes.Attribute.ExecReadOnly | \
-                    attributes.Attribute.ExecImmutable | \
-                    attributes.Attribute.Metadata,
+            flags = attributes.AttributeFlags.ExecReadOnly | \
+                    attributes.AttributeFlags.ExecImmutable | \
+                    attributes.AttributeFlags.Metadata,
             default_value = 1
             )
        )
@@ -2929,7 +2933,7 @@ box.add_connector(conn)
 
 conn = connectors.Connector("classif", help = "Connector to a %s" % IPCSCLASS, 
         max = 1, min = 1)
-rule = connectors.ConnectionRule(SERVICEFLOW "classif", IPCSCLASS, "sflow", False)
+rule = connectors.ConnectionRule(SERVICEFLOW, "classif", IPCSCLASS, "sflow", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -2938,9 +2942,9 @@ box.add_attr(
             "Direction", 
             "Service flow direction as described by the IEEE-802.16 standard",
             allowed = ["SF_DIRECTION_UP", "SF_DIRECTION_DOWN"],
-            flags = attributes.Attribute.ExecReadOnly | \
-                    attributes.Attribute.ExecImmutable | \
-                    attributes.Attribute.Metadata,
+            flags = attributes.AttributeFlags.ExecReadOnly | \
+                    attributes.AttributeFlags.ExecImmutable | \
+                    attributes.AttributeFlags.Metadata,
             default_value = "SF_DIRECTION_UP"
             )
        )
@@ -2956,9 +2960,9 @@ box.add_attr(
                 "SF_TYPE_RTPS",
                 "SF_TYPE_UGS", 
                 "SF_TYPE_ALL"],
-            flags = attributes.Attribute.ExecReadOnly | \
-                    attributes.Attribute.ExecImmutable | \
-                    attributes.Attribute.Metadata,
+            flags = attributes.AttributeFlags.ExecReadOnly | \
+                    attributes.AttributeFlags.ExecImmutable | \
+                    attributes.AttributeFlags.Metadata,
             default_value = "SF_TYPE_RTPS"
             )
        )
@@ -2974,8 +2978,8 @@ box.add_tag(tags.TRACE)
 box.add_container_info(TESTBED_ID, tags.CONTROLLER)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
-conn = Connector("app", "Connector to %s " % PING4, max = 1, min = 1)
-rule = ConnectionRule(RTTTRACE, "app", PING4, "traces", False)
+conn = connectors.Connector("app", "Connector to %s " % PING4, max = 1, min = 1)
+rule = connectors.ConnectionRule(RTTTRACE, "app", PING4, "traces", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -2988,22 +2992,22 @@ box.add_tag(tags.TRACE)
 box.add_container_info(TESTBED_ID, tags.CONTROLLER)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
-conn = Connector("dev", "Connector to a ns3 network device", max = 1, min = 1)
-rule = ConnectionRule(PCAPTRACE, "dev", CSMANETDEV, "traces", False)
+conn = connectors.Connector("dev", "Connector to a ns3 network device", max = 1, min = 1)
+rule = connectors.ConnectionRule(PCAPTRACE, "dev", CSMANETDEV, "traces", False)
 conn.add_connection_rule(rule)
-rule = ConnectionRule(PCAPTRACE, "dev", FDNETDEV, "traces", False)
+rule = connectors.ConnectionRule(PCAPTRACE, "dev", FDNETDEV, "traces", False)
 conn.add_connection_rule(rule)
-rule = ConnectionRule(PCAPTRACE, "dev", TAPBRIDGE, "traces", False)
+rule = connectors.ConnectionRule(PCAPTRACE, "dev", TAPBRIDGE, "traces", False)
 conn.add_connection_rule(rule)
-rule = ConnectionRule(PCAPTRACE, "dev", EMUNETDEV, "traces", False)
+rule = connectors.ConnectionRule(PCAPTRACE, "dev", EMUNETDEV, "traces", False)
 conn.add_connection_rule(rule)
-rule = ConnectionRule(PCAPTRACE, "dev", PTPNETDEV, "traces", False)
+rule = connectors.ConnectionRule(PCAPTRACE, "dev", PTPNETDEV, "traces", False)
 conn.add_connection_rule(rule)
-rule = ConnectionRule(PCAPTRACE, "dev", LOOPNETDEV, "traces", False)
+rule = connectors.ConnectionRule(PCAPTRACE, "dev", LOOPNETDEV, "traces", False)
 conn.add_connection_rule(rule)
-rule = ConnectionRule(PCAPTRACE, "dev", BRIDGENETDEV, "traces", False)
+rule = connectors.ConnectionRule(PCAPTRACE, "dev", BRIDGENETDEV, "traces", False)
 conn.add_connection_rule(rule)
-rule = ConnectionRule(PCAPTRACE, "dev", YANSWIFIPHY, "traces", False)
+rule = connectors.ConnectionRule(PCAPTRACE, "dev", YANSWIFIPHY, "traces", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -3016,22 +3020,53 @@ box.add_tag(tags.TRACE)
 box.add_container_info(TESTBED_ID, tags.CONTROLLER)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
-conn = Connector("dev", "Connector to a ns3 network device", max = 1, min = 1)
-rule = ConnectionRule(ASCIITRACE, "dev", CSMANETDEV, "traces", False)
+conn = connectors.Connector("dev", "Connector to a ns3 network device", max = 1, min = 1)
+rule = connectors.ConnectionRule(ASCIITRACE, "dev", CSMANETDEV, "traces", False)
 conn.add_connection_rule(rule)
-rule = ConnectionRule(ASCOOTRACE, "dev", FDNETDEV, "traces", False)
+rule = connectors.ConnectionRule(ASCIITRACE, "dev", FDNETDEV, "traces", False)
 conn.add_connection_rule(rule)
-rule = ConnectionRule(ASCIITRACE, "dev", TAPBRIDGE, "traces", False)
+rule = connectors.ConnectionRule(ASCIITRACE, "dev", TAPBRIDGE, "traces", False)
 conn.add_connection_rule(rule)
-rule = ConnectionRule(ASCIITRACE, "dev", EMUNETDEV, "traces", False)
+rule = connectors.ConnectionRule(ASCIITRACE, "dev", EMUNETDEV, "traces", False)
 conn.add_connection_rule(rule)
-rule = ConnectionRule(ASCIITRACE, "dev", PTPNETDEV, "traces", False)
+rule = connectors.ConnectionRule(ASCIITRACE, "dev", PTPNETDEV, "traces", False)
 conn.add_connection_rule(rule)
-rule = ConnectionRule(ASCIITRACE, "dev", LOOPNETDEV, "traces", False)
+rule = connectors.ConnectionRule(ASCIITRACE, "dev", LOOPNETDEV, "traces", False)
 conn.add_connection_rule(rule)
-rule = ConnectionRule(ASCIITRACE, "dev", BRIDGENETDEV, "traces", False)
+rule = connectors.ConnectionRule(ASCIITRACE, "dev", BRIDGENETDEV, "traces", False)
 conn.add_connection_rule(rule)
-rule = ConnectionRule(ASCIITRACE, "dev", YANSWIFIPHY, "traces", False)
+rule = connectors.ConnectionRule(ASCIITRACE, "dev", YANSWIFIPHY, "traces", False)
+conn.add_connection_rule(rule)
+box.add_connector(conn)
+
+############ ADDRESS #############
+
+box = IPAddressBox(TESTBED_ID, IPV4ADDRESS, help = "IP v4 address box.")
+boxes.append(box)
+
+box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.CONTAINER)
+
+conn = connectors.Connector("dev", "Connector from address to interface", max = 1, min = 1)
+rule = connectors.ConnectionRule(IPV4ADDRESS, "dev", PTPNETDEV, "addrs", False)
+conn.add_connection_rule(rule)
+rule = connectors.ConnectionRule(IPV4ADDRESS, "dev", CSMANETDEV, "addrs", False)
+conn.add_connection_rule(rule)
+rule = connectors.ConnectionRule(IPV4ADDRESS, "dev", EMUNETDEV, "addrs", False)
+conn.add_connection_rule(rule)
+rule = connectors.ConnectionRule(IPV4ADDRESS, "dev", LOOPNETDEV, "addrs", False)
+conn.add_connection_rule(rule)
+rule = connectors.ConnectionRule(IPV4ADDRESS, "dev", FDNETDEV, "addrs", False)
+conn.add_connection_rule(rule)
+rule = connectors.ConnectionRule(IPV4ADDRESS, "dev", TAPBRIDGE, "addrs", False)
+conn.add_connection_rule(rule)
+rule = connectors.ConnectionRule(IPV4ADDRESS, "dev", WIFINETDEV, "addrs", False)
+conn.add_connection_rule(rule)
+rule = connectors.ConnectionRule(IPV4ADDRESS, "dev", SSNETDEV, "addrs", False)
+conn.add_connection_rule(rule)
+rule = connectors.ConnectionRule(IPV4ADDRESS, "dev", BSNETDEV, "addrs", False)
+conn.add_connection_rule(rule)
+rule = connectors.ConnectionRule(IPV4ADDRESS, "dev", BRIDGENETDEV, "addrs", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
