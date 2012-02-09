@@ -465,6 +465,7 @@ class TunnelBox(Box):
         conn.add_connection_rule(rule)
         self.add_connector(conn)
 
+
         self.add_attr(
                 attributes.StringAttribute(
                     "tunProto", 

@@ -115,7 +115,7 @@ box.add_attr(
 
 ############ CONTAINER #############
 
-box = ContainerBox(TESTBED_ID, CONTAINER, help = "Container for grouping box configurations.")
+box = ContainerBox(TESTBED_ID, CONTAINER, help = "Container for grouping NETNS box configurations.")
 boxes.append(box)
 box.add_container_info(TESTBED_ID, tags.CONTROLLER)
 
