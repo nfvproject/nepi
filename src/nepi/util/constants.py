@@ -1,4 +1,5 @@
-# -*- coding: utf-8 -*-
+
+TESTBED_ENVIRONMENT_SETUP = "testbed_environment_setup"
 
 class ApplicationStatus:
     STATUS_NOT_STARTED = 0
@@ -46,5 +47,6 @@ class DeploymentConfiguration:
     RECOVER = "recover"
     RECOVERY_POLICY = "recoveryPolicy"
     CLEAN_ROOT = "cleanRoot"
+
 
 

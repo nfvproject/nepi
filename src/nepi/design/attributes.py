@@ -8,14 +8,14 @@ import weakref
 
 from nepi.design.tags import Taggable
 
-def _is_valid_ipv6(value):
+def is_valid_ipv6(value):
     try:
         ipaddr.IPv6Address(value)
     except ipaddr.AddressValueError:
         return False
     return True
 
-def _is_valid_ipv4(value):
+def is_valid_ipv4(value):
     try:
         ipaddr.IPv4Address(value)
     except ipaddr.AddressValueError:
@@ -356,7 +356,7 @@ class IPv4Attribute(Attribute):
                 default_value, flags, tags)
 
     def is_valid(self, value):
-        if not _is_valid_ipv4(value):
+        if not is_valid_ipv4(value):
             self._logger.error("Wrong value %r for IPV4Attribute %s",
                     str(value), self.name)
             return False
@@ -371,7 +371,7 @@ class IPv6Attribute(Attribute):
                 default_value, flags, tags)
 
     def is_valid(self, value):
-        if not _is_valid_ipv6(value):
+        if not is_valid_ipv6(value):
             self._logger.error("Wrong value %r for IPv6Attribute %s",
                     str(value), self.name)
             return False
@@ -386,8 +386,8 @@ class IPAttribute(Attribute):
                 default_value, flags, tags)
 
     def is_valid(self, value):
-        if not _is_valid_ipv4(value) and \
-            not _is_valid_ipv6(value):
+        if not is_valid_ipv4(value) and \
+            not is_valid_ipv6(value):
             self._logger.error("Wrong value %r for IPAttribute %s",
                     str(value), self.name)
             return False

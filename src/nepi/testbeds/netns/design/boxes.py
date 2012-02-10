@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 
 from nepi.design import attributes, connectors, tags
 from nepi.design.boxes import TestbedBox, Box, IPAddressBox, ContainerBox, TunnelBox
