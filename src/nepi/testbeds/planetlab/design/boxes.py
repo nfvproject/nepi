@@ -3,7 +3,7 @@ from nepi.testbeds.planetlab.attributes import *
 
 from nepi.util.constants import TESTBED_ENVIRONMENT_SETUP 
 from nepi.design import attributes, connectors, tags
-from nepi.design.boxes import TestbedBox, Box, IPAddressBox, ContainerBox, TunnelBox
+from nepi.design.boxes import TestbedBox, Box, IPAddressBox, ContainerBox, TunnelBox, RouteEntryBox
 
 TESTBED_ID = "planetlab"
 
@@ -40,7 +40,8 @@ TUNFILTERS = (TUNFILTER, CLASSQUEUEFILTER, TOSQUEUEFILTER)
 TAPFILTERS = (TUNFILTER, )
 ALLFILTERS = (TUNFILTER, CLASSQUEUEFILTER, TOSQUEUEFILTER)
 
-ADDRESS = "pl::IPv4Address"
+IP4ADDRESS = "pl::IPv4Address"
+ROUTE = "pl::RouteEntry"
 
 boxes = list()
 
@@ -180,15 +181,33 @@ box.add_container_info(TESTBED_ID, tags.CONTROLLER)
 
 ############ ADDRESS #############
 
-box = IPAddressBox(TESTBED_ID, ADDRESS, help = "IP Address box.")
+box = IPAddressBox(TESTBED_ID, IP4ADRESS, help = "IP Address box.")
 boxes.append(box)
 
-conn = connectors.Connector("iface", "Connector from to PlanetLab interface", max = 1, min = 1)
-rule = connectors.ConnectionRule(ADDRESS, "iface", NODEIFACE, "addrs", False)
+conn = connectors.Connector("iface", "Connector to PlanetLab interface", max = 1, min = 1)
+rule = connectors.ConnectionRule(IP4ADDRESS, "iface", NODEIFACE, "addrs", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(ADDRESS, "iface", TAPIFACE, "addrs", False)
+rule = connectors.ConnectionRule(IP4ADDRESS, "iface", TAPIFACE, "addrs", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(ADDRESS, "iface", TUNIFACE, "addrs", False)
+rule = connectors.ConnectionRule(IP44ADDRESS, "iface", TUNIFACE, "addrs", False)
+conn.add_connection_rule(rule)
+box.add_connector(conn)
+
+box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.CONTAINER)
+
+box.add_tag(tags.ADDRESS)
+
+
+############ ROUTE ENTRY #############
+
+box = RouteEntryBox(TESTBED_ID, ROUTE, help = "Route entry box.")
+boxes.append(box)
+
+conn = connectors.Connector("node", "Connector to %s" % NODE, max = 1, min = 1)
+rule = connectors.ConnectionRule(ROUTE, "node", TAPIFACE, "routes", False)
+conn.add_connection_rule(rule)
+rule = connectors.ConnectionRule(ROUTE, "node", TUNIFACE, "routes", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -375,9 +394,9 @@ box.add_attr(
 ############ INTERFACES #############
 
 class TapBox(TunnelBox):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None, 
+    def __init__(self, testbed_id, box_id, provider = None, guid = None, 
             help = None):
-        super(TapBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(TapBox, self).__init__(testbed_id, box_id, provider,
             guid, help)
 
         self.add_tag(tags.INTERFACE)
@@ -515,9 +534,9 @@ boxes.append(box)
 ############ FILTERS  #############
 
 class FilterBox(TunnelBox):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None, 
+    def __init__(self, testbed_id, box_id, provider = None, guid = None, 
             help = None):
-        super(FilterBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(FilterBox, self).__init__(testbed_id, box_id, provider,
             guid, help)
 
         self.add_tag(tags.FILTER)
@@ -641,9 +660,9 @@ boxes.append(box)
 ############ APPLICATIONS  #############
 
 class BaseApplicationBox(Box):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None, 
+    def __init__(self, testbed_id, box_id, provider = None, guid = None, 
             help = None):
-        super(BaseApplicationBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(BaseApplicationBox, self).__init__(testbed_id, box_id, provider,
             guid, help)
 
         self.add_tag(tags.APPLICATION)
@@ -657,9 +676,9 @@ class BaseApplicationBox(Box):
         self.add_connector(conn)
 
 class BaseDependencyBox(BaseApplicationBox):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None, 
+    def __init__(self, testbed_id, box_id, provider = None, guid = None, 
             help = None):
-        super(BaseDependencyBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(BaseDependencyBox, self).__init__(testbed_id, box_id, provider,
             guid, help)
 
         conn = connectors.Connector("traces", "Connector to traces", max = -1, min = 0)
@@ -668,9 +687,9 @@ class BaseDependencyBox(BaseApplicationBox):
         self.add_connector(conn)
 
 class DependencyBox(BaseDependencyBox):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None, 
+    def __init__(self, testbed_id, box_id, provider = None, guid = None, 
             help = None):
-        super(DependencyBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(DependencyBox, self).__init__(testbed_id, box_id, provider,
             guid, help)
 
         self.add_attr(
@@ -992,9 +1011,9 @@ box.add_attr(
 ############ TRACES  #############
 
 class ApplicationTraceBox(Box):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None, 
+    def __init__(self, testbed_id, box_id, provider = None, guid = None, 
             help = None):
-        super(ApplicationTraceBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(ApplicationTraceBox, self).__init__(testbed_id, box_id, provider,
             guid, help)
 
         self.add_tag(tags.TRACE)
@@ -1008,9 +1027,9 @@ class ApplicationTraceBox(Box):
         self.add_connector(conn)
 
 class TunTraceBox(Box):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None, 
+    def __init__(self, testbed_id, box_id, provider = None, guid = None, 
             help = None):
-        super(TunTraceBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(TunTraceBox, self).__init__(testbed_id, box_id, provider,
             guid, help)
 
         self.add_tag(tags.TRACE)

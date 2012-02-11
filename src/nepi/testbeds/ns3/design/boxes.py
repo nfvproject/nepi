@@ -207,9 +207,9 @@ box.add_tag(tags.NODE)
 ############ PROTOCOLS #############
 
 class ProtocolBox(Box):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
+    def __init__(self, testbed_id, box_id, provider = None, guid = None,
             help = None):
-        super(ProtocolBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(ProtocolBox, self).__init__(testbed_id, box_id, provider,
                 guid, help)
         
         self.add_tag(tags.PROTOCOL)
@@ -223,9 +223,9 @@ class ProtocolBox(Box):
         self.add_connector(conn)
 
 class IPProtocolBox(ProtocolBox):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
+    def __init__(self, testbed_id, box_id, provider = None, guid = None,
             help = None):
-        super(IPProtocolBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(IPProtocolBox, self).__init__(testbed_id, box_id, provider,
                 guid, help)
          
         self.add_attr(
@@ -245,9 +245,9 @@ class IPProtocolBox(ProtocolBox):
             )
 
 class OverIPProtocolBox(ProtocolBox):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
+    def __init__(self, testbed_id, box_id, provider = None, guid = None,
             help = None):
-        super(OverIPProtocolBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(OverIPProtocolBox, self).__init__(testbed_id, box_id, provider,
                 guid, help)
  
         self.add_attr(
@@ -314,9 +314,9 @@ box.add_attr(
 ############ APPLICATIONS #############
 
 class ApplicationBox(Box):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
+    def __init__(self, testbed_id, box_id, provider = None, guid = None,
             help = None):
-        super(ApplicationBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(ApplicationBox, self).__init__(testbed_id, box_id, provider,
                 guid, help)
         
         self.add_tag(tags.APPLICATION)
@@ -348,9 +348,9 @@ class ApplicationBox(Box):
             )
 
 class UdpClientBox(ApplicationBox):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
+    def __init__(self, testbed_id, box_id, provider = None, guid = None,
             help = None):
-        super(UdpClientBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(UdpClientBox, self).__init__(testbed_id, box_id, provider,
                 guid, help)
 
         self.add_attr(
@@ -394,9 +394,9 @@ class UdpClientBox(ApplicationBox):
             )
 
 class UdpServerBox(ApplicationBox):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
+    def __init__(self, testbed_id, box_id, provider = None, guid = None,
             help = None):
-        super(UdpServerBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(UdpServerBox, self).__init__(testbed_id, box_id, provider,
                 guid, help)
 
         self.add_attr(
@@ -565,9 +565,9 @@ boxes.append(box)
 ############ NETWORK DEVICES #############
 
 class NetDeviceBox(Box):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
+    def __init__(self, testbed_id, box_id, provider = None, guid = None,
             help = None):
-        super(NetDeviceBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(NetDeviceBox, self).__init__(testbed_id, box_id, provider,
                 guid, help)
         
         self.add_tag(tags.INTERFACE)
@@ -587,9 +587,9 @@ class NetDeviceBox(Box):
 
 
 class TracesNetDeviceBox(NetDeviceBox):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
+    def __init__(self, testbed_id, box_id, provider = None, guid = None,
             help = None):
-        super(TracesNetDeviceBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(TracesNetDeviceBox, self).__init__(testbed_id, box_id, provider,
                 guid, help)
         
         conn = connectors.Connector("traces", "Connector to ns3 traces", max = -1, min = 0)
@@ -600,9 +600,9 @@ class TracesNetDeviceBox(NetDeviceBox):
         self.add_connector(conn)
 
 class MacAddressNetDeviceBox(TracesNetDeviceBox):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
+    def __init__(self, testbed_id, box_id, provider = None, guid = None,
             help = None):
-        super(MacAddressNetDeviceBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(MacAddressNetDeviceBox, self).__init__(testbed_id, box_id, provider,
                 guid, help)
 
         conn = connectors.Connector("err", "Connector to a ns3 device error model", max = 1, min = 1)
@@ -631,9 +631,9 @@ class MacAddressNetDeviceBox(TracesNetDeviceBox):
                 )
 
 class FdNetDeviceBox(MacAddressNetDeviceBox):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None, 
+    def __init__(self, testbed_id, box_id, provider = None, guid = None, 
             help = None):
-        super(FdNetDeviceBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(FdNetDeviceBox, self).__init__(testbed_id, box_id, provider,
             guid, help)
 
         conn = connectors.Connector("->fd", help = "File descriptor receptor for devices with file descriptors",
@@ -693,9 +693,9 @@ class FdNetDeviceBox(MacAddressNetDeviceBox):
 
 
 class StationNetDeviceBox(NetDeviceBox):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
+    def __init__(self, testbed_id, box_id, provider = None, guid = None,
             help = None):
-        super(StationNetDeviceBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(StationNetDeviceBox, self).__init__(testbed_id, box_id, provider,
                 guid, help)
 
         conn = connectors.Connector("chan", help = "Connector to a %s" % SIMOFDMWIMAXCHAN, 
@@ -1126,9 +1126,9 @@ box.add_attr(
 ############ CHANNELS #############
 
 class ChannelBox(Box):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
+    def __init__(self, testbed_id, box_id, provider = None, guid = None,
             help = None):
-        super(ChannelBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(ChannelBox, self).__init__(testbed_id, box_id, provider,
                 guid, help)
         
         self.add_tag(tags.CHANNEL)
@@ -1234,9 +1234,9 @@ box.add_connector(conn)
 ############ RATE CONTROL MANAGERS #############
 
 class RateControlManagerBox(Box):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
+    def __init__(self, testbed_id, box_id, provider = None, guid = None,
             help = None):
-        super(RateControlManagerBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(RateControlManagerBox, self).__init__(testbed_id, box_id, provider,
                 guid, help)
         
         self.add_tag(tags.RATE_MANAGER)
@@ -1300,9 +1300,9 @@ class RateControlManagerBox(Box):
                 )
 
 class AarfRateControlManagerBox(RateControlManagerBox):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
+    def __init__(self, testbed_id, box_id, provider = None, guid = None,
             help = None):
-        super(AarfRateControlManagerBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(AarfRateControlManagerBox, self).__init__(testbed_id, box_id, provider,
                 guid, help)
 
         self.add_attr(
@@ -1797,9 +1797,9 @@ box.add_attr(
 ############ MOBILITY MODELS #############
 
 class MobilityModelBox(Box):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
+    def __init__(self, testbed_id, box_id, provider = None, guid = None,
             help = None):
-        super(MobilityModelBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(MobilityModelBox, self).__init__(testbed_id, box_id, provider,
                 guid, help)
         
         self.add_tag(tags.MOBILE)
@@ -2075,9 +2075,9 @@ box.add_container_info(TESTBED_ID, tags.CONTAINER)
 ############ LOSS MODELS #############
 
 class LossModelBox(Box):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
+    def __init__(self, testbed_id, box_id, provider = None, guid = None,
             help = None):
-        super(LossModelBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(LossModelBox, self).__init__(testbed_id, box_id, provider,
                 guid, help)
         
         self.add_tag(tags.LOSS_MODEL)
@@ -2242,9 +2242,9 @@ box.add_attr(
 ############ LOSS MODELS #############
 
 class WifiMacModelBox(Box):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
+    def __init__(self, testbed_id, box_id, provider = None, guid = None,
             help = None):
-        super(WifiMacModelBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(WifiMacModelBox, self).__init__(testbed_id, box_id, provider,
                 guid, help)
         
         self.add_tag(tags.MAC_MODEL)
@@ -2641,9 +2641,9 @@ box.add_attr(
 ############ ERROR RATE MODEL #############
 
 class ErrorRateModelBox(Box):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
+    def __init__(self, testbed_id, box_id, provider = None, guid = None,
             help = None):
-        super(ErrorRateModelBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(ErrorRateModelBox, self).__init__(testbed_id, box_id, provider,
                 guid, help)
         
         self.add_tag(tags.ERROR_MODEL)
@@ -2670,9 +2670,9 @@ boxes.append(box)
 ############ ERROR RATE MODEL #############
 
 class ErrorModelBox(Box):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
+    def __init__(self, testbed_id, box_id, provider = None, guid = None,
             help = None):
-        super(ErrorModelBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(ErrorModelBox, self).__init__(testbed_id, box_id, provider,
                 guid, help)
         
         self.add_tag(tags.ERROR_MODEL)
@@ -2740,9 +2740,9 @@ box.add_attr(
 ############ DOWNLINK SCHEDULER #############
 
 class DownlinkSchedulerBox(Box):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
+    def __init__(self, testbed_id, box_id, provider = None, guid = None,
             help = None):
-        super(DownlinkSchedulerBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(DownlinkSchedulerBox, self).__init__(testbed_id, box_id, provider,
                 guid, help)
         
         self.add_container_info(TESTBED_ID, tags.CONTROLLER)
@@ -2767,9 +2767,9 @@ boxes.append(box)
 ############ UPLINK SCHEDULER #############
 
 class UplinkSchedulerBox(Box):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
+    def __init__(self, testbed_id, box_id, provider = None, guid = None,
             help = None):
-        super(UplinkSchedulerBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(UplinkSchedulerBox, self).__init__(testbed_id, box_id, provider,
                 guid, help)
         
         self.add_container_info(TESTBED_ID, tags.CONTROLLER)

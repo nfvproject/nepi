@@ -1,6 +1,6 @@
-# -*- coding: utf-8 -*-
 
 ADDRESS = "address"
+ADDRESSABLE = "addressable"
 APPLICATION = "application"
 CHANNEL = "channel"
 CONTROLLER = "controller"
@@ -25,6 +25,7 @@ PPP = "point-to-point"
 PROTOCOL = "protocol"
 QUEUE = "queue"
 ROUTE = "route"
+ROUTABLE = "routable"
 ROUTING = "routing"
 SERVICE_FLOW = "service flow"
 SWITCH = "switch"
