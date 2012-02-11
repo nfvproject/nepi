@@ -1,5 +1,5 @@
 
-from nepi.design.attributes import Attribute, is_valid_ipv4
+from nepi.design.attributes import Attribute, AttributeTypes, is_valid_ipv4
 
 class AddrListAttribute(Attribute):
     def __init__(self, name, help, default_value = None, 
@@ -43,7 +43,7 @@ class PortListAttribute(Attribute):
     def __init__(self, name, help, default_value = None, 
             flags = None, tags = []):
         type = AttributeTypes.STRING
-        super(PortAttribute, self).__init__(name, help, type, 
+        super(PortListAttribute, self).__init__(name, help, type, 
                 default_value, flags, tags)
 
     def is_valid(self, value):

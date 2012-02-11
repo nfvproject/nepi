@@ -1,7 +1,7 @@
 
-from attributes import *
+from nepi.testbeds.planetlab.attributes import *
 
-from nepi.util import TESTBED_ENVIRONMENT_SETUP 
+from nepi.util.constants import TESTBED_ENVIRONMENT_SETUP 
 from nepi.design import attributes, connectors, tags
 from nepi.design.boxes import TestbedBox, Box, IPAddressBox, ContainerBox, TunnelBox
 
@@ -17,6 +17,7 @@ BUILDLOGTRACE = "pl::BuildLogTrace"
 STDERRTRACE = "pl::StderrTrace"
 STDOUTTRACE = "pl::StdoutTrace"
 OUTPUTTRACE = "pl::OutputTRace"
+NETPIPETRACE = "pl::NetPipeTrace"
 
 NODE = "pl::Node"
 NODEIFACE = "pl::NodeInterface"
@@ -64,7 +65,7 @@ box.add_attr(
         "Activates the use of SFA for node reservation.",
         flags = attributes.AttributeFlags.ExecReadOnly | \
                 attributes.AttributeFlags.ExecImmutable | \
-                attributes.AttributeFlags.NoDefaultValue
+                attributes.AttributeFlags.NoDefaultValue,
         default_value = False
         )
     )
@@ -125,7 +126,7 @@ box.add_attr(
         "Enable peer-to-peer deployment of applications and dependencies. When enabled, dependency packages and applications are deployed in a P2P fashion, picking a single node to do the building or repo download, while all the others cooperatively exchange resulting binaries or rpms. When deploying to many nodes, this is a far more efficient use of resources. It does require re-encrypting and distributing the slice's private key. Though it is implemented in a secure fashion, if they key's sole purpose is not PlanetLab, then this feature should be disabled.",
         flags = attributes.AttributeFlags.ExecReadOnly | \
                 attributes.AttributeFlags.ExecImmutable | \
-                attributes.AttributeFlags.NoDefaultValue
+                attributes.AttributeFlags.NoDefaultValue,
         default_value = True
         )
     )
@@ -150,10 +151,11 @@ box.add_attr(
     )
 
 box.add_attr(
-    attributes.RangeAttribute(
+    attributes.IntegerAttribute(
         "tapPortBase", 
         "Base port to use when connecting TUN/TAPs. Effective port will be BASE + GUID.",
-        range = (2000,30000),
+        min = 2000,
+        max = 30000,
         default_value = 15000 
         )
     )
@@ -210,9 +212,11 @@ rule = connectors.ConnectionRule(NODE, "ifaces", TUNIFACE, "node", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
-conn = connectors.Connector("apps", "Connector to %s" % APPLICATION, max = -1, min = 0)
+conn = connectors.Connector("apps", "Connector to applications", max = -1, min = 0)
 rule = connectors.ConnectionRule(NODE, "apps", APPLICATION, "node", False)
+conn.add_connection_rule(rule)
 rule = connectors.ConnectionRule(NODE, "apps", MULTICASTFORWARDER, "node", False)
+conn.add_connection_rule(rule)
 rule = connectors.ConnectionRule(NODE, "apps", DEPENDENCY, "node", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
@@ -249,17 +253,17 @@ box.add_attr(
 
 box.add_attr(
     attributes.EnumAttribute(
-        "operating_system",
+        "operatingSystem",
         "Constrain operating system during resource discovery.",
         allowed =  ["f8", "f12", "f14", "centos", "other"],
         flags = attributes.AttributeFlags.ExecReadOnly | \
-                attributes.AttributeFlags.ExecImmutable 
+                attributes.AttributeFlags.ExecImmutable, 
         default_value = "f12"
         )
     )
 
 box.add_attr(
-    attributes.StringAttribute(
+    attributes.EnumAttribute(
         "site",
         "Constrain the PlanetLab site this node should reside on.",
         allowed = ["PLE", "PLC", "PLJ"],
@@ -270,82 +274,90 @@ box.add_attr(
     )
 
 box.add_attr(
-    attributes.RangeAttribute(
-        "min_reliability",
+    attributes.DoubleAttribute(
+        "minReliability",
         "Constrain reliability while picking PlanetLab nodes. Specifies a lower acceptable bound.",
         flags = attributes.AttributeFlags.ExecReadOnly | \
                 attributes.AttributeFlags.ExecImmutable,
-        range = (0,100)
+        min = 0,
+        max = 100
         )
     )
 
 box.add_attr(
-    attributes.RangeAttribute(
-        "max_reliability",
+    attributes.DoubleAttribute(
+        "maxReliability",
         "Constrain reliability while picking PlanetLab nodes. Specifies an upper acceptable bound.",
         flags = attributes.AttributeFlags.ExecReadOnly | \
                 attributes.AttributeFlags.ExecImmutable,
-        range = (0,100)
+        min = 0,
+        max = 100
         )
     )
 
 box.add_attr(
     attributes.DoubleAttribute(
-        "min_bandwidth",
+        "minBandwidth",
         "Constrain available bandwidth while picking PlanetLab nodes. Specifies a lower acceptable bound.",
         flags = attributes.AttributeFlags.ExecReadOnly | \
                 attributes.AttributeFlags.ExecImmutable,
-        default_value = (0,2**31)
+        min = 0,
+        max = 2**31
         )
     )
 
 box.add_attr(
     attributes.DoubleAttribute(
-        "max_bandwidth",
+        "maxBandwidth",
         "Constrain available bandwidth while picking PlanetLab nodes. Specifies an upper acceptable bound.",
         flags = attributes.AttributeFlags.ExecReadOnly | \
                 attributes.AttributeFlags.ExecImmutable,
-        default_value = (0,2**31)
+        min = 0,
+        max = 2**31
         )
     )
 
 box.add_attr(
     attributes.DoubleAttribute(
-        "min_load",
+        "minLoad",
         "Constrain node load average while picking PlanetLab nodes. Specifies a lower acceptable bound.",
         flags = attributes.AttributeFlags.ExecReadOnly | \
                 attributes.AttributeFlags.ExecImmutable,
-        default_value = (0,2**31)
+        min = 0,
+        max = 2**31
         )
     )
 
 box.add_attr(
     attributes.DoubleAttribute(
-        "max_load",
+        "maxLoad",
         "Constrain node load average while picking PlanetLab nodes. Specifies an upper acceptable bound.",
         flags = attributes.AttributeFlags.ExecReadOnly | \
                 attributes.AttributeFlags.ExecImmutable,
-        default_value = (0,2**31)
+        min = 0,
+        max = 2**31
         )
     )
 
 box.add_attr(
     attributes.DoubleAttribute(
-        "min_cpu",
+        "minCpu",
         "Constrain available cpu time while picking PlanetLab nodes. Specifies a lower acceptable bound.",
         flags = attributes.AttributeFlags.ExecReadOnly | \
                 attributes.AttributeFlags.ExecImmutable,
-        range = (0,100)
+        min = 0,
+        max = 100
         )
     )
 
 box.add_attr(
     attributes.DoubleAttribute(
-        "max_cpu",
+        "maxCpu",
         "Constrain available cpu time while picking PlanetLab nodes. Specifies an upper acceptable bound.",
         flags = attributes.AttributeFlags.ExecReadOnly | \
                 attributes.AttributeFlags.ExecImmutable,
-        range = (0, 100) 
+        min = 0, 
+        max = 100
         )
     )
 
@@ -408,10 +420,11 @@ class TapBox(TunnelBox):
             )
 
         self.add_attr(
-            attributes.RangeAttribute(
+            attributes.IntegerAttribute(
                 "mtu", 
                 "Maximum transmition unit for device",
-                range = (0,1500)
+                min = 0,
+                max = 1500
                 )
             )
 
@@ -435,28 +448,30 @@ class TapBox(TunnelBox):
         self.add_attr(
             attributes.BoolAttribute(
                 "multicast",
-                "help": "Enable multicast forwarding on this device. Note that you still need a multicast routing daemon in the node.",
+                "Enable multicast forwarding on this device. Note that you still need a multicast routing daemon in the node.",
                 default_value = False
                 )
             )
 
         self.add_attr(
-            attributes.RangeAttribute(
+            attributes.IntegerAttribute(
                 "bwlimit",
                 "Emulated transmission speed (in kbytes per second)",
-                range = (1,10*2**20),
+                min = 1,
+                max = 10*2**20,
                 flags = attributes.AttributeFlags.ExecReadOnly | \
                         attributes.AttributeFlags.ExecImmutable
                 )
             )
 
         self.add_attr(
-            attributes.RangeAttribute(
+            attributes.IntegerAttribute(
                 "txqueuelen",
                 "Transmission queue length (in packets)",
                 flags = attributes.AttributeFlags.ExecReadOnly | \
                         attributes.AttributeFlags.ExecImmutable,
-                range = (1,10000),
+                min = 1,
+                max = 10000,
                 default_value = 1000
                 )
             )
@@ -583,7 +598,7 @@ box.add_attr(
 
 #########
 box = FilterBox(TESTBED_ID, CLASSQUEUEFILTER,
-            "help" = "TUN classfull queue, uses a separate queue for each user-definable class.\n\n"
+            help = "TUN classfull queue, uses a separate queue for each user-definable class.\n\n"
                     "It takes two arguments, both of which have sensible defaults:\n"
                     "\tsize: the base size of each class' queue\n"
                     "\tclasses: the class definitions, which follow the following syntax:\n"
@@ -723,7 +738,7 @@ class DependencyBox(BaseDependencyBox):
 
         self.add_attr(
             attributes.BoolAttribute(
-                "rpm-fusion"
+                "rpm-fusion",
                 "True if required packages can be found in the RpmFusion repository",
                 flags = attributes.AttributeFlags.ExecReadOnly | \
                         attributes.AttributeFlags.ExecImmutable,
@@ -845,7 +860,7 @@ box.add_container_info(TESTBED_ID, tags.CONTROLLER)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 conn = connectors.Connector("traces", "Connector to traces", max = -1, min = 0)
-rule = connectors.ConnectionRule(MULTICASTRPOUTER, "traces", BUILDLOGTRACE, "app", False)
+rule = connectors.ConnectionRule(MULTICASTROUTER, "traces", BUILDLOGTRACE, "app", False)
 rule = connectors.ConnectionRule(MULTICASTROUTER, "traces", STDERRTRACE, "app", False)
 rule = connectors.ConnectionRule(MULTICASTROUTER, "traces", STDOUTTRACE, "app", False)
 conn.add_connection_rule(rule)
@@ -878,7 +893,7 @@ box.add_container_info(TESTBED_ID, tags.CONTROLLER)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 conn = connectors.Connector("ifaces", "Connector to %s" % NODEIFACE, max = -1, min = 1)
-rule = connectors.ConnectionRule(INTERNET, "iafces", NODEIFACE, "inet", False)
+rule = connectors.ConnectionRule(INTERNET, "ifaces", NODEIFACE, "inet", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -896,7 +911,7 @@ conn.add_connection_rule(rule)
 box.add_connector(conn)
 
 conn = connectors.Connector("node", "Connector to %s" % NODE, max = -1, min = 0)
-rule = connectors.ConnectionRule(NETPIPE, "node", NODE, "pipe", False)
+rule = connectors.ConnectionRule(NETPIPE, "node", NODE, "pipes", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -942,10 +957,11 @@ box.add_attr(
     )
 
 box.add_attr(
-    attributes.RangeAttribute(
+    attributes.IntegerAttribute(
         "delayIn",
         "Inbound packet delay (in milliseconds)",
-        range = (0,60000)
+        min = 0,
+        max = 60000
         )
     )
 
@@ -964,10 +980,11 @@ box.add_attr(
     )
 
 box.add_attr(
-    attributes.RangeAttribute(
-        "delayOut"
+    attributes.IntegerAttribute(
+        "delayOut",
         "Outbound packet delay (in milliseconds)",
-        range = (0,60000)
+        min = 0,
+        max = 60000
         )
     )
 
@@ -1026,7 +1043,7 @@ box = ApplicationTraceBox(TESTBED_ID, OUTPUTTRACE, help = "Application output")
 boxes.append(box)
  
 ######
-box = TraceBox(TESTBED_ID, PACKETTRACE, help = "Text format packet trace")
+box = TunTraceBox(TESTBED_ID, PACKETTRACE, help = "Text format packet trace")
 boxes.append(box)
  
 ######
@@ -1043,7 +1060,21 @@ box.add_container_info(TESTBED_ID, tags.CONTROLLER)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 conn = connectors.Connector("filter", "Connector to a filter", max = 1, min = 1)
-rule = connectors.ConnectionRule(DROPSTATETRACE, "filter", CLASSQUEUEFILTER, "traces", False)
+rule = connectors.ConnectionRule(DROPSTATTRACE, "filter", CLASSQUEUEFILTER, "traces", False)
+conn.add_connection_rule(rule)
+box.add_connector(conn)
+
+######
+box = Box(TESTBED_ID, NETPIPETRACE, help = "")
+boxes.append(box)
+
+box.add_tag(tags.TRACE)
+
+box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.CONTAINER)
+
+conn = connectors.Connector("pipe", "Connector to a %s" % NETPIPE, max = 1, min = 1)
+rule = connectors.ConnectionRule(NETPIPETRACE, "pipe", NETPIPE, "traces", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 

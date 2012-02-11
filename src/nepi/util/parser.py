@@ -103,6 +103,7 @@ class XMLBoxParser(object):
         gi_tag.setAttribute("y", xmlencode(gi.y))
         gi_tag.setAttribute("width", xmlencode(gi.width))
         gi_tag.setAttribute("height", xmlencode(gi.height))
+        gi_tag.setAttribute("hidden", xmlencode(gi.hidden))
         tag.appendChild(gi_tag)
 
     def connections_to_xml(self, box, tag, doc, guids):
@@ -206,10 +207,12 @@ class XMLBoxParser(object):
         for tag in b_tag.childNodes:
             if tag.nodeType == tag.ELEMENT_NODE and \
                     xmldecode(tag.nodeName) == 'graphical_info':
+                hidden = tag.getAttribute("hidden") == "True"
                 x = float(tag.getAttribute("x"))
                 y = float(tag.getAttribute("y"))
                 width = float(tag.getAttribute("width"))
                 height = float(tag.getAttribute("height"))
+                box.graphical_info.hidden = hidden
                 box.graphical_info.x = x
                 box.graphical_info.y = y
                 box.graphical_info.width = width
