@@ -774,8 +774,8 @@ class BoxProvider(object):
             for modname in modnames:
                 if modname not in sys.modules:
                     __import__(modname)
-                    mod = sys.modules[modname]
-                    mods.append(mod)
+                mod = sys.modules[modname]
+                mods.append(mod)
 
         for mod in mods:
             self.add_all(mod.boxes)
