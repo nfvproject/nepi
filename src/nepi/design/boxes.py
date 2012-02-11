@@ -19,10 +19,11 @@ from nepi.util.guid import GuidGenerator
 
 
 class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None, 
+    def __init__(self, testbed_id, box_id, provider = None, guid = None, 
             help = None):
         super(Box, self).__init__()
-        self._guid_generator = guid_generator
+        self._provider = None
+        self.provider = provider
         # guid -- global unique identifier
         self._guid = guid
         # Testbed identifier
@@ -108,9 +109,24 @@ class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap):
         return self._container()
 
     def set_container(self, container):
-        self._container = weakref.ref(container)
+        if container:
+            container = weakref.ref(container)
+        self._container = container
 
     container = property(get_container, set_container)
+
+    def get_provider(self):
+        # Gives back a strong-reference not a weak one
+        if not self._provider:
+            return None
+        return self._provider()
+
+    def set_provider(self, provider):
+        if provider:
+            provider = weakref.ref(provider)
+        self._provider = provider
+
+    provider = property(get_provider, set_provider)
 
     def add_container_info(self, testbed_id, must_have_one, must_have_all = None):
         if testbed_id not in self._container_info:
@@ -180,7 +196,7 @@ class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap):
             del kwargs["container"]
         
         new = copy.copy(self)
-        guid = self._guid_generator.next(guid)
+        guid = self.provider.guid_generator.next(guid)
         new._guid = guid
         new._graphical_info = GraphicalInfo()
         if container:
@@ -196,9 +212,9 @@ class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap):
 
 
 class ContainerBox(Box):
-    def __init__(self, box_id, testbed_id, guid_generator = None, guid = None,
+    def __init__(self, box_id, testbed_id, provider = None, guid = None,
             help = None):
-        super(ContainerBox, self).__init__(box_id, testbed_id, guid_generator, 
+        super(ContainerBox, self).__init__(box_id, testbed_id, provider, 
                 guid, help)
         
         self.add_tag(tags.CONTAINER)
@@ -345,7 +361,7 @@ class ContainerBox(Box):
             del kwargs["container"]
 
         new = copy.copy(self)
-        guid = self._guid_generator.next(guid)
+        guid = self.provider.guid_generator.next(guid)
         new._guid = guid
         new._graphical_info = GraphicalInfo()
         if container:
@@ -357,9 +373,9 @@ class ContainerBox(Box):
 
 
 class IPAddressBox(Box):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
+    def __init__(self, testbed_id, box_id, provider = None, guid = None,
             help = None):
-        super(IPAddressBox, self).__init__(testbed_id, box_id, guid_generator, 
+        super(IPAddressBox, self).__init__(testbed_id, box_id, provider, 
                 guid, help)
         
         self.add_tag(tags.ADDRESS)
@@ -373,7 +389,7 @@ class IPAddressBox(Box):
                 )
         self.add_attr(
                 attributes.IntegerAttribute(
-                    "netPrefix", 
+                    "netprefix", 
                     "Network prefix for the address", 
                     min = 0,
                     max = 128,
@@ -390,24 +406,70 @@ class IPAddressBox(Box):
                 )
 
 
-class RouteBox(Box):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
+class IPAddressCapableBox(Box):
+    def __init__(self, testbed_id, box_id, address_box_id, address_connector, 
+            provider = None, guid = None, help = None):
+        super(IPAddressCapableBox, self).__init__(testbed_id, box_id, provider, 
+                guid, help)
+        self._address_box_id = address_box_id
+        self._address_connector = address_connector
+        self._addresses = []
+
+        self.add_tag(tags.ADDRESSABLE)
+
+        conn = connectors.Connector("addrs", "Connector to address", max = -1, min = 0)
+        rule = connectors.ConnectionRule(self._box_id, "addrs", self._address_box_id, 
+                self._address_connector, False)
+        conn.add_connection_rule(rule)
+        self.add_connector(conn)
+
+    @property
+    def addresses(self):
+        return self._addresses
+
+    def add_address(self, address = None, netprefix = None, broadcast = None):
+        addr = self.provider.create(self._address_box_id, container = self.container)
+        if address:
+            addr.a.address.value = address
+        if netprefix:
+            addr.a.netprefix.value = netprefix
+        if broadcast:
+            addr.a.broadcast.value = broadcast
+        conn = getattr(addr.c, self._address_connector)
+        conn.connect(self.c.addrs)
+        addr.graphical_info.hidden = True
+
+        self._addresses.append(addr)
+        return addr
+
+    def remove_address(self, addr):
+        if addr in self.addresses:
+            conn = getattr(addr.c, self._address_connector)
+            conn.disconnect(self.c.addrs)
+            del self._addresses[addr]
+        else:
+            self._logger.error("Can't remove address guid(%d) from box guid(%d). No such address.", 
+                    addr.guid, self.guid)
+
+
+class RouteEntryBox(Box):
+    def __init__(self, testbed_id, box_id, provider = None, guid = None,
             help = None):
-        super(RouteBox, self).__init__(testbed_id, box_id, guid_generator, 
+        super(RouteEntryBox, self).__init__(testbed_id, box_id, provider, 
                 guid, help)
         
         self.add_tag(tags.ROUTE)
 
         self.add_attr(
-                attributes.StringAttribute(
+                attributes.IPAttribute(
                     "destination", 
-                    "Network destination address", 
+                    "Network destination address. Default Gateway is indicated with 0.0.0.0", 
                     flags = attributes.AttributeFlags.NoDefaultValue
                     )
                 )
         self.add_attr(
                 attributes.IntegerAttribute(
-                    "netPrefix", 
+                    "netprefix", 
                     "Network prefix for the address", 
                     min = 0,
                     max = 128,
@@ -417,7 +479,7 @@ class RouteBox(Box):
                 )
         self.add_attr(
                 attributes.StringAttribute(
-                    "nextHop", 
+                    "nexthop", 
                     "Address of the next hop", 
                     flags = attributes.AttributeFlags.NoDefaultValue
                     )
@@ -429,20 +491,61 @@ class RouteBox(Box):
                     flags = attributes.AttributeFlags.NoDefaultValue
                     )
                 )
-        self.add_attr(
-                attributes.BoolAttribute(
-                    "default gateway", 
-                    "Indicate if this route points to the default gateway", 
-                    default_value = False,
-                    flags = attributes.AttributeFlags.NoDefaultValue
-                    )
-                )
+
+
+class RouteEntryCapableBox(Box):
+    def __init__(self, testbed_id, box_id, routeentry_box_id, routeentry_connector, 
+            provider = None, guid = None, help = None):
+        super(RouteEntryCapableBox, self).__init__(testbed_id, box_id, provider, 
+                guid, help)
+        self._routeentry_box_id = routeentry_box_id 
+        self._routeentry_connector = routeentry_connector
+        self._routes = []
+
+        self.add_tag(tags.ROUTABLE)
+
+        conn = connectors.Connector("routes", "Connector to routes", max = -1, min = 0)
+        rule = connectors.ConnectionRule(self._box_id, "routes", self._routeentry_box_id, 
+                self._routeentry_connector, False)
+        conn.add_connection_rule(rule)
+        self.add_connector(conn)
+
+    @property
+    def routes(self):
+        return self._routes
+
+    def add_route(self, destination = None, netprefix = None, nexthop = None,
+            metric = None):
+        entry = self.provider.create(self._routeentry_box_id, container = self.container)
+        if destination:
+            entry.a.destination.value = destination
+        if netprefix:
+            entry.a.netprefix.value = netprefix
+        if nexthop:
+            entry.a.nexthop.value = nexthop
+        if metric:
+            entry.a.metric.value = metric
+        conn = getattr(entry.c, self._routeentry_connector)
+        conn.connect(self.c.routes)
+        entry.graphical_info.hidden = True
+
+        self._routes.append(conn)
+        return conn
+
+    def remove_route(self, route):
+        if route in self.routes:
+            conn = getattr(entry.c, self._routeentry_connector)
+            conn.disconnect(self.c.routes)
+            del self._routes[route]
+        else:
+            self._logger.error("Can't remove route guid(%d) from box guid(%d). No such route.", 
+                    route.guid, self.guid)
 
 
 class TunnelBox(Box):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None, 
+    def __init__(self, testbed_id, box_id, provider = None, guid = None, 
             help = None):
-        super(TunnelBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(TunnelBox, self).__init__(testbed_id, box_id, provider,
             guid, help)
 
         self.add_tag(tags.TUNNEL)
@@ -518,9 +621,9 @@ class TunnelBox(Box):
 
 
 class ControllerBox(Box):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None, 
+    def __init__(self, testbed_id, box_id, provider = None, guid = None, 
             help = None):
-        super(ControllerBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(ControllerBox, self).__init__(testbed_id, box_id, provider,
                 guid, help)
 
         self.add_tag(tags.CONTROLLER)
@@ -695,17 +798,17 @@ class ControllerBox(Box):
 
 
 class TestbedBox(ControllerBox):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
+    def __init__(self, testbed_id, box_id, provider = None, guid = None,
             help = None):
-        super(TestbedBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(TestbedBox, self).__init__(testbed_id, box_id, provider,
                 guid, help)
         self.add_container_info(None, tags.EXPERIMENT)
 
 
 class ExperimentBox(ControllerBox):
-    def __init__(self, guid_generator = None, guid = None):
+    def __init__(self, provider = None, guid = None):
         super(ExperimentBox, self).__init__(None, "Experiment",
-                guid_generator, guid, "Experiment box")
+                provider, guid, "Experiment box")
         self.add_tag(tags.EXPERIMENT)
 
 
@@ -714,7 +817,7 @@ class BoxProvider(object):
     def __init__(self, mods = None, search_path = None):
         super(BoxProvider, self).__init__()
         self._guid_generator = GuidGenerator()
-        exp = ExperimentBox(self._guid_generator, None)
+        exp = ExperimentBox(self, None)
         self._boxes = dict({exp.box_id: exp})
     
         self.load_testbed_boxes(mods)
@@ -788,9 +891,13 @@ class BoxProvider(object):
         self._guid_generator.off = False
         return box
 
+    @property
+    def guid_generator(self):
+        return self._guid_generator
+
     def add(self, box):
         if box.box_id not in self._boxes.keys():
-            box._guid_generator = self._guid_generator
+            box.provider = self
             self._boxes[box.box_id] = box
 
     def add_all(self, boxes):

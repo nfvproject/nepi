@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 
 from nepi.design import attributes, tags
 from xml.dom import minidom

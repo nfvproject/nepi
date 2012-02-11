@@ -236,6 +236,57 @@ class DesignBoxesTestCase(unittest.TestCase):
         self.assertFalse(switch1.c.eth0.is_connected(iface5.c.peer))
 
 
+    def test_routes_and_addresses(self):
+        provider = create_provider(mods=[mock])
+
+        exp = provider.create("Experiment")
+        mocki = provider.create("mock::MockInstance")
+        exp.add(mocki)
+
+        node1 = provider.create("mock::Node", boolAttr = False)
+        mocki.add(node1)
+        node1.a.boolAttr.value = True
+
+        route1 = node1.add_route(destination = "0.0.0.0", nexthop = "192.168.0.1")
+
+        iface1 = provider.create("mock::Interface")
+        mocki.add(iface1)
+        node1.c.devs.connect(iface1.c.node)
+
+        addr1 = iface1.add_address(address = "192.168.0.1")
+
+        node2 = provider.create("mock::Node")
+        mocki.add(node2)
+
+        iface2 = provider.create("mock::Interface")
+        mocki.add(iface2)
+        node2.c.devs.connect(iface2.c.node)
+
+        addr2 = iface2.add_address(address = "192.168.0.2")
+
+        trace = provider.create("mock::Trace")
+        mocki.add(trace)
+        trace.a.stringAttr.value = "string"
+        node1.c.traces.connect(trace.c.node)
+
+        iface1.c.peer.connect(iface2.c.peer)
+
+        app = provider.create("mock::Application")
+        mocki.add(app)
+        app.a.start.value = "10s"
+        app.c.node.connect(node1.c.apps)
+
+        xml = exp.xml
+
+        provider2 = create_provider(mods=[mock])
+        exp2 = provider2.from_xml(xml)
+        node21 = exp2.box(node1.guid)
+        self.assertTrue(node21.a.boolAttr.value == True)
+        
+        xml2 = exp2.xml
+        self.assertTrue(xml == xml2)
+
+
 if __name__ == '__main__':
     unittest.main()
 

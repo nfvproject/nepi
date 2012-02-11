@@ -22,9 +22,9 @@ ADDRESS = "netns::IPAddress"
 boxes = list()
 
 class IfaceBox(Box):
-    def __init__(self, testbed_id, box_id, guid_generator = None, guid = None,
+    def __init__(self, testbed_id, box_id, provider = None, guid = None,
             help = None):
-        super(IfaceBox, self).__init__(testbed_id, box_id, guid_generator,
+        super(IfaceBox, self).__init__(testbed_id, box_id, provider,
                 guid, help)
         
         self.add_tag(tags.INTERFACE)
