@@ -1,13 +1,15 @@
 
 from nepi.design import attributes, connectors, tags
-from nepi.design.boxes import TestbedBox, Box, IPAddressBox, ContainerBox, TunnelBox
-
+from nepi.design.boxes import TestbedBox, Box, IPAddressBox, IPAddressCapableBox, \
+        RouteEntryBox, RouteEntryCapableBox, ContainerBox, TunnelBox
+ 
 TESTBED_ID = "ns3.11"
 
 TESTBED = "ns3::Simulation"
 CONTAINER = "ns3::Container"
 
 NODE = "ns3::Node"
+PROTOCOLNODE = "ns3::nepi::ProtocolNode"
 
 UDPPROTO = "ns3::UdpL4Protocol"
 ICMP6PROTO = "ns3::Icmpv6L3Protocol"
@@ -37,7 +39,7 @@ EMUNETDEV = "ns3::EmuNetDevice"
 BRIDGENETDEV = "ns3::BridgeNetDevice"
 WIFINETDEV = "ns3::WifiNetDevice"
 
-TUNCHAN = "ns3::Nepi::TunChannel"
+TUNCHAN = "ns3::nepi::TunChannel"
 BRIDGECHAN = "ns3::BridgeChannel"
 YANSWIFICHAN = "ns3::YansWifiChannel"
 CSMACHAN = "ns3::CsmaChannel"
@@ -104,7 +106,8 @@ RTTTRACE = "ns3::RttTrace"
 PCAPTRACE = "ns3::PcapTrace"
 ASCIITRACE = "ns3::AsciiTrace"
 
-IPV4ADDRESS = "ns3::Ipv4Address"
+IP4ADDRESS = "ns3::nepi::IP4Address"
+ROUTE = "ns3::nepi::RouteEntry"
 
 boxes = list()
 
@@ -169,39 +172,74 @@ boxes.append(box)
 
 ############ NODE #############
 
-box = Box(TESTBED_ID, NODE, "ns-3 Node")
+class NodeBox(RouteEntryCapableBox):
+    def __init__(self, testbed_id, box_id, routeentry_box_id, routeentry_connector,
+            provider = None, guid = None, help = None):
+        super(NodeBox, self).__init__(testbed_id, box_id, routeentry_box_id,
+                routeentry_connector, provider, guid, help)
+
+        self.add_container_info(TESTBED_ID, tags.CONTROLLER)
+        self.add_container_info(TESTBED_ID, tags.CONTAINER)
+
+        self.add_tag(tags.NODE)
+
+        conn = connectors.Connector("ifaces", "Connector from ns3::Node to ns-3 intefaces", max = -1, min = 1)
+        for p in [FDNETDEV, TAPBRIDGE, PTPNETDEV, SSNETDEV, BSNETDEV, CSMANETDEV,
+                LOOPNETDEV, EMUNETDEV, BRIDGENETDEV, WIFINETDEV]: 
+            rule = connectors.ConnectionRule(self._box_id, "ifaces", p, "node", False)
+            conn.add_connection_rule(rule)
+        self.add_connector(conn)
+
+        conn = connectors.Connector("apps", "Connector from ns3::Node to ns-3 applications", max = -1, min = 0)
+        for a in [PACKETSINK, PING6, PING4, ONOFF, UDPSERVER, UDPCLIENT, UDPECHOCLIENT, UDPECHOSERVER]: 
+            rule = connectors.ConnectionRule(self._box_id, "apps", a, "node", False)
+            conn.add_connection_rule(rule)
+        self.add_connector(conn)
+
+        conn = connectors.Connector("protos", "Connector from ns3::Node to ns-3 protocols", max = -1, min = 1)
+        for p in [UDPPROTO, ICMP6PROTO, ICMP4PROTO, ARPPROTO, IP6PROTO, IP4PROTO, TCPPROTO]: 
+            rule = connectors.ConnectionRule(self._box_id, "protos", p, "node", False)
+            conn.add_connection_rule(rule)
+        self.add_connector(conn)
+
+        conn = connectors.Connector("mob", "Connector from ns3::Node to ns-3 mobility models", max = 1, min = 0)
+        for m in [CONSTVELMOB, CONSTACCMOB, WAYPOINTMOB, HIERARCHMOB, RANDWAYMOB, CONSTPOSMOB, 
+                RANDWALK2DMOB, RANDDIR2DMOB]: 
+            rule = connectors.ConnectionRule(self._box_id, "mob", m, "node", False)
+            conn.add_connection_rule(rule)
+        self.add_connector(conn)
+
+
+class ProtocolNodeBox(NodeBox):
+    def __init__(self, testbed_id, box_id, routeentry_box_id, routeentry_connector,
+            provider = None, guid = None, help = None):
+        super(ProtocolNodeBox, self).__init__(testbed_id, box_id, routeentry_box_id,
+                routeentry_connector, provider, guid, help)
+
+        conn = connectors.Connector("protos", "Connector from ns3::Node to ns-3 protocols", max = -1, min = 1,
+                hidden = True)
+        for p in [UDPPROTO, ICMP6PROTO, ICMP4PROTO, ARPPROTO, IP6PROTO, IP4PROTO, TCPPROTO]: 
+            rule = connectors.ConnectionRule(self._box_id, "protos", p, "node", False)
+            conn.add_connection_rule(rule)
+        self.add_connector(conn)
+
+    def clone(self, **kwargs):
+        new = super(ProtocolNodeBox, self).clone(**kwargs)
+        for p in [UDPPROTO, ICMP6PROTO, ICMP4PROTO, ARPPROTO, IP6PROTO, IP4PROTO, TCPPROTO]: 
+            proto = new.provider.create(p, container = new.container)
+            proto.graphical_info.hidden = True
+            proto.c.node.connect(new.c.protos)
+        return new
+
+
+#########
+box = NodeBox(TESTBED_ID, NODE, ROUTE, "node", help = "ns-3 Node")
 boxes.append(box)
 
-conn = connectors.Connector("devs", "Connector from ns3::Node to ns-3 intefaces", max = -1, min = 1)
-for p in [FDNETDEV, TAPBRIDGE, PTPNETDEV, SSNETDEV, BSNETDEV, CSMANETDEV,
-        LOOPNETDEV, EMUNETDEV, BRIDGENETDEV, WIFINETDEV]: 
-    rule = connectors.ConnectionRule(NODE, "devs", p, "node", False)
-    conn.add_connection_rule(rule)
-box.add_connector(conn)
-
-conn = connectors.Connector("apps", "Connector from ns3::Node to ns-3 applications", max = -1, min = 0)
-for a in [PACKETSINK, PING6, PING4, ONOFF, UDPSERVER, UDPCLIENT, UDPECHOCLIENT, UDPECHOSERVER]: 
-    rule = connectors.ConnectionRule(NODE, "apps", a, "node", False)
-    conn.add_connection_rule(rule)
-box.add_connector(conn)
-
-conn = connectors.Connector("protos", "Connector from ns3::Node to ns-3 protocols", max = -1, min = 1)
-for p in [UDPPROTO, ICMP6PROTO, ICMP4PROTO, ARPPROTO, IP6PROTO, IP4PROTO, TCPPROTO]: 
-    rule = connectors.ConnectionRule(NODE, "protos", p, "node", False)
-    conn.add_connection_rule(rule)
-box.add_connector(conn)
-
-conn = connectors.Connector("mob", "Connector from ns3::Node to ns-3 mobility models", max = 1, min = 0)
-for m in [CONSTVELMOB, CONSTACCMOB, WAYPOINTMOB, HIERARCHMOB, RANDWAYMOB, CONSTPOSMOB, 
-        RANDWALK2DMOB, RANDDIR2DMOB]: 
-    rule = connectors.ConnectionRule(NODE, "mob", m, "node", False)
-    conn.add_connection_rule(rule)
-box.add_connector(conn)
-
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
-box.add_container_info(TESTBED_ID, tags.CONTAINER)
-
-box.add_tag(tags.NODE)
+#########
+box = ProtocolNodeBox(TESTBED_ID, PROTOCOLNODE, ROUTE, "node", 
+        help = "ns-3 Node with L2, L3 and L4 protocols")
+boxes.append(box)
 
 
 ############ PROTOCOLS #############
@@ -219,6 +257,8 @@ class ProtocolBox(Box):
 
         conn = connectors.Connector("node", "Connector to ns3::Node", max = 1, min = 1)
         rule = connectors.ConnectionRule(self.box_id, "node", NODE, "protos", False)
+        conn.add_connection_rule(rule)
+        rule = connectors.ConnectionRule(self.box_id, "node", PROTOCOLNODE, "protos", False)
         conn.add_connection_rule(rule)
         self.add_connector(conn)
 
@@ -262,11 +302,11 @@ class OverIPProtocolBox(ProtocolBox):
 
 
 ############
-box = OverIPProtocolBox(TESTBED_ID, UDPPROTO, "UDP protocol model")
+box = OverIPProtocolBox(TESTBED_ID, UDPPROTO, help = "UDP protocol model")
 boxes.append(box)
 
 ############
-box = OverIPProtocolBox(TESTBED_ID, ICMP6PROTO, "ICMP v6 protocol model")
+box = OverIPProtocolBox(TESTBED_ID, ICMP6PROTO, help = "ICMP v6 protocol model")
 boxes.append(box)
 box.add_attr(
     attributes.BoolAttribute(
@@ -277,19 +317,19 @@ box.add_attr(
     )
 
 ############
-box = OverIPProtocolBox(TESTBED_ID, ICMP4PROTO, "ICMP v4 protocol model")
+box = OverIPProtocolBox(TESTBED_ID, ICMP4PROTO, help = "ICMP v4 protocol model")
 boxes.append(box)
 
 ############
-box = ProtocolBox(TESTBED_ID, ARPPROTO, "ARP protocol model")
+box = ProtocolBox(TESTBED_ID, ARPPROTO, help = "ARP protocol model")
 boxes.append(box)
 
 ############
-box = IPProtocolBox(TESTBED_ID, IP6PROTO, "IP v6 protocol model")
+box = IPProtocolBox(TESTBED_ID, IP6PROTO, help = "IP v6 protocol model")
 boxes.append(box)
 
 ############
-box = IPProtocolBox(TESTBED_ID, IP4PROTO, "IP v4 protocol model")
+box = IPProtocolBox(TESTBED_ID, IP4PROTO, help = "IP v4 protocol model")
 boxes.append(box)
 box.add_attr(
     attributes.BoolAttribute(
@@ -300,7 +340,7 @@ box.add_attr(
     )
 
 ############
-box = OverIPProtocolBox(TESTBED_ID, TCPPROTO, "TCP protocol model")
+box = OverIPProtocolBox(TESTBED_ID, TCPPROTO, help = "TCP protocol model")
 boxes.append(box)
 box.add_attr(
     attributes.StringAttribute(
@@ -326,6 +366,8 @@ class ApplicationBox(Box):
 
         conn = connectors.Connector("node", "Connector to ns3::Node", max = 1, min = 1)
         rule = connectors.ConnectionRule(self.box_id, "node", NODE, "apps", False)
+        conn.add_connection_rule(rule)
+        rule = connectors.ConnectionRule(self.box_id, "node", PROTOCOLNODE, "apps", False)
         conn.add_connection_rule(rule)
         self.add_connector(conn)
 
@@ -409,7 +451,7 @@ class UdpServerBox(ApplicationBox):
 
 
 ############
-box = ApplicationBox(TESTBED_ID, PACKETSINK, "PacketSink application model")
+box = ApplicationBox(TESTBED_ID, PACKETSINK, help =  "PacketSink application model")
 boxes.append(box)
 box.add_attr(
     attributes.StringAttribute(
@@ -428,7 +470,7 @@ box.add_attr(
     )
 
 ############
-box = ApplicationBox(TESTBED_ID, PING6, "Ping v6 application model")
+box = ApplicationBox(TESTBED_ID, PING6, help = "Ping v6 application model")
 boxes.append(box)
 box.add_attr(
     attributes.IntegerAttribute(
@@ -471,7 +513,7 @@ box.add_attr(
     )
 
 ############
-box = ApplicationBox(TESTBED_ID, PING4, "Ping v4 application model")
+box = ApplicationBox(TESTBED_ID, PING4, help = "Ping v4 application model")
 boxes.append(box)
 box.add_attr(
     attributes.StringAttribute(
@@ -511,7 +553,7 @@ conn.add_connection_rule(rule)
 box.add_connector(conn)
 
 ############
-box = ApplicationBox(TESTBED_ID, ONOFF, "OnOff application model")
+box = ApplicationBox(TESTBED_ID, ONOFF, help = "OnOff application model")
 boxes.append(box)
 box.add_attr(
     attributes.IntegerAttribute(
@@ -539,7 +581,7 @@ box.add_attr(
 
 
 ############
-box = UdpServerBox(TESTBED_ID, UDPSERVER, "UDP server application model")
+box = UdpServerBox(TESTBED_ID, UDPSERVER, help = "UDP server application model")
 boxes.append(box)
 box.add_attr(
     attributes.IntegerAttribute(
@@ -550,25 +592,25 @@ box.add_attr(
     )
 
 ############
-box = UdpClientBox(TESTBED_ID, UDPCLIENT, "UDP client application model")
+box = UdpClientBox(TESTBED_ID, UDPCLIENT, help = "UDP client application model")
 boxes.append(box)
 
 ############
-box = UdpServerBox(TESTBED_ID, UDPECHOSERVER, "UDP Echo server application model")
+box = UdpServerBox(TESTBED_ID, UDPECHOSERVER, help = "UDP Echo server application model")
 boxes.append(box)
 
 ############
-box = UdpClientBox(TESTBED_ID, UDPECHOCLIENT, "UDP Echo client application model")
+box = UdpClientBox(TESTBED_ID, UDPECHOCLIENT, help = "UDP Echo client application model")
 boxes.append(box)
 
 
 ############ NETWORK DEVICES #############
 
-class NetDeviceBox(Box):
-    def __init__(self, testbed_id, box_id, provider = None, guid = None,
-            help = None):
-        super(NetDeviceBox, self).__init__(testbed_id, box_id, provider,
-                guid, help)
+class NetDeviceBox(IPAddressCapableBox):
+    def __init__(self, testbed_id, box_id, address_box_id, address_connector,
+            provider = None, guid = None, help = None):
+        super(NetDeviceBox, self).__init__(testbed_id, box_id, address_box_id,
+                address_connector, provider, guid, help)
         
         self.add_tag(tags.INTERFACE)
         
@@ -576,41 +618,38 @@ class NetDeviceBox(Box):
         self.add_container_info(TESTBED_ID, tags.CONTAINER)
 
         conn = connectors.Connector("node", "Connector to %s" % NODE, max = 1, min = 1)
-        rule = connectors.ConnectionRule(self.box_id, "node", NODE, "devs", False)
+        rule = connectors.ConnectionRule(self.box_id, "node", NODE, "ifaces", False)
         conn.add_connection_rule(rule)
-        self.add_connector(conn)
-
-        conn = connectors.Connector("addrs", "Connector to %s" % IPV4ADDRESS, max = 1, min = 1)
-        rule = connectors.ConnectionRule(self.box_id, "addrs", IPV4ADDRESS, "dev", False)
+        rule = connectors.ConnectionRule(self.box_id, "node", PROTOCOLNODE, "ifaces", False)
         conn.add_connection_rule(rule)
         self.add_connector(conn)
 
 
 class TracesNetDeviceBox(NetDeviceBox):
-    def __init__(self, testbed_id, box_id, provider = None, guid = None,
-            help = None):
-        super(TracesNetDeviceBox, self).__init__(testbed_id, box_id, provider,
-                guid, help)
+    def __init__(self, testbed_id, box_id, address_box_id, address_connector, 
+            provider = None, guid = None, help = None):
+        super(TracesNetDeviceBox, self).__init__(testbed_id, box_id, address_box_id,
+                address_connector, provider, guid, help)
         
         conn = connectors.Connector("traces", "Connector to ns3 traces", max = -1, min = 0)
-        rule = connectors.ConnectionRule(self.box_id, "traces", PCAPTRACE, "dev", False)
+        rule = connectors.ConnectionRule(self.box_id, "traces", PCAPTRACE, "iface", False)
         conn.add_connection_rule(rule)
-        rule = connectors.ConnectionRule(self.box_id, "traces", ASCIITRACE, "dev", False)
+        rule = connectors.ConnectionRule(self.box_id, "traces", ASCIITRACE, "iface", False)
         conn.add_connection_rule(rule)
         self.add_connector(conn)
 
 class MacAddressNetDeviceBox(TracesNetDeviceBox):
-    def __init__(self, testbed_id, box_id, provider = None, guid = None,
-            help = None):
-        super(MacAddressNetDeviceBox, self).__init__(testbed_id, box_id, provider,
-                guid, help)
+    def __init__(self, testbed_id, box_id, address_box_id, address_connector, 
+            provider = None, guid = None, help = None):
+        super(MacAddressNetDeviceBox, self).__init__(testbed_id, box_id, address_box_id,
+                address_connector, provider, guid, help)
 
-        conn = connectors.Connector("err", "Connector to a ns3 device error model", max = 1, min = 1)
-        rule = connectors.ConnectionRule(self.box_id, "err", LISTERR, "dev", False)
+        conn = connectors.Connector("err", "Connector to a ns3 network interface error model", max = 1, min = 1)
+        rule = connectors.ConnectionRule(self.box_id, "err", LISTERR, "iface", False)
         conn.add_connection_rule(rule)
-        rule = connectors.ConnectionRule(self.box_id, "err", RECLISTERR, "dev", False)
+        rule = connectors.ConnectionRule(self.box_id, "err", RECLISTERR, "iface", False)
         conn.add_connection_rule(rule)
-        rule = connectors.ConnectionRule(self.box_id, "err", RATEERR, "dev", False)
+        rule = connectors.ConnectionRule(self.box_id, "err", RATEERR, "iface", False)
         conn.add_connection_rule(rule)
         self.add_connector(conn)
 
@@ -631,10 +670,10 @@ class MacAddressNetDeviceBox(TracesNetDeviceBox):
                 )
 
 class FdNetDeviceBox(MacAddressNetDeviceBox):
-    def __init__(self, testbed_id, box_id, provider = None, guid = None, 
-            help = None):
-        super(FdNetDeviceBox, self).__init__(testbed_id, box_id, provider,
-            guid, help)
+    def __init__(self, testbed_id, box_id, address_box_id, address_connector,
+            provider = None, guid = None, help = None):
+        super(FdNetDeviceBox, self).__init__(testbed_id, box_id, address_box_id,
+                address_connector, provider, guid, help)
 
         conn = connectors.Connector("->fd", help = "File descriptor receptor for devices with file descriptors",
                 max = 1, min = 1)
@@ -693,20 +732,20 @@ class FdNetDeviceBox(MacAddressNetDeviceBox):
 
 
 class StationNetDeviceBox(NetDeviceBox):
-    def __init__(self, testbed_id, box_id, provider = None, guid = None,
-            help = None):
-        super(StationNetDeviceBox, self).__init__(testbed_id, box_id, provider,
-                guid, help)
+    def __init__(self, testbed_id, box_id, address_box_id, address_connector,
+            provider = None, guid = None, help = None):
+        super(StationNetDeviceBox, self).__init__(testbed_id, box_id, address_box_id,
+                address_connector, provider, guid, help)
 
         conn = connectors.Connector("chan", help = "Connector to a %s" % SIMOFDMWIMAXCHAN, 
                 max = 1, min = 1)
-        rule = connectors.ConnectionRule(SSNETDEV, "chan", SIMOFDMWIMAXCHAN, "devs", False)
+        rule = connectors.ConnectionRule(SSNETDEV, "chan", SIMOFDMWIMAXCHAN, "ifaces", False)
         conn.add_connection_rule(rule)
         self.add_connector(conn)
 
         conn = connectors.Connector("phy", help = "Connector to a %s" % SIMOFDMWIMAXPHY, 
                 max = 1, min = 1)
-        rule = connectors.ConnectionRule(SSNETDEV, "phy", SIMOFDMWIMAXPHY, "dev", False)
+        rule = connectors.ConnectionRule(SSNETDEV, "phy", SIMOFDMWIMAXPHY, "iface", False)
         conn.add_connection_rule(rule)
         self.add_connector(conn)
 
@@ -733,11 +772,13 @@ class StationNetDeviceBox(NetDeviceBox):
                 )
 
 ############
-box = FdNetDeviceBox(TESTBED_ID, FDNETDEV, "Network interface associated to a file descriptor")
+box = FdNetDeviceBox(TESTBED_ID, FDNETDEV, IP4ADDRESS, "iface",
+        help = "Network interface associated to a file descriptor")
 boxes.append(box)
 
 ############
-box = TracesNetDeviceBox(TESTBED_ID, TAPBRIDGE, "TAP device used to connect to the oustide world as a bridge.")
+box = TracesNetDeviceBox(TESTBED_ID, TAPBRIDGE, IP4ADDRESS, "iface",
+        help = "TAP device used to connect to the oustide world as a bridge.")
 boxes.append(box)
 box.add_attr(
         attributes.MacAddressAttribute(
@@ -788,18 +829,19 @@ box.add_attr(
         )
 
 ############
-box = MacAddressNetDeviceBox(TESTBED_ID, PTPNETDEV, "point to point network device model")
+box = MacAddressNetDeviceBox(TESTBED_ID, PTPNETDEV, IP4ADDRESS, "iface",
+        help = "point to point network device model")
 boxes.append(box)
 
 conn = connectors.Connector("queue", help = "Connector to a queueing discipline (mandatory)", 
         max = 1, min = 1)
-rule = connectors.ConnectionRule(PTPNETDEV, "queue", DROPTAILQUEUE, "dev", False)
+rule = connectors.ConnectionRule(PTPNETDEV, "queue", DROPTAILQUEUE, "iface", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
 conn = connectors.Connector("chan", help = "Connector to a point to point channel", 
         max = 1, min = 1)
-rule = connectors.ConnectionRule(PTPNETDEV, "chan", PTPCHAN, "devs", False)
+rule = connectors.ConnectionRule(PTPNETDEV, "chan", PTPCHAN, "ifaces", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -820,12 +862,13 @@ box.add_attr(
         )
  
 ############
-box = StationNetDeviceBox(TESTBED_ID, SSNETDEV, help = "Subscriber station for mobile wireless network")
+box = StationNetDeviceBox(TESTBED_ID, SSNETDEV, IP4ADDRESS, "iface",
+        help = "Subscriber station for mobile wireless network")
 boxes.append(box)
 
 conn = connectors.Connector("sflows", help = "Connector to service flows",
         max = -1, min = 0)
-rule = connectors.ConnectionRule(SSNETDEV, "sflows", SERVICEFLOW, "dev", False)
+rule = connectors.ConnectionRule(SSNETDEV, "sflows", SERVICEFLOW, "iface", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -930,22 +973,23 @@ box.add_attr(
 
 
 ############
-box = StationNetDeviceBox(TESTBED_ID, BSNETDEV, help = "Base station for wireless mobile network")
+box = StationNetDeviceBox(TESTBED_ID, BSNETDEV, IP4ADDRESS, "iface",
+        help = "Base station for wireless mobile network")
 boxes.append(box)
 
 conn = connectors.Connector("dwnlnk", help = "Connector to a dowlink scheduler",
         max = 1, min = 0)
-rule = connectors.ConnectionRule(BSNETDEV, "dwnlnk", BSSSIMPLE, "dev", False)
+rule = connectors.ConnectionRule(BSNETDEV, "dwnlnk", BSSSIMPLE, "iface", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(BSNETDEV, "dwnlnk", BSSRTPS, "dev", False)
+rule = connectors.ConnectionRule(BSNETDEV, "dwnlnk", BSSRTPS, "iface", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
 conn = connectors.Connector("uplnk", help = "Connector to a uplink scheduler",
         max = 1, min = 0)
-rule = connectors.ConnectionRule(BSNETDEV, "uplnk", USSIMPLE, "dev", False)
+rule = connectors.ConnectionRule(BSNETDEV, "uplnk", USSIMPLE, "iface", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(BSNETDEV, "uplnk", USRTPS, "dev", False)
+rule = connectors.ConnectionRule(BSNETDEV, "uplnk", USRTPS, "iface", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -1001,30 +1045,31 @@ box.add_attr(
         )
 
 ############
-box = MacAddressNetDeviceBox(TESTBED_ID, CSMANETDEV, help = "CSMA (carrier sense, multiple access) interface")
+box = MacAddressNetDeviceBox(TESTBED_ID, CSMANETDEV, IP4ADDRESS, "iface",
+        help = "CSMA (carrier sense, multiple access) interface")
 boxes.append(box)
 
 conn = connectors.Connector("queue", help = "Connector to a queueing discipline (mandatory)", 
         max = 1, min = 1)
-rule = connectors.ConnectionRule(CSMANETDEV, "queue", DROPTAILQUEUE, "dev", False)
+rule = connectors.ConnectionRule(CSMANETDEV, "queue", DROPTAILQUEUE, "iface", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
 conn = connectors.Connector("chan", help = "Connector to a CSMA channel", 
         max = 1, min = 1)
-rule = connectors.ConnectionRule(CSMANETDEV, "chan", CSMACHAN, "devs", False)
+rule = connectors.ConnectionRule(CSMANETDEV, "chan", CSMACHAN, "ifaces", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
 box.add_attr(
-        attributes.TimeAttribute(
+        attributes.BoolAttribute(
                 "SendEnable",
                 "Enable or disable the transmitter section of the device.",
                 default_value = True
             )
         )
 box.add_attr(
-        attributes.TimeAttribute(
+        attributes.BoolAttribute(
                 "ReceiveEnable",
                 "Enable or disable the receiver section of the device.",
                 default_value = True
@@ -1032,16 +1077,17 @@ box.add_attr(
         )
 
 ############
-box = TracesNetDeviceBox(TESTBED_ID, LOOPNETDEV, "Loopback network device model")
+box = TracesNetDeviceBox(TESTBED_ID, LOOPNETDEV, IP4ADDRESS, "iface",
+        help = "Loopback network device model")
 boxes.append(box)
 
 ############
-box = MacAddressNetDeviceBox(TESTBED_ID, EMUNETDEV, "")
+box = MacAddressNetDeviceBox(TESTBED_ID, EMUNETDEV, IP4ADDRESS, "iface")
 boxes.append(box)
 
 conn = connectors.Connector("queue", help = "Connector to a queueing discipline (mandatory)", 
         max = 1, min = 1)
-rule = connectors.ConnectionRule(EMUNETDEV, "queue", DROPTAILQUEUE, "dev", False)
+rule = connectors.ConnectionRule(EMUNETDEV, "queue", DROPTAILQUEUE, "iface", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -1054,12 +1100,13 @@ box.add_attr(
         )
 
 ############
-box = TracesNetDeviceBox(TESTBED_ID, BRIDGENETDEV, "bridge network device model")
+box = TracesNetDeviceBox(TESTBED_ID, BRIDGENETDEV, IP4ADDRESS, "iface",
+        help = "bridge network device model")
 boxes.append(box)
 
 conn = connectors.Connector("chan", help = "Connector to a %s" % BRIDGECHAN, 
         max = 1, min = 1)
-rule = connectors.ConnectionRule(BRIDGENETDEV, "chan", BRIDGECHAN, "devs", False)
+rule = connectors.ConnectionRule(BRIDGENETDEV, "chan", BRIDGECHAN, "ifaces", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -1089,28 +1136,29 @@ box.add_attr(
 
 
 ############
-box = NetDeviceBox(TESTBED_ID, WIFINETDEV, "wireless network device model")
+box = NetDeviceBox(TESTBED_ID, WIFINETDEV, IP4ADDRESS, "iface",
+        help = "wireless network device model")
 boxes.append(box)
 
 conn = connectors.Connector("mac", help = "Connector to a MAC wifi model", 
         max = 1, min = 1)
-rule = connectors.ConnectionRule(WIFINETDEV, "mac", APWIFIMAC, "dev", False)
+rule = connectors.ConnectionRule(WIFINETDEV, "mac", APWIFIMAC, "iface", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(WIFINETDEV, "mac", STAWIFIMAC, "dev", False)
+rule = connectors.ConnectionRule(WIFINETDEV, "mac", STAWIFIMAC, "iface", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
 conn = connectors.Connector("phy", help = "Connector to a PHY wifi model", 
         max = 1, min = 1)
-rule = connectors.ConnectionRule(WIFINETDEV, "phy", YANSWIFIPHY, "dev", False)
+rule = connectors.ConnectionRule(WIFINETDEV, "phy", YANSWIFIPHY, "iface", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
 conn = connectors.Connector("mngr", help = "Connector to a wifi manager", 
         max = 1, min = 1)
-rule = connectors.ConnectionRule(WIFINETDEV, "phy", APWIFIMAC, "dev", False)
+rule = connectors.ConnectionRule(WIFINETDEV, "phy", APWIFIMAC, "iface", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(WIFINETDEV, "phy", STAWIFIMAC, "dev", False)
+rule = connectors.ConnectionRule(WIFINETDEV, "phy", STAWIFIMAC, "iface", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -1146,9 +1194,9 @@ boxes.append(box)
 box = ChannelBox(TESTBED_ID, BRIDGECHAN, help = "bridge channel model")
 boxes.append(box)
 
-conn = connectors.Connector("devs", help = "Connector to %s" % BRIDGENETDEV, 
+conn = connectors.Connector("ifaces", help = "Connector to %s" % BRIDGENETDEV, 
         max = -1, min = 1)
-rule = connectors.ConnectionRule(BRIDGECHAN, "devs", BRIDGENETDEV, "chan", False)
+rule = connectors.ConnectionRule(BRIDGECHAN, "ifaces", BRIDGENETDEV, "chan", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -1178,9 +1226,9 @@ box.add_connector(conn)
 box = ChannelBox(TESTBED_ID, CSMACHAN, help = "CSMA channel model")
 boxes.append(box)
 
-conn = connectors.Connector("devs", help = "Connector to %s" % CSMANETDEV, 
+conn = connectors.Connector("ifaces", help = "Connector to %s" % CSMANETDEV, 
         max = -1, min = 1)
-rule = connectors.ConnectionRule(CSMACHAN, "devs", CSMANETDEV, "chan", False)
+rule = connectors.ConnectionRule(CSMACHAN, "ifaces", CSMANETDEV, "chan", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -1204,9 +1252,9 @@ box.add_attr(
 box = ChannelBox(TESTBED_ID, PTPCHAN, help = "Point to point channel model")
 boxes.append(box)
 
-conn = connectors.Connector("dev2", help = "Connector to exactly 2 %s" % PTPNETDEV, 
+conn = connectors.Connector("ifaces", help = "Connector to exactly 2 %s" % PTPNETDEV, 
         max = 2, min = 2)
-rule = connectors.ConnectionRule(PTPCHAN, "dev2", PTPNETDEV, "chan", False)
+rule = connectors.ConnectionRule(PTPCHAN, "ifaces", PTPNETDEV, "chan", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -1222,11 +1270,11 @@ box.add_attr(
 box = ChannelBox(TESTBED_ID, SIMOFDMWIMAXCHAN, help = "Simple OFDM Wimax channel model")
 boxes.append(box)
 
-conn = connectors.Connector("devs", help = "Connector to %s or  %s " % (SSNETDEV, BSNETDEV), 
+conn = connectors.Connector("ifaces", help = "Connector to %s or  %s " % (SSNETDEV, BSNETDEV), 
         max = -1, min = 1)
-rule = connectors.ConnectionRule(SIMOFDMWIMAXCHAN, "devs", SSNETDEV, "chan", False)
+rule = connectors.ConnectionRule(SIMOFDMWIMAXCHAN, "ifaces", SSNETDEV, "chan", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(SIMOFDMWIMAXCHAN, "devs", BSNETDEV, "chan", False)
+rule = connectors.ConnectionRule(SIMOFDMWIMAXCHAN, "ifaces", BSNETDEV, "chan", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -1244,9 +1292,9 @@ class RateControlManagerBox(Box):
         self.add_container_info(TESTBED_ID, tags.CONTROLLER)
         self.add_container_info(TESTBED_ID, tags.CONTAINER)
 
-        conn = connectors.Connector("dev", help = "Connector to exactly one network interface (mandatory)",
+        conn = connectors.Connector("iface", help = "Connector to exactly one network interface (mandatory)",
                 max = 1, min = 1)
-        rule = connectors.ConnectionRule(self._box_id, "dev", WIFINETDEV, "mngr", False)
+        rule = connectors.ConnectionRule(self._box_id, "iface", WIFINETDEV, "mngr", False)
         conn.add_connection_rule(rule)
         self.add_connector(conn)
 
@@ -1811,6 +1859,8 @@ class MobilityModelBox(Box):
                 max = 1, min = 1)
         rule = connectors.ConnectionRule(self._box_id, "node", NODE, "mob", False)
         conn.add_connection_rule(rule)
+        rule = connectors.ConnectionRule(self._box_id, "node", PROTOCOLNODE, "mob", False)
+        conn.add_connection_rule(rule)
         self.add_connector(conn)
 
         self.add_attr(
@@ -1831,15 +1881,15 @@ class MobilityModelBox(Box):
 
 
 ############
-box = MobilityModelBox(TESTBED_ID, CONSTVELMOB, "Constant velocity mobility model")
+box = MobilityModelBox(TESTBED_ID, CONSTVELMOB, help = "Constant velocity mobility model")
 boxes.append(box)
 
 ############
-box = MobilityModelBox(TESTBED_ID, CONSTACCMOB, "Constant acceleration mobility model")
+box = MobilityModelBox(TESTBED_ID, CONSTACCMOB, help = "Constant acceleration mobility model")
 boxes.append(box)
 
 ############
-box = MobilityModelBox(TESTBED_ID, WAYPOINTMOB, "Waypoint-based mobility model")
+box = MobilityModelBox(TESTBED_ID, WAYPOINTMOB, help = "Waypoint-based mobility model")
 boxes.append(box)
 
 box.add_attr(
@@ -1861,11 +1911,11 @@ box.add_attr(
        )
 
 ############
-box = MobilityModelBox(TESTBED_ID, HIERARCHMOB, "Hieraarchical mobility model")
+box = MobilityModelBox(TESTBED_ID, HIERARCHMOB, help =  "Hierarchical mobility model")
 boxes.append(box)
 
 ############
-box = MobilityModelBox(TESTBED_ID, RANDWAYMOB, "Random waypoint mobility model")
+box = MobilityModelBox(TESTBED_ID, RANDWAYMOB, help = "Random waypoint mobility model")
 boxes.append(box)
 
 box.add_attr(
@@ -1885,11 +1935,11 @@ box.add_attr(
        )
 
 ############
-box = MobilityModelBox(TESTBED_ID, CONSTPOSMOB, "Constant position mobility model")
+box = MobilityModelBox(TESTBED_ID, CONSTPOSMOB, help = "Constant position mobility model")
 boxes.append(box)
 
 ############
-box = MobilityModelBox(TESTBED_ID, RANDWALK2DMOB, "Random walk 2D mobility model")
+box = MobilityModelBox(TESTBED_ID, RANDWALK2DMOB, help = "Random walk 2D mobility model")
 boxes.append(box)
 
 box.add_attr(
@@ -1943,7 +1993,7 @@ box.add_attr(
 
 
 ############
-box = MobilityModelBox(TESTBED_ID, RANDDIR2DMOB, "Random direction 2D mobility model")
+box = MobilityModelBox(TESTBED_ID, RANDDIR2DMOB, help = "Random direction 2D mobility model")
 boxes.append(box)
 
 box.add_attr(
@@ -1971,7 +2021,7 @@ box.add_attr(
        )
 
 ############
-box = MobilityModelBox(TESTBED_ID, GAUSSMARKMOB, "Gaussian Markov mobility model")
+box = MobilityModelBox(TESTBED_ID, GAUSSMARKMOB, help = "Gaussian Markov mobility model")
 boxes.append(box)
 
 box.add_attr(
@@ -2049,7 +2099,7 @@ box.add_attr(
 
 ############ DELAY MODELS #############
 
-box = Box(TESTBED_ID, CONSTSPPRODELAY, "Speed propagation delay model")
+box = Box(TESTBED_ID, CONSTSPPRODELAY, help = "Speed propagation delay model")
 boxes.append(box)
 
 conn = connectors.Connector("chan", help = "Connector to a wifi channel ",
@@ -2101,7 +2151,7 @@ class LossModelBox(Box):
 
 
 ############
-box = LossModelBox(TESTBED_ID, LOGDISTPROPLOSS, "Logaritmic distance propagation loss model")
+box = LossModelBox(TESTBED_ID, LOGDISTPROPLOSS, help = "Logaritmic distance propagation loss model")
 boxes.append(box)
 
 box.add_attr(
@@ -2129,7 +2179,7 @@ box.add_attr(
        )
 
 ############
-box = LossModelBox(TESTBED_ID, NAKAPROPLOSS, "Nakagami propagation loss model")
+box = LossModelBox(TESTBED_ID, NAKAPROPLOSS, help = "Nakagami propagation loss model")
 boxes.append(box)
 
 box.add_attr(
@@ -2174,7 +2224,7 @@ box.add_attr(
 
 
 ############
-box = LossModelBox(TESTBED_ID, TWORAYGRPOPLOSS, "Two ray ground propagation loss model")
+box = LossModelBox(TESTBED_ID, TWORAYGRPOPLOSS, help = "Two ray ground propagation loss model")
 boxes.append(box)
 
 box.add_attr(
@@ -2211,7 +2261,7 @@ box.add_attr(
 
 
 ############
-box = LossModelBox(TESTBED_ID, FRIISPROPLOSS, "Friis propagacion loss model")
+box = LossModelBox(TESTBED_ID, FRIISPROPLOSS, help = "Friis propagacion loss model")
 boxes.append(box)
 
 box.add_attr(
@@ -2252,9 +2302,9 @@ class WifiMacModelBox(Box):
         self.add_container_info(TESTBED_ID, tags.CONTROLLER)
         self.add_container_info(TESTBED_ID, tags.CONTAINER)
 
-        conn = connectors.Connector("dev", help = "Connector to a %s" % WIFINETDEV, 
+        conn = connectors.Connector("iface", help = "Connector to a %s" % WIFINETDEV, 
                 max = 1, min = 1)
-        rule = connectors.ConnectionRule(self._box_id, "dev", WIFINETDEV, "mac", False)
+        rule = connectors.ConnectionRule(self._box_id, "iface", WIFINETDEV, "mac", False)
         conn.add_connection_rule(rule)
         self.add_connector(conn)
 
@@ -2418,9 +2468,9 @@ box.add_tag(tags.PHY_MODEL)
 box.add_container_info(TESTBED_ID, tags.CONTROLLER)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
-conn = connectors.Connector("dev", help = "Connector to a %s" % WIFINETDEV, 
+conn = connectors.Connector("iface", help = "Connector to a %s" % WIFINETDEV, 
         max = 1, min = 1)
-rule = connectors.ConnectionRule(YANSWIFIPHY, "dev", WIFINETDEV, "phy", False)
+rule = connectors.ConnectionRule(YANSWIFIPHY, "iface", WIFINETDEV, "phy", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -2439,9 +2489,9 @@ conn.add_connection_rule(rule)
 box.add_connector(conn)
 
 conn = connectors.Connector("traces", "Connector to ns3 traces", max = -1, min = 0)
-rule = connectors.ConnectionRule(YANSWIFIPHY, "traces", PCAPTRACE, "dev", False)
+rule = connectors.ConnectionRule(YANSWIFIPHY, "traces", PCAPTRACE, "iface", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(YANSWIFIPHY, "traces", ASCIITRACE, "dev", False)
+rule = connectors.ConnectionRule(YANSWIFIPHY, "traces", ASCIITRACE, "iface", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -2558,11 +2608,11 @@ box.add_tag(tags.PHY_MODEL)
 box.add_container_info(TESTBED_ID, tags.CONTROLLER)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
-conn = connectors.Connector("dev", help = "Connector to a wimax network device", 
+conn = connectors.Connector("iface", help = "Connector to a wimax network device", 
         max = 1, min = 1)
-rule = connectors.ConnectionRule(SIMOFDMWIMAXPHY, "dev", SSNETDEV, "phy", False)
+rule = connectors.ConnectionRule(SIMOFDMWIMAXPHY, "iface", SSNETDEV, "phy", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(SIMOFDMWIMAXPHY, "dev", BSNETDEV, "phy", False)
+rule = connectors.ConnectionRule(SIMOFDMWIMAXPHY, "iface", BSNETDEV, "phy", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -2577,13 +2627,13 @@ box.add_tag(tags.QUEUE)
 box.add_container_info(TESTBED_ID, tags.CONTROLLER)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
-conn = connectors.Connector("dev", help = "Connector to a ns3 network device", 
+conn = connectors.Connector("iface", help = "Connector to a ns3 network device", 
         max = 1, min = 1)
-rule = connectors.ConnectionRule(DROPTAILQUEUE, "dev", EMUNETDEV, "queue", False)
+rule = connectors.ConnectionRule(DROPTAILQUEUE, "iface", EMUNETDEV, "queue", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(DROPTAILQUEUE, "dev", CSMANETDEV, "queue", False)
+rule = connectors.ConnectionRule(DROPTAILQUEUE, "iface", CSMANETDEV, "queue", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(DROPTAILQUEUE, "dev", PTPNETDEV, "queue", False)
+rule = connectors.ConnectionRule(DROPTAILQUEUE, "iface", PTPNETDEV, "queue", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -2614,11 +2664,11 @@ box.add_tag(tags.QUEUE)
 box.add_container_info(TESTBED_ID, tags.CONTROLLER)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
-conn = connectors.Connector("dev", help = "Connector to a wifi MAC model", 
+conn = connectors.Connector("iface", help = "Connector to a wifi MAC model", 
         max = 1, min = 1)
-rule = connectors.ConnectionRule(WIFIMACQUEUE, "dev", APWIFIMAC, "queue", False)
+rule = connectors.ConnectionRule(WIFIMACQUEUE, "iface", APWIFIMAC, "queue", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(WIFIMACQUEUE, "dev", STAWIFIMAC, "queue", False)
+rule = connectors.ConnectionRule(WIFIMACQUEUE, "iface", STAWIFIMAC, "queue", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -2680,13 +2730,13 @@ class ErrorModelBox(Box):
         self.add_container_info(TESTBED_ID, tags.CONTROLLER)
         self.add_container_info(TESTBED_ID, tags.CONTAINER)
 
-        conn = connectors.Connector("dev", help = "Connector to a ns3 network device", 
+        conn = connectors.Connector("iface", help = "Connector to a ns3 network device", 
                 max = 1, min = 1)
-        rule = connectors.ConnectionRule(self._box_id, "dev", CSMANETDEV, "err", False)
+        rule = connectors.ConnectionRule(self._box_id, "iface", CSMANETDEV, "err", False)
         conn.add_connection_rule(rule)
-        rule = connectors.ConnectionRule(self._box_id, "dev", EMUNETDEV, "err", False)
+        rule = connectors.ConnectionRule(self._box_id, "iface", EMUNETDEV, "err", False)
         conn.add_connection_rule(rule)
-        rule = connectors.ConnectionRule(self._box_id, "dev", PTPNETDEV, "err", False)
+        rule = connectors.ConnectionRule(self._box_id, "iface", PTPNETDEV, "err", False)
         conn.add_connection_rule(rule)
         self.add_connector(conn)
 
@@ -2748,9 +2798,9 @@ class DownlinkSchedulerBox(Box):
         self.add_container_info(TESTBED_ID, tags.CONTROLLER)
         self.add_container_info(TESTBED_ID, tags.CONTAINER)
 
-        conn = connectors.Connector("dev", help ="Connector to a downlink scheduler",
+        conn = connectors.Connector("iface", help ="Connector to a downlink scheduler",
                 max = 1, min = 1)
-        rule = connectors.ConnectionRule(self._box_id, "dev", BSNETDEV, "dwnlnk", False)
+        rule = connectors.ConnectionRule(self._box_id, "iface", BSNETDEV, "dwnlnk", False)
         conn.add_connection_rule(rule)
         self.add_connector(conn)
 
@@ -2775,9 +2825,9 @@ class UplinkSchedulerBox(Box):
         self.add_container_info(TESTBED_ID, tags.CONTROLLER)
         self.add_container_info(TESTBED_ID, tags.CONTAINER)
 
-        conn = connectors.Connector("dev", help = "Connector to a uplink scheduler",
+        conn = connectors.Connector("iface", help = "Connector to a uplink scheduler",
                 max = 1, min = 1)
-        rule = connectors.ConnectionRule(self._box_id, "dev", BSNETDEV, "uplnk", False)
+        rule = connectors.ConnectionRule(self._box_id, "iface", BSNETDEV, "uplnk", False)
         conn.add_connection_rule(rule)
         self.add_connector(conn)
 
@@ -2925,9 +2975,9 @@ boxes.append(box)
 box.add_container_info(TESTBED_ID, tags.CONTROLLER)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
-conn = connectors.Connector("dev", help = "Connector to a %s" % SSNETDEV, 
+conn = connectors.Connector("iface", help = "Connector to a %s" % SSNETDEV, 
         max = 1, min = 1)
-rule = connectors.ConnectionRule(SERVICEFLOW, "dev", SSNETDEV, "sflow", False)
+rule = connectors.ConnectionRule(SERVICEFLOW, "iface", SSNETDEV, "sflow", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -2992,22 +3042,22 @@ box.add_tag(tags.TRACE)
 box.add_container_info(TESTBED_ID, tags.CONTROLLER)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
-conn = connectors.Connector("dev", "Connector to a ns3 network device", max = 1, min = 1)
-rule = connectors.ConnectionRule(PCAPTRACE, "dev", CSMANETDEV, "traces", False)
+conn = connectors.Connector("iface", "Connector to a ns3 network device", max = 1, min = 1)
+rule = connectors.ConnectionRule(PCAPTRACE, "iface", CSMANETDEV, "traces", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(PCAPTRACE, "dev", FDNETDEV, "traces", False)
+rule = connectors.ConnectionRule(PCAPTRACE, "iface", FDNETDEV, "traces", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(PCAPTRACE, "dev", TAPBRIDGE, "traces", False)
+rule = connectors.ConnectionRule(PCAPTRACE, "iface", TAPBRIDGE, "traces", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(PCAPTRACE, "dev", EMUNETDEV, "traces", False)
+rule = connectors.ConnectionRule(PCAPTRACE, "iface", EMUNETDEV, "traces", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(PCAPTRACE, "dev", PTPNETDEV, "traces", False)
+rule = connectors.ConnectionRule(PCAPTRACE, "iface", PTPNETDEV, "traces", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(PCAPTRACE, "dev", LOOPNETDEV, "traces", False)
+rule = connectors.ConnectionRule(PCAPTRACE, "iface", LOOPNETDEV, "traces", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(PCAPTRACE, "dev", BRIDGENETDEV, "traces", False)
+rule = connectors.ConnectionRule(PCAPTRACE, "iface", BRIDGENETDEV, "traces", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(PCAPTRACE, "dev", YANSWIFIPHY, "traces", False)
+rule = connectors.ConnectionRule(PCAPTRACE, "iface", YANSWIFIPHY, "traces", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
@@ -3020,54 +3070,69 @@ box.add_tag(tags.TRACE)
 box.add_container_info(TESTBED_ID, tags.CONTROLLER)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
-conn = connectors.Connector("dev", "Connector to a ns3 network device", max = 1, min = 1)
-rule = connectors.ConnectionRule(ASCIITRACE, "dev", CSMANETDEV, "traces", False)
+conn = connectors.Connector("iface", "Connector to a ns3 network device", max = 1, min = 1)
+rule = connectors.ConnectionRule(ASCIITRACE, "iface", CSMANETDEV, "traces", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(ASCIITRACE, "dev", FDNETDEV, "traces", False)
+rule = connectors.ConnectionRule(ASCIITRACE, "iface", FDNETDEV, "traces", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(ASCIITRACE, "dev", TAPBRIDGE, "traces", False)
+rule = connectors.ConnectionRule(ASCIITRACE, "iface", TAPBRIDGE, "traces", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(ASCIITRACE, "dev", EMUNETDEV, "traces", False)
+rule = connectors.ConnectionRule(ASCIITRACE, "iface", EMUNETDEV, "traces", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(ASCIITRACE, "dev", PTPNETDEV, "traces", False)
+rule = connectors.ConnectionRule(ASCIITRACE, "iface", PTPNETDEV, "traces", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(ASCIITRACE, "dev", LOOPNETDEV, "traces", False)
+rule = connectors.ConnectionRule(ASCIITRACE, "iface", LOOPNETDEV, "traces", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(ASCIITRACE, "dev", BRIDGENETDEV, "traces", False)
+rule = connectors.ConnectionRule(ASCIITRACE, "iface", BRIDGENETDEV, "traces", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(ASCIITRACE, "dev", YANSWIFIPHY, "traces", False)
+rule = connectors.ConnectionRule(ASCIITRACE, "iface", YANSWIFIPHY, "traces", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
 ############ ADDRESS #############
 
-box = IPAddressBox(TESTBED_ID, IPV4ADDRESS, help = "IP v4 address box.")
+box = IPAddressBox(TESTBED_ID, IP4ADDRESS, help = "IP v4 address box.")
 boxes.append(box)
 
 box.add_container_info(TESTBED_ID, tags.CONTROLLER)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
-conn = connectors.Connector("dev", "Connector from address to interface", max = 1, min = 1)
-rule = connectors.ConnectionRule(IPV4ADDRESS, "dev", PTPNETDEV, "addrs", False)
+conn = connectors.Connector("iface", "Connector from address to interface", max = 1, min = 1)
+rule = connectors.ConnectionRule(IP4ADDRESS, "iface", PTPNETDEV, "addrs", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(IPV4ADDRESS, "dev", CSMANETDEV, "addrs", False)
+rule = connectors.ConnectionRule(IP4ADDRESS, "iface", CSMANETDEV, "addrs", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(IPV4ADDRESS, "dev", EMUNETDEV, "addrs", False)
+rule = connectors.ConnectionRule(IP4ADDRESS, "iface", EMUNETDEV, "addrs", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(IPV4ADDRESS, "dev", LOOPNETDEV, "addrs", False)
+rule = connectors.ConnectionRule(IP4ADDRESS, "iface", LOOPNETDEV, "addrs", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(IPV4ADDRESS, "dev", FDNETDEV, "addrs", False)
+rule = connectors.ConnectionRule(IP4ADDRESS, "iface", FDNETDEV, "addrs", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(IPV4ADDRESS, "dev", TAPBRIDGE, "addrs", False)
+rule = connectors.ConnectionRule(IP4ADDRESS, "iface", TAPBRIDGE, "addrs", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(IPV4ADDRESS, "dev", WIFINETDEV, "addrs", False)
+rule = connectors.ConnectionRule(IP4ADDRESS, "iface", WIFINETDEV, "addrs", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(IPV4ADDRESS, "dev", SSNETDEV, "addrs", False)
+rule = connectors.ConnectionRule(IP4ADDRESS, "iface", SSNETDEV, "addrs", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(IPV4ADDRESS, "dev", BSNETDEV, "addrs", False)
+rule = connectors.ConnectionRule(IP4ADDRESS, "iface", BSNETDEV, "addrs", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(IPV4ADDRESS, "dev", BRIDGENETDEV, "addrs", False)
+rule = connectors.ConnectionRule(IP4ADDRESS, "iface", BRIDGENETDEV, "addrs", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
+
+############ ROUTE ENTRY #############
+
+box = RouteEntryBox(TESTBED_ID, ROUTE, help = "Route entry box.")
+boxes.append(box)
+
+conn = connectors.Connector("node", "Connector to %s" % NODE, max = 1, min = 1)
+rule = connectors.ConnectionRule(ROUTE, "node", NODE, "routes", False)
+conn.add_connection_rule(rule)
+rule = connectors.ConnectionRule(ROUTE, "node", PROTOCOLNODE, "routes", False)
+conn.add_connection_rule(rule)
+box.add_connector(conn)
+
+box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 

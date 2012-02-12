@@ -1,10 +1,11 @@
 
-from nepi.testbeds.planetlab.attributes import *
+from attributes import *
 
 from nepi.util.constants import TESTBED_ENVIRONMENT_SETUP 
 from nepi.design import attributes, connectors, tags
-from nepi.design.boxes import TestbedBox, Box, IPAddressBox, ContainerBox, TunnelBox, RouteEntryBox
-
+from nepi.design.boxes import TestbedBox, Box, IPAddressBox, IPAddressCapableBox, \
+        RouteEntryBox, RouteEntryCapableBox, ContainerBox, TunnelBox
+        
 TESTBED_ID = "planetlab"
 
 SLICE = "pl::Slice"
@@ -181,22 +182,18 @@ box.add_container_info(TESTBED_ID, tags.CONTROLLER)
 
 ############ ADDRESS #############
 
-box = IPAddressBox(TESTBED_ID, IP4ADRESS, help = "IP Address box.")
+box = IPAddressBox(TESTBED_ID, IP4ADDRESS, help = "IP Address box.")
 boxes.append(box)
 
 conn = connectors.Connector("iface", "Connector to PlanetLab interface", max = 1, min = 1)
-rule = connectors.ConnectionRule(IP4ADDRESS, "iface", NODEIFACE, "addrs", False)
-conn.add_connection_rule(rule)
 rule = connectors.ConnectionRule(IP4ADDRESS, "iface", TAPIFACE, "addrs", False)
 conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(IP44ADDRESS, "iface", TUNIFACE, "addrs", False)
+rule = connectors.ConnectionRule(IP4ADDRESS, "iface", TUNIFACE, "addrs", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
 box.add_container_info(TESTBED_ID, tags.CONTROLLER)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
-
-box.add_tag(tags.ADDRESS)
 
 
 ############ ROUTE ENTRY #############
@@ -205,21 +202,18 @@ box = RouteEntryBox(TESTBED_ID, ROUTE, help = "Route entry box.")
 boxes.append(box)
 
 conn = connectors.Connector("node", "Connector to %s" % NODE, max = 1, min = 1)
-rule = connectors.ConnectionRule(ROUTE, "node", TAPIFACE, "routes", False)
-conn.add_connection_rule(rule)
-rule = connectors.ConnectionRule(ROUTE, "node", TUNIFACE, "routes", False)
+rule = connectors.ConnectionRule(ROUTE, "node", NODE, "routes", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
 box.add_container_info(TESTBED_ID, tags.CONTROLLER)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
-box.add_tag(tags.ADDRESS)
-
 
 ############ NODE #############
 
-box = Box(TESTBED_ID, NODE, help = "Virtualized Node (V-Server style)")
+box = RouteEntryCapableBox(TESTBED_ID, NODE, ROUTE, "node", 
+        help = "Virtualized Node (V-Server style)")
 boxes.append(box)
 
 conn = connectors.Connector("ifaces", "Connector PlanetLab network interfaces", max = -1, min = 1)
@@ -393,11 +387,11 @@ box.add_attr(
 
 ############ INTERFACES #############
 
-class TapBox(TunnelBox):
-    def __init__(self, testbed_id, box_id, provider = None, guid = None, 
-            help = None):
-        super(TapBox, self).__init__(testbed_id, box_id, provider,
-            guid, help)
+class TapBox(IPAddressCapableBox):
+    def __init__(self, testbed_id, box_id, address_box_id, address_connector,
+            provider = None, guid = None, help = None):
+        super(TapBox, self).__init__(testbed_id, box_id, address_box_id, 
+                address_connector, provider, guid, help)
 
         self.add_tag(tags.INTERFACE)
 
@@ -408,6 +402,7 @@ class TapBox(TunnelBox):
         rule = connectors.ConnectionRule(self._box_id, "node", NODE, "ifaces", False)
         conn.add_connection_rule(rule)
         self.add_connector(conn)
+
 
         conn = connectors.Connector("gre", "IP or Ethernet tunneling using the GRE protocol", max = 1, min = 0)
         rule = connectors.ConnectionRule(self._box_id, "gre", TUNIFACE, "gre", True)
@@ -420,6 +415,76 @@ class TapBox(TunnelBox):
         rule = connectors.ConnectionRule(self._box_id, "traces", PCAPTRACE, "iface", False)
         conn.add_connection_rule(rule)
         self.add_connector(conn)
+
+        conn = connectors.Connector("->fd", help = "File descriptor receptor for devices with file descriptors",
+                max = 1, min = 0)
+        rule = connectors.ConnectionRule(self.box_id, "->fd", None, "->fd", False)
+        conn.add_connection_rule(rule)
+        self.add_connector(conn)
+
+        conn = connectors.Connector("tcp", help = "ip-ip tunneling over TCP link", 
+                max = 1, min = 0)
+        rule = connectors.ConnectionRule(self.box_id, "tcp", None, "tcp", True)
+        conn.add_connection_rule(rule)
+        self.add_connector(conn)
+
+        conn = connectors.Connector("udp", help = "ip-ip tunneling over UDP datagrams",
+                max = 1, min = 0)
+        rule = connectors.ConnectionRule(self.box_id, "tcp", None, "tcp", True)
+        conn.add_connection_rule(rule)
+        self.add_connector(conn)
+
+
+        self.add_attr(
+                attributes.StringAttribute(
+                    "tunProto", 
+                    "TUNneling protocol used",
+                    flags = attributes.AttributeFlags.ExecReadOnly | \
+                            attributes.AttributeFlags.ExecImmutable | \
+                            attributes.AttributeFlags.Metadata
+                    )
+                )
+        self.add_attr(
+                attributes.StringAttribute(
+                    "tunKey",
+                    "Randomly selected TUNneling protocol cryptographic key. "
+                     "Endpoints must agree to use the minimum (in lexicographic order) "
+                     "of both the remote and local sides.",
+                    flags = attributes.AttributeFlags.ExecReadOnly | \
+                            attributes.AttributeFlags.ExecImmutable | \
+                            attributes.AttributeFlags.Metadata
+                    )
+                )
+        self.add_attr(
+                attributes.StringAttribute(
+                    "tunAddr",
+                    "Address (IP, unix socket, whatever) of the tunnel endpoint",
+                    flags = attributes.AttributeFlags.ExecReadOnly | \
+                            attributes.AttributeFlags.ExecImmutable | \
+                            attributes.AttributeFlags.Metadata
+                    )
+                )
+        self.add_attr(
+                attributes.IntegerAttribute(
+                    "tunPort",
+                    "IP port of the tunnel endpoint",
+                    flags = attributes.AttributeFlags.ExecReadOnly | \
+                            attributes.AttributeFlags.ExecImmutable | \
+                            attributes.AttributeFlags.Metadata
+                    )
+                )
+        self.add_attr(
+                attributes.EnumAttribute(
+                    "tunCipher",
+                    "Cryptographic cipher used for tunnelling",
+                    allowed = ["AES", "Blowfish", "DES3", "DES", "PLAIN"],
+                    default_value = "AES",
+                    flags = attributes.AttributeFlags.ExecReadOnly | \
+                            attributes.AttributeFlags.ExecImmutable | \
+                            attributes.AttributeFlags.Metadata
+                    )
+                )
+
 
         self.add_attr(
             attributes.BoolAttribute(
@@ -497,7 +562,7 @@ class TapBox(TunnelBox):
 
 
 #########
-box = Box(TESTBED_ID, NODEIFACE, 
+box = Box(TESTBED_ID, NODEIFACE,        
         help = "External network interface - they cannot be brought up or down, and they MUST be connected to the internet.")
 boxes.append(box)
 
@@ -521,13 +586,14 @@ rule = connectors.ConnectionRule(NODEIFACE, "traces", PCAPTRACE, "iface", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
-
 #######
-box = TapBox(TESTBED_ID, TUNIFACE, help = "Virtual TUN network interface (layer 3)")
+box = TapBox(TESTBED_ID, TUNIFACE, IP4ADDRESS, "iface", 
+        help = "Virtual TUN network interface (layer 3)")
 boxes.append(box)
 
 #######
-box = TapBox(TESTBED_ID, TAPIFACE, help = "Virtual TAP network interface (layer 2)")
+box = TapBox(TESTBED_ID, TAPIFACE, IP4ADDRESS, "iface", 
+        help = "Virtual TAP network interface (layer 2)")
 boxes.append(box)
 
 

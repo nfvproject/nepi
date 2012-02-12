@@ -417,7 +417,8 @@ class IPAddressCapableBox(Box):
 
         self.add_tag(tags.ADDRESSABLE)
 
-        conn = connectors.Connector("addrs", "Connector to address", max = -1, min = 0)
+        conn = connectors.Connector("addrs", "Connector to address", max = -1, min = 0,
+                hidden = True)
         rule = connectors.ConnectionRule(self._box_id, "addrs", self._address_box_id, 
                 self._address_connector, False)
         conn.add_connection_rule(rule)
@@ -504,7 +505,8 @@ class RouteEntryCapableBox(Box):
 
         self.add_tag(tags.ROUTABLE)
 
-        conn = connectors.Connector("routes", "Connector to routes", max = -1, min = 0)
+        conn = connectors.Connector("routes", "Connector to routes", max = -1, min = 0, 
+                hidden = True)
         rule = connectors.ConnectionRule(self._box_id, "routes", self._routeentry_box_id, 
                 self._routeentry_connector, False)
         conn.add_connection_rule(rule)

@@ -94,7 +94,7 @@ class ConnectorsMap(object):
 
 
 class Connector(object):
-    def __init__(self, name, help, max = -1, min = 0):
+    def __init__(self, name, help, max = -1, min = 0, hidden = False):
         super(Connector, self).__init__()
         if max == -1:
             max = sys.maxint
@@ -113,6 +113,8 @@ class Connector(object):
         self._name = name
         # help -- help text
         self._help = help
+        # visual information
+        self.hidden = hidden
         # connection rules
         self._connection_rules = list()
 
@@ -251,10 +253,12 @@ class ConnectionRule(object):
 
     def can_connect(self, box, connector_name, other_box, other_connector_name):
         if not box.controller:
-             self._logger.error("No controller asociated to box %d, can not performe full validation.", box.guid)
+            self._logger.error("No controller asociated to box %s, can not performe full validation.", 
+                    str(box.guid) if box.guid else "Unknown")
 
         if not other_box.controller:
-            self._logger.error("No controller asociated to box %d, can not perform full validation.", other_box.guid)
+            self._logger.error("No controller asociated to box %s, can not perform full validation.", 
+                    str(other_box.guid) if other_box.guid else "Unknown")
 
         if (self.can_cross_controllers or not box.controller or not other_box.controller or box.controller == other_box.controller) and \
                 (not self.box_id or self.box_id == box.box_id) and \
