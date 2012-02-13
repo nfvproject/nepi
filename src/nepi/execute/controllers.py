@@ -2,6 +2,7 @@
 import datetime
 import itertools
 import heapq
+import re
 import threading
 import time
 import logging
@@ -24,26 +25,55 @@ class EventStatus:
     SUCCESS = 0
     FAIL = 1
     RETRY = 2
+    PENDING = 3
 
 _strf = "%Y%m%d%H%M%S%f"
+_reabs = re.compile("^\d{20}$")
+_rerel = re.compile("^(\d+)(h|m|s|ms|us)$")
 
 def strfnow():
     return datetime.datetime.now().strftime(_strf)
 
 def strfdiff(str1, str2):
-    d1 = datetime.strptime(str1, _strf)
-    d2 = datetime.strptime(str2, _strf)
+    d1 = datetime.datetime.strptime(str1, _strf)
+    d2 = datetime.datetime.strptime(str2, _strf)
 
     # convert to unix timestamp
     ds1 = time.mktime(d1.timetuple())
     ds2 = time.mktime(d2.timetuple())
+   
+    return ds1 - ds2
 
-    return ds2-ds1
+def strfvalid(date):
+    if not date:
+        return strfnow()
+    if _reabs.match(date):
+        return date
+    m = _rerel.match(date)
+    if m:
+        time = int(m.groups()[0])
+        units = m.groups()[1]
+        if units == 'h':
+            delta = datetime.timedelta(hours = time) 
+        elif units == 'm':
+            delta = datetime.timedelta(minutes = time) 
+        elif units == 's':
+            delta = datetime.timedelta(seconds = time) 
+        elif units == 'ms':
+            delta = datetime.timedelta(microseconds = (time*1000)) 
+        else:
+            delta = datetime.timedelta(microseconds = time) 
+        now = datetime.datetime.now()
+        d = now + delta
+        return d.strftime(_strf)
+    return None
 
 class Event(object):
     def __init__(self, callback, args):
         self._callback = callback
         self._args = args
+        self.status = EventStatus.PENDING
+        self.result = None
 
     @property
     def callback(self):
@@ -57,7 +87,7 @@ class HeapScheduler(object):
     def __init__(self):
         self._events = list() 
         self._event_idx = dict()
-        self._evid = itertools.count()
+        self._eid = itertools.count()
         self._empty = True
 
     @property
@@ -65,16 +95,23 @@ class HeapScheduler(object):
         return self._empty
 
     def schedule(self, event, date = None):
+        # validate date
+        date = strfvalid(date)
         if not date:
-            date = strfnow() 
+            return (None, None, None)
+
+        # generate event id
+        eid = next(self._eid)
+        entry = (date, eid, event)
+
         # re-schedule event
         if event in self._event_idx:
             self.remove(event)
-        evid = next(self._evid)
-        entry = [date, evid, event]
+
         self._event_idx[event] = entry
         heapq.heappush(self._events, entry)
         self._empty = False
+        return entry
 
     def remove(self, event):
         try:
@@ -87,15 +124,15 @@ class HeapScheduler(object):
     def next(self):
         while self._events:
             try:
-               date, evid, event = heapq.heappop(self._events)
+               date, eid, event = heapq.heappop(self._events)
                if event:
                   del self._event_idx[event]
-                  return (event, date)
+                  return (date, eid, event)
             except IndexError:
                 # heap empty
                 pass
         self._empty = True
-        return (None, None)
+        return (None, None, None)
 
 class Resource(object):
     def __init__(self, guid, box_id, parent_guid, testbed_guid):
@@ -122,10 +159,14 @@ class ExperimentController(object):
         # scheduler
         self._scheduler = HeapScheduler()
         # event processing thread
-        self._thread = threading.Thread(target=self._process_events)
-        self._cond = threading.Condition()
+        self._proc_thread = threading.Thread(target=self._process_events)
+        self._proc_cond = threading.Condition()
         # stop event processing
         self._stop = False
+
+        # pending events
+        self._pend_events = dict()
+        self._pend_lock = threading.Lock()
 
         # Logging
         self._logger = logging.getLogger("nepi.execute.ec")
@@ -146,6 +187,32 @@ class ExperimentController(object):
     def stop_time(self):
         return self._stopped_time
 
+    def poll(self, eid):
+        return self._poll_pending_event(eid)
+
+    def result(self, eid):
+        return self._result_pending_event(eid)
+
+    def cancel(self, eid):
+        return self._remove_pending_event(eid)
+
+    def run(self, mods = None):
+        self._start_time = strfnow()
+        self._proc_thread.start()
+        # process XML experiment description, and schedule events
+        self._process_xml(mods)
+
+    def shutdown(self):
+        self._stop = True
+        # TODO: SHUTDOWN ALL TESTBEDS !!
+        self._proc_cond.acquire()
+        self._proc_cond.notify()
+        self._proc_cond.release()
+        self._proc_thread.join()
+
+    def recover(self):
+        pass
+
     def create(self, guid, box_id, parent_guid, testbed_guid, attributes,
             date = None, condition = None):
         # create new resource
@@ -155,8 +222,7 @@ class ExperimentController(object):
         # schedule create
         callback = self._create
         args = [guid, box_id, parent_guid, testbed_guid, attributes]
-        event = Event(callback, args)
-        self._schedule_event(event, date)
+        return self._schedule_event(callback, args, date)
 
     def tc_create(self, guid, box_id, parent_guid, testbed_guid, attributes,
             date = None, condition = None):
@@ -167,8 +233,7 @@ class ExperimentController(object):
         # schedule create
         callback = self._tc_create 
         args = [guid, box_id, parent_guid, testbed_guid, attributes]
-        event = Event(callback, args)
-        self._schedule_event(event, date)
+        return self._schedule_event(callback, args, date)
 
     def connect(self, guid, connector, other_guid, other_connector, 
             date = None, condition = None):
@@ -189,41 +254,31 @@ class ExperimentController(object):
         else:
            pass
 
-    def run(self, mods = None):
-        self._start_time = strfnow()
-        self._thread.start()
-        # process XML experiment description, and schedule events
-        self._process_xml(mods)
-
-    def shutdown(self):
-        self._stop = True
-        # TODO: SHUTDOWN ALL TESTBEDS !!
-        self._cond.acquire()
-        self._cond.notify()
-        self._cond.release()
-        self._thread.join()
-
-    def recover(self):
-        pass
-
     def status(self, guid = None):
         pass
 
-    def set(self, guid, condition):
+    def set(self, guid, attr, value, condition):
         pass
     
-    def get(self):
-        pass
+    def get(self, guid, attr, date = None, condition = None):
+        # schedule get
+        callback = self._get
+        args = [guid, attr]
+        return self._schedule_event(callback, args, date)
 
     def _create(self, guid, box_id, parent_guid, testbed_guid, attributes):
         # TODO!
         self._logger.error("created %s.guid(%d) %d %d - %s" % (box_id, guid, parent_guid, testbed_guid, str(attributes)))
-        return EventStatus.SUCCESS
+        return (EventStatus.SUCCESS, "")
 
     def _tc_create(self, guid, box_id, parent_guid, testbed_guid, attributes):
         # TODO!
         self._logger.error("TC created %s.guid(%d) %d %d - %s" % (box_id, guid, parent_guid, testbed_guid, str(attributes)))
-        return EventStatus.SUCCESS
+        return (EventStatus.SUCCESS, "")
+
+    def _get(self, guid, attr): 
+        self._logger.error("get guid(%d) - %s" % (guid, attr))
+        return (EventStatus.SUCCESS, 'lalala')
 
     def _process_xml(self, mods = None):
         def walk_create(box):
@@ -245,11 +300,18 @@ class ExperimentController(object):
         exp = provider.from_xml(self._design_xml)
         walk_create(exp)
 
-    def _schedule_event(self, event, date = None):
-        self._cond.acquire()
-        self._scheduler.schedule(event, date)
-        self._cond.notify()
-        self._cond.release()
+    def _schedule_event(self, callback, args, date = None):
+        event = Event(callback, args)
+        return self.__schedule_event(event, date)
+
+    def __schedule_event(self, event, date = None):
+        self._proc_cond.acquire()
+        (date, eid, event) = self._scheduler.schedule(event, date)
+        self._proc_cond.notify()
+        self._proc_cond.release()
+
+        self._add_pending_event(eid, event)
+        return eid
 
     def _process_events(self):
         sync_limit = 20
@@ -257,50 +319,91 @@ class ExperimentController(object):
         runner.start()
         count = 1
 
-        while not self._stop:
-            self._cond.acquire()
-            if self._scheduler.is_empty: 
-                self._cond.wait()
-            (event, date) = self._scheduler.next()
-            self._cond.release()
-
-            if event:
-                # If date is in the future, thread needs to wait
-                # until time elapse or until another event is scheduled
-                now = strfnow()
-                if now < date:
-                    # reeschedule event at same date
-                    self._schedule_event(event, date)
-                    # difference in seconds
-                    timeout = strfdiff(date, now) 
-                    self._cond.acquire()
-                    self._cond.wait(timeout)
-                    self._cond.release()
-                else:
-                    # process events in parallel
-                    runner.put(self._execute_event, event)
-
-            if count == sync_limit:
-                count == 0
-                runner.sync()
-            count +=1 
+        try:
+            while not self._stop:
+                self._proc_cond.acquire()
+                if self._scheduler.is_empty: 
+                    self._proc_cond.wait()
+                (date, eid, event) = self._scheduler.next()
+                self._proc_cond.release()
                 
+                if event:
+                    # If date is in the future, thread needs to wait
+                    # until time elapse or until another event is scheduled
+                    now = strfnow()
+                    if now < date:
+                        # reeschedule event at same date
+                        self.__schedule_event(event, date)
+                        # difference in seconds
+                        timeout = strfdiff(date, now)
+                        self._proc_cond.acquire()
+                        self._proc_cond.wait(timeout)
+                        self._proc_cond.release()
+                    else:
+                        # process events in parallel
+                        runner.put(self._execute_event, event)
+
+                if count == sync_limit:
+                    count == 0
+                    runner.sync()
+                count +=1 
+        except:   
+            import traceback
+            err = traceback.format_exc()
+            self._logger.error("Error while processing events in the EC: %s" % err)
+ 
         runner.sync()
         runner.join()
 
     def _remove_event(self, event):
-        self._cond.acquire()
+        self._proc_cond.acquire()
         self._scheduler.remove(event)
-        self._cond.release()
+        self._proc_cond.release()
 
     def _execute_event(self, event):
-        ret = event.callback(*event.args)
-        if ret == EventStatus.RETRY:
-            self._schedule_event(event)
+        (status, result) = event.callback(*event.args)
+        event.status = status
+        event.result = result
+
+        if status == EventStatus.RETRY:
+            self.__schedule_event(event)
         else: # FAIL or SUCCESS
             self._remove_event(event) 
-            if ret == EventStatus.FAIL:
-                self._logger.error("Event failure: %s(%s)" % (event.callback, event.args))
+            if status == EventStatus.FAIL:
+                self._logger.error("Event failure: %s(%s) - %s" % (event.callback, event.args, result))
+
+    def _add_pending_event(self, eid, event):
+        self._pend_lock.acquire()
+        self._pend_events[eid] = event                
+        self._pend_lock.release()
+
+    def _remove_pending_event(self, eid):
+        event = self._pend_events.get(eid, None)
+        if event: 
+            self._pend_lock.acquire()
+            del self._pend_events[eid]
+            self._pend_lock.release()
+
+            self._remove_event(event)
+            return event.status
+        return None
+
+    def _poll_pending_event(self, eid):
+        event = self._pend_events.get(eid, None)
+        if not event:
+            return None
+        if event.status == EventStatus.PENDING:
+            return EventStatus.PENDING
+
+        return event.status
+
+    def _result_pending_event(self, eid):
+        event = self._pend_events.get(eid, None)
+        if not event or event.status == EventStatus.PENDING:
+            return None
+
+        self._remove_pending_event(eid)
+        return event.result 
 
 
 def create_ec(xml):
