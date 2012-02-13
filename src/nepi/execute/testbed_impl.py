@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 
 from nepi.core import execute
 from nepi.core.metadata import Metadata, Parallel
