@@ -57,6 +57,8 @@ class ExecuteControllersTestCase(unittest.TestCase):
             status = ec.poll(eid)
             self.assertTrue(status == EventStatus.SUCCESS)
             result = ec.result(eid)
+            removed = ec.remove(eid)
+            self.assertTrue(removed == True)
             status = ec.poll(eid)
             # After getting the result back, the event should have been eraised
             # and status should be None
@@ -76,7 +78,7 @@ class ExecuteControllersTestCase(unittest.TestCase):
             self.assertTrue(status == EventStatus.PENDING)
             time.sleep(1)
             removed = ec.cancel(eid)
-            self.assertTrue(removed == None)
+            self.assertTrue(removed == True)
             status = ec.poll(eid)
             self.assertTrue(status == None)
 
