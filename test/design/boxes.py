@@ -1,13 +1,11 @@
 #!/usr/bin/env python
 
 from nepi.design import create_provider
-# mock testbed
-import mock
 import unittest
 
 class DesignBoxesTestCase(unittest.TestCase):
     def test_clone_box(self):
-        provider = create_provider(mods=[mock])
+        provider = create_provider(modnames = ["mock"])
 
         exp1 = provider.create("Experiment")
         exp2 = provider.create("Experiment")
@@ -49,7 +47,7 @@ class DesignBoxesTestCase(unittest.TestCase):
     
     
     def test_clone_container(self):
-        provider = create_provider(mods=[mock])
+        provider = create_provider(modnames = ["mock"])
         
         mocki = provider.create("mock::MockInstance")
         cont1 = provider.create("mock::Container")
@@ -121,7 +119,7 @@ class DesignBoxesTestCase(unittest.TestCase):
 
 
     def test_experiment_serialization(self):
-        provider = create_provider(mods=[mock])
+        provider = create_provider(modnames = ["mock"])
 
         exp = provider.create("Experiment")
         mocki = provider.create("mock::MockInstance")
@@ -176,7 +174,7 @@ class DesignBoxesTestCase(unittest.TestCase):
 
 
     def test_container_serialization(self):
-        provider = create_provider(mods=[mock])
+        provider = create_provider(modnames = ["mock"])
 
         mocki = provider.create("mock::MockInstance")
         cont1 = provider.create("mock::Container", container = mocki)
@@ -237,7 +235,7 @@ class DesignBoxesTestCase(unittest.TestCase):
 
 
     def test_routes_and_addresses(self):
-        provider = create_provider(mods=[mock])
+        provider = create_provider(modnames = ["mock"])
 
         exp = provider.create("Experiment")
         mocki = provider.create("mock::MockInstance")

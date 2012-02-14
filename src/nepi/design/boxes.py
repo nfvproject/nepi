@@ -1,8 +1,3 @@
-# -*- coding: utf-8 -*-
-
-"""
-Experiment design API
-"""
 
 import copy
 import getpass
@@ -868,19 +863,19 @@ class BoxProvider(object):
         f.close()
         return True
 
-    def load_testbed_boxes(self, mods = None):
-        if not mods:
+    def load_testbed_boxes(self, modnames = None):
+        if not monames:
             import pkgutil
             import nepi.testbeds
             pkgpath = os.path.dirname(nepi.testbeds.__file__)
             modnames = ["nepi.testbeds.%s" % name for _, name, _ in pkgutil.iter_modules([pkgpath])]
 
-            mods = []
-            for modname in modnames:
-                if modname not in sys.modules:
-                    __import__(modname)
-                mod = sys.modules[modname]
-                mods.append(mod)
+        mods = []
+        for modname in modnames:
+            if modname not in sys.modules:
+                __import__(modname)
+            mod = sys.modules[modname]
+            mods.append(mod)
 
         for mod in mods:
             self.add_all(mod.boxes)

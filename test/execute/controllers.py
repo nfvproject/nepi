@@ -2,14 +2,12 @@
 
 from nepi.design import create_provider
 from nepi.execute import create_ec, EventStatus 
-# mock testbed
-import mock
 import time
 import unittest
 
 class ExecuteControllersTestCase(unittest.TestCase):
     def experiment_description(self):
-        provider = create_provider(mods=[mock])
+        provider = create_provider(modnames = ["mock"])
         exp = provider.create("Experiment", label = "exp")
         mocki = provider.create("mock::MockInstance", container = exp, 
                 label = "mocki")
@@ -45,7 +43,7 @@ class ExecuteControllersTestCase(unittest.TestCase):
         xml = exp.xml
 
         ec = create_ec(xml)
-        ec.run(mods=[mock])
+        ec.run(modnames = ["mock"])
 
         try:
             node1 = exp.box("node1")
