@@ -116,6 +116,8 @@ boxes = list()
 
 box = TestbedBox(TESTBED_ID, TESTBED, help = "ns-3 simulation instance")
 boxes.append(box)
+       
+box.add_tag(tags.SIMULATION)
 
 box.add_attr(
     attributes.EnumAttribute(
@@ -166,7 +168,7 @@ box.add_attr(
 
 # CONTAINER
 box = ContainerBox(TESTBED_ID, CONTAINER, help = "Container for grouping ns3 box configurations.")
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.SIMULATION)
 boxes.append(box)
 
 
@@ -178,7 +180,7 @@ class NodeBox(RouteEntryCapableBox):
         super(NodeBox, self).__init__(testbed_id, box_id, routeentry_box_id,
                 routeentry_connector, provider, guid, help)
 
-        self.add_container_info(TESTBED_ID, tags.CONTROLLER)
+        self.add_container_info(TESTBED_ID, tags.SIMULATION)
         self.add_container_info(TESTBED_ID, tags.CONTAINER)
 
         self.add_tag(tags.NODE)
@@ -252,7 +254,7 @@ class ProtocolBox(Box):
         
         self.add_tag(tags.PROTOCOL)
         
-        self.add_container_info(TESTBED_ID, tags.CONTROLLER)
+        self.add_container_info(TESTBED_ID, tags.SIMULATION)
         self.add_container_info(TESTBED_ID, tags.CONTAINER)
 
         conn = connectors.Connector("node", "Connector to ns3::Node", max = 1, min = 1)
@@ -361,7 +363,7 @@ class ApplicationBox(Box):
         
         self.add_tag(tags.APPLICATION)
         
-        self.add_container_info(TESTBED_ID, tags.CONTROLLER)
+        self.add_container_info(TESTBED_ID, tags.SIMULATION)
         self.add_container_info(TESTBED_ID, tags.CONTAINER)
 
         conn = connectors.Connector("node", "Connector to ns3::Node", max = 1, min = 1)
@@ -614,7 +616,7 @@ class NetDeviceBox(IPAddressCapableBox):
         
         self.add_tag(tags.INTERFACE)
         
-        self.add_container_info(TESTBED_ID, tags.CONTROLLER)
+        self.add_container_info(TESTBED_ID, tags.SIMULATION)
         self.add_container_info(TESTBED_ID, tags.CONTAINER)
 
         conn = connectors.Connector("node", "Connector to %s" % NODE, max = 1, min = 1)
@@ -1181,7 +1183,7 @@ class ChannelBox(Box):
         
         self.add_tag(tags.CHANNEL)
         
-        self.add_container_info(TESTBED_ID, tags.CONTROLLER)
+        self.add_container_info(TESTBED_ID, tags.SIMULATION)
         self.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 
@@ -1289,7 +1291,7 @@ class RateControlManagerBox(Box):
         
         self.add_tag(tags.RATE_MANAGER)
         
-        self.add_container_info(TESTBED_ID, tags.CONTROLLER)
+        self.add_container_info(TESTBED_ID, tags.SIMULATION)
         self.add_container_info(TESTBED_ID, tags.CONTAINER)
 
         conn = connectors.Connector("iface", help = "Connector to exactly one network interface (mandatory)",
@@ -1852,7 +1854,7 @@ class MobilityModelBox(Box):
         
         self.add_tag(tags.MOBILE)
         
-        self.add_container_info(TESTBED_ID, tags.CONTROLLER)
+        self.add_container_info(TESTBED_ID, tags.SIMULATION)
         self.add_container_info(TESTBED_ID, tags.CONTAINER)
 
         conn = connectors.Connector("node", help = "Connector to %s" % NODE,
@@ -2118,7 +2120,7 @@ box.add_attr(
 
 box.add_tag(tags.DELAY_MODEL)
 
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.SIMULATION)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 
@@ -2132,7 +2134,7 @@ class LossModelBox(Box):
         
         self.add_tag(tags.LOSS_MODEL)
         
-        self.add_container_info(TESTBED_ID, tags.CONTROLLER)
+        self.add_container_info(TESTBED_ID, tags.SIMULATION)
         self.add_container_info(TESTBED_ID, tags.CONTAINER)
 
         conn = connectors.Connector("prev", help = "Connector to the previous loss model", 
@@ -2299,7 +2301,7 @@ class WifiMacModelBox(Box):
         
         self.add_tag(tags.MAC_MODEL)
         
-        self.add_container_info(TESTBED_ID, tags.CONTROLLER)
+        self.add_container_info(TESTBED_ID, tags.SIMULATION)
         self.add_container_info(TESTBED_ID, tags.CONTAINER)
 
         conn = connectors.Connector("iface", help = "Connector to a %s" % WIFINETDEV, 
@@ -2465,7 +2467,7 @@ boxes.append(box)
         
 box.add_tag(tags.PHY_MODEL)
 
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.SIMULATION)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 conn = connectors.Connector("iface", help = "Connector to a %s" % WIFINETDEV, 
@@ -2605,7 +2607,7 @@ boxes.append(box)
         
 box.add_tag(tags.PHY_MODEL)
 
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.SIMULATION)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 conn = connectors.Connector("iface", help = "Connector to a wimax network device", 
@@ -2624,7 +2626,7 @@ boxes.append(box)
         
 box.add_tag(tags.QUEUE)
 
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.SIMULATION)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 conn = connectors.Connector("iface", help = "Connector to a ns3 network device", 
@@ -2661,7 +2663,7 @@ boxes.append(box)
         
 box.add_tag(tags.QUEUE)
 
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.SIMULATION)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 conn = connectors.Connector("iface", help = "Connector to a wifi MAC model", 
@@ -2698,7 +2700,7 @@ class ErrorRateModelBox(Box):
         
         self.add_tag(tags.ERROR_MODEL)
         
-        self.add_container_info(TESTBED_ID, tags.CONTROLLER)
+        self.add_container_info(TESTBED_ID, tags.SIMULATION)
         self.add_container_info(TESTBED_ID, tags.CONTAINER)
 
         conn = connectors.Connector("phy", help = "Connector to a %s" % YANSWIFIPHY, 
@@ -2727,7 +2729,7 @@ class ErrorModelBox(Box):
         
         self.add_tag(tags.ERROR_MODEL)
         
-        self.add_container_info(TESTBED_ID, tags.CONTROLLER)
+        self.add_container_info(TESTBED_ID, tags.SIMULATION)
         self.add_container_info(TESTBED_ID, tags.CONTAINER)
 
         conn = connectors.Connector("iface", help = "Connector to a ns3 network device", 
@@ -2795,7 +2797,7 @@ class DownlinkSchedulerBox(Box):
         super(DownlinkSchedulerBox, self).__init__(testbed_id, box_id, provider,
                 guid, help)
         
-        self.add_container_info(TESTBED_ID, tags.CONTROLLER)
+        self.add_container_info(TESTBED_ID, tags.SIMULATION)
         self.add_container_info(TESTBED_ID, tags.CONTAINER)
 
         conn = connectors.Connector("iface", help ="Connector to a downlink scheduler",
@@ -2822,7 +2824,7 @@ class UplinkSchedulerBox(Box):
         super(UplinkSchedulerBox, self).__init__(testbed_id, box_id, provider,
                 guid, help)
         
-        self.add_container_info(TESTBED_ID, tags.CONTROLLER)
+        self.add_container_info(TESTBED_ID, tags.SIMULATION)
         self.add_container_info(TESTBED_ID, tags.CONTAINER)
 
         conn = connectors.Connector("iface", help = "Connector to a uplink scheduler",
@@ -2846,7 +2848,7 @@ boxes.append(box)
 box = Box(TESTBED_ID, IPCSCLASS, help = "Classifier record for service flow")
 boxes.append(box)
         
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.SIMULATION)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 conn = connectors.Connector("sflow", help = "Connector to a %s" % SERVICEFLOW, 
@@ -2972,7 +2974,7 @@ box.add_attr(
 box = Box(TESTBED_ID, SERVICEFLOW, help = "Service flow for QoS")
 boxes.append(box)
         
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.SIMULATION)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 conn = connectors.Connector("iface", help = "Connector to a %s" % SSNETDEV, 
@@ -3025,7 +3027,7 @@ boxes.append(box)
         
 box.add_tag(tags.TRACE)
 
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.SIMULATION)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 conn = connectors.Connector("app", "Connector to %s " % PING4, max = 1, min = 1)
@@ -3039,7 +3041,7 @@ boxes.append(box)
         
 box.add_tag(tags.TRACE)
 
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.SIMULATION)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 conn = connectors.Connector("iface", "Connector to a ns3 network device", max = 1, min = 1)
@@ -3067,7 +3069,7 @@ boxes.append(box)
         
 box.add_tag(tags.TRACE)
 
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.SIMULATION)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 conn = connectors.Connector("iface", "Connector to a ns3 network device", max = 1, min = 1)
@@ -3094,7 +3096,7 @@ box.add_connector(conn)
 box = IPAddressBox(TESTBED_ID, IP4ADDRESS, help = "IP v4 address box.")
 boxes.append(box)
 
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.SIMULATION)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 conn = connectors.Connector("iface", "Connector from address to interface", max = 1, min = 1)
@@ -3132,7 +3134,7 @@ rule = connectors.ConnectionRule(ROUTE, "node", PROTOCOLNODE, "routes", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.SIMULATION)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 

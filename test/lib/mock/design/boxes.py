@@ -23,7 +23,7 @@ boxes.append(box)
 
 # CONTAINER
 box = ContainerBox(TESTBED_ID, CONTAINER)
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.TC)
 boxes.append(box)
 
 # NODE
@@ -45,7 +45,7 @@ rule = ConnectionRule(NODE, "traces", TRACE, "node", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 ## CONTAINER BOX ID
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.TC)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 ## ATTRIBUTES INFO
 box.add_attr(
@@ -73,7 +73,7 @@ rule = ConnectionRule(IFACE, "peer", IFACE, "peer", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 ## CONTAINER BOX ID
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.TC)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 ## TAGS
 box.add_tag(tags.INTERFACE)
@@ -96,7 +96,7 @@ box.add_attr(
             )
         )
 ## CONTAINER BOX ID
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.TC)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 ## TAGS
 box.add_tag(tags.APPLICATION)
@@ -119,7 +119,7 @@ box.add_attr(
             )
         )
 ## CONTAINER BOX ID
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.TC)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 ## TAGS
 box.add_tag(tags.TRACE)
@@ -134,7 +134,7 @@ rule = ConnectionRule(ADDRESS, "iface", IFACE, "addrs", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 ## CONTAINER BOX ID
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.TC)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 ## TAGS
 box.add_tag(tags.ADDRESS)
@@ -149,7 +149,7 @@ rule = ConnectionRule(ROUTE, "node", NODE, "routes", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 ## CONTAINER BOX ID
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.TC)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 ## TAGS
 box.add_tag(tags.ROUTE)

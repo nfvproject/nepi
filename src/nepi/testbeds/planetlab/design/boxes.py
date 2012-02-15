@@ -51,6 +51,8 @@ boxes = list()
 box = TestbedBox(TESTBED_ID, SLICE, help = "PlanetLab slice instance.")
 boxes.append(box)
 
+box.add_tag(tags.PHYSICAL_TESTBED)
+
 box.add_attr(
     attributes.StringAttribute(
         "sliceHrn",
@@ -177,7 +179,7 @@ box.add_attr(
 box = ContainerBox(TESTBED_ID, CONTAINER, help = "Container for grouping PlanetLab box configurations.")
 boxes.append(box)
 
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.PHYSICAL_TESTBED)
 
 
 ############ ADDRESS #############
@@ -192,7 +194,7 @@ rule = connectors.ConnectionRule(IP4ADDRESS, "iface", TUNIFACE, "addrs", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.PHYSICAL_TESTBED)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 
@@ -206,7 +208,7 @@ rule = connectors.ConnectionRule(ROUTE, "node", NODE, "routes", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.PHYSICAL_TESTBED)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 
@@ -239,7 +241,7 @@ rule = connectors.ConnectionRule(NODE, "pipes", NETPIPE, "node", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.PHYSICAL_TESTBED)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 box.add_tag(tags.NODE)
@@ -395,7 +397,7 @@ class TapBox(IPAddressCapableBox):
 
         self.add_tag(tags.INTERFACE)
 
-        self.add_container_info(TESTBED_ID, tags.CONTROLLER)
+        self.add_container_info(TESTBED_ID, tags.PHYSICAL_TESTBED)
         self.add_container_info(TESTBED_ID, tags.CONTAINER)
 
         conn = connectors.Connector("node", "Connector to %s" % NODE, max = 1, min = 1)
@@ -568,7 +570,7 @@ boxes.append(box)
 
 box.add_tag(tags.INTERFACE)
         
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.PHYSICAL_TESTBED)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 conn = connectors.Connector("node", "Connector to %s" % NODE, max = 1, min = 1)
@@ -607,7 +609,7 @@ class FilterBox(TunnelBox):
 
         self.add_tag(tags.FILTER)
 
-        self.add_container_info(TESTBED_ID, tags.CONTROLLER)
+        self.add_container_info(TESTBED_ID, tags.PHYSICAL_TESTBED)
         self.add_container_info(TESTBED_ID, tags.CONTAINER)
 
         self.add_attr(
@@ -733,7 +735,7 @@ class BaseApplicationBox(Box):
 
         self.add_tag(tags.APPLICATION)
 
-        self.add_container_info(TESTBED_ID, tags.CONTROLLER)
+        self.add_container_info(TESTBED_ID, tags.PHYSICAL_TESTBED)
         self.add_container_info(TESTBED_ID, tags.CONTAINER)
 
         conn = connectors.Connector("node", "Connector to %s" % NODE, max = 1, min = 1)
@@ -897,7 +899,7 @@ boxes.append(box)
 
 box.add_tag(tags.APPLICATION)
         
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.PHYSICAL_TESTBED)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 conn = connectors.Connector("traces", "Connector to traces", max = -1, min = 0)
@@ -941,7 +943,7 @@ boxes.append(box)
 
 box.add_tag(tags.APPLICATION)
         
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.PHYSICAL_TESTBED)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 conn = connectors.Connector("traces", "Connector to traces", max = -1, min = 0)
@@ -974,7 +976,7 @@ boxes.append(box)
 
 box.add_tag(tags.INTERNET)
         
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.PHYSICAL_TESTBED)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 conn = connectors.Connector("ifaces", "Connector to %s" % NODEIFACE, max = -1, min = 1)
@@ -987,7 +989,7 @@ box.add_connector(conn)
 box = Box(TESTBED_ID, NETPIPE, help = "Link emulation")
 boxes.append(box)
         
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.PHYSICAL_TESTBED)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 conn = connectors.Connector("traces", "Connector to traces", max = -1, min = 0)
@@ -1084,7 +1086,7 @@ class ApplicationTraceBox(Box):
 
         self.add_tag(tags.TRACE)
 
-        self.add_container_info(TESTBED_ID, tags.CONTROLLER)
+        self.add_container_info(TESTBED_ID, tags.PHYSICAL_TESTBED)
         self.add_container_info(TESTBED_ID, tags.CONTAINER)
 
         conn = connectors.Connector("app", "Connector to %s" % APPLICATION, max = 1, min = 1)
@@ -1100,7 +1102,7 @@ class TunTraceBox(Box):
 
         self.add_tag(tags.TRACE)
 
-        self.add_container_info(TESTBED_ID, tags.CONTROLLER)
+        self.add_container_info(TESTBED_ID, tags.PHYSICAL_TESTBED)
         self.add_container_info(TESTBED_ID, tags.CONTAINER)
 
         conn = connectors.Connector("iface", "Connector to TUN/TAP device", max = 1, min = 1)
@@ -1141,7 +1143,7 @@ boxes.append(box)
 
 box.add_tag(tags.TRACE)
 
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.PHYSICAL_TESTBED)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 conn = connectors.Connector("filter", "Connector to a filter", max = 1, min = 1)
@@ -1155,7 +1157,7 @@ boxes.append(box)
 
 box.add_tag(tags.TRACE)
 
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.PHYSICAL_TESTBED)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 conn = connectors.Connector("pipe", "Connector to a %s" % NETPIPE, max = 1, min = 1)

@@ -92,10 +92,8 @@ class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap):
 
     @property
     def controller(self):
-        if tags.CONTROLLER in self.tags:
-            return self
         return self.container if not self.container or \
-                (tags.CONTROLLER in self.container.tags) else self.container.controller
+                (tags.TC in self.container.tags) else self.container.controller
 
     def get_container(self):
         # Gives back a strong-reference not a weak one
@@ -623,8 +621,6 @@ class ControllerBox(Box):
         super(ControllerBox, self).__init__(testbed_id, box_id, provider,
                 guid, help)
 
-        self.add_tag(tags.CONTROLLER)
-
         self.add_attr(
                 attributes.StringAttribute(
                     "homeDirectory", 
@@ -799,6 +795,7 @@ class TestbedBox(ControllerBox):
             help = None):
         super(TestbedBox, self).__init__(testbed_id, box_id, provider,
                 guid, help)
+        self.add_tag(tags.TC)
         self.add_container_info(None, tags.EXPERIMENT)
 
 
@@ -807,6 +804,7 @@ class ExperimentBox(ControllerBox):
         super(ExperimentBox, self).__init__(None, "Experiment",
                 provider, guid, "Experiment box")
         self.add_tag(tags.EXPERIMENT)
+        self.add_tag(tags.EC)
 
 
 class BoxProvider(object):
@@ -864,7 +862,7 @@ class BoxProvider(object):
         return True
 
     def load_testbed_boxes(self, modnames = None):
-        if not monames:
+        if not modnames:
             import pkgutil
             import nepi.testbeds
             pkgpath = os.path.dirname(nepi.testbeds.__file__)
@@ -907,8 +905,8 @@ class BoxProvider(object):
         return new
 
 
-def create_provider(mods = None, search_path = None):
+def create_provider(modnames = None, search_path = None):
     # this factory provider instance will hold reference to all available factories 
-    return BoxProvider(mods, search_path)
+    return BoxProvider(modnames, search_path)
 
 

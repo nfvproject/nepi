@@ -164,7 +164,7 @@ class DesignBoxesTestCase(unittest.TestCase):
 
         xml = exp.xml
         
-        provider2 = create_provider(mods=[mock])
+        provider2 = create_provider(modnames = ["mock"])
         exp2 = provider2.from_xml(xml)
         node21 = exp2.box(node1.guid)
         self.assertTrue(node21.a.boolAttr.value == True)
@@ -225,7 +225,7 @@ class DesignBoxesTestCase(unittest.TestCase):
         ret = provider.store_user_container(cont1, search_path = search_path)
         self.assertTrue(ret)
 
-        provider2 = create_provider(mods=[mock], search_path = search_path)
+        provider2 = create_provider(modnames=["mock"], search_path = search_path)
         mocki = provider2.create("mock::MockInstance")
         switch1 = provider2.create("mock::Switch", container = mocki)
 
@@ -276,7 +276,7 @@ class DesignBoxesTestCase(unittest.TestCase):
 
         xml = exp.xml
 
-        provider2 = create_provider(mods=[mock])
+        provider2 = create_provider(modnames=["mock"])
         exp2 = provider2.from_xml(xml)
         node21 = exp2.box(node1.guid)
         self.assertTrue(node21.a.boolAttr.value == True)

@@ -28,6 +28,9 @@ boxes = list()
 
 box = TestbedBox(TESTBED_ID, EMULATION, help = "NETNS emulation instance.")
 boxes.append(box)
+
+box.add_tag(tags.EMULATION)
+
 box.add_attr(
     attributes.BoolAttribute(
         "enableDebug", 
@@ -41,7 +44,7 @@ box.add_attr(
 
 box = ContainerBox(TESTBED_ID, CONTAINER, help = "Container for grouping NETNS box configurations.")
 boxes.append(box)
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.EMULATION)
 
 
 ############ ADDRESS #############
@@ -60,7 +63,7 @@ rule = connectors.ConnectionRule(IP4ADDRESS, "iface", TUNIFACE, "addrs", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.EMULATION)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 box.add_tag(tags.ADDRESS)
@@ -76,7 +79,7 @@ rule = connectors.ConnectionRule(ROUTE, "node", NODE, "routes", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.EMULATION)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 
@@ -119,7 +122,7 @@ conn.add_connection_rule(rule)
 box.add_connector(conn)
 
 ## CONTAINER BOX ID
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.EMULATION)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 ## TAGS
@@ -136,7 +139,7 @@ class IfaceBox(IPAddressCapableBox):
         
         self.add_tag(tags.INTERFACE)
         
-        self.add_container_info(TESTBED_ID, tags.CONTROLLER)
+        self.add_container_info(TESTBED_ID, tags.EMULATION)
         self.add_container_info(TESTBED_ID, tags.CONTAINER)
 
         conn = connectors.Connector("node", "Connector to netns::Node", max = 1, min = 1)
@@ -294,7 +297,7 @@ conn.add_connection_rule(rule)
 box.add_connector(conn)
 
 ## CONTAINER BOX ID
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.EMULATION)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 ## TAGS
@@ -339,7 +342,7 @@ conn.add_connection_rule(rule)
 box.add_connector(conn)
 
 ## CONTAINER BOX ID
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.EMULATION)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 ## TAGS
@@ -353,7 +356,7 @@ box = TunnelBox(TESTBED_ID, TUNCHANNEL,
 boxes.append(box)
 
 ## CONTAINER BOX ID
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.EMULATION)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 
@@ -367,7 +370,7 @@ rule = connectors.ConnectionRule(PCAPTRACE, "node", NODE, "traces", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.EMULATION)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 box.add_tag(tags.TRACE)
@@ -383,7 +386,7 @@ rule = connectors.ConnectionRule(ERRTRACE, "app", APPLICATION, "traces", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.EMULATION)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 box.add_tag(tags.TRACE)
@@ -399,7 +402,7 @@ rule = connectors.ConnectionRule(OUTTRACE, "app", APPLICATION, "traces", False)
 conn.add_connection_rule(rule)
 box.add_connector(conn)
 
-box.add_container_info(TESTBED_ID, tags.CONTROLLER)
+box.add_container_info(TESTBED_ID, tags.EMULATION)
 box.add_container_info(TESTBED_ID, tags.CONTAINER)
 
 box.add_tag(tags.TRACE)

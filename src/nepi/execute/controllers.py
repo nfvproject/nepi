@@ -2,10 +2,11 @@
 import datetime
 import itertools
 import heapq
+import logging
 import re
+import sys
 import threading
 import time
-import logging
 
 from nepi.design import tags
 from nepi.design.boxes import create_provider
@@ -72,9 +73,9 @@ def strfvalid(date):
 
 
 class Event(object):
-    DEFAULT_DELAY = "1s"
+    DEFAULT_DELAY = "0.2s"
 
-    def __init__(self, callback, args, wait_on_events = [], delay = None):
+    def __init__(self, callback, args, wait_events = None, delay = None):
         super(Event, self).__init__()
         self._callback = callback
         self._args = args
@@ -82,7 +83,7 @@ class Event(object):
         self.result = None
         # Event need to wait until these events are completed
         # to execute
-        self._wait_on_events = wait_on_events
+        self._wait_events = wait_events or []
         # Time to wait until retry
         self._delay = delay or self.DEFAULT_DELAY
 
@@ -99,8 +100,11 @@ class Event(object):
         return self._delay
 
     @property
+    def wait_events(self):
+        return self._wait_events
+
     def add_wait_event(self, eid):
-        self._wait_on_events.append(eid)
+        self._wait_events.append(eid)
 
 
 class HeapScheduler(object):
@@ -177,12 +181,12 @@ class Resource(object):
         return self._box_id
 
     @property
-    def container_id(self):
-        return self._container_id
+    def container_guiid(self):
+        return self._container_guid
 
     @property
-    def controller_id(self):
-        return self._controller_id
+    def controller_guid(self):
+        return self._controller_guid
 
     @property
     def tags(self):
@@ -260,7 +264,7 @@ class ExperimentController(object):
         # start event-processing thread
         self._proc_thread.start()
         # orchestrate experiment description, and schedule events
-        self._orchestrate_ed(mods)
+        self._orchestrate_ed(modnames)
         self._state = ResourceState.STARTED
         self._start_time = strfnow()
 
@@ -284,80 +288,80 @@ class ExperimentController(object):
     def shutdown_now(self):
         return self._shutdown()
 
-    def shutdown(self, guid = None, date = None, wait_on_events = None):
+    def shutdown(self, guid = None, date = None, wait_events = None):
         if guid == None:
             callback = self._shutdown
         else:
             callback = self._tc_shutdown
         args = []
         # schedule shutdown
-        return self._schedule_event(callback, args, date, wait_on_events)
+        return self._schedule_event(callback, args, date, wait_events)
 
-    def create(self, guid, box_id, container_guid, controller_guid, tags,
-            attributes, date = None, wait_on_events = None):
+    def create(self, guid, box_id, container_guid, controller_guid, box_tags,
+            attributes, date = None, wait_events = None):
         # create new resource
-        rc = Resource(guid, box_id, container_guid, controller_guid, tags)
+        rc = Resource(guid, box_id, container_guid, controller_guid, box_tags)
         self._resources[guid] = rc
 
-        if tags.CONTROLLER in tags:
+        if tags.TC in box_tags:
             callback = self._create
         else:
             callback = self._tc_create
         
-        args = [guid, box_id, parent_guid, testbed_guid, attributes]
+        args = [guid, attributes]
         # schedule create
-        return self._schedule_event(callback, args, date, wait_on_events)
+        return self._schedule_event(callback, args, date, wait_events)
 
     def connect(self, guid, connector, other_guid, other_connector, 
-            date = None, wait_on_events = None):
+            date = None, wait_events = None):
         callback = self._tc_connect
         args = [guid, connector, other_guid, other_connector]
-        return self._schedule_event(callback, args, date, wait_on_events)
+        return self._schedule_event(callback, args, date, wait_events)
 
     def postconnect(self, guid, connector, other_guid, other_connector, 
-            date = None, wait_on_events = None):
+            date = None, wait_events = None):
         callback = self._tc_postconnect
         args = [guid, connector, other_guid, other_connector]
-        return self._schedule_event(callback, args, date, wait_on_events)
+        return self._schedule_event(callback, args, date, wait_events)
 
-    def start(self, guid, date = None, wait_on_events = None):
+    def start(self, guid, date = None, wait_events = None):
         callback = self._tc_start
         args = [guid]
-        return self._schedule_event(callback, args, date, wait_on_events)
+        return self._schedule_event(callback, args, date, wait_events)
 
     def stop_now(self):
         return self._stop()
 
-    def stop(self, guid = None, date = None, wait_on_events = None):
+    def stop(self, guid = None, date = None, wait_events = None):
         if guid == None:
             callback = self._stop
         else:
             callback = self._tc_stop
         args = [guid]
-        return self._schedule_event(callback, args, date, wait_on_events)
+        return self._schedule_event(callback, args, date, wait_events)
 
-    def set(self, guid, attr, value, date = None, wait_on_events = None):
+    def set(self, guid, attr, value, date = None, wait_events = None):
         callback = self._tc_get
         args = [guid, attr, value]
-        return self._schedule_event(callback, args, date, wait_on_events)
+        return self._schedule_event(callback, args, date, wait_events)
     
-    def get(self, guid, attr, date = None, wait_on_events = None):
+    def get(self, guid, attr, date = None, wait_events = None):
         callback = self._tc_get
         args = [guid, attr]
-        return self._schedule_event(callback, args, date, wait_on_events)
+        return self._schedule_event(callback, args, date, wait_events)
 
-    def clean_events(self, wait_on_events):
+    def clean_events(self, wait_events):
         """ Schedule an event that will remove the events from the 
             pending_events list when there are executed. """
         callback = self._clean_events
-        args = [wait_on_events]
+        args = [wait_events]
         date = None
-        return self._schedule_event(callback, args, date, wait_on_events, "3s")
+        return self._schedule_event(callback, args, date, wait_events, "3s")
 
     @property
     def _tcs(self):
         return [ rc for rc in self._resources.values() \
-                if tags.CONTROLLER in rc.tags ]
+                if tags.TC in rc.tags ]
 
     def _stop(self):
         state = self.state()
@@ -382,7 +386,7 @@ class ExperimentController(object):
         self._stoppped = True
         self._state = ResourceState.STOPPED
 
-    def _tc_stop(self, guid)
+    def _tc_stop(self, guid):
         state = self.state(guid)
         if state < ResourceState.STARTED:
            return (EventStatus.FAIL, "Couldn't stop RC. Wrong state %d for guid(%d)"
@@ -399,13 +403,29 @@ class ExperimentController(object):
 
         return (status, result)
 
+    def _tc_start(self, guid):
+        state = self.state(guid)
+        if state != ResourceState.CREATED:
+           return (EventStatus.FAIL, "Couldn't start RC. Wrong state %d for guid(%d)"
+                % (state, guid))
+
+        status = EventStatus.SUCCESS
+        result = ""
+
+        rc = self._resources.get(guid)
+        (status, result) = rc.tc.start(guid)
+        if status == EventStatus.SUCCESS:
+            rc.state = ResourceState.STARTED
+
+        return (status, result)
+
     def _shutdown(self):
         status = EventStatus.SUCCESS
         result = ""
         
         # Shutdown all TCs
         for tc in self._tcs:
-            (status, result) = self._tc_stop(tc.guid)
+            (status, result) = self._tc_shutdown(tc.guid)
             if status != EventStatus.SUCCESS:
                 return (status, result)
 
@@ -426,12 +446,38 @@ class ExperimentController(object):
             (status, result) = rc.tc.shutdown(guid)
             if status == EventStatus.SUCCESS:
                 rc.state = ResourceState.SHUTDOWN
-        elif state = ResourceState.NEW:
+        elif state == ResourceState.NEW:
             rc.state = ResourceState.SHUTDOWN
 
         return (status, result)
 
     def _create(self, guid, attributes):
+        state = self.state(guid)
+        if state != ResourceState.NEW:
+           return (EventStatus.FAIL, "Couldn't create TC. Wrong state %d for guid(%d)"
+                % (state, guid))
+
+        rc = self._resources.get(guid)
+        tcrc_guid = rc.controller_guid
+        tcrc = self._resources.get(rc.controller_guid)
+        
+        if tcrc_guid and not tcrc:
+            # The TC doesn't exist.
+            return (EventStatus.FAIL, "TC for guid(%d) does not exist." % guid)
+
+        # Nested testbed
+        if tcrc_guid and not tcrc.tc:
+            # The TC is not yet created. We need to delay the event.
+            return (EventStatus.RETRY, "0.2s")
+        
+        tc_class = self._tc_classes.get(rc.box_id)
+        tc = tc_class(guid)
+        rc.tc = tc
+        rc.state = ResourceState.CREATED 
+
+        return (EventStatus.SUCCESS, "")
+
+    def _tc_create(self, guid, attributes):
         state = self.state(guid)
         if state != ResourceState.NEW:
            return (EventStatus.FAIL, "Couldn't create RC. Wrong state %d for guid(%d)"
@@ -446,7 +492,7 @@ class ExperimentController(object):
 
         if not tcrc.tc:
             # The TC is not yet created. We need to delay the event.
-            return (EventStatus.RETRY, "0.2s" % guid)
+            return (EventStatus.RETRY, "0.2s")
         else:
             rc.tc = tcrc.tc
 
@@ -454,32 +500,6 @@ class ExperimentController(object):
         if status == EventStatus.SUCCESS:
             rc.state = ResourceState.CREATED 
         return (status, result)
-
-    def _tc_create(self, guid, attributes):
-        state = self.state(guid)
-        if state != ResourceState.NEW:
-           return (EventStatus.FAIL, "Couldn't create RC. Wrong state %d for guid(%d)"
-                % (state, guid))
-
-        rc = self._resources.get(guid)
-        tcrc_guid = rc.controller_guid
-        tcrc = self._resources.get(rc.controller_guid)
-            
-        if tcrc_guid and not tcrc:
-            # The TC doesn't exist.
-            return (EventStatus.FAIL, "TC for guid(%d) does not exist." % guid)
-
-        # Nested testbed
-        if tcrc_guid and not tcrc.tc:
-            # The TC is not yet created. We need to delay the event.
-            return (EventStatus.RETRY, "0.2s" % guid)
-        
-        tc_class = self._tc_classes.get(rc.box_id)
-        tc = tc_class(guid)
-        rc.tc = tc
-        rc.state = ResourceState.CREATED 
-
-        return (EventStatus.SUCCESS, "")
 
     def _tc_connect(self, guid, connector, other_guid, other_connector):
         state = self.state(guid)
@@ -557,17 +577,18 @@ class ExperimentController(object):
                 for conn in box.connections:
                     (b, c_name, other_b, other_c_name) = conn
 
-                    eid_conn = self.connect(b.guid, c_name, other_b, other_c_name)
+                    eid_conn = self.connect(b.guid, c_name, other_b, other_c_name,
+                            wait_events = [eid_create])
                     wait_events.append(eid_conn)
                     pending_events.append(eid_conn)
 
                     eid_post = self.postconnect(b.guid, c_name, other_b, other_c_name,
-                            wait_on_events = [eid_conn])
+                            wait_events = [eid_conn])
                     wait_events.append(eid_post)
                     pending_events.append(eid_post)
 
                 # schedule start
-                eis_start = self.start(box.guid, wait_on_events = wait_events)
+                eid_start = self.start(box.guid, wait_events = wait_events)
                 pending_events.append(eid_start)
 
             for b in box.boxes:
@@ -581,8 +602,8 @@ class ExperimentController(object):
         self.clean_events(pending_events)
 
     def _schedule_event(self, callback, args, date = None, 
-            wait_on_events = None, delay = None):
-        event = Event(callback, args, wait_on_events, delay)
+            wait_events = None, delay = None):
+        event = Event(callback, args, wait_events, delay)
         return self.__schedule_event(event, date)
 
     def __schedule_event(self, event, date = None):
@@ -620,8 +641,8 @@ class ExperimentController(object):
                         self._proc_cond.acquire()
                         self._proc_cond.wait(timeout)
                         self._proc_cond.release()
-                    elif [eid for eid in event.wait_on_events \
-                            if self.poll(eid) == EventStatusPending]:
+                    elif [eid for eid in event.wait_events \
+                            if self.poll(eid) == EventStatus.PENDING]:
                         # re-schedule event in 1 second
                         self.__schedule_event(event, event.delay)
                     else:
@@ -638,8 +659,8 @@ class ExperimentController(object):
             err = traceback.format_exc()
             self._logger.error("Error while processing events in the EC: %s" % err)
  
-        runner.sync()
-        runner.join()
+        #runner.sync()
+        #runner.join()
 
     def _remove_event(self, event):
         self._proc_cond.acquire()
@@ -650,14 +671,14 @@ class ExperimentController(object):
         (status, result) = event.callback(*event.args)
         event.status = status
         event.result = result
-
+        
         if status == EventStatus.RETRY:
             # Results holds the delay
             self.__schedule_event(event, date = result)
         else: # FAIL or SUCCESS
             self._remove_event(event) 
             if status == EventStatus.FAIL:
-                self._logger.error("Event failure: %s(%s) - %s" % (event.callback, event.args, result))
+                self._logger.error("Event failure: %s(%s) - %s" % (event.callback.func_name, event.args, result))
 
     def _add_pending_event(self, eid, event):
         self._pend_lock.acquire()
@@ -698,7 +719,7 @@ class ExperimentController(object):
         return False
 
     def _load_testbed_controllers(self, modnames = None):
-        if not monames:
+        if not modnames:
             import pkgutil
             import nepi.testbeds
             pkgpath = os.path.dirname(nepi.testbeds.__file__)
@@ -712,7 +733,7 @@ class ExperimentController(object):
             mods.append(mod)
 
         for mod in mods:
-            self._add_tc(mod.CONTROLLER_BOX_ID, mod.CONTROLLER_CLASS)
+            self._add_tc(mod.TC_BOX_ID, mod.TC_CLASS)
 
     def _add_tc(self, box_id, tc_class):
         self._tc_classes[box_id] = tc_class
@@ -720,7 +741,7 @@ class ExperimentController(object):
 
 class TestbedController(object):
     def __init__(self, guid):
-        super(TestbedControllerController, self).__init__()
+        super(TestbedController, self).__init__()
         self._guid = guid
         self._start_time = None
         self._stop_time = None
@@ -748,7 +769,7 @@ class TestbedController(object):
         if guid == self.guid:
             return self._state
         else:
-            obj = self._object.get(guid)
+            obj = self._objects.get(guid)
             if not obj: 
                 return ResourceState.NOTEXIST
             return obj.state
@@ -775,18 +796,18 @@ class TestbedController(object):
         raise NotImplementedError
 
     def set(self, guid, attr, value):
-        obj = self._object.get(guid)
+        obj = self._objects.get(guid)
         if not obj: 
             return (EventStatus.FAIL, "Object guid(%d) doesn't exist." % guid)
         return obj.set_attr(attr, value)
 
     def get(self, guid, attr):
-        obj = self._object.get(guid)
+        obj = self._objects.get(guid)
         if not obj: 
             return (EventStatus.FAIL, "Object guid(%d) doesn't exist." % guid)
         return obj.get_attr(attr)
 
 
-def create_ec(xml)
+def create_ec(xml):
     return ExperimentController(xml)
 
