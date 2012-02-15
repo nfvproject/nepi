@@ -14,6 +14,7 @@ class ExecuteControllersTestCase(unittest.TestCase):
         
         node1 = provider.create("mock::Node", container = mocki, 
                 label = "node1", boolAttr = True)
+
         iface1 = provider.create("mock::Interface", container = mocki, 
                 label = "iface1")
         addr1 = iface1.add_address(address = "192.168.0.1")
