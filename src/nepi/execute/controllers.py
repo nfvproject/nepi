@@ -3,6 +3,7 @@ import datetime
 import itertools
 import heapq
 import logging
+import os
 import re
 import sys
 import threading
@@ -28,24 +29,23 @@ class EventStatus:
     FAIL = 1
     RETRY = 2
     PENDING = 3
-
+    INVALID = 4
 
 _strf = "%Y%m%d%H%M%S%f"
 _reabs = re.compile("^\d{20}$")
-_rerel = re.compile("^(\d+)(h|m|s|ms|us)$")
+_rerel = re.compile("^(?P<time>\d+(.\d+)?)(?P<units>h|m|s|ms|us)$")
 
 def strfnow():
     return datetime.datetime.now().strftime(_strf)
 
 def strfdiff(str1, str2):
+    # time difference in seconds without ignoring miliseconds
     d1 = datetime.datetime.strptime(str1, _strf)
     d2 = datetime.datetime.strptime(str2, _strf)
-
-    # convert to unix timestamp
-    ds1 = time.mktime(d1.timetuple())
-    ds2 = time.mktime(d2.timetuple())
-   
-    return ds1 - ds2
+    diff = d1 - d2
+    ddays = diff.days * 86400
+    dus = 0 # round(diff.microseconds * 1.0e-06, 2). PFFFFFF!! it seems condition.wait doesn't support float numbers well!!
+    return ddays + diff.seconds + dus
 
 def strfvalid(date):
     if not date:
@@ -54,8 +54,8 @@ def strfvalid(date):
         return date
     m = _rerel.match(date)
     if m:
-        time = int(m.groups()[0])
-        units = m.groups()[1]
+        time = float(m.groupdict()['time'])
+        units = m.groupdict()['units']
         if units == 'h':
             delta = datetime.timedelta(hours = time) 
         elif units == 'm':
@@ -72,20 +72,22 @@ def strfvalid(date):
     return None
 
 
-class Event(object):
-    DEFAULT_DELAY = "0.2s"
+_retryre = re.compile("^(?P<delay>delay:\d+(.\d+)?(h|m|s|ms|us))$|^(?P<kwargs>kwargs:([0-9a-zA-Z_-]+:guid\(\d+\)\.[0-9a-zA-Z_-]+,)*([0-9a-zA-Z_-]+:guid\(\d+\)\.[0-9a-zA-Z_-]+))$")
+_kwargre = re.compile("(?P<key>[a-zA-Z_-]+):guid\((?P<guid>\d+)\)\.(?P<attr>[a-zA-Z_-]+)")
 
-    def __init__(self, callback, args, wait_events = None, delay = None):
+class Event(object):
+    DEFAULT_DELAY = "0.1s"
+
+    def __init__(self, callback, args, wait_events = None):
         super(Event, self).__init__()
         self._callback = callback
         self._args = args
+        self.kwargs = dict()
         self.status = EventStatus.PENDING
         self.result = None
         # Event need to wait until these events are completed
         # to execute
-        self._wait_events = wait_events or []
-        # Time to wait until retry
-        self._delay = delay or self.DEFAULT_DELAY
+        self.wait_events = wait_events or []
 
     @property
     def callback(self):
@@ -94,17 +96,6 @@ class Event(object):
     @property
     def args(self):
         return self._args
-    
-    @property
-    def delay(self):
-        return self._delay
-
-    @property
-    def wait_events(self):
-        return self._wait_events
-
-    def add_wait_event(self, eid):
-        self._wait_events.append(eid)
 
 
 class HeapScheduler(object):
@@ -140,19 +131,19 @@ class HeapScheduler(object):
 
     def remove(self, event):
         try:
-            entry = self._event_idx.pop(event)
+            (date, eid, event) = self._event_idx.pop(event)
             # Mark entry as invalid
-            entry[-1] = None
+            event.status = EventStatus.INVALID
         except:
             pass
 
     def next(self):
         while self._events:
             try:
-               date, eid, event = heapq.heappop(self._events)
-               if event:
-                  del self._event_idx[event]
-                  return (date, eid, event)
+                date, eid, event = heapq.heappop(self._events)
+                if event.status != EventStatus.INVALID:
+                    del self._event_idx[event]
+                return (date, eid, event)
             except IndexError:
                 # heap empty
                 pass
@@ -194,15 +185,18 @@ class Resource(object):
 
 
 class ExperimentController(object):
-    def __init__(self, xml):
+    def __init__(self, ed_xml, root_dir = "/tmp", debug = False):
         super(ExperimentController, self).__init__()
+        # root directory to store files
+        self._root_dir = root_dir
+
         # original experiment description (ED)
-        self._original_ed_path = "original_experiment_description.xml"
-        self._save_ed(self._original_ed_path, xml)
+        self._original_ed_xml = "original_experiment_description.xml"
+        self._save_ed(self._original_ed_xml, ed_xml)
         
         # runtime ED
-        self._runtime_ed_path = "runtime_experiment_description.xml"
-        self._save_ed(self._runtime_ed_path, xml)
+        self._runtime_ed_xml = "runtime_experiment_description.xml"
+        self._save_ed(self._runtime_ed_xml, ed_xml)
 
         self._start_time = None
         self._stop_time = None
@@ -230,14 +224,19 @@ class ExperimentController(object):
 
         # Logging
         self._logger = logging.getLogger("nepi.execute.ec")
+        if debug:
+            level = logging.DEBUG
+            self._logger.setLevel(level)
+ 
+    @property
+    def original_ed_xml(self):
+        path = os.path.join(self._root_dir, self._original_ed_xml)
+        return self._load_ed(path)
 
     @property
-    def original_ed(self):
-        return self._load_ed(self._original_ed_path)
-
-    @property
-    def runtime_ed(self):
-        return self._load_ed(self._runtime_ed_path)
+    def runtime_ed_xml(self):
+        path = os.path.join(self._root_dir, self._runtime_ed_xml)
+        return self._load_ed(path)
 
     @property
     def start_time(self):
@@ -255,9 +254,6 @@ class ExperimentController(object):
 
     def remove(self, eid):
         return self._remove_pending_event(eid)
-
-    def cancel(self, eid):
-        return self._cancel_pending_event(eid)
 
     def run(self, modnames = None):
         self._load_testbed_controllers(modnames)
@@ -288,17 +284,18 @@ class ExperimentController(object):
     def shutdown_now(self):
         return self._shutdown()
 
-    def shutdown(self, guid = None, date = None, wait_events = None):
+    def shutdown(self, guid = None, date = None, wait_events = None,
+            pending = True):
         if guid == None:
             callback = self._shutdown
         else:
             callback = self._tc_shutdown
         args = []
         # schedule shutdown
-        return self._schedule_event(callback, args, date, wait_events)
+        return self._schedule_event(callback, args, date, wait_events, pending)
 
     def create(self, guid, box_id, container_guid, controller_guid, box_tags,
-            attributes, date = None, wait_events = None):
+            attributes, date = None, wait_events = None, pending = True):
         # create new resource
         rc = Resource(guid, box_id, container_guid, controller_guid, box_tags)
         self._resources[guid] = rc
@@ -310,53 +307,47 @@ class ExperimentController(object):
         
         args = [guid, attributes]
         # schedule create
-        return self._schedule_event(callback, args, date, wait_events)
+        return self._schedule_event(callback, args, date, wait_events, pending)
 
-    def connect(self, guid, connector, other_guid, other_connector, 
-            date = None, wait_events = None):
+    def connect(self, guid, connector, other_guid, other_box_id,
+            other_connector, date = None, wait_events = None, pending = True):
         callback = self._tc_connect
-        args = [guid, connector, other_guid, other_connector]
-        return self._schedule_event(callback, args, date, wait_events)
+        args = [guid, connector, other_guid, other_box_id, other_connector]
+        return self._schedule_event(callback, args, date, wait_events, pending)
 
-    def postconnect(self, guid, connector, other_guid, other_connector, 
-            date = None, wait_events = None):
+    def postconnect(self, guid, connector, other_guid, other_box_id,
+            other_connector, date = None, wait_events = None, pending = True):
         callback = self._tc_postconnect
-        args = [guid, connector, other_guid, other_connector]
-        return self._schedule_event(callback, args, date, wait_events)
+        args = [guid, connector, other_guid, other_box_id, other_connector]
+        return self._schedule_event(callback, args, date, wait_events, pending)
 
-    def start(self, guid, date = None, wait_events = None):
+    def start(self, guid, date = None, wait_events = None, pending = True):
         callback = self._tc_start
         args = [guid]
-        return self._schedule_event(callback, args, date, wait_events)
+        return self._schedule_event(callback, args, date, wait_events, pending)
 
     def stop_now(self):
         return self._stop()
 
-    def stop(self, guid = None, date = None, wait_events = None):
+    def stop(self, guid = None, date = None, wait_events = None,
+            pending = True):
         if guid == None:
             callback = self._stop
         else:
             callback = self._tc_stop
         args = [guid]
-        return self._schedule_event(callback, args, date, wait_events)
+        return self._schedule_event(callback, args, date, wait_events, pending)
 
-    def set(self, guid, attr, value, date = None, wait_events = None):
-        callback = self._tc_get
+    def set(self, guid, attr, value, date = None, wait_events = None,
+            pending = True):
+        callback = self._tc_set
         args = [guid, attr, value]
-        return self._schedule_event(callback, args, date, wait_events)
+        return self._schedule_event(callback, args, date, wait_events, pending)
     
-    def get(self, guid, attr, date = None, wait_events = None):
+    def get(self, guid, attr, date = None, wait_events = None, pending = True):
         callback = self._tc_get
         args = [guid, attr]
-        return self._schedule_event(callback, args, date, wait_events)
-
-    def clean_events(self, wait_events):
-        """ Schedule an event that will remove the events from the 
-            pending_events list when there are executed. """
-        callback = self._clean_events
-        args = [wait_events]
-        date = None
-        return self._schedule_event(callback, args, date, wait_events, "3s")
+        return self._schedule_event(callback, args, date, wait_events, pending)
 
     @property
     def _tcs(self):
@@ -366,8 +357,8 @@ class ExperimentController(object):
     def _stop(self):
         state = self.state()
         if state < ResourceState.STARTED:
-           return (EventStatus.FAIL, "Couldn't stop EC. Wrong state %d"
-                % (state))
+            self._logger.debug("_stop(): FAIL, wrong state %d for EC" % (state))
+            return (EventStatus.FAIL, "")
 
         status = EventStatus.SUCCESS
         result = ""
@@ -389,8 +380,8 @@ class ExperimentController(object):
     def _tc_stop(self, guid):
         state = self.state(guid)
         if state < ResourceState.STARTED:
-           return (EventStatus.FAIL, "Couldn't stop RC. Wrong state %d for guid(%d)"
-                % (state, guid))
+            self._logger.debug("_tc_stop(): FAIL, wrong state %d for guid(%d)" % (state, guid))
+            return (EventStatus.FAIL, "")
 
         status = EventStatus.SUCCESS
         result = ""
@@ -405,9 +396,14 @@ class ExperimentController(object):
 
     def _tc_start(self, guid):
         state = self.state(guid)
+        if state in [ResourceState.FAILED, ResourceState.STOPPED, ResourceState.FINISHED,
+                ResourceState.SHUTDOWN]:
+            self._logger.debug("_tc_start(): FAIL, wrong state %d for guid(%d)" % (state, guid))
+            return (EventStatus.FAIL, "")
+
         if state != ResourceState.CREATED:
-           return (EventStatus.FAIL, "Couldn't start RC. Wrong state %d for guid(%d)"
-                % (state, guid))
+            self._logger.debug("_tc_start(): RETRY, wrong state %d for guid(%d)" % (state, guid))
+            return (EventStatus.RETRY, "")
 
         status = EventStatus.SUCCESS
         result = ""
@@ -443,7 +439,7 @@ class ExperimentController(object):
 
         rc = self._resources.get(guid)
         if state >= ResourceState.CREATED and state < ResourceState.SHUTDOWN:
-            (status, result) = rc.tc.shutdown(guid)
+            (status, result) = rc.tc.shutdown()
             if status == EventStatus.SUCCESS:
                 rc.state = ResourceState.SHUTDOWN
         elif state == ResourceState.NEW:
@@ -454,24 +450,21 @@ class ExperimentController(object):
     def _create(self, guid, attributes):
         state = self.state(guid)
         if state != ResourceState.NEW:
-           return (EventStatus.FAIL, "Couldn't create TC. Wrong state %d for guid(%d)"
-                % (state, guid))
+            self._logger.debug("_create(): FAIL, wrong state %d for TC guid(%d)" % (state, guid))
+            return (EventStatus.FAIL, "")
 
         rc = self._resources.get(guid)
         tcrc_guid = rc.controller_guid
         tcrc = self._resources.get(rc.controller_guid)
         
-        if tcrc_guid and not tcrc:
-            # The TC doesn't exist.
-            return (EventStatus.FAIL, "TC for guid(%d) does not exist." % guid)
-
         # Nested testbed
-        if tcrc_guid and not tcrc.tc:
+        if tcrc_guid and not (tcrc and tcrc.tc):
             # The TC is not yet created. We need to delay the event.
-            return (EventStatus.RETRY, "0.2s")
+            self._logger.debug("_create(): RETRY, nested TC guid(%d). Waiting for TC guid(%d) to become ready." % (guid, tcrc_guid))
+            return (EventStatus.RETRY, "")
         
         tc_class = self._tc_classes.get(rc.box_id)
-        tc = tc_class(guid)
+        tc = tc_class(guid, attributes)
         rc.tc = tc
         rc.state = ResourceState.CREATED 
 
@@ -480,19 +473,17 @@ class ExperimentController(object):
     def _tc_create(self, guid, attributes):
         state = self.state(guid)
         if state != ResourceState.NEW:
-           return (EventStatus.FAIL, "Couldn't create RC. Wrong state %d for guid(%d)"
-                % (state, guid))
+            self._logger.debug("_tc_create(): FAIL, Wrong state %d for guid(%d)" % (state, guid))
+            return (EventStatus.FAIL, "")
 
         rc = self._resources.get(guid)
+        tcrc_guid = rc.controller_guid
         tcrc = self._resources.get(rc.controller_guid)
-            
-        if not tcrc:
-            # The TC doesn't exist.
-            return (EventStatus.FAIL, "TC for guid(%d) does not exist." % guid)
 
-        if not tcrc.tc:
+        if not tcrc or not tcrc.tc:
             # The TC is not yet created. We need to delay the event.
-            return (EventStatus.RETRY, "0.2s")
+            self._logger.debug("_tc_create(): RETRY, waiting for TC guid(%d) to become ready for guid(%d)" % (tcrc_guid, guid))
+            return (EventStatus.RETRY, "")
         else:
             rc.tc = tcrc.tc
 
@@ -501,31 +492,49 @@ class ExperimentController(object):
             rc.state = ResourceState.CREATED 
         return (status, result)
 
-    def _tc_connect(self, guid, connector, other_guid, other_connector):
+    def _tc_connect(self, guid, connector, other_guid, other_box_id, 
+            other_connector):
         state = self.state(guid)
+        if state in [ResourceState.FAILED, ResourceState.STOPPED, ResourceState.FINISHED,
+                ResourceState.SHUTDOWN]:
+            self._logger.debug("_tc_connect(): FAIL, wrong state %d for guid(%d)" % (state, guid))
+            return (EventStatus.FAIL, "")
+        
         if state not in [ResourceState.CREATED, ResourceState.STARTED, ResourceState.RUNNING]:
-           return (EventStatus.FAIL, "Couldn't connect RC. Wrong state %d for guid(%d)"
-                % (state, guid))
+            self._logger.debug("_tc_connect(): RETRY,  wrong state %d for guid(%d)" % (state, guid))
+            return (EventStatus.RETRY, "")
 
         rc = self._resources.get(guid)
-        (status, result) = rc.tc.connect(guid, connector, other_guid, other_connector)
+        (status, result) = rc.tc.connect(guid, connector, other_guid, 
+                other_box_id, other_connector)
         return (status, result)
 
-    def _tc_postconnect(self, guid, connector, other_guid, other_connector):
+    def _tc_postconnect(self, guid, connector, other_guid, other_box_id,
+            other_connector):
         state = self.state(guid)
+        if state in [ResourceState.FAILED, ResourceState.STOPPED, ResourceState.FINISHED,
+                ResourceState.SHUTDOWN]:
+            self._logger.debug("_tc_postconnect(): FAIL, wrong state %d for guid(%d)" % (state, guid))
+            return (EventStatus.FAIL, "")
+        
         if state not in [ResourceState.CREATED, ResourceState.STARTED, ResourceState.RUNNING]:
-           return (EventStatus.FAIL, "Couldn't postconnect RC. Wrong state %d for guid(%d)"
-                % (state, guid))
+            self._logger.debug("_tc_postconnect(): RETRY,  wrong state %d for guid(%d)" % (state, guid))
+            return (EventStatus.RETRY, "")
 
         rc = self._resources.get(guid)
-        (status, result) = rc.tc.postconnect(guid, connector, other_guid, other_connector)
+        (status, result) = rc.tc.postconnect(guid, connector, other_guid,
+                other_box_id, other_connector)
         return (status, result)
 
     def _tc_get(self, guid, attr): 
         state = self.state(guid)
-        if state in [ResourceState.NOTEXIST, ResourceState.NEW, ResourceState.SHUTDOWN]:
-           return (EventStatus.FAIL, "Couldn't get attribute from RC. Wrong state %d for guid(%d)"
-                % (state, guid))
+        if state in [ResourceState.FAILED, ResourceState.SHUTDOWN]:
+            self._logger.debug("_tc_get(): FAIL, wrong state %d for guid(%d)" % (state, guid))
+            return (EventStatus.FAIL, "")
+        
+        if state in [ResourceState.NOTEXIST, ResourceState.NEW]:
+            self._logger.debug("_tc_get(): RETRY, wrong state %d for guid(%d)" % (state, guid))
+            return (EventStatus.RETRY, "")
 
         rc = self._resources.get(guid)
         (status, result) = rc.tc.get(guid, attr)
@@ -533,87 +542,72 @@ class ExperimentController(object):
 
     def _tc_set(self, guid, attr, value): 
         state = self.state(guid)
-        if state in [ResourceState.NOTEXIST, ResourceState.NEW, ResourceState.SHUTDOWN]:
-           return (EventStatus.FAIL, "Couldn't set attribute on RC. Wrong state %d for guid(%d)"
-                % (state, guid))
+        if state in [ResourceState.FAILED, ResourceState.SHUTDOWN]:
+            self._logger.debug("_tc_get(): FAIL, wrong state %d for guid(%d)" % (state, guid))
+            return (EventStatus.FAIL, "")
+        
+        if state in [ResourceState.NOTEXIST, ResourceState.NEW]:
+            self._logger.debug("_tc_get(): RETRY, wrong state %d for guid(%d)" % (state, guid))
+            return (EventStatus.RETRY, "")
 
         rc = self._resources.get(guid)
         (status, result) = rc.tc.set(guid, attr, value)
         return (status, result)
 
-    def _clean_events(self, events):
-        for eid in events:
-            self.remove(eid)
-        return (EventStatus.SUCCESS, "")
-
-    def _save_ed(self, path, xml):
+    def _save_ed(self, filename, xml):
         """ Persist experiment description to file """
+        path = os.path.join(self._root_dir, filename)
         f = open(path, "w")
         f.write(xml)
         f.close()
 
-    def _load_ed(self, path):
+    def _load_ed(self, filename):
         """ Load experiment description from file """
+        path = os.path.join(self._root_dir, filename)
         f = open(path, "r")
         xml = f.read()
         f.close()
         return xml
 
     def _orchestrate_ed(self, modnames = None):
-        def walk_create(box, pending_events):
+        def walk_create(box):
             if not [t for t in box.tags if t in [tags.EXPERIMENT, tags.CONTAINER]]:
                 controller_guid = box.controller.guid if box.controller else None
                 container_guid = box.container.guid if box.container else None
-                attrs = dict((attr_name, getattr(box.a, attr_name)) \
+                attrs = dict((attr_name, getattr(box.a, attr_name).value) \
                         for attr_name in box.attributes)
 
                 # schedule create
-                eid_create = self.create(box.guid, box.box_id, container_guid, 
-                        controller_guid, box.tags, attrs)
-                pending_events.append(eid_create)
+                eid_create = self.create(box.guid, box.box_id, container_guid,
+                        controller_guid, box.tags, attrs, pending = False)
 
                 # schedule connect
                 wait_events = []
                 for conn in box.connections:
                     (b, c_name, other_b, other_c_name) = conn
 
-                    eid_conn = self.connect(b.guid, c_name, other_b, other_c_name,
-                            wait_events = [eid_create])
+                    eid_conn = self.connect(b.guid, c_name, other_b.guid,
+                            other_b.box_id, other_c_name, 
+                            wait_events = [eid_create], pending = False)
                     wait_events.append(eid_conn)
-                    pending_events.append(eid_conn)
 
-                    eid_post = self.postconnect(b.guid, c_name, other_b, other_c_name,
-                            wait_events = [eid_conn])
+                    eid_post = self.postconnect(b.guid, c_name, other_b.guid, 
+                            other_b.box_id, other_c_name,
+                            wait_events = [eid_conn], pending = False)
                     wait_events.append(eid_post)
-                    pending_events.append(eid_post)
 
                 # schedule start
-                eid_start = self.start(box.guid, wait_events = wait_events)
-                pending_events.append(eid_start)
+                eid_start = self.start(box.guid, wait_events = wait_events, 
+                        pending = False)
 
             for b in box.boxes:
-                walk_create(b, pending_events)
+                walk_create(b)
 
-        pending_events = []
         provider = create_provider(modnames)
-        exp = provider.from_xml(self.original_ed)
-        walk_create(exp, pending_events)
-
-        self.clean_events(pending_events)
-
-    def _schedule_event(self, callback, args, date = None, 
-            wait_events = None, delay = None):
-        event = Event(callback, args, wait_events, delay)
-        return self.__schedule_event(event, date)
-
-    def __schedule_event(self, event, date = None):
-        self._proc_cond.acquire()
-        (date, eid, event) = self._scheduler.schedule(event, date)
-        self._proc_cond.notify()
-        self._proc_cond.release()
-
-        self._add_pending_event(eid, event)
-        return eid
+        xml = self.original_ed_xml
+        if xml:
+            exp = provider.from_xml(xml)
+            walk_create(exp)
 
     def _process_events(self):
         sync_limit = 20
@@ -635,16 +629,17 @@ class ExperimentController(object):
                     now = strfnow()
                     if now < date:
                         # re-schedule event at same date
-                        self.__schedule_event(event, date)
+                        self.__schedule_event(event, date, pending = False)
                         # difference in seconds
                         timeout = strfdiff(date, now)
                         self._proc_cond.acquire()
                         self._proc_cond.wait(timeout)
                         self._proc_cond.release()
                     elif [eid for eid in event.wait_events \
-                            if self.poll(eid) == EventStatus.PENDING]:
-                        # re-schedule event in 1 second
-                        self.__schedule_event(event, event.delay)
+                            if self.poll(eid) in [EventStatus.RETRY, EventStatus.PENDING]]:
+                        # re-schedule event in a delta of time
+                        date = Event.DEFAULT_DELAY 
+                        self.__schedule_event(event, date, pending = False)
                     else:
                         # process events in parallel
                         runner.put(self._execute_event, event)
@@ -662,27 +657,98 @@ class ExperimentController(object):
         #runner.sync()
         #runner.join()
 
+    def _schedule_event(self, callback, args, date = None, wait_events = None,
+            pending = True):
+        event = Event(callback, args, wait_events)
+        return self.__schedule_event(event, date, pending)
+
+    def __schedule_event(self, event, date = None, pending = True):
+        self._proc_cond.acquire()
+        (date, eid, event) = self._scheduler.schedule(event, date)
+        self._proc_cond.notify()
+        self._proc_cond.release()
+        
+        if pending:
+            self._add_pending_event(eid, event)
+        return eid
+
     def _remove_event(self, event):
         self._proc_cond.acquire()
         self._scheduler.remove(event)
         self._proc_cond.release()
 
     def _execute_event(self, event):
-        (status, result) = event.callback(*event.args)
+        (status, result) = event.callback(*event.args, **event.kwargs)
         event.status = status
         event.result = result
         
         if status == EventStatus.RETRY:
-            # Results holds the delay
-            self.__schedule_event(event, date = result)
-        else: # FAIL or SUCCESS
-            self._remove_event(event) 
-            if status == EventStatus.FAIL:
-                self._logger.error("Event failure: %s(%s) - %s" % (event.callback.func_name, event.args, result))
+            # result holds the criterion to determine what to do
+            (event, date, status) = self._resolve_retry(event, result)
+
+        # if status is still RETRY
+        if status == EventStatus.RETRY:
+            self.__schedule_event(event, date, pending = False)
+
+    def _resolve_retry(self, event, result):
+        status = EventStatus.RETRY
+        date = Event.DEFAULT_DELAY
+        if result:
+            m = _retryre.match(result)
+            if m:
+                d = m.groupdict()
+                if d['delay']:
+                    # take what follows "delay:"
+                    date = d['delay'][6:] 
+                elif d['kwargs']:
+                    # take what follows "kwargs:"
+                    skwargs = d['kwargs'][7:]
+                    event = self._kwargs_wrapper_event(event, skwargs)
+                else:
+                    status = EventStatus.FAIL
+            else:
+                status = EventStatus.FAIL
+
+        return (event, date, status)
+
+    def _kwargs_wrapper_event(self, event, skwargs):
+        def _wrapper_event(event, rkwargs):
+            for key, (guid, attr) in rkwargs.iteritem():
+                if key not in event.kwargs:
+                    state = self.state(guid)
+                    # we asume the resource will we created in the future.
+                    # for now we need to wait.
+                    if state == ResourceState.NOTEXIST:
+                        return (EventStatus.RETRY, "")
+
+                    # try to get the value
+                    (status, result) = self._tc_get(guid, attr)
+                    if state == ResourceState.SUCCESS:
+                        event.kwargs[key] = result
+                    else:
+                        return (status, result)
+            
+            # re-schedule original event immediately
+            self.__schedule_event(event, date = None, pending = False)
+            return (EventStatus.SUCCESS, "")
+
+        # require attributes to put in event.kwargs
+        rkwargs = dict()
+        for arg in skwargs.split(","):
+            m = _kwargre.match(arg)
+            key = m.groupdict()['key'] 
+            guid = m.groupdict()['guid']
+            attr = m.groupdict()['attr']
+            rkwargs[key] = (guid, attr)
+
+        callback = _wrapper_event
+        args = [event, rkwargs]
+        new_event = Event(callback, args)
+        return new_event
 
     def _add_pending_event(self, eid, event):
         self._pend_lock.acquire()
-        self._pend_events[eid] = event                
+        self._pend_events[eid] = event
         self._pend_lock.release()
 
     def _remove_pending_event(self, eid):
@@ -691,7 +757,6 @@ class ExperimentController(object):
             self._pend_lock.acquire()
             del self._pend_events[eid]
             self._pend_lock.release()
-
             self._remove_event(event)
             return True
 
@@ -706,17 +771,10 @@ class ExperimentController(object):
 
     def _result_pending_event(self, eid):
         event = self._pend_events.get(eid)
-        if not event or event.status == EventStatus.PENDING:
+        if not event:
             return None 
 
         return event.result
-
-    def _cancel_pending_event(self, eid):
-        event = self._pend_events.get(eid)
-        if event and event.status == EventStatus.PENDING:
-            return self._remove_pending_event(eid)
-
-        return False
 
     def _load_testbed_controllers(self, modnames = None):
         if not modnames:
@@ -740,18 +798,14 @@ class ExperimentController(object):
 
 
 class TestbedController(object):
-    def __init__(self, guid):
+    def __init__(self, guid, attributes):
         super(TestbedController, self).__init__()
         self._guid = guid
+        self._attributes = attributes
         self._start_time = None
         self._stop_time = None
-        # flag indicating that user stoped experiment
-        self._stopped = True
-        # experiment controller (EC) state
-        self._state = ResourceState.NEW
-
-        # objects
-        self._objects = dict()
+        # testbed controller (TC) state
+        self._state = ResourceState.CREATED
 
     @property
     def guid(self):
@@ -766,13 +820,7 @@ class TestbedController(object):
         return self._stopped_time
 
     def state(self, guid):
-        if guid == self.guid:
-            return self._state
-        else:
-            obj = self._objects.get(guid)
-            if not obj: 
-                return ResourceState.NOTEXIST
-            return obj.state
+        raise NotImplementedError
 
     def recover(self):
         raise NotImplementedError
@@ -783,31 +831,27 @@ class TestbedController(object):
     def create(self, guid, box_id, container_guid, controller_guid, attributes):
         raise NotImplementedError
 
-    def connect(self, guid, connector, other_guid, other_connector):
+    def connect(self, guid, connector, other_guid, other_box_id, 
+            other_connector, **kwargs):
         raise NotImplementedError
 
-    def postconnect(self, guid, connector, other_guid, other_connector): 
+    def postconnect(self, guid, connector, other_guid, other_box_id,
+            other_connector, **kwargs): 
         raise NotImplementedError
 
-    def start(self, guid = None):
+    def start(self, guid):
         raise NotImplementedError
 
-    def stop(self, guid = None):
+    def stop(self, guid):
         raise NotImplementedError
 
     def set(self, guid, attr, value):
-        obj = self._objects.get(guid)
-        if not obj: 
-            return (EventStatus.FAIL, "Object guid(%d) doesn't exist." % guid)
-        return obj.set_attr(attr, value)
+        raise NotImplementedError
 
     def get(self, guid, attr):
-        obj = self._objects.get(guid)
-        if not obj: 
-            return (EventStatus.FAIL, "Object guid(%d) doesn't exist." % guid)
-        return obj.get_attr(attr)
+        raise NotImplementedError
 
 
-def create_ec(xml):
-    return ExperimentController(xml)
+def create_ec(xml, root_dir = "/tmp", debug = False):
+    return ExperimentController(xml, root_dir, debug)
 
