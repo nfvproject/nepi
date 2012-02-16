@@ -45,7 +45,6 @@ class DesignBoxesTestCase(unittest.TestCase):
             self.assertTrue(id(conn1) !=  id(conn2))
             self.assertTrue(conn1.owner != conn2.owner)
     
-    
     def test_clone_container(self):
         provider = create_provider(modnames = ["mock"])
         
@@ -117,7 +116,6 @@ class DesignBoxesTestCase(unittest.TestCase):
         self.assertFalse(cont2.c.myconn.is_connected(app1.c.node))
         self.assertFalse(node2.c.apps.is_connected(app1.c.node))
 
-
     def test_experiment_serialization(self):
         provider = create_provider(modnames = ["mock"])
 
@@ -171,7 +169,6 @@ class DesignBoxesTestCase(unittest.TestCase):
         
         xml2 = exp2.xml
         self.assertTrue(xml == xml2)
-
 
     def test_container_serialization(self):
         provider = create_provider(modnames = ["mock"])
@@ -232,7 +229,6 @@ class DesignBoxesTestCase(unittest.TestCase):
         switch1.a.eth0_address.value = "192.168.5.1"
         self.assertTrue(switch1.a.eth0_address.value != cont1.a.eth0_address.value)
         self.assertFalse(switch1.c.eth0.is_connected(iface5.c.peer))
-
 
     def test_routes_and_addresses(self):
         provider = create_provider(modnames = ["mock"])
