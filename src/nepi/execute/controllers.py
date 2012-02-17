@@ -44,8 +44,10 @@ def strfdiff(str1, str2):
     d2 = datetime.datetime.strptime(str2, _strf)
     diff = d1 - d2
     ddays = diff.days * 86400
-    dus = 0 # round(diff.microseconds * 1.0e-06, 2). PFFFFFF!! it seems condition.wait doesn't support float numbers well!!
-    return ddays + diff.seconds + dus
+    dus = round(diff.microseconds * 1.0e-06, 0) # PFFFFFF!! it seems condition.wait doesn't support arbitrary float numbers well!!
+    ret = ddays + diff.seconds + dus
+    # avoid to saturate the procesor. if delay is 0 lets add 0.001
+    return ret or 0.001
 
 def strfvalid(date):
     if not date:
@@ -493,7 +495,7 @@ class ExperimentController(object):
         return (status, result)
 
     def _tc_connect(self, guid, connector, other_guid, other_box_id, 
-            other_connector):
+            other_connector, **kwargs):
         state = self.state(guid)
         if state in [ResourceState.FAILED, ResourceState.STOPPED, ResourceState.FINISHED,
                 ResourceState.SHUTDOWN]:
@@ -506,11 +508,11 @@ class ExperimentController(object):
 
         rc = self._resources.get(guid)
         (status, result) = rc.tc.connect(guid, connector, other_guid, 
-                other_box_id, other_connector)
+                other_box_id, other_connector, **kwargs)
         return (status, result)
 
     def _tc_postconnect(self, guid, connector, other_guid, other_box_id,
-            other_connector):
+            other_connector, **kwargs):
         state = self.state(guid)
         if state in [ResourceState.FAILED, ResourceState.STOPPED, ResourceState.FINISHED,
                 ResourceState.SHUTDOWN]:
@@ -523,7 +525,7 @@ class ExperimentController(object):
 
         rc = self._resources.get(guid)
         (status, result) = rc.tc.postconnect(guid, connector, other_guid,
-                other_box_id, other_connector)
+                other_box_id, other_connector, **kwargs)
         return (status, result)
 
     def _tc_get(self, guid, attr): 
@@ -667,7 +669,7 @@ class ExperimentController(object):
         (date, eid, event) = self._scheduler.schedule(event, date)
         self._proc_cond.notify()
         self._proc_cond.release()
-        
+
         if pending:
             self._add_pending_event(eid, event)
         return eid
@@ -713,8 +715,9 @@ class ExperimentController(object):
 
     def _kwargs_wrapper_event(self, event, skwargs):
         def _wrapper_event(event, rkwargs):
-            for key, (guid, attr) in rkwargs.iteritem():
+            for key, (guid, attr) in rkwargs.iteritems():
                 if key not in event.kwargs:
+                    guid = int(guid)
                     state = self.state(guid)
                     # we asume the resource will we created in the future.
                     # for now we need to wait.
@@ -723,11 +726,11 @@ class ExperimentController(object):
 
                     # try to get the value
                     (status, result) = self._tc_get(guid, attr)
-                    if state == ResourceState.SUCCESS:
+                    if status == EventStatus.SUCCESS:
                         event.kwargs[key] = result
                     else:
                         return (status, result)
-            
+
             # re-schedule original event immediately
             self.__schedule_event(event, date = None, pending = False)
             return (EventStatus.SUCCESS, "")

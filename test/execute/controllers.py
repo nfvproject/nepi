@@ -138,6 +138,50 @@ class ExecuteControllersTestCase(unittest.TestCase):
         finally:
             ec.shutdown()
 
+    def test_schedule_kwargs(self):
+        provider = create_provider(modnames = ["mock"])
+        exp = provider.create("Experiment")
+        mocki = provider.create("mock::MockInstance", container = exp)
+        node = provider.create("mock::Node", container = mocki)
+        trace = provider.create("mock::Trace", container = mocki)
+
+        ec = create_ec("", debug = False)
+
+        try: 
+            ec.run(modnames = ["mock"])
+
+            create_mock_eid = ec.create(mocki.guid, mocki.box_id, 
+                    container_guid(mocki),
+                    controller_guid(mocki),
+                    mocki.tags, 
+                    attrs(mocki))
+            create_trace_eid = ec.create(trace.guid, trace.box_id, 
+                    container_guid(trace),
+                    controller_guid(trace),
+                    trace.tags, 
+                    attrs(trace))
+            connect_eid = ec.connect(trace.guid, "node", 
+                    node.guid, "mock::Node", "traces") 
+            time.sleep(0.5)
+            status = ec.poll(connect_eid)
+            self.assertTrue(status == EventStatus.RETRY)
+            create_node_eid = ec.create(node.guid, node.box_id, 
+                    container_guid(node),
+                    controller_guid(node),
+                    node.tags, 
+                    attrs(node))
+            time.sleep(0.5)
+            status = ec.poll(create_node_eid)
+            self.assertTrue(status == EventStatus.SUCCESS)
+            time.sleep(2)
+            status = ec.poll(connect_eid)
+            self.assertTrue(status == EventStatus.SUCCESS)
+            
+        except:
+            raise
+        finally:
+            ec.shutdown()
+
     def test_schedule_poll_cancel(self):
         exp = experiment_description()
         # get the xml experiment description
