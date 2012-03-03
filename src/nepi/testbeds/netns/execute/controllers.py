@@ -157,7 +157,7 @@ class TAPInterface(NetnsElement):
 
         elif other_connector == "fd->":
             if not "tun_addr" in kwargs:
-                result = "kwargs={tun_addr:guid(%d).tun_addr}"
+                result = "kwargs:tun_addr:guid(%d).tun_addr" % other_guid
                 return (controllers.EventStatus.RETRY, result)
 
             address = kwargs["tun_addr"]
