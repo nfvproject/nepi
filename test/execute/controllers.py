@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 
 from nepi.design import create_provider
-from nepi.execute import create_ec, EventStatus 
+from nepi.execute import create_ec, EventStatus, Event 
 import time
 import unittest
 
 def attrs(box):
     return dict((attr_name, getattr(box.a, attr_name).value) \
-        for attr_name in box.attributes)
+        for attr_name in box.attributes if \
+        getattr(box.a, attr_name).value is not None)
 
 def controller_guid(box):
     return box.controller.guid if box.controller else None
@@ -51,7 +52,130 @@ def experiment_description():
 
 
 class ExecuteControllersTestCase(unittest.TestCase):
-    def test_schedule_creation_order(self):
+    def ptest_schedule_exception(self):
+        # This test has the objective of verifying that errors that occur 
+        # while executing an event will not afect the processing of following
+        # events
+        def error_func():
+            raise RuntimeError
+
+        def do_nothing():
+            return (EventStatus.SUCCESS, "")
+
+        ec = create_ec("", debug = False)
+        ec.run(modnames = [])
+
+        try:
+            # An error launched during event execution should not crash the EC
+            args = []
+            eid = ec._schedule_event(error_func, args)
+            time.sleep(0.1)
+            status = ec.poll(eid)
+            self.assertTrue(status == EventStatus.FAIL)
+
+            # Processing should continue normally after the exception
+            eid = ec._schedule_event(do_nothing, args)
+            time.sleep(0.1)
+            status = ec.poll(eid)
+            self.assertTrue(status == EventStatus.SUCCESS)
+
+            # There should be no events left in the queue
+            self.assertEquals(len(ec._scheduler._events), 0)
+            # There should be exactly 2 events scheduled in the past
+            nxt = ec._scheduler._eid.next()
+            self.assertEquals(nxt, 3)
+        finally:
+            ec.shutdown_now()
+
+    def ptest_schedule_date(self):
+        # This test has the objective of verifying that events are executed
+        # at the correct time they were scheduled on
+        def do_nothing():
+            return (EventStatus.SUCCESS, "")
+
+        ec = create_ec("", debug = False)
+        ec.run(modnames = [])
+
+        try:
+            args = []
+            # Scheduling an event in 2 seconds. It should not be executed before
+            eid = ec._schedule_event(do_nothing, args, date = "2s")
+            time.sleep(0.3)
+            status = ec.poll(eid)
+            self.assertTrue(status == EventStatus.PENDING)
+            time.sleep(1.8)
+            status = ec.poll(eid)
+            self.assertTrue(status == EventStatus.SUCCESS)
+
+            # There should be no events left in the queue
+            self.assertEquals(len(ec._scheduler._events), 0)
+            # There should be exactly 2 events scheduled in the past:
+            # the original event + the rescheduled event (as the execution
+            # date was still in the future)
+            nxt = ec._scheduler._eid.next()
+            self.assertEquals(nxt, 3)
+
+            # Now, lets try to schedule an event in the future wait, and
+            # schedule another earlier event, to verify that the processing
+            # thread is correctly correctly
+            args = []
+            eid1 = ec._schedule_event(do_nothing, args, date = "2s")
+            time.sleep(0.4)
+            status = ec.poll(eid1)
+            self.assertTrue(status == EventStatus.PENDING)
+            
+            # Even if eid1 was scheduled first, eid2 should be executed first
+            eid2 = ec._schedule_event(do_nothing, args)
+            time.sleep(0.1)
+            status = ec.poll(eid2)
+            self.assertTrue(status == EventStatus.SUCCESS)
+            status = ec.poll(eid1)
+            self.assertTrue(status == EventStatus.PENDING)
+            
+            # Finally, the original event should be executed
+            time.sleep(1.6)
+            status = ec.poll(eid1)
+            self.assertTrue(status == EventStatus.SUCCESS)
+           
+            nxt = ec._scheduler._eid.next()
+            self.assertEquals(nxt, 8)
+
+        finally:
+            ec.shutdown_now()
+
+    def ptest_schedule_pending(self):
+        # This test has the objective of verifying that events marked as
+        # 'pending' will be added to the pending events list, and vicerversa 
+        def do_nothing():
+            return (EventStatus.SUCCESS, "")
+
+        ec = create_ec("", debug = False)
+        ec.run(modnames = [])
+
+        try:
+            args = []
+            # Event is explicitelly not added to the pending events list
+            eid = ec._schedule_event(do_nothing, args, pending = False)
+            time.sleep(0.3)
+            status = ec.poll(eid)
+            self.assertTrue(status == None)
+            # Verify that pending event list has len == 0
+            self.assertEquals(len(ec._pend_events), 0)
+
+            eid = ec._schedule_event(do_nothing, args, pending = True)
+            time.sleep(0.1)
+            status = ec.poll(eid)
+            self.assertTrue(status == EventStatus.SUCCESS)
+            # Verify that pending event list has len == 1
+            self.assertEquals(len(ec._pend_events), 1)
+
+        finally:
+            ec.shutdown_now()
+
+    def ptest_schedule_creation_order(self):
+        # This test has the objective of verifying that basic ordering
+        # rules for component creating are respected. (Ex, a child component
+        # can never be created before its parent)
         provider = create_provider(modnames = ["mock"])
         exp = provider.create("Experiment")
         mocki = provider.create("mock::MockInstance", container = exp)
@@ -62,27 +186,33 @@ class ExecuteControllersTestCase(unittest.TestCase):
         try: 
             ec.run(modnames = ["mock"])
 
-            # validation: node can't be created before it's TC!
+            # Validation: node can't be created before it's TC!
             create_node_eid = ec.create(node.guid, node.box_id, 
                     container_guid(node),
                     controller_guid(node),
                     node.tags, 
                     attrs(node))
-            time.sleep(0.5)
+            time.sleep(0.2)
+            # Verify that node_create event is in RETRY status 
+            # as execution was delayed by the events itself as 
+            # conditions for execution where not yet satisfied
             status = ec.poll(create_node_eid)
             self.assertTrue(status == EventStatus.RETRY)
+            # Verify that pending event list has len == 1
+            self.assertEquals(len(ec._pend_events), 1)
+
             create_mock_eid = ec.create(mocki.guid, mocki.box_id, 
                     container_guid(mocki),
                     controller_guid(mocki),
                     mocki.tags, 
                     attrs(mocki))
-            time.sleep(0.5)
+            time.sleep(0.2)
             status = ec.poll(create_mock_eid)
             self.assertTrue(status == EventStatus.SUCCESS)
             status = ec.poll(create_node_eid)
             self.assertTrue(status == EventStatus.SUCCESS)
             
-            # the pend_events list should only have two entries, even if retries where done
+            # The pend_events list should only have two entries, even if retries where done
             self.assertEquals(len(ec._pend_events), 2)
             removed = ec.remove(create_node_eid)
             self.assertTrue(removed)
@@ -90,60 +220,61 @@ class ExecuteControllersTestCase(unittest.TestCase):
             self.assertTrue(removed)
             self.assertEquals(len(ec._pend_events), 0)
 
-        except:
-            raise
         finally:
-            ec.shutdown()
+            ec.shutdown_now()
 
-    def test_schedule_wait_events(self):
-        exp = experiment_description()
-        # get the xml experiment description
-        xml = exp.xml
+    def ptest_schedule_wait_events(self):
+        # This test has the objective of verifying the 'wait_events'
+        # condition
+        def do_nothing():
+            return (EventStatus.SUCCESS, "")
 
-        ec = create_ec(xml)
+        ec = create_ec("", debug = False)
+        ec.run(modnames = [])
 
-        try: 
-            ec.run(modnames = ["mock"])
-            trace1 = exp.box("trace")
+        try:
+            args = []
+            eid1 = ec._schedule_event(do_nothing, args, date = "2s")
+            # The second event is scheduled inmediatelly, but needs to wait
+            # until the other event is done.
+            eid2 = ec._schedule_event(do_nothing, args, wait_events = [eid1])
 
-            # validation: get should be performed after set
-            set_eid = ec.set(trace1.guid, "stringAttr", "new value", date = "3s")
-            get_eid = ec.get(trace1.guid, "stringAttr", wait_events = [set_eid])
-            status = ec.poll(get_eid)
+            time.sleep(0.2)
+            status = ec.poll(eid1)
             self.assertTrue(status == EventStatus.PENDING)
-            time.sleep(2)
-            status = ec.poll(get_eid)
+            status = ec.poll(eid2)
             self.assertTrue(status == EventStatus.PENDING)
-            time.sleep(1.1)
-            status = ec.poll(get_eid)
-            self.assertTrue(status == EventStatus.SUCCESS)
-            result = ec.result(get_eid)
-            self.assertEquals(result, "new value")
-            removed = ec.remove(get_eid)
-            self.assertTrue(removed)
-            removed = ec.remove(set_eid)
-            self.assertTrue(removed)
             
-            # validation: wait on unexistent events should not break everything
-            get_eid = ec.get(trace1.guid, "stringAttr", wait_events = [set_eid])
-            while ec.poll(get_eid) in [EventStatus.RETRY, EventStatus.PENDING]:
-                time.sleep(0.01)
-            status = ec.poll(get_eid)
+            time.sleep(1.9)
+            status = ec.poll(eid1)
             self.assertTrue(status == EventStatus.SUCCESS)
-            result = ec.result(get_eid)
-            self.assertEquals(result, "new value")
-
-        except:
-            raise
+            status = ec.poll(eid2)
+            self.assertTrue(status == EventStatus.SUCCESS)
+ 
+            # There should be no events left in the queue
+            self.assertEquals(len(ec._scheduler._events), 0)
+            # There should be exactly 5 events scheduled in the past.
+            # 2 orginal events + 1 reschedule for the 2s delay + the w
+            nxt = ec._scheduler._eid.next()
+            self.assertEquals(nxt, 5)
         finally:
-            ec.shutdown()
+            ec.shutdown_now()
 
-    def test_schedule_kwargs(self):
+    def ptest_schedule_wait_values(self):
+        # This test has the objective of verifying the 'wait_values'
+        # condition
+        def do_nothing(node_guid, **kwargs):
+            if "boolAttr" not in kwargs:
+                result = dict({
+                    "wait_values": ["boolAttr:guid(%d).boolAttr == True" % node_guid]
+                })
+                return (EventStatus.RETRY, result)
+            return (EventStatus.SUCCESS, "")
+
         provider = create_provider(modnames = ["mock"])
         exp = provider.create("Experiment")
         mocki = provider.create("mock::MockInstance", container = exp)
         node = provider.create("mock::Node", container = mocki)
-        trace = provider.create("mock::Trace", container = mocki)
 
         ec = create_ec("", debug = False)
 
@@ -155,105 +286,50 @@ class ExecuteControllersTestCase(unittest.TestCase):
                     controller_guid(mocki),
                     mocki.tags, 
                     attrs(mocki))
-            create_trace_eid = ec.create(trace.guid, trace.box_id, 
-                    container_guid(trace),
-                    controller_guid(trace),
-                    trace.tags, 
-                    attrs(trace))
-            connect_eid = ec.connect(trace.guid, "node", 
-                    node.guid, "mock::Node", "traces") 
-            time.sleep(0.5)
-            status = ec.poll(connect_eid)
-            self.assertTrue(status == EventStatus.RETRY)
             create_node_eid = ec.create(node.guid, node.box_id, 
                     container_guid(node),
                     controller_guid(node),
                     node.tags, 
                     attrs(node))
-            time.sleep(0.5)
+            
+            time.sleep(0.1)
             status = ec.poll(create_node_eid)
             self.assertTrue(status == EventStatus.SUCCESS)
-            time.sleep(2)
-            status = ec.poll(connect_eid)
-            self.assertTrue(status == EventStatus.SUCCESS)
             
-        except:
-            raise
+            args = [node.guid]
+            eid = ec._schedule_event(do_nothing, args)
+            time.sleep(0.1)
+            status = ec.poll(eid)
+            self.assertTrue(status == EventStatus.RETRY)
+            
+            set_eid = ec.set(node.guid, "boolAttr", True)
+            time.sleep(0.1)
+            status = ec.poll(set_eid)
+            self.assertTrue(status == EventStatus.SUCCESS)
+
+            time.sleep(0.1)
+            status = ec.poll(eid)
+            self.assertTrue(status == EventStatus.SUCCESS)
+  
+            # There should be no events left in the queue
+            self.assertEquals(len(ec._scheduler._events), 0)
+          
         finally:
-            ec.shutdown()
+            ec.shutdown_now()
 
-    def test_schedule_poll_cancel(self):
+    def test_orchestration(self):
         exp = experiment_description()
-        # get the xml experiment description
         xml = exp.xml
-
         ec = create_ec(xml)
 
         try: 
             ec.run(modnames = ["mock"])
-            trace1 = exp.box("trace")
+            time.sleep(2)
+            rxml = ec.runtime_ed_xml
+            print "RUNTIME xml" , rxml
 
-            # shcedule get
-            eid = ec.get(trace1.guid, "stringAttr")
-            while ec.poll(eid) in [EventStatus.RETRY, EventStatus.PENDING]:
-                time.sleep(0.01)
-            status = ec.poll(eid)
-            self.assertTrue(status == EventStatus.SUCCESS)
-            result = ec.result(eid)
-            self.assertEquals(result, "lala")
-            removed = ec.remove(eid)
-            self.assertTrue(removed)
-            status = ec.poll(eid)
-            # After getting the result back, the event should have been eraised
-            # and status should be None
-            self.assertTrue(status == None)
-
-            # shcedule set
-            eid = ec.set(trace1.guid, "stringAttr", "lolo")
-            while ec.poll(eid) in [EventStatus.RETRY, EventStatus.PENDING]:
-                time.sleep(0.01)
-            ec.remove(eid)
-            # verify that the value was set correctly
-            eid = ec.get(trace1.guid, "stringAttr")
-            while ec.poll(eid) in [EventStatus.RETRY, EventStatus.PENDING]:
-                time.sleep(0.01)
-            result = ec.result(eid)
-            self.assertEquals(result, "lolo")
-            ec.remove(eid)
-            
-            node1 = exp.box("node1")
-            
-            # schedule for delay 1s
-            eid = ec.get(node1.guid, "boolAttr", date = "1s")
-            status = ec.poll(eid)
-            self.assertTrue(status == EventStatus.PENDING)
-            time.sleep(1.1)
-            status = ec.poll(eid)
-            self.assertTrue(status == EventStatus.SUCCESS)
-            
-            # schedule and cancel
-            eid = ec.get(node1.guid, "boolAttr", date = "3s")
-            status = ec.poll(eid)
-            self.assertTrue(status == EventStatus.PENDING)
-            time.sleep(1)
-            removed = ec.remove(eid)
-            self.assertTrue(removed)
-            status = ec.poll(eid)
-            self.assertTrue(status == None)
-
-            # poll on nonexistent event id should not break things
-            eid = 1000000000000
-            status = ec.poll(eid)
-            self.assertTrue(status == None)
-            result = ec.result(eid)
-            self.assertTrue(result == None)
-            removed = ec.remove(eid)
-            self.assertFalse(removed)
-
-        except:
-            raise
         finally:
-            ec.shutdown()
+            ec.shutdown_now()
 
 
 if __name__ == '__main__':

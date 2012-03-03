@@ -59,11 +59,6 @@ class Trace(MockObject):
 
     def connect(self, guid, connector, other_guid, other_box_id,
             other_connector, **kwargs):
-        if other_box_id == NODE:
-            if "boolAttr" not in kwargs:
-                result = "kwargs:boolAttr:guid(%d).boolAttr" % other_guid
-                return (controllers.EventStatus.RETRY, result)
-
         self.tc._logger.debug("connect(): SUCCESS")
         return (controllers.EventStatus.SUCCESS, "")
 
