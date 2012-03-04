@@ -276,7 +276,6 @@ class ExperimentController(object):
     def run(self, modnames = None):
         self._load_testbed_controllers(modnames)
         self._provider = create_provider(modnames)
-        self._exp_box = self._provider.create("Experiment")
         # Orchestrate experiment by translating the experiment
         # description into scheduled events
         self._orchestrate()
@@ -380,6 +379,12 @@ class ExperimentController(object):
     def get(self, guid, attr, date = None, pending = True, **conditions):
         callback = self._tc_get
         args = [guid, attr]
+        return self._schedule_event(callback, args, date, pending, **conditions)
+
+    def set_graphical_info(self, guid, x, y, height, width, hidden, 
+            date = None, pending = True, **conditions):
+        callback = self._set_graphical_info
+        args = [guid, x, y, height, width, hidden]
         return self._schedule_event(callback, args, date, pending, **conditions)
 
     @property
@@ -504,7 +509,8 @@ class ExperimentController(object):
         container = self._exp_box
         if rc.container_guid:
             container = self._exp_box.box(rc.container_guid)
-        self._provider.create(rc.box_id, container = container, **attributes)
+        self._provider.create(rc.box_id, guid = guid, container = container,
+                **attributes)
 
         return (EventStatus.SUCCESS, "")
 
@@ -537,7 +543,8 @@ class ExperimentController(object):
             container = self._exp_box
             if rc.container_guid:
                 container = self._exp_box.box(rc.container_guid)
-            self._provider.create(rc.box_id, container = container, **attributes)
+            self._provider.create(rc.box_id, guid = guid, container = container,
+                    **attributes)
 
         return (status, result)
 
@@ -550,7 +557,7 @@ class ExperimentController(object):
             return (EventStatus.FAIL, "")
         
         if state not in [ResourceState.CREATED, ResourceState.STARTED, ResourceState.RUNNING]:
-            self._logger.debug("_tc_connect(): RETRY,  wrong state %d for guid(%d)" % (state, guid))
+            self._logger.debug("_tc_connect(): RETRY, wrong state %d for guid(%d)" % (state, guid))
             return (EventStatus.RETRY, "")
 
         rc = self._resources.get(guid)
@@ -627,6 +634,24 @@ class ExperimentController(object):
 
         return (status, result)
 
+    def _set_graphical_info(self, guid, x, y, height, width, hidden):
+        state = self.state(guid)
+        if state in [ResourceState.FAILED, ResourceState.SHUTDOWN]:
+            self._logger.debug("_set_graphical_info(): FAIL, wrong state %d for guid(%d)" % (state, guid))
+            return (EventStatus.FAIL, "")
+        
+        if state < ResourceState.CREATED:
+            self._logger.debug("_set_graphical_info(): RETRY, wrong state %d for guid(%d)" % (state, guid))
+            return (EventStatus.RETRY, "")
+
+        box = self._exp_box.box(guid)
+        box.graphical_info.x = x
+        box.graphical_info.y = y
+        box.graphical_info.height = height
+        box.graphical_info.width = width
+        box.graphical_info.hidden = hidden
+        return (EventStatus.SUCCESS, "")
+
     def _clean_events(self, eids):
         for eid in eids:
             self.remove(eid)
@@ -666,6 +691,13 @@ class ExperimentController(object):
                         controller_guid, box.tags, attrs)
                 pending_events.append(eid_create)
 
+                # Schedule set graphical info
+                gi = box.graphical_info
+                eid_gi = self.set_graphical_info(box.guid, gi.x, gi.y,
+                        gi.height, gi.width, gi.hidden, 
+                        wait_events = [eid_create])
+                pending_events.append(eid_gi)
+
                 # Schedule connect & postconnect
                 for conn in box.connections:
                     (b, c_name, other_b, other_c_name) = conn
@@ -692,7 +724,10 @@ class ExperimentController(object):
                 pending_events.append(start_eid)
 
         xml = self.original_ed_xml
-        if xml:
+
+        if not xml:
+            self._exp_box = self._provider.create("Experiment")
+        else:
             # By default, only after all boxes are created and connected they 
             # can be started. 'start_boxes' keeps track of all the boxes that 
             # need to be wait until this condition occurs to start 
@@ -702,8 +737,8 @@ class ExperimentController(object):
             # pending events that need to be removed from the pending list
             pending_events = []
 
-            exp = self._provider.from_xml(xml)
-            walk_create(exp, start_boxes, post_events, pending_events)
+            self._exp_box = self._provider.from_xml(xml)
+            walk_create(self._exp_box, start_boxes, post_events, pending_events)
             schedule_start(start_boxes, post_events, pending_events)
             
             flush_eid = self.flush(wait_events = pending_events)
