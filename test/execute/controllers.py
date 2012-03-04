@@ -317,6 +317,57 @@ class ExecuteControllersTestCase(unittest.TestCase):
         finally:
             ec.shutdown_now()
 
+    def test_schedule_wait_states(self):
+        # This test has the objective of verifying the 'wait_states'
+        # condition
+        def do_nothing():
+            return (EventStatus.SUCCESS, "")
+
+        provider = create_provider(modnames = ["mock"])
+        exp = provider.create("Experiment")
+        mocki = provider.create("mock::MockInstance", container = exp)
+        node = provider.create("mock::Node", container = mocki)
+        app = provider.create("mock::Application", container = mocki)
+
+        ec = create_ec("", debug = False)
+
+        try: 
+            ec.run(modnames = ["mock"])
+            
+            wait = "guid(%d) == %d" % (app.guid, ResourceState.STARTED)
+            eid = ec._schedule_event(do_nothing, [], wait_states = [wait])
+            time.sleep(0.1)
+            status = ec.poll(eid)
+            self.assertTrue(status == EventStatus.PENDING)
+ 
+            create_mock_eid = ec.create(mocki.guid, mocki.box_id, 
+                    container_guid(mocki),
+                    controller_guid(mocki),
+                    mocki.tags, 
+                    attrs(mocki))
+            create_node_eid = ec.create(node.guid, node.box_id, 
+                    container_guid(node),
+                    controller_guid(node),
+                    node.tags, 
+                    attrs(node))
+            create_app_eid = ec.create(app.guid, app.box_id, 
+                    container_guid(app),
+                    controller_guid(app),
+                    app.tags, 
+                    attrs(app))
+            start_app_eid = ec.start(app.guid)
+            
+            time.sleep(0.5)
+            status = ec.poll(start_app_eid)
+            self.assertTrue(status == EventStatus.SUCCESS)
+
+            status = ec.poll(eid)
+            self.assertTrue(status == EventStatus.SUCCESS)
+          
+        finally:
+            ec.shutdown_now()
+
+
     def test_orchestration(self):
         exp = experiment_description()
         xml = exp.xml

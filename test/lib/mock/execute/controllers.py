@@ -27,6 +27,7 @@ class MockObject(object):
         return (controllers.EventStatus.SUCCESS, "")
 
     def start(self, guid):
+        self.state = controllers.ResourceState.STARTED
         return (controllers.EventStatus.SUCCESS, "")
 
     def stop(self, guid):

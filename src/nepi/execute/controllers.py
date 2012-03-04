@@ -33,6 +33,8 @@ class EventStatus:
 
 _default_delay = "0.1s"
 _revalues = re.compile("(?P<key>[a-zA-Z_-]+):guid\((?P<guid>\d+)\)\.(?P<attr>[a-zA-Z_-]+)( ?(?P<oper>(\=\=|\!\=|\>|\>\=|\<|\<\=|is not|is)) ?(?P<value>[0-9a-zA-Z_-]+))?")
+_restates = re.compile("guid\((?P<guid>\d+)\) ?(?P<oper>(\=\=|\!\=|\>|\>\=|\<|\<\=)) ?(?P<state>[0-8])")
+
 
 _strf = "%Y%m%d%H%M%S%f"
 _reabs = re.compile("^\d{20}$")
@@ -955,31 +957,24 @@ class ExperimentController(object):
 
     def _wait_states_wrapper(self, event, wait_states, date, **conditions):
         def _wrapper_event(event, states, conditions):
-            for key, (guid, attr) in rkwargs.iteritems():
-                if key not in event.kwargs:
-                    guid = int(guid)
-                    state = self.state(guid)
-                    # we asume the resource will we created in the future.
-                    # for now we need to wait.
-                    if state == ResourceState.NOTEXIST:
-                        return (EventStatus.RETRY, "")
-
-                    # try to get the value
-                    (status, result) = self._tc_get(guid, attr)
-                    if status == EventStatus.SUCCESS:
-                        event.kwargs[key] = result
-                    else:
-                        return (status, result)
-
+            for guid, (oper, state) in states.iteritems():
+                guid = int(guid)
+                rstate = self.state(guid)
+                # If the condition is not satisfied we need to wait until it is
+                if ( not eval(str(rstate) + " " + oper + " " + state) ):
+                    return (EventStatus.RETRY, "")
+ 
             # re-schedule original event immediately
             self.__schedule_event(event, pending = False, **conditions)
             return (EventStatus.SUCCESS, "")
 
-        # require attributes to put in event.kwargs
         states = dict()
-        for arg in wait_states.split(","):
-            # TODO!!! 
-            states['1'] = arg
+        for arg in wait_states:
+            m = _restates.match(arg)
+            guid = m.groupdict()['guid']
+            oper = m.groupdict()['oper']
+            state = m.groupdict()['state']
+            states[guid] = (oper, state)
 
         callback = _wrapper_event
         args = [event, states, conditions]
