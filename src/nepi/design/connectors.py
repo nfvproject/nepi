@@ -193,22 +193,30 @@ class Connector(object):
     def can_connect(self, other_connector):
         # can't connect with self
         if self.owner.guid == other_connector.owner.guid:
-            self._logger.error("can't connect box with self %s %d.", 
+            self._logger.error("can't connect box with self %s guid(%d).", 
                     self.owner.box_id, self.owner.guid)
             return False
-        # can't add more connections
-        if self.is_full():
-            self._logger.error("Connector %s for %s %d is full.", 
-                    self.name, self.owner.box_id, self.owner.guid)
-            return False
+
         # is already connected
         if self.owner.is_connected(self, other_connector):
+            self._logger.error("Connector %s for %s guid(%d) is already connected with %s for %s guid(%d).", 
+                    self.name, self.owner.box_id, self.owner.guid, 
+                    other_connector.name, other_connector.owner.box_id, 
+                    other_connector.owner.guid)
             return False
+
+        # can't add more connections
+        if self.is_full():
+            self._logger.error("Connector %s for %s guid(%d) is full.", 
+                    self.name, self.owner.box_id, self.owner.guid)
+            return False
+
         # look over all connection rules
         for rule in self._connection_rules:
             if rule.can_connect(self.owner, self.name, other_connector.owner, 
                     other_connector.name):
                 return True
+
         self._logger.error("No connection rule found for %s guid(%d).%s to %s guid(%d).%s. ", 
                     self.owner.box_id, self.owner.guid, self.name, 
                     other_connector.owner.box_id, other_connector.owner.guid, 

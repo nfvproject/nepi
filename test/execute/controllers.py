@@ -52,7 +52,7 @@ def experiment_description():
 
 
 class ExecuteControllersTestCase(unittest.TestCase):
-    def ptest_schedule_exception(self):
+    def test_schedule_exception(self):
         # This test has the objective of verifying that errors that occur 
         # while executing an event will not afect the processing of following
         # events
@@ -87,7 +87,7 @@ class ExecuteControllersTestCase(unittest.TestCase):
         finally:
             ec.shutdown_now()
 
-    def ptest_schedule_date(self):
+    def test_schedule_date(self):
         # This test has the objective of verifying that events are executed
         # at the correct time they were scheduled on
         def do_nothing():
@@ -143,7 +143,7 @@ class ExecuteControllersTestCase(unittest.TestCase):
         finally:
             ec.shutdown_now()
 
-    def ptest_schedule_pending(self):
+    def test_schedule_pending(self):
         # This test has the objective of verifying that events marked as
         # 'pending' will be added to the pending events list, and vicerversa 
         def do_nothing():
@@ -172,7 +172,7 @@ class ExecuteControllersTestCase(unittest.TestCase):
         finally:
             ec.shutdown_now()
 
-    def ptest_schedule_creation_order(self):
+    def test_schedule_creation_order(self):
         # This test has the objective of verifying that basic ordering
         # rules for component creating are respected. (Ex, a child component
         # can never be created before its parent)
@@ -223,7 +223,7 @@ class ExecuteControllersTestCase(unittest.TestCase):
         finally:
             ec.shutdown_now()
 
-    def ptest_schedule_wait_events(self):
+    def test_schedule_wait_events(self):
         # This test has the objective of verifying the 'wait_events'
         # condition
         def do_nothing():
@@ -260,7 +260,7 @@ class ExecuteControllersTestCase(unittest.TestCase):
         finally:
             ec.shutdown_now()
 
-    def ptest_schedule_wait_values(self):
+    def test_schedule_wait_values(self):
         # This test has the objective of verifying the 'wait_values'
         # condition
         def do_nothing(node_guid, **kwargs):
@@ -324,9 +324,33 @@ class ExecuteControllersTestCase(unittest.TestCase):
 
         try: 
             ec.run(modnames = ["mock"])
+
             time.sleep(2)
+            # There should be no pending events in the ec after
+            # the experiment is orchestrated
+            self.assertEquals(len(ec._pend_events), 0)
+ 
+            # Design & runtime experiments should be the same 
             rxml = ec.runtime_ed_xml
-            print "RUNTIME xml" , rxml
+            self.assertEquals(xml, rxml)
+
+            trace = exp.box("trace")
+            set_eid = ec.set(trace.guid, "stringAttr", "lolo")
+            time.sleep(0.2)
+            get_eid = ec.get(trace.guid, "stringAttr")
+            time.sleep(0.2)
+            result = ec.result(get_eid)
+            self.assertEquals(result, "lolo")
+
+            # Because we didn't flush the changes, the runtime
+            # ed shiuld still be the same
+            rxml = ec.runtime_ed_xml
+            self.assertEquals(xml, rxml)
+
+            ec.flush()
+            time.sleep(0.2)
+            rxml = ec.runtime_ed_xml
+            self.assertNotEquals(xml, rxml)
 
         finally:
             ec.shutdown_now()

@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 from nepi.design import create_provider
+import shutil
+import tempfile
 import unittest
 
 class DesignBoxesTestCase(unittest.TestCase):
@@ -214,7 +216,7 @@ class DesignBoxesTestCase(unittest.TestCase):
         self.assertTrue(cont1.c.eth0.is_connected(iface5.c.peer))
         self.assertTrue(iface1.c.peer.is_connected(iface5.c.peer))
 
-        search_path = "/tmp"
+        search_path = tempfile.mkdtemp()
         ret = provider.store_user_container(cont1, search_path = search_path)
         self.assertFalse(ret)
 
@@ -229,6 +231,8 @@ class DesignBoxesTestCase(unittest.TestCase):
         switch1.a.eth0_address.value = "192.168.5.1"
         self.assertTrue(switch1.a.eth0_address.value != cont1.a.eth0_address.value)
         self.assertFalse(switch1.c.eth0.is_connected(iface5.c.peer))
+
+        shutil.rmtree(search_path)
 
     def test_routes_and_addresses(self):
         provider = create_provider(modnames = ["mock"])
