@@ -281,7 +281,6 @@ class ExperimentController(object):
         self._orchestrate()
         
         # Start event-processing thread
-        self._state = ResourceState.STARTED
         self._start_time = strfnow()
         self._proc_thread.start()
 
@@ -663,6 +662,10 @@ class ExperimentController(object):
         self._save_ed(self._runtime_ed_xml, ed_xml)
         return (EventStatus.SUCCESS, "")
 
+    def _orchestration_done(self):
+        self._state = ResourceState.STARTED
+        return (EventStatus.SUCCESS, "")
+ 
     def _save_ed(self, filename, xml):
         """ Persist experiment description to file """
         path = os.path.join(self._root_dir, filename)
@@ -727,6 +730,7 @@ class ExperimentController(object):
 
         if not xml:
             self._exp_box = self._provider.create("Experiment")
+            self._state = ResourceState.STARTED
         else:
             # By default, only after all boxes are created and connected they 
             # can be started. 'start_boxes' keeps track of all the boxes that 
@@ -740,9 +744,15 @@ class ExperimentController(object):
             self._exp_box = self._provider.from_xml(xml)
             walk_create(self._exp_box, start_boxes, post_events, pending_events)
             schedule_start(start_boxes, post_events, pending_events)
-            
+           
+            # Persist runtime experiment description once all events have
+            # been exceuted
             flush_eid = self.flush(wait_events = pending_events)
             pending_events.append(flush_eid)
+
+            # set state to STARTED once all events have been executed
+            self._schedule_event(self._orchestration_done, [], 
+                    pending = False, wait_events = pending_events)
 
             # Schedule to clean pending events
             self.clean_events(pending_events)

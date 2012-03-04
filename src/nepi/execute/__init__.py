@@ -1,4 +1,5 @@
 import logging
 logging.basicConfig()
 
-from nepi.execute.controllers import create_ec, Event, EventStatus
+from nepi.execute.controllers import create_ec, Event, EventStatus, \
+        ResourceState
