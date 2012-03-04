@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from nepi.design import create_provider
-from nepi.execute import create_ec, EventStatus, Event 
+from nepi.execute import create_ec, EventStatus, Event, ResourceState 
 import time
 import unittest
 
@@ -325,7 +325,12 @@ class ExecuteControllersTestCase(unittest.TestCase):
         try: 
             ec.run(modnames = ["mock"])
 
-            time.sleep(2)
+            # Wait until orchestration is finished
+            while ec.state() != ResourceState.STARTED:
+                # There should be pending events
+                self.assertNotEquals(len(ec._pend_events), 0)
+                time.sleep(0.1)
+
             # There should be no pending events in the ec after
             # the experiment is orchestrated
             self.assertEquals(len(ec._pend_events), 0)
