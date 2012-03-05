@@ -284,6 +284,34 @@ class DesignBoxesTestCase(unittest.TestCase):
         xml2 = exp2.xml
         self.assertTrue(xml == xml2)
 
+    def test_events(self):
+        provider = create_provider(modnames = ["mock"])
+
+        exp = provider.create("Experiment")
+        mocki = provider.create("mock::MockInstance", container = exp)
+        node1 = provider.create("mock::Node", container = mocki)
+        iface1 = provider.create("mock::Interface", container = mocki)
+        node1.c.devs.connect(iface1.c.node)
+        app1 = provider.create("mock::Application", container = mocki)
+        app1.c.node.connect(node1.c.apps)
+
+        node2 = provider.create("mock::Node", container = mocki)
+        iface2 = provider.create("mock::Interface", container = mocki)
+        node2.c.devs.connect(iface2.c.node)
+        app2 = provider.create("mock::Application", container = mocki)
+        app2.c.node.connect(node2.c.apps)
+
+        app1.e.start.at("2s")
+        app2.e.start.after(app1.guid)
+
+        xml = exp.xml
+
+        # verify that the events where correctly reconstructed
+        provider2 = create_provider(modnames=["mock"])
+        exp2 = provider2.from_xml(xml)
+        
+        xml2 = exp2.xml
+        self.assertTrue(xml == xml2)
 
 if __name__ == '__main__':
     unittest.main()

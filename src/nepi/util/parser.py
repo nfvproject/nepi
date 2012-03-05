@@ -68,6 +68,7 @@ class XMLBoxParser(object):
         self.graphical_info_to_xml(box, b_tag, doc)
         self.attributes_to_xml(box, b_tag, doc)
         self.connections_to_xml(box, b_tag, doc, guids)
+        self.events_to_xml(box, b_tag, doc)
 
         if tags.CONTAINER in box.tags:
             self.exposed_attributes_to_xml(box, b_tag, doc)
@@ -120,6 +121,28 @@ class XMLBoxParser(object):
             conns_tag.appendChild(conn_tag)
         if conns_tag.hasChildNodes():
             tag.appendChild(conns_tag)
+
+    def events_to_xml(self, box, tag, doc):
+        events_tag = doc.createElement("events")
+        for (event_id, type, value, conditions) in box.events:
+            event_tag = doc.createElement("event") 
+            event_tag.setAttribute("event_id", repr(event_id))
+            event_tag.setAttribute("value", xmlencode(value))
+            event_tag.setAttribute("type", xmlencode(type))
+            self.conditions_to_xml(conditions, event_tag, doc)
+            events_tag.appendChild(event_tag)
+        if events_tag.hasChildNodes():
+            tag.appendChild(events_tag)
+
+    def conditions_to_xml(self, conditions, tag, doc):
+        conditions_tag = doc.createElement("conditions")
+        for (cond_type, condition) in conditions.iteritems():
+            condition_tag = doc.createElement("condition") 
+            condition_tag.setAttribute("type", cond_type)
+            condition_tag.setAttribute("value", repr(condition))
+            conditions_tag.appendChild(condition_tag)
+        if conditions_tag.hasChildNodes():
+            tag.appendChild(conditions_tag)
 
     def exposed_attributes_to_xml(self, box, tag, doc):
         exp_attrs_tag = doc.createElement("exposed_attributes")
@@ -175,6 +198,7 @@ class XMLBoxParser(object):
         self.graphical_info_from_xml(box, b_tag)
         self.attributes_from_xml(box, b_tag)
         self.connections_from_xml(box, b_tag, connections)
+        self.events_from_xml(box, b_tag)
 
         for tag in b_tag.childNodes:
             if tag.nodeType == tag.ELEMENT_NODE and \
@@ -230,6 +254,36 @@ class XMLBoxParser(object):
                  other_connector = xmldecode(tag.getAttribute("other_connector"))
                  other_guid = int(tag.getAttribute("other_guid"))
                  connections.append((box.guid, connector, other_guid, other_connector))
+
+    def events_from_xml(self, box, b_tag):
+        events_tag = self._find_subtag(b_tag, "events")
+        if not events_tag: 
+            return 
+
+        for tag in events_tag.childNodes:
+            if tag.nodeType == tag.ELEMENT_NODE and \
+                    xmldecode(tag.nodeName) == "event":
+                event_id = xmldecode(tag.getAttribute("event_id"))
+                event_id = eval(event_id)
+                value = xmldecode(tag.getAttribute("value"))
+                type = xmldecode(tag.getAttribute("type"))
+                conditions = self.conditions_from_xml(tag)
+                ev = getattr(box.e, type)
+                ev.on(conditions, value, event_id = event_id)
+
+    def conditions_from_xml(self, e_tag):
+        conditions = dict()
+        conditions_tag = self._find_subtag(e_tag, "conditions")
+        if not conditions_tag: 
+            return conditions
+
+        for tag in conditions_tag.childNodes:
+            if tag.nodeType == tag.ELEMENT_NODE and \
+                    xmldecode(tag.nodeName) == "condition":
+                value = xmldecode(tag.getAttribute("value"))
+                type = xmldecode(tag.getAttribute("type"))
+                conditions[type] = eval(value)
+        return conditions
 
     def exposed_attributes_from_xml(self, box, b_tag):
         exposed_attributes_tag = self._find_subtag(b_tag, 'exposed_attributes')

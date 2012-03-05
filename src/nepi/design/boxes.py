@@ -6,14 +6,14 @@ import os
 import sys
 import weakref 
 
-from nepi.design import attributes, connectors, tags 
+from nepi.design import attributes, connectors, events, tags
 from nepi.design.graphical import GraphicalInfo
 
 from nepi.util.constants import DeploymentConfiguration as DC
 from nepi.util.guid import GuidGenerator
 
-
-class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap):
+class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap,
+        events.EventsMap):
     def __init__(self, testbed_id, box_id, provider = None, guid = None, 
             help = None):
         super(Box, self).__init__()
@@ -35,7 +35,7 @@ class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap):
         # aggregations -- dictionary of contained instances
         # -- dict(guid: box_ref)
         self._boxes = dict() 
-        # Information of containers that can contain this box type
+        # Information on which containers can contain this box type
         # -- dict(testbed_id: tags)
         self._container_info = dict()
 
@@ -197,6 +197,7 @@ class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap):
         new._boxes = dict()
         new.clone_attrs(self)
         new.clone_connectors(self)
+        new.clone_events(self)
 
         for k,v in kwargs.iteritems():
             attr = getattr(new.a, k)
