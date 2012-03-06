@@ -44,9 +44,13 @@ def experiment_description():
             label = "trace", stringAttr = "lala")
     node1.c.traces.connect(trace.c.node)
 
-    app = provider.create("mock::Application", container = mocki,
-            label = "app", start = "10s")
-    app.c.node.connect(node1.c.apps)
+    app1 = provider.create("mock::Application", container = mocki,
+            label = "app1", start = "10s")
+    app1.c.node.connect(node1.c.apps)
+
+    app2 = provider.create("mock::Application", container = mocki,
+            label = "app2", start = "10s")
+    app2.c.node.connect(node1.c.apps)
 
     return exp
 
@@ -266,7 +270,7 @@ class ExecuteControllersTestCase(unittest.TestCase):
         def do_nothing(node_guid, **kwargs):
             if "boolAttr" not in kwargs:
                 result = dict({
-                    "wait_values": ["boolAttr:guid(%d).boolAttr == True" % node_guid]
+                    "wait_values": "boolAttr:guid(%d).boolAttr == True" % node_guid
                 })
                 return (EventStatus.RETRY, result)
             return (EventStatus.SUCCESS, "")
@@ -334,8 +338,8 @@ class ExecuteControllersTestCase(unittest.TestCase):
         try: 
             ec.run(modnames = ["mock"])
             
-            wait = "guid(%d) == %d" % (app.guid, ResourceState.STARTED)
-            eid = ec._schedule_event(do_nothing, [], wait_states = [wait])
+            wait = "guid(%d).state == %d" % (app.guid, ResourceState.STARTED)
+            eid = ec._schedule_event(do_nothing, [], wait_states = wait)
             time.sleep(0.1)
             status = ec.poll(eid)
             self.assertTrue(status == EventStatus.PENDING)
@@ -366,7 +370,6 @@ class ExecuteControllersTestCase(unittest.TestCase):
           
         finally:
             ec.shutdown_now()
-
 
     def test_orchestration(self):
         exp = experiment_description()
@@ -399,7 +402,7 @@ class ExecuteControllersTestCase(unittest.TestCase):
             self.assertEquals(result, "lolo")
 
             # Because we didn't flush the changes, the runtime
-            # ed shiuld still be the same
+            # ed should still be the same
             rxml = ec.runtime_ed_xml
             self.assertEquals(xml, rxml)
 
@@ -407,6 +410,93 @@ class ExecuteControllersTestCase(unittest.TestCase):
             time.sleep(0.2)
             rxml = ec.runtime_ed_xml
             self.assertNotEquals(xml, rxml)
+
+        finally:
+            ec.shutdown_now()
+
+    def test_orchestration_with_events(self):
+        exp = experiment_description()
+        
+        app1 = exp.box("app1")
+        app2 = exp.box("app2")
+        start_eid1 = app1.e.start.at("1s")
+        start_eid2 = app2.e.start.after(app1.guid)
+         
+        trace = exp.box("trace")
+        args = ['stringAttr', 'pepe']
+        conditions = dict({'wait_states': [(app2.guid, '==', ResourceState.STARTED)]})
+        set_eid1 = trace.e.set.on(conditions, args)
+
+        node1 = exp.box("node1")
+        set_eid2 = node1.e.set.at("3s", "boolAttr", False)
+        
+        args = ['stringAttr', 'lolo']
+        conditions = dict({'wait_events': [set_eid2]})
+        set_eid3 = trace.e.set.on(conditions, args)
+
+
+        xml = exp.xml
+        ec = create_ec(xml)
+
+        try: 
+            ec.run(modnames = ["mock"])
+
+            # Wait until orchestration is finished
+            while ec.state() != ResourceState.STARTED:
+                # There should be pending events
+                self.assertNotEquals(len(ec._pend_events), 0)
+                time.sleep(0.1)
+           
+            # Give extra time so we ensure that the clean_events method
+            # is eexcuted
+            time.sleep(0.2)
+
+            # The two start events should still be pending 
+            self.assertEquals(len(ec._pend_events), 5)
+
+            time.sleep(1.1)
+ 
+            # The two start events should still be pending because
+            # they are not automatically erased, but they should be
+            # already executed
+            self.assertEquals(len(ec._pend_events), 5)
+            
+            status = ec.poll(start_eid1)
+            self.assertTrue(status == EventStatus.SUCCESS)
+ 
+            time.sleep(1)
+            status = ec.poll(start_eid2)
+            self.assertTrue(status == EventStatus.SUCCESS)
+            
+            while ec.poll(set_eid1) in [EventStatus.PENDING, EventStatus.RETRY]:
+                time.sleep(0.1)
+ 
+            result = ec.result(set_eid1)
+            self.assertEquals(result, "pepe")
+ 
+            time.sleep(2)
+
+            status = ec.poll(set_eid2)
+            self.assertTrue(status == EventStatus.SUCCESS)
+  
+            result = ec.result(set_eid2)
+            self.assertEquals(result, False)
+
+            time.sleep(0.2)
+
+            status = ec.poll(set_eid3)
+            self.assertTrue(status == EventStatus.SUCCESS)
+  
+            result = ec.result(set_eid3)
+            self.assertEquals(result, "lolo")
+
+            ## TODO!! Finish to test features!!!
+            ##  1 - Need to test wait_values from a design event
+            ##  2 - Still need to compare xml & rxml to check they are the same 
+
+            # Design & runtime experiments should be the same 
+            #rxml = ec.runtime_ed_xml
+            #self.assertEquals(xml, rxml)
 
         finally:
             ec.shutdown_now()

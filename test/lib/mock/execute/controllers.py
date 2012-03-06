@@ -53,6 +53,9 @@ class MockObject(object):
                     (self._guid, attr, str(value)))
         return (controllers.EventStatus.SUCCESS, value)
 
+    def command(self, command):
+        return (controllers.EventStatus.SUCCESS, "result")
+
 
 class Trace(MockObject):
     def __init__(self, guid, box_id, attributes, tc):
@@ -158,6 +161,13 @@ class TestbedController(controllers.TestbedController):
             self._logger.debug("get(%d): FAIL, no such object " % (guid))
             return (controllers.EventStatus.FAIL, "")
         return obj.get(attr)
+
+    def command(self, guid, command):
+        obj = self._objects.get(guid)
+        if not obj: 
+            self._logger.debug("command(%d): FAIL, no such object " % (guid))
+            return (controllers.EventStatus.FAIL, "")
+        return obj.command(command)
 
 
 TC_CLASS = TestbedController

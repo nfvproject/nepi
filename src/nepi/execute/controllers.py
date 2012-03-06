@@ -11,18 +11,9 @@ import time
 
 from nepi.design import tags
 from nepi.design.boxes import create_provider
+from nepi.design.events import BoxState as ResourceState
+from nepi.design.events import ConditionType, EventType, make_condition
 from nepi.util.parallel import ParallelRun
-
-class ResourceState:
-    FAILED = 0
-    NOTEXIST = 1
-    NEW = 2
-    CREATED = 3
-    STARTED = 4
-    RUNNING = 5
-    FINISHED = 6
-    STOPPED = 7
-    SHUTDOWN = 8
 
 class EventStatus:
     SUCCESS = 0
@@ -32,9 +23,6 @@ class EventStatus:
     INVALID = 4
 
 _default_delay = "0.1s"
-_revalues = re.compile("(?P<key>[a-zA-Z_-]+):guid\((?P<guid>\d+)\)\.(?P<attr>[a-zA-Z_-]+)( ?(?P<oper>(\=\=|\!\=|\>|\>\=|\<|\<\=|is not|is)) ?(?P<value>[0-9a-zA-Z_-]+))?")
-_restates = re.compile("guid\((?P<guid>\d+)\) ?(?P<oper>(\=\=|\!\=|\>|\>\=|\<|\<\=)) ?(?P<state>[0-8])")
-
 
 _strf = "%Y%m%d%H%M%S%f"
 _reabs = re.compile("^\d{20}$")
@@ -381,6 +369,11 @@ class ExperimentController(object):
         callback = self._tc_get
         args = [guid, attr]
         return self._schedule_event(callback, args, date, pending, **conditions)
+ 
+    def command(self, guid, command, date = None, pending = True, **conditions):
+        callback = self._tc_command
+        args = [guid, command]
+        return self._schedule_event(callback, args, date, pending, **conditions)
 
     def set_graphical_info(self, guid, x, y, height, width, hidden, 
             date = None, pending = True, **conditions):
@@ -467,7 +460,8 @@ class ExperimentController(object):
         self._proc_cond.acquire()
         self._proc_cond.notify()
         self._proc_cond.release()
-        self._proc_thread.join()
+        if self._proc_thread.is_alive():
+           self._proc_thread.join()
         return (status, result)
 
     def _tc_shutdown(self, guid):
@@ -635,6 +629,21 @@ class ExperimentController(object):
 
         return (status, result)
 
+    def _tc_command(self, guid, command): 
+        state = self.state(guid)
+        if state in [ResourceState.FAILED, ResourceState.SHUTDOWN]:
+            self._logger.debug("_tc_command(): FAIL, wrong state %d for guid(%d)" % (state, guid))
+            return (EventStatus.FAIL, "")
+        
+        if state in [ResourceState.NOTEXIST, ResourceState.NEW]:
+            self._logger.debug("_tc_command(): RETRY, wrong state %d for guid(%d)" % (state, guid))
+            return (EventStatus.RETRY, "")
+
+        rc = self._resources.get(guid)
+        (status, result) = rc.tc.command(guid, comand)
+        
+        return (status, result)
+
     def _set_graphical_info(self, guid, x, y, height, width, hidden):
         state = self.state(guid)
         if state in [ResourceState.FAILED, ResourceState.SHUTDOWN]:
@@ -689,7 +698,8 @@ class ExperimentController(object):
                 controller_guid = box.controller.guid if box.controller else None
                 container_guid = box.container.guid if box.container else None
                 attrs = dict((attr_name, getattr(box.a, attr_name).value) \
-                        for attr_name in box.attributes)
+                        for attr_name in box.attributes if \
+                        getattr(box.a, attr_name).value is not None)
 
                 # Schedule create
                 eid_create = self.create(box.guid, box.box_id, container_guid,
@@ -718,15 +728,37 @@ class ExperimentController(object):
                     pending_events.append(eid_post)
                     post_events.append(eid_post)
 
-                start_boxes.append(box)
+                # Schedule the events created during design
+                start_scheduled = False
+                for (event_id, type, args, conditions) in box.events:
+                    if type == EventType.START:
+                        eid = self.start(box.guid, **conditions)
+                        start_scheduled = True
+                    elif type == EventType.STOP:
+                        eid = self.stop(box.guid, **conditions)
+                    elif type == EventType.SET:
+                        (name, value) = args
+                        eid = self.set(box.guid, name, value, **conditions)
+                    elif type == EventType.COMMANDS:
+                        (name, value) = args
+                        eid = self.commans(box.guid, command, **conditions)
+                    else:
+                        continue
+
+                    # switch the eid for the event_id in the event pending list
+                    event = self._pend_events[eid]
+                    self._remove_pending_event(eid)
+                    self._add_pending_event(event_id, event)
+
+                if not start_scheduled:
+                    start_boxes.append(box)
 
             for b in box.boxes:
                 walk_create(b, start_boxes, post_events, pending_events)
 
-        def schedule_start(start_boxes, post_events, pending_events):
+        def schedule_start(start_boxes, post_events):
             for box in start_boxes:
-                start_eid = self.start(box.guid, wait_events = post_events)
-                pending_events.append(start_eid)
+                start_eid = self.start(box.guid, pending = False)
 
         xml = self.original_ed_xml
 
@@ -735,29 +767,39 @@ class ExperimentController(object):
             self._state = ResourceState.STARTED
         else:
             # By default, only after all boxes are created and connected they 
-            # can be started. 'start_boxes' keeps track of all the boxes that 
-            # need to be wait until this condition occurs to start 
+            # can be started. 'start_boxes' keeps track of all the boxes whose 
+            # default start behavior has not been modifiyed by the user, by 
+            # defining a special start event
             start_boxes = []
-            # eids of all post_connect events
+            # eids of all post_connect events. These are going to be the 
+            # wait_events for the 'start' events with default behavior
             post_events = []
             # pending events that need to be removed from the pending list
+            # when orchestration is finished.
+            # We don't add the start events eids to the pending_events array
+            # because the experiment should be marked as STARTED when
+            # all resources are connected, and not when all resources are 
+            # STARTED. Some resources could only start in the middle of the 
+            # experiment exceution.
             pending_events = []
 
             self._exp_box = self._provider.from_xml(xml)
             walk_create(self._exp_box, start_boxes, post_events, pending_events)
-            schedule_start(start_boxes, post_events, pending_events)
-           
+            schedule_start(start_boxes, post_events)
+
             # Persist runtime experiment description once all events have
-            # been exceuted
+            # been executed
             flush_eid = self.flush(wait_events = pending_events)
             pending_events.append(flush_eid)
 
-            # set state to STARTED once all events have been executed
-            self._schedule_event(self._orchestration_done, [], 
-                    pending = False, wait_events = pending_events)
-
+            # set state to STARTED once all epnding events are executed
+            start_eid = self._schedule_event(self._orchestration_done, [], 
+                    wait_events = pending_events)
+            pending_events.append(start_eid)
+ 
             # Schedule to clean pending events
             self.clean_events(pending_events)
+         
 
     def _process_events(self):
         runner = ParallelRun(maxthreads = 20)
@@ -770,6 +812,8 @@ class ExperimentController(object):
                     self._proc_cond.wait()
                 (date, eid, event) = self._scheduler.next()
                 self._proc_cond.release()
+
+                #print "EVENT", date, eid, event.callback if event else "NONE", id(event) if event else "None"
 
                 if event:
                     # If date is in the future, thread needs to wait
@@ -849,28 +893,39 @@ class ExperimentController(object):
 
             import traceback
             err = traceback.format_exc()
-            self._logger.error("Error while excecuting event: %s" % err)
+            self._logger.error("Error while executing event: %s" % err)
  
     def _resolve_conditions(self, event, date, **conditions):
-        if 'delay' in conditions:
-            date = conditions['delay']
+        if ConditionType.DELAY in conditions:
+            # We invoke make_condition because we need a uniform representation
+            # of the conditions. They can be provided as a Condition object, 
+            # a string condition, or a formatted condition, we need a Condition object.
+            condition = make_condition(ConditionType.DELAY, 
+                    conditions[ConditionType.DELAY])
+            date = condition.condition
             return (event, date, False)
         
-        if 'wait_events' in conditions:
-            wait_eids = conditions['wait_events']
-            del conditions['wait_events']
+        if ConditionType.WAIT_EVENTS in conditions:
+            condition = make_condition(ConditionType.WAIT_EVENTS, 
+                    conditions[ConditionType.WAIT_EVENTS])
+            del conditions[ConditionType.WAIT_EVENTS]
+            wait_eids = condition.condition
             (new_event, date) = self._wait_events_wrapper(event, wait_eids, date, **conditions)
             return (new_event, date, False)
          
-        if 'wait_values' in conditions:
-            wait_values = conditions['wait_values']
-            del conditions['wait_values']
+        if ConditionType.WAIT_VALUES in conditions:
+            condition = make_condition(ConditionType.WAIT_VALUES, 
+                    conditions[ConditionType.WAIT_VALUES])
+            del conditions[ConditionType.WAIT_VALUES]
+            wait_values = condition.condition
             (new_event, date) = self._wait_values_wrapper(event, wait_values, date, **conditions)
             return (new_event, date, False)
           
-        if 'wait_states' in conditions:
-            wait_states = conditions['wait_states']
-            del conditions['wait_states']
+        if ConditionType.WAIT_STATES in conditions:
+            condition = make_condition(ConditionType.WAIT_STATES, 
+                    conditions[ConditionType.WAIT_STATES])
+            del conditions[ConditionType.WAIT_STATES]
+            wait_states = condition.condition
             (new_event, date) = self._wait_states_wrapper(event, wait_states, date, **conditions)
             return (new_event, date, False)
         
@@ -892,14 +947,14 @@ class ExperimentController(object):
             # to the max_date
             return "" if not max_date else  str(int(max_date) + 1)
 
-        def _wrapper_event(event, wait_events, conditions):
+        def _wait_events_wrapper_event(event, wait_events, conditions):
             # Check if there are still events to wait for
             wait_events = [e for e in wait_events \
                     if e.status in [EventStatus.RETRY, EventStatus.PENDING]]
             if wait_events:
                 # re-schedule event in a date posterior to the last event
                 date = _max_date(wait_events)
-                result = dict({'delay': date})
+                result = dict({ConditionType.DELAY: date})
                 return (EventStatus.RETRY, result)
             
             # re-schedule original event immediately
@@ -909,16 +964,15 @@ class ExperimentController(object):
         wait_events = [self._pend_events[eid] for eid in wait_eids]
         date = _max_date(wait_events)
         
-        callback = _wrapper_event
+        callback = _wait_events_wrapper_event
         args = [event, wait_events, conditions]
         new_event = Event(callback, args)
         return (new_event, date)
        
     def _wait_values_wrapper(self, event, wait_values, date, **conditions):
-        def _wrapper_event(event, values, conditions):
-            for key, (guid, attr, oper, value) in values.iteritems():
+        def _wait_values_wrapper_event(event, wait_values, conditions):
+            for key, (guid, attr, oper, value) in wait_values.iteritems():
                 if key not in event.kwargs:
-                    guid = int(guid)
                     state = self.state(guid)
                     # we asume the resource will we created in the future.
                     # for now we need to wait.
@@ -940,25 +994,14 @@ class ExperimentController(object):
             return (EventStatus.SUCCESS, "")
 
         # require attributes to put in event.kwargs
-        values = dict()
-        for arg in wait_values:
-            m = _revalues.match(arg)
-            key = m.groupdict()['key'] 
-            guid = m.groupdict()['guid']
-            attr = m.groupdict()['attr']
-            oper = m.groupdict()['oper']
-            value = m.groupdict()['value']
-            values[key] = (guid, attr, oper, value)
-
-        callback = _wrapper_event
-        args = [event, values, conditions]
+        callback = _wait_values_wrapper_event
+        args = [event, wait_values, conditions]
         new_event = Event(callback, args)
         return (new_event, date)
 
     def _wait_states_wrapper(self, event, wait_states, date, **conditions):
-        def _wrapper_event(event, states, conditions):
-            for guid, (oper, state) in states.iteritems():
-                guid = int(guid)
+        def _wait_states_wrapper_event(event, wait_states, conditions):
+            for (guid, oper, state) in wait_states:
                 rstate = self.state(guid)
                 # If the condition is not satisfied we need to wait until it is
                 if ( not eval(str(rstate) + " " + oper + " " + state) ):
@@ -968,16 +1011,8 @@ class ExperimentController(object):
             self.__schedule_event(event, pending = False, **conditions)
             return (EventStatus.SUCCESS, "")
 
-        states = dict()
-        for arg in wait_states:
-            m = _restates.match(arg)
-            guid = m.groupdict()['guid']
-            oper = m.groupdict()['oper']
-            state = m.groupdict()['state']
-            states[guid] = (oper, state)
-
-        callback = _wrapper_event
-        args = [event, states, conditions]
+        callback = _wait_states_wrapper_event
+        args = [event, wait_states, conditions]
         new_event = Event(callback, args)
         return (new_event, date)
 
@@ -1084,6 +1119,9 @@ class TestbedController(object):
         raise NotImplementedError
 
     def get(self, guid, attr):
+        raise NotImplementedError
+
+    def command(self, guid, command):
         raise NotImplementedError
 
 
