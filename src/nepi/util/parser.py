@@ -124,10 +124,10 @@ class XMLBoxParser(object):
 
     def events_to_xml(self, box, tag, doc):
         events_tag = doc.createElement("events")
-        for (event_id, type, value, conditions) in box.events:
+        for (event_id, type, args, conditions) in box.events:
             event_tag = doc.createElement("event") 
             event_tag.setAttribute("event_id", repr(event_id))
-            event_tag.setAttribute("value", xmlencode(value))
+            event_tag.setAttribute("args", xmlencode(repr(args)))
             event_tag.setAttribute("type", xmlencode(type))
             self.conditions_to_xml(conditions, event_tag, doc)
             events_tag.appendChild(event_tag)
@@ -136,10 +136,10 @@ class XMLBoxParser(object):
 
     def conditions_to_xml(self, conditions, tag, doc):
         conditions_tag = doc.createElement("conditions")
-        for (cond_type, condition) in conditions.iteritems():
+        for cond_type, condition in conditions.iteritems():
             condition_tag = doc.createElement("condition") 
             condition_tag.setAttribute("type", cond_type)
-            condition_tag.setAttribute("value", repr(condition))
+            condition_tag.setAttribute("value", condition.strcondition)
             conditions_tag.appendChild(condition_tag)
         if conditions_tag.hasChildNodes():
             tag.appendChild(conditions_tag)
@@ -265,11 +265,12 @@ class XMLBoxParser(object):
                     xmldecode(tag.nodeName) == "event":
                 event_id = xmldecode(tag.getAttribute("event_id"))
                 event_id = eval(event_id)
-                value = xmldecode(tag.getAttribute("value"))
+                args = xmldecode(tag.getAttribute("args"))
+                args = eval(args)
                 type = xmldecode(tag.getAttribute("type"))
                 conditions = self.conditions_from_xml(tag)
                 ev = getattr(box.e, type)
-                ev.on(conditions, value, event_id = event_id)
+                ev.on(conditions, args, event_id = event_id)
 
     def conditions_from_xml(self, e_tag):
         conditions = dict()
@@ -282,7 +283,7 @@ class XMLBoxParser(object):
                     xmldecode(tag.nodeName) == "condition":
                 value = xmldecode(tag.getAttribute("value"))
                 type = xmldecode(tag.getAttribute("type"))
-                conditions[type] = eval(value)
+                conditions[type] = value
         return conditions
 
     def exposed_attributes_from_xml(self, box, b_tag):
