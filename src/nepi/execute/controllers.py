@@ -41,6 +41,11 @@ def strfdiff(str1, str2):
     ret = ddays + diff.seconds + dus
     
     # Avoid to saturate the procesor, if delay is 0 lets add 0.001
+    # Also, the larger the delay is, the more stable the scheduling system
+    # will behave. If the delay period is too short, and there are many
+    # events around waiting for other events, chances are that the events are 
+    # going to be rescheduled many times before the conditions are satisfied,
+    # aftecting processing times
     return (ret or 0.001)
 
 def strfvalid(date):
@@ -87,6 +92,97 @@ class Event(object):
     @property
     def args(self):
         return self._args
+
+class EventWrapper(Event):
+    def __init__(self, callback, event, conditions, ec):
+        super(EventWrapper, self).__init__(callback, [])
+        self._event = event
+        self._conditions = conditions
+        self._ec = ec
+
+    def _done(self):
+        # Invalidate current wrapper event in the pend_wapper_events list
+        self._ec._pend_wrapper_events[self._event] = None
+       
+        # re-schedule original event immediately
+        self._ec._do_schedule_event(self._event, pending = False, **self._conditions)
+        return (EventStatus.SUCCESS, "")
+
+class WaitEventsEventWrapper(EventWrapper):
+    def __init__(self, event, wait_eids, conditions, ec):
+        callback = self._wait_events_callback
+        super(WaitEventsEventWrapper, self).__init__(callback, event, conditions, ec)
+        self._wait_events = [self._ec._pend_events[eid] for eid in wait_eids]
+
+    def next_date(self):
+        # It is possible that the event(s) for which we need to wait for
+        # are wrapped as other events, so we need to take this into account 
+        
+        events = [self._ec._pend_wrapper_events[event] \
+                if event in self._ec._pend_wrapper_events else event \
+                for event in self._wait_events]
+
+        # peek[0] == date
+        max_date = max(self._ec._scheduler.peek(e)[0] for e in events)
+        
+        # We need to return a bigger date than the maximum scheduled date. 
+        # To achieve this we just sum 1 to the max_date
+        return "" if not max_date else  str(int(max_date) + 1)
+
+    def _wait_events_callback(self):
+        # Check if there are still events to wait for
+        wait_events = [e for e in self._wait_events \
+                if e.status in [EventStatus.RETRY, EventStatus.PENDING]]
+        
+        if wait_events:
+            # re-schedule event in a date posterior to the last event
+            date = self.next_date()
+            result = dict({ConditionType.DELAY: date})
+            return (EventStatus.RETRY, result)
+
+        return self._done() 
+
+class WaitValuesEventWrapper(EventWrapper):
+    def __init__(self, event, wait_values, conditions, ec):
+        callback = self._wait_values_callback
+        super(WaitValuesEventWrapper, self).__init__(callback, event, conditions, ec)
+        self._wait_values = wait_values
+
+    def _wait_values_callback(self):
+        for key, (guid, attr, oper, value) in self._wait_values.iteritems():
+            if key not in self._event.kwargs:
+                state = self._ec.state(guid)
+                # we asume the resource will we created in the future.
+                # for now we need to wait.
+                if state == ResourceState.NOTEXIST:
+                    return (EventStatus.RETRY, "")
+
+                # try to get the value 
+                (status, result) = self._ec._tc_get(guid, attr)
+                if status != EventStatus.SUCCESS:
+                    return (status, result)
+                # If the condition is not satosfied we need to wait until it is
+                if ( oper and not eval(str(result) + " " + oper + " " + value) ):
+                    return (EventStatus.RETRY, "")
+                   
+                self._event.kwargs[key] = result
+
+        return self._done() 
+
+class WaitStatesEventWrapper(EventWrapper):
+    def __init__(self, event, wait_states, conditions, ec):
+        callback = self._wait_states_callback
+        super(WaitStatesEventWrapper, self).__init__(callback, event, conditions, ec)
+        self._wait_states = wait_states
+
+    def _wait_states_callback(self):
+        for (guid, oper, state) in self._wait_states:
+            rstate = self._ec.state(guid)
+            # If the condition is not satisfied we need to wait until it is
+            if ( not eval(str(rstate) + " " + oper + " " + state) ):
+                return (EventStatus.RETRY, "")
+        
+        return self._done() 
 
 
 class HeapScheduler(object):
@@ -228,6 +324,7 @@ class ExperimentController(object):
         #   added to the pending event list, allowing to query the 
         #   status of the event
         self._pend_events = dict()
+        self._pend_wrapper_events = dict()
         self._pend_lock = threading.Lock()
 
         # Logging
@@ -709,8 +806,7 @@ class ExperimentController(object):
                 # Schedule set graphical info
                 gi = box.graphical_info
                 eid_gi = self.set_graphical_info(box.guid, gi.x, gi.y,
-                        gi.height, gi.width, gi.hidden, 
-                        wait_events = [eid_create])
+                        gi.height, gi.width, gi.hidden) 
                 pending_events.append(eid_gi)
 
                 # Schedule connect & postconnect
@@ -718,8 +814,7 @@ class ExperimentController(object):
                     (b, c_name, other_b, other_c_name) = conn
 
                     eid_conn = self.connect(b.guid, c_name, other_b.guid,
-                            other_b.box_id, other_c_name, 
-                            wait_events = [eid_create])
+                            other_b.box_id, other_c_name)
                     pending_events.append(eid_conn)
 
                     eid_post = self.postconnect(b.guid, c_name, other_b.guid, 
@@ -745,10 +840,13 @@ class ExperimentController(object):
                     else:
                         continue
 
-                    # switch the eid for the event_id in the event pending list
+                    # switch the eid in the event pending list for the
+                    # eid (event_id) generated during design
                     event = self._pend_events[eid]
-                    self._remove_pending_event(eid)
-                    self._add_pending_event(event_id, event)
+                    self._pend_lock.acquire()
+                    del self._pend_events[eid]
+                    self._pend_events[event_id] = event
+                    self._pend_lock.release()
 
                 if not start_scheduled:
                     start_boxes.append(box)
@@ -799,7 +897,6 @@ class ExperimentController(object):
  
             # Schedule to clean pending events
             self.clean_events(pending_events)
-         
 
     def _process_events(self):
         runner = ParallelRun(maxthreads = 20)
@@ -813,7 +910,7 @@ class ExperimentController(object):
                 (date, eid, event) = self._scheduler.next()
                 self._proc_cond.release()
 
-                #print "EVENT", date, eid, event.callback if event else "NONE", id(event) if event else "None"
+                #print "EVENT", eid, date, id(event) if event else "None", event.callback.func_name if event else "None", event._event.callback.func_name if event and hasattr(event, "_event") else "None", id(event._event) if event and hasattr(event, "_event") else "None"
 
                 if event:
                     # If date is in the future, thread needs to wait
@@ -821,7 +918,7 @@ class ExperimentController(object):
                     now = strfnow()
                     if now < date:
                         # Re-schedule event at same date
-                        eid = self.__schedule_event(event, date, pending = False)
+                        eid = self._do_schedule_event(event, date, pending = False)
                         # Caluclate time difference in seconds
                         timeout = strfdiff(date, now)
                         # Sleep until time elapsed or the scheduling of a new
@@ -843,17 +940,19 @@ class ExperimentController(object):
     def _schedule_event(self, callback, args, date = None, pending = True, 
             **conditions):
         event = Event(callback, args)
-        return self.__schedule_event(event, date, pending, **conditions)
+        return self._do_schedule_event(event, date, pending, **conditions)
 
-    def __schedule_event(self, event, date = None, pending = True, 
+    def _do_schedule_event(self, event, date = None, pending = True, 
             **conditions):
         # In case there are conditions (Ex: events to wait for), a wrapper event
         # will be created and scheduled instead of the original event.
         # The wrapper event will verify the required condition, and only when this
         # condition is satisfied, it will schedule the original event
         initial_event = event
+        wrapper_event = None
         if conditions:
             (event, date, failed) = self._resolve_conditions(initial_event, date, **conditions)
+            wrapper_event = event
 
             if failed:
                 # Condition could not be resolved. Event can't be scheduled
@@ -868,7 +967,7 @@ class ExperimentController(object):
         # instead of the wrapper event. We want the user to be able to 
         # query the status of the right event
         if pending:
-            self._add_pending_event(eid, initial_event)
+            self._add_pending_event(eid, initial_event, wrapper_event)
 
         return eid
 
@@ -885,7 +984,7 @@ class ExperimentController(object):
 
             if status == EventStatus.RETRY:
                 conditions = result or dict({'delay': _default_delay})
-                eid = self.__schedule_event(event, pending = False, **conditions)
+                eid = self._do_schedule_event(event, pending = False, **conditions)
         except:
             # If an exception occurs while executing the callback, the
             # event should be marked as FAILED
@@ -896,6 +995,8 @@ class ExperimentController(object):
             self._logger.error("Error while executing event: %s" % err)
  
     def _resolve_conditions(self, event, date, **conditions):
+        failed = True
+
         if ConditionType.DELAY in conditions:
             # We invoke make_condition because we need a uniform representation
             # of the conditions. They can be provided as a Condition object, 
@@ -903,131 +1004,59 @@ class ExperimentController(object):
             condition = make_condition(ConditionType.DELAY, 
                     conditions[ConditionType.DELAY])
             date = condition.condition
-            return (event, date, False)
+            failed = False
         
         if ConditionType.WAIT_EVENTS in conditions:
             condition = make_condition(ConditionType.WAIT_EVENTS, 
                     conditions[ConditionType.WAIT_EVENTS])
             del conditions[ConditionType.WAIT_EVENTS]
             wait_eids = condition.condition
-            (new_event, date) = self._wait_events_wrapper(event, wait_eids, date, **conditions)
-            return (new_event, date, False)
+            event = WaitEventsEventWrapper(event, wait_eids, conditions, self)
+            date = event.next_date()
+            failed = False
          
         if ConditionType.WAIT_VALUES in conditions:
             condition = make_condition(ConditionType.WAIT_VALUES, 
                     conditions[ConditionType.WAIT_VALUES])
             del conditions[ConditionType.WAIT_VALUES]
             wait_values = condition.condition
-            (new_event, date) = self._wait_values_wrapper(event, wait_values, date, **conditions)
-            return (new_event, date, False)
+            event = WaitValuesEventWrapper(event, wait_values, conditions, self)
+            failed = False
           
         if ConditionType.WAIT_STATES in conditions:
             condition = make_condition(ConditionType.WAIT_STATES, 
                     conditions[ConditionType.WAIT_STATES])
             del conditions[ConditionType.WAIT_STATES]
             wait_states = condition.condition
-            (new_event, date) = self._wait_states_wrapper(event, wait_states, date, **conditions)
-            return (new_event, date, False)
+            event = WaitStatesEventWrapper(event, wait_states, conditions, self)
+            failed = False
         
-        return (event, date, True)
-    
-    def _wait_events_wrapper(self, event, wait_eids, date, **conditions):
-        def _max_date(wait_events):
-            # peek[0] == date
-            max_date = max(self._scheduler.peek(e)[0] for e in wait_events)
-            # It is possible that the event(s) for which we need to wait for
-            # are wrapped as other events. In that case, we will not be able
-            # to find those event(s) in the self._scheduler, because we don't 
-            # know their 'eid(s)', and then we will not be able to find the max
-            # scheduled date. The only alternative left will be to return ""
-            # (which means, schedule as soon as possible)
-            # If the event(s) we need to wait for are not wrapped, we can get
-            # their dates, and in this case we will need to return a bigger date
-            # than the maximum scheduled date. To achieve this we just sum 1 
-            # to the max_date
-            return "" if not max_date else  str(int(max_date) + 1)
+        return (event, date, failed)
 
-        def _wait_events_wrapper_event(event, wait_events, conditions):
-            # Check if there are still events to wait for
-            wait_events = [e for e in wait_events \
-                    if e.status in [EventStatus.RETRY, EventStatus.PENDING]]
-            if wait_events:
-                # re-schedule event in a date posterior to the last event
-                date = _max_date(wait_events)
-                result = dict({ConditionType.DELAY: date})
-                return (EventStatus.RETRY, result)
-            
-            # re-schedule original event immediately
-            self.__schedule_event(event, pending = False, **conditions)
-            return (EventStatus.SUCCESS, "")
-
-        wait_events = [self._pend_events[eid] for eid in wait_eids]
-        date = _max_date(wait_events)
-        
-        callback = _wait_events_wrapper_event
-        args = [event, wait_events, conditions]
-        new_event = Event(callback, args)
-        return (new_event, date)
-       
-    def _wait_values_wrapper(self, event, wait_values, date, **conditions):
-        def _wait_values_wrapper_event(event, wait_values, conditions):
-            for key, (guid, attr, oper, value) in wait_values.iteritems():
-                if key not in event.kwargs:
-                    state = self.state(guid)
-                    # we asume the resource will we created in the future.
-                    # for now we need to wait.
-                    if state == ResourceState.NOTEXIST:
-                        return (EventStatus.RETRY, "")
-
-                    # try to get the value 
-                    (status, result) = self._tc_get(guid, attr)
-                    if status != EventStatus.SUCCESS:
-                        return (status, result)
-                    # If the condition is not satosfied we need to wait until it is
-                    if ( oper and not eval(str(result) + " " + oper + " " + value) ):
-                        return (EventStatus.RETRY, "")
-                       
-                    event.kwargs[key] = result
-
-            # re-schedule original event immediately
-            self.__schedule_event(event, pending = False, **conditions)
-            return (EventStatus.SUCCESS, "")
-
-        # require attributes to put in event.kwargs
-        callback = _wait_values_wrapper_event
-        args = [event, wait_values, conditions]
-        new_event = Event(callback, args)
-        return (new_event, date)
-
-    def _wait_states_wrapper(self, event, wait_states, date, **conditions):
-        def _wait_states_wrapper_event(event, wait_states, conditions):
-            for (guid, oper, state) in wait_states:
-                rstate = self.state(guid)
-                # If the condition is not satisfied we need to wait until it is
-                if ( not eval(str(rstate) + " " + oper + " " + state) ):
-                    return (EventStatus.RETRY, "")
- 
-            # re-schedule original event immediately
-            self.__schedule_event(event, pending = False, **conditions)
-            return (EventStatus.SUCCESS, "")
-
-        callback = _wait_states_wrapper_event
-        args = [event, wait_states, conditions]
-        new_event = Event(callback, args)
-        return (new_event, date)
-
-    def _add_pending_event(self, eid, event):
+    def _add_pending_event(self, eid, event, wrapper_event = None):
         self._pend_lock.acquire()
         self._pend_events[eid] = event
+        if wrapper_event:
+            self._pend_wrapper_events[event] = wrapper_event
         self._pend_lock.release()
 
     def _remove_pending_event(self, eid):
         event = self._pend_events.get(eid)
+        
+        wrapper_event = None
+        if event in self._pend_wrapper_events:
+            wrapper_event = self._pend_wrapper_events[event]
+
         if event: 
             self._pend_lock.acquire()
             del self._pend_events[eid]
+            if wrapper_event:
+                del self._pend_wrapper_events[event]
             self._pend_lock.release()
+
             self._remove_event(event)
+            if wrapper_event:
+                self._remove_event(wrapper_event)
             return True
 
         return False

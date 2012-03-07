@@ -407,7 +407,7 @@ class ExecuteControllersTestCase(unittest.TestCase):
             self.assertEquals(xml, rxml)
 
             ec.flush()
-            time.sleep(0.2)
+            time.sleep(0.3)
             rxml = ec.runtime_ed_xml
             self.assertNotEquals(xml, rxml)
 
@@ -434,7 +434,6 @@ class ExecuteControllersTestCase(unittest.TestCase):
         conditions = dict({'wait_events': [set_eid2]})
         set_eid3 = trace.e.set.on(conditions, args)
 
-
         xml = exp.xml
         ec = create_ec(xml)
 
@@ -446,28 +445,33 @@ class ExecuteControllersTestCase(unittest.TestCase):
                 # There should be pending events
                 self.assertNotEquals(len(ec._pend_events), 0)
                 time.sleep(0.1)
-           
-            # Give extra time so we ensure that the clean_events method
-            # is eexcuted
-            time.sleep(0.2)
 
-            # The two start events should still be pending 
-            self.assertEquals(len(ec._pend_events), 5)
+            # The design events should still be pending 
+            self.assertTrue(len(ec._pend_events) >= 5)
 
-            time.sleep(1.1)
- 
-            # The two start events should still be pending because
-            # they are not automatically erased, but they should be
-            # already executed
-            self.assertEquals(len(ec._pend_events), 5)
-            
             status = ec.poll(start_eid1)
-            self.assertTrue(status == EventStatus.SUCCESS)
+            self.assertTrue(status != EventStatus.SUCCESS)
+
+            status = ec.poll(start_eid2)
+            self.assertTrue(status != EventStatus.SUCCESS)
  
             time.sleep(1)
-            status = ec.poll(start_eid2)
+
+            status = ec.poll(start_eid1)
             self.assertTrue(status == EventStatus.SUCCESS)
-            
+
+            while ec.poll(start_eid1) in [EventStatus.PENDING, EventStatus.RETRY]:
+                status = ec.poll(set_eid1)
+                self.assertTrue(status != EventStatus.SUCCESS)
+      
+                status = ec.poll(set_eid2)
+                self.assertTrue(status != EventStatus.SUCCESS)
+       
+                status = ec.poll(set_eid3)
+                self.assertTrue(status != EventStatus.SUCCESS)
+                
+                time.sleep(0.1)
+ 
             while ec.poll(set_eid1) in [EventStatus.PENDING, EventStatus.RETRY]:
                 time.sleep(0.1)
  
