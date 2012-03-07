@@ -40,9 +40,13 @@ def experiment_description():
 
     iface1.c.peer.connect(iface2.c.peer)
 
-    trace = provider.create("mock::Trace", container = mocki,
-            label = "trace", stringAttr = "lala")
-    node1.c.traces.connect(trace.c.node)
+    trace1 = provider.create("mock::Trace", container = mocki,
+            label = "trace1", stringAttr = "lala")
+    node1.c.traces.connect(trace1.c.node)
+
+    trace2 = provider.create("mock::Trace", container = mocki,
+            label = "trace2", stringAttr = "lala")
+    node2.c.traces.connect(trace2.c.node)
 
     app1 = provider.create("mock::Application", container = mocki,
             label = "app1", start = "10s")
@@ -393,7 +397,7 @@ class ExecuteControllersTestCase(unittest.TestCase):
             rxml = ec.runtime_ed_xml
             self.assertEquals(xml, rxml)
 
-            trace = exp.box("trace")
+            trace = exp.box("trace1")
             set_eid = ec.set(trace.guid, "stringAttr", "lolo")
             time.sleep(0.2)
             get_eid = ec.get(trace.guid, "stringAttr")
@@ -422,17 +426,22 @@ class ExecuteControllersTestCase(unittest.TestCase):
         start_eid1 = app1.e.start.at("1s")
         start_eid2 = app2.e.start.after(app1.guid)
          
-        trace = exp.box("trace")
+        trace1 = exp.box("trace1")
         args = ['stringAttr', 'pepe']
         conditions = dict({'wait_states': [(app2.guid, '==', ResourceState.STARTED)]})
-        set_eid1 = trace.e.set.on(conditions, args)
+        set_eid1 = trace1.e.set.on(conditions, args)
 
         node1 = exp.box("node1")
         set_eid2 = node1.e.set.at("3s", "boolAttr", False)
         
         args = ['stringAttr', 'lolo']
         conditions = dict({'wait_events': [set_eid2]})
-        set_eid3 = trace.e.set.on(conditions, args)
+        set_eid3 = trace1.e.set.on(conditions, args)
+         
+        trace2 = exp.box("trace2")
+        args = ['stringAttr', 'wiiiiiiiiiii']
+        conditions = dict({'wait_values': dict({"val": (trace1.guid, "stringAttr", '==', "lolo")})})
+        set_eid4 = trace2.e.set.on(conditions, args)
 
         xml = exp.xml
         ec = create_ec(xml)
@@ -447,7 +456,7 @@ class ExecuteControllersTestCase(unittest.TestCase):
                 time.sleep(0.1)
 
             # The design events should still be pending 
-            self.assertTrue(len(ec._pend_events) >= 5)
+            self.assertTrue(len(ec._pend_events) >= 6)
 
             status = ec.poll(start_eid1)
             self.assertTrue(status != EventStatus.SUCCESS)
@@ -468,6 +477,9 @@ class ExecuteControllersTestCase(unittest.TestCase):
                 self.assertTrue(status != EventStatus.SUCCESS)
        
                 status = ec.poll(set_eid3)
+                self.assertTrue(status != EventStatus.SUCCESS)
+ 
+                status = ec.poll(set_eid4)
                 self.assertTrue(status != EventStatus.SUCCESS)
                 
                 time.sleep(0.1)
@@ -493,6 +505,12 @@ class ExecuteControllersTestCase(unittest.TestCase):
   
             result = ec.result(set_eid3)
             self.assertEquals(result, "lolo")
+ 
+            while ec.poll(set_eid4) in [EventStatus.PENDING, EventStatus.RETRY]:
+                time.sleep(0.1)
+
+            result = ec.result(set_eid4)
+            self.assertEquals(result, 'wiiiiiiiiiii')
 
             ## TODO!! Finish to test features!!!
             ##  1 - Need to test wait_values from a design event

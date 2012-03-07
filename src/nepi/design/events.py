@@ -78,7 +78,7 @@ class WaitEventsCondition(Condition):
         return "|".join(map(str, condition))
 
 class WaitValuesCondition(Condition):
-    _revalues = re.compile("(?P<key>[a-zA-Z_-]+):guid\((?P<guid>\d+)\)\.(?P<attr>[a-zA-Z_-]+)( ?(?P<oper>(\=\=|\!\=|\>|\>\=|\<|\<\=|is not|is)) ?(?P<value>[0-9a-zA-Z_-]+))?")
+    _revalues = re.compile("(?P<key>[a-zA-Z_-]+):guid\((?P<guid>\d+)\)\.(?P<attr>[a-zA-Z_-]+)( ?(?P<oper>(\=\=|\!\=|\>|\>\=|\<|\<\=)) ?(?P<value>[0-9a-zA-Z_-]+))?")
     
     def __init__(self, wait_values):
         type = ConditionType.WAIT_VALUES
