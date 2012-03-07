@@ -161,8 +161,9 @@ class WaitValuesEventWrapper(EventWrapper):
                 (status, result) = self._ec._tc_get(guid, attr)
                 if status != EventStatus.SUCCESS:
                     return (status, result)
-                # If the condition is not satosfied we need to wait until it is
-                if ( oper and not eval(str(result) + " " + oper + " " + value) ):
+                
+                # If the condition is not satisfied we need to wait until it is
+                if ( oper and not eval("'%s' %s '%s'" % (result, oper, value))):
                     return (EventStatus.RETRY, "")
                    
                 self._event.kwargs[key] = result
@@ -705,7 +706,7 @@ class ExperimentController(object):
 
         return (status, result)
 
-    def _tc_set(self, guid, attr, value): 
+    def _tc_set(self, guid, attr, value, **kwargs): 
         state = self.state(guid)
         if state in [ResourceState.FAILED, ResourceState.SHUTDOWN]:
             self._logger.debug("_tc_get(): FAIL, wrong state %d for guid(%d)" % (state, guid))
@@ -716,7 +717,7 @@ class ExperimentController(object):
             return (EventStatus.RETRY, "")
 
         rc = self._resources.get(guid)
-        (status, result) = rc.tc.set(guid, attr, value)
+        (status, result) = rc.tc.set(guid, attr, value, **kwargs)
 
         if status == EventStatus.SUCCESS:
             # We need to update the local box attribute value
@@ -1144,7 +1145,7 @@ class TestbedController(object):
     def stop(self, guid):
         raise NotImplementedError
 
-    def set(self, guid, attr, value):
+    def set(self, guid, attr, value, **kwargs):
         raise NotImplementedError
 
     def get(self, guid, attr):

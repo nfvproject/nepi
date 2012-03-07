@@ -43,7 +43,7 @@ class MockObject(object):
                     (self._guid, attr, str(value)))
          return (controllers.EventStatus.SUCCESS, value)
 
-    def set(self, attr, value):
+    def set(self, attr, value, **kwargs):
         if not attr in self._attributes:
             self.tc._logger.debug("set(%d, %s, %s): FAIL, no such attribute " % 
                     (self._guid, attr, str(value)))
@@ -148,7 +148,7 @@ class TestbedController(controllers.TestbedController):
             return (controllers.EventStatus.FAIL, "")
         return obj.stop(guid)
 
-    def set(self, guid, attr, value):
+    def set(self, guid, attr, value, **kwargs):
         obj = self._objects.get(guid)
         if not obj: 
             self._logger.debug("set(%d): FAIL, no such object " % (guid))
