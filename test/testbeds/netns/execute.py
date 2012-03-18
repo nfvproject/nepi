@@ -109,6 +109,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
         user = getpass.getuser()
         instance = netns.TestbedController()
         instance.defer_configure("homeDirectory", self.root_dir)
+        #instance.defer_configure("enableDebug", True)
         instance.defer_create(2, "Node")
         instance.defer_create(3, "Node")
         instance.defer_create(4, "Node")
