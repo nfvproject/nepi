@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from util import  _get_ipv4_protocol_guid, _get_node_guid, _get_dev_number
 from nepi.core import testbed_impl
 from nepi.core.attributes import Attribute
 from constants import TESTBED_ID, TESTBED_VERSION
@@ -108,8 +109,22 @@ class TestbedController(testbed_impl.TestbedController):
         if factory_id in self.LOCAL_FACTORIES:
             setattr(element, name, value)
         elif not factory.box_attributes.is_attribute_metadata(name):
-            ns3_value = self._to_ns3_value(guid, name, value)
-            self._set_attribute(name, ns3_value, element)
+            if name == "Up":
+                ipv4_guid =  _get_ipv4_protocol_guid(self, guid)
+                if not ipv4_guid in self._elements:
+                    return
+                ipv4 = self._elements[ipv4_guid]
+                if value == False:
+                    nint = ipv4.GetNInterfaces()
+                    for i in xrange(0, nint):
+                        ipv4.SetDown(i)
+                else:
+                    nint = ipv4.GetNInterfaces()
+                    for i in xrange(0, nint):
+                        ipv4.SetUp(i)
+            else:
+                ns3_value = self._to_ns3_value(guid, name, value)
+                self._set_attribute(name, ns3_value, element)
 
     def get(self, guid, name, time = TIME_NOW):
         value = super(TestbedController, self).get(guid, name, time)
@@ -122,6 +137,19 @@ class TestbedController(testbed_impl.TestbedController):
                 return getattr(element, name)
             else:
                 return value
+        else: 
+            if name == "Up":
+                ipv4_guid =  _get_ipv4_protocol_guid(self, guid)
+                if not ipv4_guid in self._elements:
+                    return True
+                ipv4 = self._elements[ipv4_guid]
+                nint = ipv4.GetNInterfaces()
+                value = True
+                for i in xrange(0, nint):
+                    value = ipv4.IsUp(i)
+                    if not value: break
+                return value
+
         if factory.box_attributes.is_attribute_metadata(name):
             return value
 
@@ -136,6 +164,7 @@ class TestbedController(testbed_impl.TestbedController):
         self._get_attribute(name, ns3_value, element)
         value = ns3_value.SerializeToString(checker)
         attr_type = factory.box_attributes.get_attribute_type(name)
+
         if attr_type == Attribute.INTEGER:
             return int(value)
         if attr_type == Attribute.DOUBLE:

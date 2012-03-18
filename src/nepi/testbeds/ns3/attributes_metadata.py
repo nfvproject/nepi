@@ -2554,4 +2554,11 @@ attributes = dict({
         "flags" : Attribute.ExecImmutable | Attribute.Metadata,
         "validation_function" : validation.is_enum,
         }),
+    "Up" : dict({
+        "name" : "Up", 
+        "help" : "Flag to enable or disable interface",
+        "type" : Attribute.BOOL,
+        "value" : True,
+        "validation_function" : validation.is_integer,
+        }),
 })
