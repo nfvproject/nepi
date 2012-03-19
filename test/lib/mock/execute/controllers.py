@@ -26,14 +26,14 @@ class MockObject(object):
             other_connector, **kwargs):
         return (controllers.EventStatus.SUCCESS, "")
 
-    def start(self, guid):
+    def start(self, guid, **kwargs):
         self.state = controllers.ResourceState.STARTED
         return (controllers.EventStatus.SUCCESS, "")
 
-    def stop(self, guid):
+    def stop(self, guid, **kwargs):
         return (controllers.EventStatus.SUCCESS, "")
 
-    def get(self, attr):
+    def get(self, attr, **kwargs):
          if not attr in self._attributes:
             self.tc._logger.debug("get(%d, %s): FAIL, no such attribute " % 
                     (self._guid, attr))
@@ -53,7 +53,7 @@ class MockObject(object):
                     (self._guid, attr, str(value)))
         return (controllers.EventStatus.SUCCESS, value)
 
-    def command(self, command):
+    def command(self, command, **kwargs):
         return (controllers.EventStatus.SUCCESS, "result")
 
 
@@ -90,17 +90,17 @@ class TestbedController(controllers.TestbedController):
     def recover(self):
         raise NotImplementedError
 
-    def shutdown(self):
+    def shutdown(self, **kwargs):
         self._state = controllers.ResourceState.SHUTDOWN
         self._logger.debug("shutdown(): SUCCESS")
         return (controllers.EventStatus.SUCCESS, "")
 
-    def create(self, guid, box_id, attributes):
+    def create(self, guid, box_id, attributes, **kwargs):
         tc = weakref.ref(self)
         if box_id == TRACE:
-            obj = Trace(guid, box_id, attributes, tc)
+            obj = Trace(guid, box_id, attributes, tc, **kwargs)
         else:
-            obj = MockObject(guid, box_id, attributes, tc)
+            obj = MockObject(guid, box_id, attributes, tc, **kwargs)
         self._objects[guid] = obj
         self._logger.debug("create(%d, %s, %s): SUCCESS " % (guid, box_id, str(attributes)))
         return (controllers.EventStatus.SUCCESS, "")
@@ -127,7 +127,7 @@ class TestbedController(controllers.TestbedController):
         return obj.postconnect(guid, connector, other_guid, other_box_id,
             other_connector, **kwargs)
 
-    def start(self, guid):
+    def start(self, guid, **kwargs):
         if guid == self.guid:
             self._state = controllers.ResourceState.STARTED
  
@@ -135,9 +135,9 @@ class TestbedController(controllers.TestbedController):
         if not obj:
             self._logger.debug("start(%d): FAIL, no such object " % guid )
             return (controllers.EventStatus.FAIL, "")
-        return obj.start(guid)
+        return obj.start(guid, **kwargs)
 
-    def stop(self, guid):
+    def stop(self, guid, **kwargs):
         if guid == self.guid:
             self._state = controllers.ResourceState.STOPPED
         self._logger.debug("stop(%d): SUCCESS " % (guid))
@@ -146,28 +146,28 @@ class TestbedController(controllers.TestbedController):
         if not obj:
             self._logger.debug("stop(%d): FAIL, no such object " % guid )
             return (controllers.EventStatus.FAIL, "")
-        return obj.stop(guid)
+        return obj.stop(guid, **kwargs)
 
     def set(self, guid, attr, value, **kwargs):
         obj = self._objects.get(guid)
         if not obj: 
             self._logger.debug("set(%d): FAIL, no such object " % (guid))
             return (controllers.EventStatus.FAIL, "")
-        return obj.set(attr, value)
+        return obj.set(attr, value, **kwargs)
 
-    def get(self, guid, attr):
+    def get(self, guid, attr, **kwargs):
         obj = self._objects.get(guid)
         if not obj: 
             self._logger.debug("get(%d): FAIL, no such object " % (guid))
             return (controllers.EventStatus.FAIL, "")
-        return obj.get(attr)
+        return obj.get(attr, **kwargs)
 
-    def command(self, guid, command):
+    def command(self, guid, command, **kwargs):
         obj = self._objects.get(guid)
         if not obj: 
             self._logger.debug("command(%d): FAIL, no such object " % (guid))
             return (controllers.EventStatus.FAIL, "")
-        return obj.command(command)
+        return obj.command(command, **kwargs)
 
 
 TC_CLASS = TestbedController

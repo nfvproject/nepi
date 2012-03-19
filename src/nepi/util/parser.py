@@ -55,7 +55,7 @@ class XMLBoxParser(object):
         try:
             xml = doc.toprettyxml(indent="    ", encoding="UTF-8")
         except:
-            print >>sys.stderr, "Oops: generating XML from %s" % (data,)
+            print >>sys.stderr, "Oops: generating XML from %s" % (box,)
             raise
         
         return xml
