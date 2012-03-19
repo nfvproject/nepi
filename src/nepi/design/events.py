@@ -18,7 +18,7 @@ class BoxState(object):
 
 
 class ConditionType(object):
-    DELAY       = "delay"
+    DATE       = "date"
     WAIT_EVENTS = "wait_events"
     WAIT_VALUES = "wait_values"
     WAIT_STATES = "wait_states"
@@ -50,10 +50,10 @@ class Condition(object):
     def _condition_to_string(self, condition):
         raise NotImplementedError
 
-class DelayCondition(Condition):
+class DateCondition(Condition):
     def __init__(self, delay):
-        type = ConditionType.DELAY
-        super(DelayCondition, self).__init__(type, delay)
+        type = ConditionType.DATE
+        super(DateCondition, self).__init__(type, delay)
  
     def _condition_from_string(self, strcondition):
         return strcondition
@@ -139,8 +139,8 @@ def make_condition(type, condition):
     if isinstance(condition, Condition):
         return condition
 
-    if type == ConditionType.DELAY:
-        return DelayCondition(condition)
+    if type == ConditionType.DATE:
+        return DateCondition(condition)
     if type == ConditionType.WAIT_EVENTS:
         return WaitEventsCondition(condition)
     if type == ConditionType.WAIT_VALUES:
@@ -151,10 +151,14 @@ def make_condition(type, condition):
     return None 
 
 class EventType(object):
+    CREATE = "create"
+    CONNECT = "connect"
     START   = "start"
     STOP    = "stop"
     SET     = "set"
+    GET     = "get"
     COMMAND = "command"
+    SHUTDOWN = "shutdown"
 
 class Event(object):
     def __init__(self, owner, type, multi = False):
@@ -171,7 +175,7 @@ class Event(object):
     def type(self):
         return self._type
 
-    def on(self, conditions, args, event_id = None):
+    def on(self, conditions, args = (), event_id = None):
         if not self._multi:
             if len(self._owner()._types_idx[self._type]) > 0:
                 self._logger.error(" An event of type '%s' already exists.",
@@ -186,27 +190,29 @@ class Event(object):
 
         return self._owner().add_event(self._type, conditions, args, event_id)
 
-    def at(self, date, args):
-        conditions = dict({ConditionType.DELAY: date})
+    def at(self, date, *args):
+        conditions = dict({ConditionType.DATE: date})
         return self.on(conditions, args)
-       
+
+    def after(self, state, guids, *args):
+        wait_states = []
+        guids = guids if isinstance(guids, list) else [guids]
+        for guid in guids:
+            wait_states.append((guid, "==", state))
+        conditions = dict({ConditionType.WAIT_STATES: wait_states})
+        return self.on(conditions, args)
+      
 class StateEvent(Event):
     def __init__(self, owner, type, state, multi = False):
         super(StateEvent, self).__init__(owner, type, multi)
         self._state = state
  
     def at(self, date):
-        args = ""
-        return super(StateEvent, self).at(date, args)
+        return super(StateEvent, self).at(date)
 
-    def after(self, guids):
-        args = ""
-        wait_states = []
-        guids = guids if isinstance(guids, list) else [guids]
-        for guid in guids:
-            wait_states.append((guid, "==", self._state))
-        conditions = dict({ConditionType.WAIT_STATES: wait_states})
-        return self.on(conditions, args)
+    def after(self, guids, state = None):
+        state = state or self._state
+        return super(StateEvent, self).after(state, guids)
 
 class StartEvent(StateEvent):
     def __init__(self, owner):
@@ -220,23 +226,50 @@ class StopEvent(StateEvent):
         state = BoxState.STOPPED
         super(StopEvent, self).__init__(owner, type, state)
 
+class CreateEvent(StateEvent):
+    def __init__(self, owner):
+        type = EventType.CREATE
+        state = BoxState.CREATED
+        super(CreateEvent, self).__init__(owner, type, state)
+
+class ShutdownEvent(StateEvent):
+    def __init__(self, owner):
+        type = EventType.SHUTDOWN
+        state = BoxState.SHUTDOWN
+        super(ShutdownEvent, self).__init__(owner, type, state)
+
+class ConnectEvent(Event):
+    def __init__(self, owner):
+        type = EventType.CONNECT
+        super(ConnectEvent, self).__init__(owner, type, multi = True)
+ 
+    def at(self, date, guid, connector, other_guid, other_box_id, other_connector):
+        return super(ConnectEvent, self).at(date, guid, connector, other_guid,
+                other_box_id, other_connector)
+
 class SetEvent(Event):
     def __init__(self, owner):
         type = EventType.SET 
         super(SetEvent, self).__init__(owner, type, multi = True)
  
     def at(self, date, name, value):
-        args = [name, value]
-        return super(SetEvent, self).at(date, args)
-       
+        return super(SetEvent, self).at(date, name, value)
+ 
+class GetEvent(Event):
+    def __init__(self, owner):
+        type = EventType.GET 
+        super(GetEvent, self).__init__(owner, type, multi = True)
+ 
+    def at(self, date, name):
+        return super(GetEvent, self).at(date, name)
+      
 class CommandEvent(Event):
     def __init__(self, owner):
         type = EventType.COMMAND  
         super(CommandEvent, self).__init__(owner, type, multi = True)
  
     def at(self, date, command):
-        args = [command]
-        return super(CommnadEvent, self).at(date, args)
+        return super(CommnadEvent, self).at(date, command)
 
 
 class EventsMapProxy(object):
@@ -267,7 +300,11 @@ class EventsMap(object):
         self._add_event(StartEvent(self))
         self._add_event(StopEvent(self))
         self._add_event(SetEvent(self))
+        self._add_event(GetEvent(self))
         self._add_event(CommandEvent(self))
+        self._add_event(ShutdownEvent(self))
+        self._add_event(CreateEvent(self))
+        self._add_event(ConnectEvent(self))
 
     @property
     def events(self):
@@ -288,6 +325,12 @@ class EventsMap(object):
         (event_id, type, args, conditions) = self._events[event_id]
         del self._events[event_id]
         self._types_idx[type].remove(event_id)
+
+    def delete_all_events(self):
+        self._eguid_generator = GuidGenerator()
+        for (event_id, type, args, conditions) in self._events.values():
+            del self._events[event_id]
+            self._types_idx[type].remove(event_id)
 
     def _add_event(self, event):
         self._event_types[event.type] = event

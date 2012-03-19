@@ -60,7 +60,7 @@ def experiment_description():
 
 
 class ExecuteControllersTestCase(unittest.TestCase):
-    def test_schedule_exception(self):
+    def ptest_schedule_exception(self):
         # This test has the objective of verifying that errors that occur 
         # while executing an event will not afect the processing of following
         # events
@@ -95,7 +95,7 @@ class ExecuteControllersTestCase(unittest.TestCase):
         finally:
             ec.shutdown_now()
 
-    def test_schedule_date(self):
+    def ptest_schedule_date(self):
         # This test has the objective of verifying that events are executed
         # at the correct time they were scheduled on
         def do_nothing():
@@ -151,7 +151,7 @@ class ExecuteControllersTestCase(unittest.TestCase):
         finally:
             ec.shutdown_now()
 
-    def test_schedule_pending(self):
+    def ptest_schedule_pending(self):
         # This test has the objective of verifying that events marked as
         # 'pending' will be added to the pending events list, and vicerversa 
         def do_nothing():
@@ -231,7 +231,7 @@ class ExecuteControllersTestCase(unittest.TestCase):
         finally:
             ec.shutdown_now()
 
-    def test_schedule_wait_events(self):
+    def ptest_schedule_wait_events(self):
         # This test has the objective of verifying the 'wait_events'
         # condition
         def do_nothing():
@@ -268,7 +268,7 @@ class ExecuteControllersTestCase(unittest.TestCase):
         finally:
             ec.shutdown_now()
 
-    def test_schedule_wait_values(self):
+    def ptest_schedule_wait_values(self):
         # This test has the objective of verifying the 'wait_values'
         # condition
         def do_nothing(node_guid, **kwargs):
@@ -325,7 +325,7 @@ class ExecuteControllersTestCase(unittest.TestCase):
         finally:
             ec.shutdown_now()
 
-    def test_schedule_wait_states(self):
+    def ptest_schedule_wait_states(self):
         # This test has the objective of verifying the 'wait_states'
         # condition
         def do_nothing():
@@ -375,7 +375,7 @@ class ExecuteControllersTestCase(unittest.TestCase):
         finally:
             ec.shutdown_now()
 
-    def test_orchestration(self):
+    def ptest_orchestration(self):
         exp = experiment_description()
         xml = exp.xml
         ec = create_ec(xml)
@@ -394,7 +394,7 @@ class ExecuteControllersTestCase(unittest.TestCase):
             self.assertEquals(len(ec._pend_events), 0)
  
             # Design & runtime experiments should be the same 
-            rxml = ec.runtime_ed_xml
+            rxml = ec.incremental_ed_xml
             self.assertEquals(xml, rxml)
 
             trace = exp.box("trace1")
@@ -407,18 +407,22 @@ class ExecuteControllersTestCase(unittest.TestCase):
 
             # Because we didn't flush the changes, the runtime
             # ed should still be the same
-            rxml = ec.runtime_ed_xml
+            rxml = ec.incremental_ed_xml
             self.assertEquals(xml, rxml)
 
-            ec.flush()
-            time.sleep(0.3)
-            rxml = ec.runtime_ed_xml
+            eid = ec.flush()
+            
+            while ec.poll(eid) in [EventStatus.PENDING, EventStatus.RETRY]:
+                time.sleep(0.1)
+           
+            rxml = ec.incremental_ed_xml
+            
             self.assertNotEquals(xml, rxml)
 
         finally:
             ec.shutdown_now()
 
-    def test_orchestration_with_events(self):
+    def ptest_orchestration_with_events(self):
         exp = experiment_description()
         
         app1 = exp.box("app1")
@@ -427,19 +431,19 @@ class ExecuteControllersTestCase(unittest.TestCase):
         start_eid2 = app2.e.start.after(app1.guid)
          
         trace1 = exp.box("trace1")
-        args = ['stringAttr', 'pepe']
+        args = ('stringAttr', 'pepe')
         conditions = dict({'wait_states': [(app2.guid, '==', ResourceState.STARTED)]})
         set_eid1 = trace1.e.set.on(conditions, args)
 
         node1 = exp.box("node1")
         set_eid2 = node1.e.set.at("3s", "boolAttr", False)
         
-        args = ['stringAttr', 'lolo']
+        args = ('stringAttr', 'lolo')
         conditions = dict({'wait_events': [set_eid2]})
         set_eid3 = trace1.e.set.on(conditions, args)
          
         trace2 = exp.box("trace2")
-        args = ['stringAttr', 'wiiiiiiiiiii']
+        args = ('stringAttr', 'wiiiiiiiiiii')
         conditions = dict({'wait_values': dict({"val": (trace1.guid, "stringAttr", '==', "lolo")})})
         set_eid4 = trace2.e.set.on(conditions, args)
 
@@ -512,16 +516,73 @@ class ExecuteControllersTestCase(unittest.TestCase):
             result = ec.result(set_eid4)
             self.assertEquals(result, 'wiiiiiiiiiii')
 
-            ## TODO!! Finish to test features!!!
-            ##  1 - Need to test wait_values from a design event
-            ##  2 - Still need to compare xml & rxml to check they are the same 
+            for eid in ec.list_events():
+                while ec.poll(eid) in [EventStatus.PENDING, EventStatus.RETRY]:
+                    time.sleep(0.1)
+             
+            eid = ec.flush()
+            
+            while ec.poll(eid) in [EventStatus.PENDING, EventStatus.RETRY]:
+                time.sleep(0.1)
+           
+            # Design & runtime experiments should be the same now that all 
+            # events were executed
+            rxml = ec.incremental_ed_xml
 
-            # Design & runtime experiments should be the same 
-            #rxml = ec.runtime_ed_xml
-            #self.assertEquals(xml, rxml)
+            self.assertEquals(xml, rxml)
 
         finally:
             ec.shutdown_now()
+
+    def ptest_repeatability(self):
+        rxml = ""
+
+        exp = experiment_description()
+        xml = exp.xml
+        ec = create_ec(xml)
+
+        try: 
+            ec.run(modnames = ["mock"])
+
+            # Wait until orchestration is finished
+            while ec.state() != ResourceState.STARTED:
+                # There should be pending events
+                self.assertNotEquals(len(ec._pend_events), 0)
+                time.sleep(0.1)
+
+            trace = exp.box("trace1")
+            set_eid = ec.set(trace.guid, "stringAttr", "lolo")
+            while ec.poll(set_eid) in [EventStatus.PENDING, EventStatus.RETRY]:
+                time.sleep(0.1)
+           
+            eid = ec.flush()
+            while ec.poll(eid) in [EventStatus.PENDING, EventStatus.RETRY]:
+                time.sleep(0.1)
+
+            rxml = ec.incremental_ed_xml
+
+        finally:
+            ec.shutdown_now()
+
+        ec2 = create_ec(rxml)
+
+        try: 
+            ec2.run(modnames = ["mock"])
+
+            for eid in ec2.list_events():
+                while ec2.poll(eid) in [EventStatus.PENDING, EventStatus.RETRY]:
+                    time.sleep(0.1)
+               
+            eid = ec2.flush()
+            while ec2.poll(eid) in [EventStatus.PENDING, EventStatus.RETRY]:
+                time.sleep(0.1)
+
+            rxml2 = ec2.incremental_ed_xml
+            
+        finally:
+            ec2.shutdown_now()
+
+        self.assertEquals(rxml, rxml2)
 
 
 if __name__ == '__main__':
