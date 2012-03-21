@@ -903,7 +903,8 @@ class NS3Dependency(Dependency):
         #pybindgen_source_url = "http://yans.pl.sophia.inria.fr/trac/nepi/raw-attachment/wiki/WikiStart/pybindgen-r794.tar.gz"
         pybindgen_source_url = "http://yans.pl.sophia.inria.fr/trac/nepi/raw-attachment/wiki/WikiStart/pybindgen-r796.tar.gz"
         pygccxml_source_url = "http://leaseweb.dl.sourceforge.net/project/pygccxml/pygccxml/pygccxml-1.0/pygccxml-1.0.0.zip"
-        ns3_source_url = "http://yans.pl.sophia.inria.fr/code/hgwebdir.cgi/ns-3.11-nepi/archive/tip.tar.gz"
+        #ns3_source_url = "http://yans.pl.sophia.inria.fr/code/hgwebdir.cgi/ns-3.11-nepi/archive/tip.tar.gz"
+        ns3_source_url = "http://yans.pl.sophia.inria.fr/code/hgwebdir.cgi/ns-3.11-nepi/archive/ddf78e15b30e.tar.gz"
         passfd_source_url = "http://yans.pl.sophia.inria.fr/code/hgwebdir.cgi/python-passfd/archive/tip.tar.gz"
         self.build =(
             " ( "
