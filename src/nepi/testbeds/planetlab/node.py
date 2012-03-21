@@ -92,7 +92,7 @@ class Node(object):
         if not api:
             api = plcapi.PLCAPI()
         self._api = api
-        self._sliceapi = sliceapi
+        self._sliceapi = sliceapi or api
         
         # Attributes
         self.hostname = None
