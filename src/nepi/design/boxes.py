@@ -18,6 +18,7 @@ class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap,
             help = None):
         super(Box, self).__init__()
         self._provider = None
+        # making self.provider a weakref to 'provider'
         self.provider = provider
         # guid -- global unique identifier
         self._guid = guid
@@ -177,7 +178,7 @@ class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap,
             if box: break
         return box
 
-    def clone(self, **kwargs):
+    def clone(self, provider, **kwargs):
         guid = None
         if "guid" in kwargs:
             guid = kwargs["guid"]
@@ -189,7 +190,8 @@ class Box(tags.Taggable, attributes.AttributesMap, connectors.ConnectorsMap,
             del kwargs["container"]
         
         new = copy.copy(self)
-        guid = self.provider.guid_generator.next(guid)
+        new.provider = provider
+        guid = provider.guid_generator.next(guid)
         new._guid = guid
         new._graphical_info = GraphicalInfo()
         if container:
@@ -304,7 +306,7 @@ class ContainerBox(Box):
         connections = list()
         self._boxes = dict()
         for box in other.boxes:
-            new = box.clone()
+            new = box.clone(self.provider)
             cloned[box.guid] = new.guid
             self.add(new)
             for conx in box.connections:
@@ -343,7 +345,7 @@ class ContainerBox(Box):
                 other_conn = getattr(cloned_other_box.c, other_connector)
                 conn.connect(other_conn)
 
-    def clone(self, **kwargs):
+    def clone(self, provider, **kwargs):
         guid = None
         if "guid" in kwargs:
             guid = kwargs["guid"]
@@ -355,7 +357,8 @@ class ContainerBox(Box):
             del kwargs["container"]
 
         new = copy.copy(self)
-        guid = self.provider.guid_generator.next(guid)
+        new.provider = provider
+        guid = provider.guid_generator.next(guid)
         new._guid = guid
         new._graphical_info = GraphicalInfo()
         if container:
@@ -893,7 +896,6 @@ class BoxProvider(object):
 
     def add(self, box):
         if box.box_id not in self._boxes.keys():
-            box.provider = self
             self._boxes[box.box_id] = box
 
     def add_all(self, boxes):
@@ -902,9 +904,12 @@ class BoxProvider(object):
 
     def create(self, box_id, **kwargs):
         box = self._boxes[box_id]
-        new = box.clone(**kwargs)
+        new = box.clone(self, **kwargs)
         return new
 
+    def clone(self, box):
+        new = box.clone(self)
+        return new
 
 def create_provider(modnames = None, search_path = None):
     # this factory provider instance will hold reference to all available factories 

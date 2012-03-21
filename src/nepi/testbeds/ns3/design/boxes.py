@@ -225,8 +225,8 @@ class ProtocolNodeBox(NodeBox):
             conn.add_connection_rule(rule)
         self.add_connector(conn)
 
-    def clone(self, **kwargs):
-        new = super(ProtocolNodeBox, self).clone(**kwargs)
+    def clone(self, provider, **kwargs):
+        new = super(ProtocolNodeBox, self).clone(provider, **kwargs)
         for p in [UDPPROTO, ICMP6PROTO, ICMP4PROTO, ARPPROTO, IP6PROTO, IP4PROTO, TCPPROTO]: 
             proto = new.provider.create(p, container = new.container)
             proto.graphical_info.hidden = True

@@ -302,6 +302,7 @@ class ExperimentController(object):
 
         # Box provider
         self._provider = None
+        self._oprovider = None
         # Experiment box - It will be used to keep track of the changes
         #   on the experiment attributes during runtime, allowing to
         #   persist the runtime ED to xml
@@ -382,6 +383,8 @@ class ExperimentController(object):
     def run(self, modnames = None):
         self._load_testbed_controllers(modnames)
         self._provider = create_provider(modnames)
+        self._oprovider = create_provider(modnames)
+
         # Orchestrate experiment by translating the experiment
         # description into scheduled events
         self._orchestrate()
@@ -571,6 +574,7 @@ class ExperimentController(object):
 
         rc = self._resources.get(guid)
         (status, result) = rc.tc.start(guid, **kwargs)
+
         if status == EventStatus.SUCCESS:
             rc.state = ResourceState.STARTED
 
@@ -646,7 +650,6 @@ class ExperimentController(object):
         tc_class = self._tc_classes.get(rc.box_id)
         tc = tc_class(guid, attributes)
         rc.tc = tc
-        rc.state = ResourceState.CREATED
 
         # We now need to add the created box to the experiment design
         container = self._exp
@@ -655,20 +658,25 @@ class ExperimentController(object):
         self._provider.create(rc.box_id, guid = guid, container = container,
                 **attributes)
 
+        # If this event results in the creation of a new box, this box
+        # need to be added in the self._oexp too
+        if not self._oexp.box(guid):
+            container = self._oexp
+            if rc.container_guid:
+                container = self._oexp.box(rc.container_guid)
+            self._oprovider.create(rc.box_id, guid = guid, container = container,
+                    **attributes)
+
         # Track event
         if track:
             conditions = self._make_conditions(conditions)
-
-            # If this event resulted in the creation of a new box, this box
-            # need to be added in the self._oexp too
-            if not self._oexp.box(guid):
-                container = self._oexp.box(rc.container_guid)
-                self._provider.create(rc.box_id, guid = guid, container = container,
-                        **attributes)
-     
+    
             box = self._oexp.box(guid)
             box.e.create.on(conditions)
      
+        # We change the state at the end to avoid concurrency problems
+        rc.state = ResourceState.CREATED
+
         return (EventStatus.SUCCESS, "")
 
     def _tc_create(self, guid, attributes, track, conditions, **kwargs):
@@ -692,8 +700,6 @@ class ExperimentController(object):
         # Containers are dummy components and should not be created in the TCs       
         if tags.CONTAINER not in rc.tags:
             (status, result) = rc.tc.create(guid, rc.box_id, attributes, **kwargs)
-            if status == EventStatus.SUCCESS:
-                rc.state = ResourceState.CREATED 
 
         if status == EventStatus.SUCCESS:
             # We now need to add the created box to the experiment design 
@@ -702,20 +708,24 @@ class ExperimentController(object):
                 container = self._exp.box(rc.container_guid)
             self._provider.create(rc.box_id, guid = guid, container = container,
                     **attributes)
-     
+  
+            # If this event results in the creation of a new box, this box
+            # need to be added in the self._oexp too
+            if not self._oexp.box(guid):
+                container = self._oexp
+                if rc.container_guid:
+                    container = self._oexp.box(rc.container_guid)
+                self._oprovider.create(rc.box_id, guid = guid, container = container,
+                        **attributes)
+
             # Track event
             if track:
                 conditions = self._make_conditions(conditions)
-
-                # If this event resulted in the creation of a new box, this box
-                # need to be added in the self._oexp too
-                if not self._oexp.box(guid):
-                    container = self._oexp.box(rc.container_guid)
-                    self._provider.create(rc.box_id, guid = guid, container = container,
-                            **attributes)
-        
                 box = self._oexp.box(guid)
                 box.e.create.on(conditions)
+
+            # We change the state at the end to avoid concurrency problems
+            rc.state = ResourceState.CREATED 
 
         return (status, result)
 
@@ -1024,7 +1034,7 @@ class ExperimentController(object):
 
         self._exp = self._provider.create("Experiment")
         if not xml:
-            self._oexp = self._provider.from_xml(self._exp.xml)
+            self._oexp = self._oprovider.create("Experiment")
             self._state = ResourceState.STARTED
         else:
             # By default, only after all boxes are created and connected they 
@@ -1044,7 +1054,7 @@ class ExperimentController(object):
             # experiment exceution.
             pending_events = []
 
-            self._oexp = self._provider.from_xml(xml)
+            self._oexp = self._oprovider.from_xml(xml)
             walk_create(self._oexp, start_boxes, post_events, pending_events)
             schedule_start(start_boxes, post_events)
 

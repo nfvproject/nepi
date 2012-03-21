@@ -28,7 +28,7 @@ class DesignBoxesTestCase(unittest.TestCase):
         iface1 = provider.create("mock::Interface")
         mocki.add(iface1)
         node1.c.devs.connect(iface1.c.node)
-        node2 = node1.clone()
+        node2 = provider.clone(node1)
         mocki.add(node2)
 
         self.assertTrue(id(node1) != id(node2))
@@ -92,7 +92,7 @@ class DesignBoxesTestCase(unittest.TestCase):
         self.assertFalse(node1.c.apps.is_connected(app1.c.node))
 
         # clone container
-        cont2 = cont1.clone()
+        cont2 = provider.clone(cont1)
         mocki.add(cont2)
 
         node2 = cont2.box("node")
