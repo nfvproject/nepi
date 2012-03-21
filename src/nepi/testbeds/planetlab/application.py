@@ -919,7 +919,7 @@ class NS3Dependency(Dependency):
                 # Not working, rebuild
                      # Archive SHA1 sums to check
                      "echo '7158877faff2254e6c094bf18e6b4283cac19137  pygccxml-1.0.0.zip' > archive_sums.txt && "
-                     "echo 'a18c2ccffd0df517bc37e2f3a2475092517c43f2  pybindgen-src.tar.gz' >> archive_sums.txt && "
+                     "echo '139ba938c62816bbdb82bf5644e4f3041608c634  pybindgen-src.tar.gz' >> archive_sums.txt && "
                      " ( " # check existing files
                      " sha1sum -c archive_sums.txt && "
                      " test -f passfd-src.tar.gz && "
