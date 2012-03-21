@@ -247,7 +247,7 @@ def preconfigure_tunchannel(testbed_instance, guid):
     public_addr = os.popen(
         "/sbin/ifconfig "
         "| grep $(ip route | grep default | awk '{print $3}' "
-                "| awk -F. '{print $1\"[.]\"$2}') "
+                "| awk -F. '{print $1\"[.]\"$2}' | head -1) "
         "| head -1 | awk '{print $2}' "
         "| awk -F : '{print $2}'").read().rstrip()
     element.tun_addr = public_addr
