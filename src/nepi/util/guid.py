@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # FIXME: This class is not thread-safe. 
 # Should it be made thread-safe?
 class GuidGenerator(object):
