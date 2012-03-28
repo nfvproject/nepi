@@ -35,6 +35,10 @@ class TunProtoBase(object):
         self._ppid = None
         self._if_name = None
 
+        self._pointopoint = None
+        self._netprefix = None
+        self._address = None
+
         # Logging
         self._logger = logging.getLogger('nepi.testbeds.planetlab')
     
@@ -193,18 +197,18 @@ class TunProtoBase(object):
         
         local_port = self.port
         local_cap  = local.capture
-        local_addr = local.address
-        local_mask = local.netprefix
+        self._address = local_addr = local.address
+        self._netprefix = local_mask = local.netprefix
         local_snat = local.snat
         local_txq  = local.txqueuelen
-        local_p2p  = local.pointopoint
+        self._pointopoint = local_p2p  = local.pointopoint
         local_cipher=local.tun_cipher
         local_mcast= local.multicast
         local_bwlim= local.bwlimit
         local_mcastfwd = local.multicast_forwarder
         
         if not local_p2p and hasattr(peer, 'address'):
-            local_p2p = peer.address
+            self._pointopoint = local_p2p = peer.address
 
         if check_proto != peer_proto:
             raise RuntimeError, "Peering protocol mismatch: %s != %s" % (check_proto, peer_proto)
@@ -552,7 +556,46 @@ class TunProtoBase(object):
                         timeout = 60,
                         err_on_timeout = False
                         )
-                    proc.wait()    
+                    proc.wait()
+
+    def if_down(self):
+        # TODO!!! need to set the vif down with vsys/vif_down.in ... which 
+        # doesn't currently work.
+        local = self.local()
+        
+        if local:
+            (out,err),proc = server.eintr_retry(server.popen_ssh_command)(
+                "sudo -S bash -c 'kill -s USR1 %d'" % (self._pid,),
+                host = local.node.hostname,
+                port = None,
+                user = local.node.slicename,
+                agent = None,
+                ident_key = local.node.ident_path,
+                server_key = local.node.server_key,
+                timeout = 60,
+                err_on_timeout = False
+                )
+            proc.wait()
+
+    def if_up(self):
+        # TODO!!! need to set the vif up with vsys/vif_up.in ... which 
+        # doesn't currently work.
+        local = self.local()
+        
+        if local:
+            (out,err),proc = server.eintr_retry(server.popen_ssh_command)(
+                "sudo -S bash -c 'kill -s USR2 %d'" % (self._pid,),
+                host = local.node.hostname,
+                port = None,
+                user = local.node.slicename,
+                agent = None,
+                ident_key = local.node.ident_path,
+                server_key = local.node.server_key,
+                timeout = 60,
+                err_on_timeout = False
+                )
+            proc.wait()    
+
     _TRACEMAP = {
         # tracename : (remotename, localname)
         'packets' : ('capture','capture'),

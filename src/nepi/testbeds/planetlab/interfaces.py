@@ -199,6 +199,14 @@ class TunIface(object):
         if self.peer_proto_impl:
             return self.peer_proto_impl.if_name
 
+    def if_up(self):
+        if self.peer_proto_impl:
+            return self.peer_proto_impl.if_up()
+
+    def if_down(self):
+        if self.peer_proto_impl:
+            return self.peer_proto_impl.if_down()
+
     def routes_here(self, route):
         """
         Returns True if the route should be attached to this interface

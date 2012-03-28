@@ -531,6 +531,12 @@ class TestbedController(testbed_impl.TestbedController):
         # TODO: take on account schedule time for the task
         element = self._elements[guid]
         if element:
+            if name == "up":
+                if value == True:
+                    element.if_up()
+                else:
+                    element.if_down()
+
             try:
                 setattr(element, name, value)
             except:

@@ -38,14 +38,18 @@ def test(cipher, passphrase, plr=None, queuemodule=None):
    else:
         queueclass = None
    TERMINATE = []
+   SUSPEND = []
+
    def stopme():
        time.sleep(100)
        TERMINATE.append(None)
+
    t = threading.Thread(target=stopme)
    t.start()
-   tunchannel.tun_fwd(tun, remote, True, True, passphrase, True, TERMINATE, None, tunkqueue=500,
-        rwrite = rwrite, rread = rread, cipher=cipher, queueclass=queueclass,
-        accept_local = accept, accept_remote = accept)
+   tunchannel.tun_fwd(tun, remote, True, True, passphrase, True, TERMINATE,
+            SUSPEND, None, tunkqueue=500, rwrite = rwrite, rread = rread, 
+            cipher=cipher, queueclass=queueclass, accept_local = accept,
+            accept_remote = accept)
 
 # Swallow exceptions on decryption
 def decrypt(packet, crypter, super=tunchannel.decrypt):

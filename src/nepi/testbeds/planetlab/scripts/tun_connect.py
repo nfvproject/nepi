@@ -514,6 +514,7 @@ def pl_vif_stop(tun_path, tun_name):
 
 def tun_fwd(tun, remote, reconnect = None, accept_local = None, accept_remote = None, slowlocal = True, bwlimit = None):
     global TERMINATE
+    global SUSPEND
     
     tunqueue = options.vif_txqueuelen or 1000
     tunkqueue = 500
@@ -526,6 +527,7 @@ def tun_fwd(tun, remote, reconnect = None, accept_local = None, accept_remote = 
         cipher_key = options.cipher_key,
         udp = options.protocol == 'udp',
         TERMINATE = TERMINATE,
+        SUSPEND = SUSPEND,
         stderr = None,
         reconnect = reconnect,
         tunqueue = tunqueue,
@@ -667,6 +669,20 @@ def _finalize(sig,frame):
     global TERMINATE
     TERMINATE.append(None)
 signal.signal(signal.SIGTERM, _finalize)
+
+# SIGUSR1 suspends forwading, SIGUSR2 resumes forwarding
+SUSPEND = []
+def _suspend(sig,frame):
+    global SUSPEND
+    if not SUSPEND:
+        SUSPEND.append(None)
+signal.signal(signal.SIGUSR1, _suspend)
+
+def _resume(sig,frame):
+    global SUSPEND
+    if SUSPEND:
+        SUSPEND.remove(None)
+signal.signal(signal.SIGUSR2, _resume)
 
 try:
     tcpdump = None

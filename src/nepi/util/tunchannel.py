@@ -26,6 +26,7 @@ tagtype = {
     '8864' : 'PPPoE',
     '86dd' : 'ipv6',
 }
+
 def etherProto(packet, len=len):
     if len(packet) > 14:
         if packet[12] == "\x81" and packet[13] == "\x00":
@@ -36,6 +37,7 @@ def etherProto(packet, len=len):
             return packet[12:14]
     # default: ip
     return "\x08\x00"
+
 def formatPacket(packet, ether_mode):
     if ether_mode:
         stripped_packet = etherStrip(packet)
@@ -194,9 +196,13 @@ def nonblock(fd):
         # Just ignore
         return False
 
-def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr=sys.stderr, reconnect=None, rwrite=None, rread=None, tunqueue=1000, tunkqueue=1000,
-        cipher='AES', accept_local=None, accept_remote=None, slowlocal=True, queueclass=None, bwlimit=None,
-        len=len, max=max, min=min, buffer=buffer, OSError=OSError, select=select.select, selecterror=select.error, os=os, socket=socket,
+def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, SUSPEND,
+        stderr = sys.stderr, reconnect = None, rwrite = None, rread = None,
+        tunqueue = 1000, tunkqueue = 1000, cipher = 'AES', accept_local = None, 
+        accept_remote = None, slowlocal = True, queueclass = None, 
+        bwlimit = None, len = len, max = max, min = min, buffer = buffer,
+        OSError = OSError, select = select.select, selecterror = select.error, 
+        os = os, socket = socket,
         retrycodes=(os.errno.EWOULDBLOCK, os.errno.EAGAIN, os.errno.EINTR) ):
     crypto_mode = False
     crypter = None
@@ -343,6 +349,11 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
     
     
     while not TERMINATE:
+        # The SUSPEND flag has been set. This means we need to wait on
+        # the SUSPEND condition until it is released.
+        while SUSPEND:
+            time.sleep(0.5)
+
         wset = []
         if packetReady(bkbuf):
             wset.append(tun)
@@ -368,7 +379,12 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, stderr
                 continue
             else:
                 traceback.print_exc(file=sys.stderr)
-                raise
+                # If the SUSPEND flag has been set, then the TUN will be in a bad
+                # state and the select error should be ignores.
+                if SUSPEND:
+                    continue
+                else:
+                    raise
 
         # check for errors
         if errs:
