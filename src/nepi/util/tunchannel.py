@@ -351,7 +351,7 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, SUSPEN
     while not TERMINATE:
         # The SUSPEND flag has been set. This means we need to wait on
         # the SUSPEND condition until it is released.
-        while SUSPEND:
+        while SUSPEND and not TERMINATE:
             time.sleep(0.5)
 
         wset = []
