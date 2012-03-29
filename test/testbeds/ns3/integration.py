@@ -178,7 +178,9 @@ r [-+0-9.e]+ /NodeList/0/DeviceList/0/\$ns3::FdNetDevice/Rx Payload \(size=98\)
             while not controller.is_finished(app.guid):
                 time.sleep(0.5)
             ping_result = controller.trace(iface2.guid, "P2PAsciiTrace")
-            comp_result = "- 19.021 /NodeList/1/DeviceList/0/$ns3::PointToPointNetDevice/TxQueue/Dequeue ns3::PppHeader (Point-to-Point Protocol: IP (0x0021)) ns3::Ipv4Header (tos 0x0 ttl 64 id 19 protocol 1 offset 0 flags [none] length: 84 10.0.0.2 > 10.0.0.1) ns3::Icmpv4Header (type=0, code=0) ns3::Icmpv4Echo (identifier=0, sequence=19)"
+
+            comp_result = "- 19.021 /NodeList/1/DeviceList/0/$ns3::PointToPointNetDevice/TxQueue/Dequeue ns3::PppHeader (Point-to-Point Protocol: IP (0x0021)) ns3::Ipv4Header (tos 0x0 DSCP Default ECN Not-ECT ttl 64 id 19 protocol 1 offset (bytes) 0 flags [none] length: 84 10.0.0.2 > 10.0.0.1) ns3::Icmpv4Header (type=0, code=0) ns3::Icmpv4Echo (identifier=0, sequence=19)"
+            
             if ping_result.find(comp_result) == -1:
                 self.fail("Unexpected trace: %s" % (ping_result,))
         finally:
