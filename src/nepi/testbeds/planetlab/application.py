@@ -897,7 +897,9 @@ class NS3Dependency(Dependency):
     def __init__(self, api = None):
         super(NS3Dependency, self).__init__(api)
         
-        self.buildDepends = 'make waf gcc gcc-c++ gccxml unzip bzr'
+        self.depends = 'bzr'
+        
+        self.buildDepends = 'make waf gcc gcc-c++ gccxml unzip'
         
         # We have to download the sources, untar, build...
         pygccxml_source_url = "http://leaseweb.dl.sourceforge.net/project/pygccxml/pygccxml/pygccxml-1.0/pygccxml-1.0.0.zip"
@@ -960,8 +962,8 @@ class NS3Dependency(Dependency):
                      "./waf &&"
                      "./waf install && "
                      "rm -f ${BUILD}/target/lib/*.so && "
-                     "cp -a ${BUILD}/ns3-src/build/release/libns3*.so ${BUILD}/target/lib && "
-                     "cp -a ${BUILD}/ns3-src/build/release/bindings/python/ns ${BUILD}/target/lib &&"
+                     "cp -a ${BUILD}/ns3-src/build/libns3*.so ${BUILD}/target/lib && "
+                     "cp -a ${BUILD}/ns3-src/build/bindings/python/ns ${BUILD}/target/lib &&"
                      "./waf clean "
              " )"
                      % dict(
