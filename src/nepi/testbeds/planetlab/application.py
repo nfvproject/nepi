@@ -897,9 +897,7 @@ class NS3Dependency(Dependency):
     def __init__(self, api = None):
         super(NS3Dependency, self).__init__(api)
         
-        self.depends = 'bzr'
-        
-        self.buildDepends = 'make waf gcc gcc-c++ gccxml unzip'
+        self.buildDepends = 'make waf gcc gcc-c++ gccxml unzip bzr'
         
         # We have to download the sources, untar, build...
         pygccxml_source_url = "http://leaseweb.dl.sourceforge.net/project/pygccxml/pygccxml/pygccxml-1.0/pygccxml-1.0.0.zip"
