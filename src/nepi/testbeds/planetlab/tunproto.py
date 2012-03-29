@@ -166,8 +166,8 @@ class TunProtoBase(object):
           )
         % {
             'home' : server.shell_escape(self.home_path),
-            'passfd_url' : "http://yans.pl.sophia.inria.fr/code/hgwebdir.cgi/python-passfd/archive/2a6472c64c87.tar.gz",
-            'iovec_url' : "http://yans.pl.sophia.inria.fr/code/hgwebdir.cgi/python-iovec/archive/tip.tar.gz",
+            'passfd_url' : "http://nepi.pl.sophia.inria.fr/code/python-passfd/archive/tip.tar.gz",
+            'iovec_url' : "http://nepi.pl.sophia.inria.fr/code/python-iovec/archive/tip.tar.gz",
         } )
         (out,err),proc = server.popen_ssh_command(
             cmd,
