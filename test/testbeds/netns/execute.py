@@ -201,6 +201,7 @@ class NetnsExecuteTestCase(unittest.TestCase):
 
         while instance.status(6) != AS.STATUS_FINISHED:
             time.sleep(0.5)
+        
         pcap_result = instance.trace(2, "pcap")
         self.assertEquals(len(pcap_result), 1024)
         instance.stop()
