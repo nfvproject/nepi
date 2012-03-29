@@ -13,7 +13,7 @@ from ns.nix_vector_routing import *
 from ns.olsr import *
 from ns.aodv import *
 from ns.dsdv import *
-from ns.click import *
+#from ns.click import *
 from ns.mobility import *
 from ns.wifi import *
 from ns.netanim import *
@@ -28,6 +28,6 @@ from ns.mpi import *
 from ns.topology_read import *
 from ns.energy import *
 from ns.tools import *
-from ns.visualizer import *
+#from ns.visualizer import *
 from ns.point_to_point_layout import *
 from ns.fd_net_device import *

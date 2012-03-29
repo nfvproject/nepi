@@ -155,7 +155,7 @@ class TestbedController(testbed_impl.TestbedController):
 
         TypeId = self.ns3.TypeId()
         typeid = TypeId.LookupByName(factory_id)
-        info = TypeId.AttributeInfo()
+        info = TypeId.AttributeInformation()
         if not typeid or not typeid.LookupAttributeByName(name, info):
             raise AttributeError("Invalid attribute %s for element type %d" % \
                 (name, guid))
@@ -219,7 +219,7 @@ class TestbedController(testbed_impl.TestbedController):
 
     def _schedule_event(self, condition, func, *args):
         """Schedules event on running experiment"""
-        def execute_event(condition, has_event_occurred, func, *args):
+        def execute_event(contextId, condition, has_event_occurred, func, *args):
             # exec func
             try:
                 func(*args)
@@ -291,7 +291,7 @@ class TestbedController(testbed_impl.TestbedController):
         factory_id = self._create[guid]
         TypeId = self.ns3.TypeId()
         typeid = TypeId.LookupByName(factory_id)
-        info = TypeId.AttributeInfo()
+        info = TypeId.AttributeInformation()
         if not typeid.LookupAttributeByName(name, info):
             raise RuntimeError("Attribute %s doesn't belong to element %s" \
                    % (name, factory_id))
@@ -336,7 +336,7 @@ class TestbedController(testbed_impl.TestbedController):
         TypeId = self.ns3.TypeId()
         typeid = TypeId.LookupByName(factory_id)
         for name, value in params.iteritems():
-            info = self.ns3.TypeId.AttributeInfo()
+            info = self.ns3.TypeId.AttributeInformation()
             found = typeid.LookupAttributeByName(name, info)
             if found and \
                 (info.flags & TypeId.ATTR_CONSTRUCT == TypeId.ATTR_CONSTRUCT):
