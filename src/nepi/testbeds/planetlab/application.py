@@ -897,14 +897,17 @@ class NS3Dependency(Dependency):
     def __init__(self, api = None):
         super(NS3Dependency, self).__init__(api)
         
+        self.depends = 'bzr'
+        
         self.buildDepends = 'make waf gcc gcc-c++ gccxml unzip'
         
         # We have to download the sources, untar, build...
-        #pybindgen_source_url = "http://yans.pl.sophia.inria.fr/trac/nepi/raw-attachment/wiki/WikiStart/pybindgen-r794.tar.gz"
-        pybindgen_source_url = "http://yans.pl.sophia.inria.fr/trac/nepi/raw-attachment/wiki/WikiStart/pybindgen-r796.tar.gz"
         pygccxml_source_url = "http://leaseweb.dl.sourceforge.net/project/pygccxml/pygccxml/pygccxml-1.0/pygccxml-1.0.0.zip"
-        ns3_source_url = "http://yans.pl.sophia.inria.fr/code/hgwebdir.cgi/ns-3.11-nepi/archive/tip.tar.gz"
-        passfd_source_url = "http://yans.pl.sophia.inria.fr/code/hgwebdir.cgi/python-passfd/archive/tip.tar.gz"
+        ns3_source_url = "http://nepi.pl.sophia.inria.fr/code/nepi-ns3.13/arhive/tip.tar.gz"
+        passfd_source_url = "http://nepi.pl.sophia.inria.fr/code/python-passfd/archive/tip.tar.gz"
+        
+        pybindgen_version = "797"
+
         self.build =(
             " ( "
             "  cd .. && "
@@ -918,26 +921,23 @@ class NS3Dependency(Dependency):
                 # Not working, rebuild
                      # Archive SHA1 sums to check
                      "echo '7158877faff2254e6c094bf18e6b4283cac19137  pygccxml-1.0.0.zip' > archive_sums.txt && "
-                     "echo '139ba938c62816bbdb82bf5644e4f3041608c634  pybindgen-src.tar.gz' >> archive_sums.txt && "
                      " ( " # check existing files
                      " sha1sum -c archive_sums.txt && "
                      " test -f passfd-src.tar.gz && "
                      " test -f ns3-src.tar.gz "
                      " ) || ( " # nope? re-download
-                     " rm -f pybindgen-src.zip pygccxml-1.0.0.zip passfd-src.tar.gz ns3-src.tar.gz && "
-                     " wget -q -c -O pybindgen-src.tar.gz %(pybindgen_source_url)s && " # continue, to exploit the case when it has already been dl'ed
+                     " rm -rf pybindgen pygccxml-1.0.0.zip passfd-src.tar.gz ns3-src.tar.gz && "
+                     " bzr checkout lp:pybindgen -r %(pybindgen_version)s && " # continue, to exploit the case when it has already been dl'ed
                      " wget -q -c -O pygccxml-1.0.0.zip %(pygccxml_source_url)s && " 
                      " wget -q -c -O passfd-src.tar.gz %(passfd_source_url)s && "
                      " wget -q -c -O ns3-src.tar.gz %(ns3_source_url)s && "  
                      " sha1sum -c archive_sums.txt " # Check SHA1 sums when applicable
                      " ) && "
                      "unzip -n pygccxml-1.0.0.zip && "
-                     "mkdir -p pybindgen-src && "
                      "mkdir -p ns3-src && "
                      "mkdir -p passfd-src && "
                      "tar xzf ns3-src.tar.gz --strip-components=1 -C ns3-src && "
                      "tar xzf passfd-src.tar.gz --strip-components=1 -C passfd-src && "
-                     "tar xzf pybindgen-src.tar.gz --strip-components=1 -C pybindgen-src && "
                      "rm -rf target && "    # mv doesn't like unclean targets
                      "mkdir -p target && "
                      "cd pygccxml-1.0.0 && "
@@ -945,7 +945,7 @@ class NS3Dependency(Dependency):
                      "python setup.py build && "
                      "python setup.py install --install-lib ${BUILD}/target && "
                      "python setup.py clean && "
-                     "cd ../pybindgen-src && "
+                     "cd ../pybindgen && "
                      "export PYTHONPATH=$PYTHONPATH:${BUILD}/target && "
                      "./waf configure --prefix=${BUILD}/target -d release && "
                      "./waf && "
@@ -967,7 +967,7 @@ class NS3Dependency(Dependency):
                      "./waf clean "
              " )"
                      % dict(
-                        pybindgen_source_url = server.shell_escape(pybindgen_source_url),
+                        pybindgen_version = server.shell_escape(pybindgen_version),
                         pygccxml_source_url = server.shell_escape(pygccxml_source_url),
                         ns3_source_url = server.shell_escape(ns3_source_url),
                         passfd_source_url = server.shell_escape(passfd_source_url),

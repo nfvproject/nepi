@@ -8,7 +8,7 @@ setup(
         version     = "0.2",
         description = "High-level abstraction for running network experiments",
         author      = "Mathieu Lacage, Alina Quereilhac, Martín Ferrari and Claudio Freire",
-        url         = "http://yans.pl.sophia.inria.fr/code/hgwebdir.cgi/nepi/",
+        url         = "http://nepi.pl.sophia.inria.fr/code/nepi",
         license     = "GPLv2",
         platforms   = "Linux",
         packages    = [
