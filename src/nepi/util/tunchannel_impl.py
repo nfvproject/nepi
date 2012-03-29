@@ -74,6 +74,7 @@ class TunChannel(object):
         # some state
         self.prepared = False
         self._terminate = [] # terminate signaller
+        self._suspend = [] # suspend signaller
         self._exc = [] # exception store, to relay exceptions from the forwarder thread
         self._connected = threading.Event()
         self._forwarder_thread = None
@@ -123,6 +124,14 @@ class TunChannel(object):
             if not self._terminate:
                 self._terminate.append(None)
             self._forwarder_thread.join()
+
+    def suspend(self):
+        if not self._suspend:
+            self._suspend.append(None)
+
+    def resume(self):
+        if self._suspend:
+            self._suspend.remove(None)
 
     def _launch(self):
         # Launch forwarder thread with a weak reference
@@ -178,6 +187,7 @@ class TunChannel(object):
             raise RuntimeError, "Misconfigured TUN: %s" % (self,)
         
         TERMINATE = self._terminate
+        SUSPEND = self._suspend
         cipher_key = self.tun_key
         tun = self.tun_socket
         udp = local_proto == 'udp'
@@ -209,6 +219,7 @@ class TunChannel(object):
             cipher_key = cipher_key, 
             udp = udp, 
             TERMINATE = TERMINATE,
+            SUSPEND = SUSPEND,
             stderr = stderr,
             cipher = local_cipher
         )
