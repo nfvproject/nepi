@@ -120,6 +120,8 @@ class TestbedController(testbed_impl.TestbedController):
             for trace_id, (trace, filename) in traces.iteritems():
                 if hasattr(trace, "close"):
                     trace.close()
+                if hasattr(trace, "signal"):
+                    trace.signal()
         for guid, element in self._elements.iteritems():
             if isinstance(element, self.TunChannel):
                 element.cleanup()
