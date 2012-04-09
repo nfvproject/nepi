@@ -1151,7 +1151,7 @@ class CCNxDaemon(Application):
         if self.ccnroutes:
             routes = map(lambda route: "ccndc add ccnx:/ %s" % route, 
                 self.ccnroutes.split("|"))
-            routes = " && " + " && ".join(routes)
+            routes = "; " + " ; ".join(routes)
         self.command = "ccndstart %s" % routes
 
         super(CCNxDaemon, self).start()
