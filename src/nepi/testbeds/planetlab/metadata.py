@@ -22,6 +22,7 @@ NODEIFACE = "NodeInterface"
 TUNIFACE = "TunInterface"
 TAPIFACE = "TapInterface"
 APPLICATION = "Application"
+CCNXDAEMON = "CCNxDaemon"
 DEPENDENCY = "Dependency"
 NEPIDEPENDENCY = "NepiDependency"
 NS3DEPENDENCY = "NS3Dependency"
@@ -202,7 +203,7 @@ def connect_dep(testbed_instance, node_guid, app_guid, node=None, app=None):
     if app.depends:
         node.required_packages.update(set(
             app.depends.split() ))
-    
+   
     if app.add_to_path:
         if app.home_path and app.home_path not in node.pythonpath:
             node.pythonpath.append(app.home_path)
@@ -323,6 +324,16 @@ def create_application(testbed_instance, guid):
     
     testbed_instance.elements[guid] = element
 
+def create_ccnxdaemon(testbed_instance, guid):
+    parameters = testbed_instance._get_parameters(guid)
+    element = testbed_instance._make_application(parameters,
+            clazz  = testbed_instance._app.CCNxDaemon )
+    
+    # Just inject configuration stuff
+    element.home_path = "nepi-ccnd-%s" % (guid,)
+    
+    testbed_instance.elements[guid] = element
+
 def create_dependency(testbed_instance, guid):
     parameters = testbed_instance._get_parameters(guid)
     element = testbed_instance._make_dependency(parameters)
@@ -388,6 +399,15 @@ def create_netpipe(testbed_instance, guid):
     testbed_instance.elements[guid] = element
 
 ### Start/Stop functions ###
+
+def prestart_ccnxdaemon(testbed_instance, guid):
+    # ccnx daemon needs to start before the rest of the
+    # ccn applications
+    start_application(testbed_instance, guid)
+
+def stop_ccndaemon(testbed_instance, guid):
+    app = testbed_instance.elements[guid]
+    app.kill()
 
 def start_application(testbed_instance, guid):
     parameters = testbed_instance._get_parameters(guid)
@@ -696,7 +716,7 @@ connections = [
     }),
     dict({
         "from": (TESTBED_ID, NODE, "apps"),
-        "to":   (TESTBED_ID, (APPLICATION, MULTICASTANNOUNCER), "node"),
+        "to":   (TESTBED_ID, (APPLICATION, CCNXDAEMON, MULTICASTANNOUNCER), "node"),
         "init_code": connect_dep,
         "can_cross": False
     }),
@@ -1106,7 +1126,14 @@ attributes = dict({
                 "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_string
             }),
-    "sudo": dict({
+    "ccnroutes": dict({
+                "name": "ccnroutes",
+                "help": "Route can be static (e.g. udp ip) or multicast (e.g. udp 224.0.0.204 2869). To separate different route use '|' ",
+                "type": Attribute.STRING,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+                "validation_function": validation.is_string
+            }),
+     "sudo": dict({
                 "name": "sudo",
                 "help": "Run with root privileges",
                 "type": Attribute.BOOL,
@@ -1313,14 +1340,15 @@ create_order = [
     INTERNET, NODE, NODEIFACE, CLASSQUEUEFILTER, TOSQUEUEFILTER, 
     MULTICASTANNOUNCER, MULTICASTFORWARDER, MULTICASTROUTER, 
     TUNFILTER, TAPIFACE, TUNIFACE, NETPIPE, 
-    NEPIDEPENDENCY, NS3DEPENDENCY, DEPENDENCY, APPLICATION ]
+    NEPIDEPENDENCY, NS3DEPENDENCY, DEPENDENCY, CCNXDAEMON, APPLICATION ]
 
 configure_order = [ 
     INTERNET, Parallel(NODE), 
     NODEIFACE, 
     Parallel(MULTICASTANNOUNCER), Parallel(MULTICASTFORWARDER), Parallel(MULTICASTROUTER), 
     Parallel(TAPIFACE), Parallel(TUNIFACE), NETPIPE, 
-    Parallel(NEPIDEPENDENCY), Parallel(NS3DEPENDENCY), Parallel(DEPENDENCY), Parallel(APPLICATION) ]
+    Parallel(NEPIDEPENDENCY), Parallel(NS3DEPENDENCY), Parallel(DEPENDENCY), Parallel(CCNXDAEMON),
+    Parallel(APPLICATION)]
 
 # Start (and prestart) node after ifaces, because the node needs the ifaces in order to set up routes
 start_order = [ INTERNET, 
@@ -1328,11 +1356,13 @@ start_order = [ INTERNET,
     Parallel(TAPIFACE), Parallel(TUNIFACE), 
     Parallel(NODE), NETPIPE, 
     Parallel(MULTICASTANNOUNCER), Parallel(MULTICASTFORWARDER), Parallel(MULTICASTROUTER), 
-    Parallel(NEPIDEPENDENCY), Parallel(NS3DEPENDENCY), Parallel(DEPENDENCY), Parallel(APPLICATION) ]
+    Parallel(NEPIDEPENDENCY), Parallel(NS3DEPENDENCY), Parallel(DEPENDENCY), Parallel(CCNXDAEMON),
+    Parallel(APPLICATION)]
 
 # cleanup order
 shutdown_order = [ 
     Parallel(APPLICATION), 
+    Parallel (CCNXDAEMON),
     Parallel(MULTICASTROUTER), Parallel(MULTICASTFORWARDER), Parallel(MULTICASTANNOUNCER), 
     Parallel(TAPIFACE), Parallel(TUNIFACE), Parallel(NETPIPE), 
     Parallel(NEPIDEPENDENCY), Parallel(NS3DEPENDENCY), Parallel(DEPENDENCY), 
@@ -1522,6 +1552,20 @@ factories_info = dict({
             "box_attributes": ["command", "sudo", "stdin",
                                "depends", "build-depends", "build", "install",
                                "sources", "rpm-fusion" ],
+            "connector_types": ["node"],
+            "traces": ["stdout", "stderr", "buildlog", "output"],
+            "tags": [tags.APPLICATION],
+        }),
+
+    CCNXDAEMON: dict({
+            "help": "CCNx daemon",
+            "category": FC.CATEGORY_APPLICATIONS,
+            "create_function": create_ccnxdaemon,
+            "prestart_function": prestart_ccnxdaemon,
+            "status_function": status_application,
+            "stop_function": stop_application,
+            "configure_function": configure_application,
+            "box_attributes": ["ccnroutes"],
             "connector_types": ["node"],
             "traces": ["stdout", "stderr", "buildlog", "output"],
             "tags": [tags.APPLICATION],

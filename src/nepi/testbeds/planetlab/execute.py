@@ -684,6 +684,7 @@ class TestbedController(testbed_impl.TestbedController):
                     Parallel(metadata.NS3DEPENDENCY),
                     Parallel(metadata.DEPENDENCY),
                     Parallel(metadata.APPLICATION),
+                    Parallel(metadata.CCNXDAEMON),
                 ])
 
             # Tunnels are not harmed by configuration after
@@ -754,8 +755,10 @@ class TestbedController(testbed_impl.TestbedController):
     def _make_internet(self, parameters):
         return self._make_generic(parameters, self._interfaces.Internet)
 
-    def _make_application(self, parameters):
-        return self._make_generic(parameters, self._app.Application)
+    def _make_application(self, parameters, clazz = None):
+        if not clazz:
+            clazz = self._app.Application
+        return self._make_generic(parameters, clazz)
 
     def _make_dependency(self, parameters):
         return self._make_generic(parameters, self._app.Dependency)
