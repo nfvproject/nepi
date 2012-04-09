@@ -206,10 +206,13 @@ class Dependency(object):
             raise RuntimeError, "Failed to set up application %s: %s %s" % (self.home_path, e.args[0], e.args[1],)
         
         if self.stdin:
+            stdin = self.stdin
+            if not os.path.isfile(stdin):
+                stdin = cStringIO.StringIO(self.stdin)
+
             # Write program input
             try:
-                self._popen_scp(
-                    cStringIO.StringIO(self.stdin),
+                self._popen_scp(stdin,
                     '%s@%s:%s' % (self.node.slicename, self.node.hostname, 
                         os.path.join(self.home_path, 'stdin') ),
                     )
@@ -1089,3 +1092,109 @@ class YumDependency(Dependency):
                            r')', 
                            re.I)
         return badre.search(out) or badre.search(err) or self.node.check_bad_host(out,err)
+
+
+class CCNxDaemon(Application):
+    """
+    An application also has dependencies, but also a command to be ran and monitored.
+    
+    It adds the output of that command as traces.
+    """
+    
+    def __init__(self, api=None):
+        super(CCNxDaemon,self).__init__(api)
+        
+        # Attributes
+        self.command = None
+        self.routes = None
+         
+        self.buildDepends = 'make gcc development-tools openssl-devel expat-devel libpcap-devel libxml2-devel'
+        
+        # We have to download the sources, untar, build...
+        ccnx_source_url = "http://www.ccnx.org/releases/ccnx-0.5.1.tar.gz"
+
+        self.build = (
+            " ( "
+            "  cd .. && "
+            "  test -d ccnx-src/build/bin "
+            " ) || ( "
+                # Not working, rebuild
+                     "wget -q -c -O ccnx-src.tar.gz %(ccnx_source_url)s &&"
+                     "mkdir -p ccnx-src && "
+                     "tar xzf ccnx-src.tar.gz --strip-components=1 -C ccnx-src && "
+                     "cd ccnx-src && "
+                     "mkdir -p build/include &&"
+                     "mkdir -p build/lib &&"
+                     "mkdir -p build/bin &&"
+                     "I=$PWD/build && "
+                     "INSTALL_BASE=$I ./configure &&"
+                     "make && make install"
+             " )"  % dict(
+                     ccnx_source_url = server.shell_escape(ccnx_source_url),
+                 ))
+
+        self.install = (
+            " ( "
+            "  cd .. && "
+            "  test -d ${SOURCES}/bin "
+            " ) || ( "
+            "  test -d ${BUILD}/ccnx-src/build/bin && "
+            "  cp -r ${BUILD}/ccnx-src/build/bin ${SOURCES}"
+            " )"
+        )
+
+        self.env['PATH'] = "$PATH:${SOURCES}/bin"
+    
+    def start(self):
+        # Start will be invoked in prestart step
+        routes = ""
+        if self.ccnroutes:
+            routes = map(lambda route: "ccndc add ccnx:/ %s" % route, 
+                self.ccnroutes.split("|"))
+            routes = " && " + " && ".join(routes)
+        self.command = "ccndstart %s" % routes
+
+        super(CCNxDaemon, self).start()
+            
+    def kill(self):
+        self._logger.info("Killing %s", self)
+
+        cmd = self._replace_paths("${SOURCES}/bin/ccndstop")
+        command = cStringIO.StringIO()
+        command.write(cmd)
+        command.seek(0)
+
+        try:
+            self._popen_scp(
+                command,
+                '%s@%s:%s' % (self.node.slicename, self.node.hostname, 
+                    os.path.join(self.home_path, "kill.sh"))
+                )
+        except RuntimeError, e:
+            raise RuntimeError, "Failed to kill ccndxdaemon: %s %s" \
+                    % (e.args[0], e.args[1],)
+        
+
+        script = "bash ./kill.sh"
+        (out,err),proc = rspawn.remote_spawn(
+            script,
+            pidfile = 'kill-pid',
+            home = self.home_path,
+            stdin = '/dev/null',
+            stdout = 'killlog',
+            stderr = rspawn.STDOUT,
+            
+            host = self.node.hostname,
+            port = None,
+            user = self.node.slicename,
+            agent = None,
+            ident_key = self.node.ident_path,
+            server_key = self.node.server_key,
+            hostip = self.node.hostip,
+            )
+        
+        if proc.wait():
+            raise RuntimeError, "Failed to kill cnnxdaemon: %s %s" % (out,err,)
+        
+        super(CCNxDaemon, self).kill()
+ 
