@@ -1105,23 +1105,27 @@ class CCNxDaemon(Application):
         super(CCNxDaemon,self).__init__(api)
         
         # Attributes
-        self.command = None
-        self.routes = None
-         
-        self.buildDepends = 'make gcc development-tools openssl-devel expat-devel libpcap-devel libxml2-devel'
+        self.ccnroutes = None
+        self.ccnsources = None
         
-        # We have to download the sources, untar, build...
-        ccnx_source_url = "http://www.ccnx.org/releases/ccnx-0.5.1.tar.gz"
+        self.default_ccnx_sources = "http://www.ccnx.org/releases/ccnx-0.5.1.tar.gz"
+        self.buildDepends = 'make gcc development-tools openssl-devel expat-devel libpcap-devel libxml2-devel'
 
-        self.build = (
+        self.default_build = (
             " ( "
             "  cd .. && "
             "  test -d ccnx-src/build/bin "
             " ) || ( "
                 # Not working, rebuild
-                     "wget -q -c -O ccnx-src.tar.gz %(ccnx_source_url)s &&"
-                     "mkdir -p ccnx-src && "
-                     "tar xzf ccnx-src.tar.gz --strip-components=1 -C ccnx-src && "
+                "("
+                     " mkdir -p ccnx-src && "
+                     " ( %(not_custom_source)s &&"
+                     " wget -q -c -O ccnx-src.tar.gz %(ccnx_source_url)s &&"
+                     " tar xf ccnx-src.tar.gz --strip-components=1 -C ccnx-src "
+                     " ) || ( "
+                     " tar xf %(user_ccnx_tar)s --strip-components=1 -C ccnx-src "
+                     " ) "
+                ") && "
                      "cd ccnx-src && "
                      "mkdir -p build/include &&"
                      "mkdir -p build/lib &&"
@@ -1129,11 +1133,9 @@ class CCNxDaemon(Application):
                      "I=$PWD/build && "
                      "INSTALL_BASE=$I ./configure &&"
                      "make && make install"
-             " )"  % dict(
-                     ccnx_source_url = server.shell_escape(ccnx_source_url),
-                 ))
+             " )")
 
-        self.install = (
+        self.default_install = (
             " ( "
             "  cd .. && "
             "  test -d ${SOURCES}/bin "
@@ -1144,16 +1146,37 @@ class CCNxDaemon(Application):
         )
 
         self.env['PATH'] = "$PATH:${SOURCES}/bin"
-    
+
+    def setup(self):
+        # setting ccn sources
+        not_custom_source = "true"
+        sources = ""
+        if self.ccnsources:
+            self.sources = self.ccnsources
+            sources = "${SOURCES}/%s" % os.path.basename(self.ccnsources)
+            not_custom_source = "false"
+
+        if not self.build:
+            self.build = self.default_build  % dict(
+                     ccnx_source_url = server.shell_escape(self.default_ccnx_sources),
+                     not_custom_source = server.shell_escape(not_custom_source),
+                     user_ccnx_tar = sources
+                )
+        
+        if not self.install:
+            self.install = self.default_install
+
+        super(CCNxDaemon, self).setup()
+
     def start(self):
-        # Start will be invoked in prestart step
-        routes = ""
+        # configure ccn routes
         if self.ccnroutes:
             routes = map(lambda route: "ccndc add ccnx:/ %s" % route, 
                 self.ccnroutes.split("|"))
             routes = "; " + " ; ".join(routes)
         self.command = "ccndstart %s" % routes
 
+        # Start will be invoked in prestart step
         super(CCNxDaemon, self).start()
             
     def kill(self):

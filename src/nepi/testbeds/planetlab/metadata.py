@@ -1179,6 +1179,14 @@ attributes = dict({
                 "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_string
             }),
+    "ccnsources": dict({
+                "name": "ccnsources",
+                "help": "Path to local tar with ccnx sources."
+                        "Default source is http://www.ccnx.org/releases/ccnx-0.5.1.tar.gz",
+                "type": Attribute.STRING,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+                "validation_function": validation.is_string
+            }),
     "build": dict({
                 "name": "build",
                 "help": "Build commands to execute after deploying the sources. "
@@ -1565,7 +1573,7 @@ factories_info = dict({
             "status_function": status_application,
             "stop_function": stop_application,
             "configure_function": configure_application,
-            "box_attributes": ["ccnroutes"],
+            "box_attributes": ["ccnroutes", "ccnsources", "build", "install"],
             "connector_types": ["node"],
             "traces": ["stdout", "stderr", "buildlog", "output"],
             "tags": [tags.APPLICATION],
