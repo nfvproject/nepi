@@ -86,8 +86,7 @@ def create_ccnpoke(pl_node, slice_desc):
     path_to_video = os.path.join(os.path.dirname(os.path.abspath(__file__)),
         "big_buck_bunny_240p_mpeg4_lq.ts")
     pl_app.set_attribute_value("stdin", path_to_video)
-    #pl_app.set_attribute_value("command", "ccnsendchunks ccnx:/VIDEO")
-    pl_app.set_attribute_value("command", "ccnpoke ccnx:/VIDEO")
+    pl_app.set_attribute_value("command", "ccnsendchunks ccnx:/VIDEO")
     pl_app.enable_trace("stdout")
     pl_app.enable_trace("stderr")
     pl_app.connector("node").connect(pl_node.connector("apps"))
@@ -177,7 +176,6 @@ def run(hostnames, vsys_vnet, slicename, plc_host, pl_user, pl_pwd, pl_ssh_key,
     controller.stop()
     controller.shutdown()
 
-
 if __name__ == '__main__':
     root_dir = tempfile.mkdtemp()
     slicename = os.environ.get("PL_SLICE")
@@ -188,7 +186,7 @@ if __name__ == '__main__':
         "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'],) )
     pl_user = os.environ.get('PL_USER')
     pl_pwd = os.environ.get('PL_PASS')
-    vsys_vnet = os.environ.get('PL_VSYS_NET')
+    pl_vsys_vnet = os.environ.get('PL_VSYS_NET')
     pl_ccn_bin = os.environ.get('PL_CCN_BIN')
     pl_hostnames = os.environ.get('PL_HOSTNAMES')
     default_hostnames = ['openlab02.pl.sophia.inria.fr',
@@ -207,17 +205,30 @@ if __name__ == '__main__':
                  #'planet2.elte.hu',
                  'planetlab2.esprit-tn.com' ]
 
-
     usage = "usage: %prog -s <pl_slice> -H <pl_host> -b <ccn_bin> -k <ssh_key> -u <pl_user> -p <pl_password> -v <vsys_vnet> -N <host_names> "
+
     parser = OptionParser(usage=usage)
-    parser.add_option("-s", "--slicename", dest="slicename", help="PlanetLab slicename", default=slicename, type="str")
-    parser.add_option("-H", "--pl-host", dest="pl_host", help="PlanetLab site (e.g. www.planet-lab.eu)", default=pl_host, type="str")
-    parser.add_option("-b", "--ccn-bin", dest="ccn_bin", help="Path to ccnx bin directory", default=pl_ccn_bin, type="str")
-    parser.add_option("-k", "--ssh-key", dest="pl_ssh_key", help="Path to private ssh key used for PlanetLab authentication", default=pl_ssh_key, type="str")
-    parser.add_option("-u", "--pl-user", dest="pl_user", help="PlanetLab account user (i.e. Registration email address)", default=pl_user, type="str")
-    parser.add_option("-p", "--pl-pwd", dest="pl_pwd", help="PlanetLab account password", default=pl_pwd, type="str")
-    parser.add_option("-v", "--vsys-vnet", dest="vsys_vnet", help="Value of the vsys_vnet tag addigned to your slice. (e.g. 192.168.3.0/16)", default=vsys_vnet, type="str")
-    parser.add_option("-N", "--host-names", dest="hostnames", help="Comma separated list of PlanetLab hostnames to use", default=pl_hostnames, type="str")
+    parser.add_option("-s", "--slicename", dest="slicename", 
+            help="PlanetLab slicename", default=slicename, type="str")
+    parser.add_option("-H", "--pl-host", dest="pl_host", 
+            help="PlanetLab site (e.g. www.planet-lab.eu)", 
+            default=pl_host, type="str")
+    parser.add_option("-b", "--ccn-bin", dest="ccn_bin", 
+            help="Path to ccnx bin directory", default=pl_ccn_bin, type="str")
+    parser.add_option("-k", "--ssh-key", dest="pl_ssh_key", 
+            help="Path to private ssh key used for PlanetLab authentication", 
+            default=pl_ssh_key, type="str")
+    parser.add_option("-u", "--pl-user", dest="pl_user", 
+            help="PlanetLab account user (i.e. Registration email address)", 
+            default=pl_user, type="str")
+    parser.add_option("-p", "--pl-pwd", dest="pl_pwd", 
+            help="PlanetLab account password", default=pl_pwd, type="str")
+    parser.add_option("-v", "--vsys-vnet", dest="vsys_vnet", 
+            help="Value of the vsys_vnet tag addigned to your slice. (e.g. 192.168.3.0/16)", 
+            default=pl_vsys_vnet, type="str")
+    parser.add_option("-N", "--host-names", dest="hostnames", 
+            help="Comma separated list of PlanetLab hostnames to use", 
+            default=pl_hostnames, type="str")
     (options, args) = parser.parse_args()
 
     hostnames = map(string.strip, options.hostnames.split(",")) if options.hostnames else default_hostnames 
