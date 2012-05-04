@@ -2,12 +2,15 @@
 
 from nepi.core.design import ExperimentDescription, FactoriesProvider
 from nepi.core.execute import ExperimentController
+from nepi.util.constants import ApplicationStatus as AS
 import ipaddr
 import math
 from optparse import OptionParser, SUPPRESS_HELP
 import os
+import random
 import signal
 import string
+import subprocess
 import tempfile
 import time
 
@@ -32,9 +35,6 @@ def create_slice_desc(slicename, plc_host, pl_user, pl_pwd, pl_ssh_key,
     slice_desc.set_attribute_value("tapPortBase", port_base)
     # Kills all running processes before starting the experiment
     slice_desc.set_attribute_value("dedicatedSlice", True)
-    # Delets all directories in the slice's home directory of each node
-    # ATTENTION: This will remove result files from previous runs!!
-    slice_desc.set_attribute_value("cleanRoot", True)
     slice_desc.set_attribute_value("plLogLevel", "DEBUG")
     return slice_desc
  
@@ -43,7 +43,7 @@ def create_node(hostname, pl_inet, slice_desc):
     pl_node.set_attribute_value("hostname", hostname)
     pl_node.set_attribute_value("label", hostname)
     pl_iface = slice_desc.create("NodeInterface")
-    #pl_iface.set_attribute_value("label", "iface_%s" % node)
+    #pl_iface.set_attribute_value("label", "iface_%s" % hostname)
     pl_iface.connector("inet").connect(pl_inet.connector("devs"))
     pl_node.connector("devs").connect(pl_iface.connector("node"))
     return pl_node
@@ -81,7 +81,7 @@ def create_ccnd(pl_node, slice_desc):
     pl_app.enable_trace("stderr")
     pl_app.connector("node").connect(pl_node.connector("apps"))
 
-def create_ccnpoke(pl_node, slice_desc):
+def create_ccnsendchunks(pl_node, slice_desc):
     pl_app = slice_desc.create("Application")
     path_to_video = os.path.join(os.path.dirname(os.path.abspath(__file__)),
         "big_buck_bunny_240p_mpeg4_lq.ts")
@@ -90,24 +90,18 @@ def create_ccnpoke(pl_node, slice_desc):
     pl_app.enable_trace("stdout")
     pl_app.enable_trace("stderr")
     pl_app.connector("node").connect(pl_node.connector("apps"))
+    return pl_app
 
-def create_local_ccncatchunks(hostname, ccn_bin):
-    path = os.path.join(os.getcwd(), "ccncatchunks.sh")
-    exec_ = ( "export PATH=$PATH:%(path_to_ccn_bin)s ; "
-              "ccndstart ; "
-              "ccndc add ccnx:/ udp %(hostname)s ; " 
-              "ccncatchunks2 ccnx:/VIDEO | vlc -"
-            ) % dict( 
-                    hostname = hostname,
-                    path_to_ccn_bin = ccn_bin,
-                    )
-
-    f = open(path, "w")
-    f.write(exec_)
-    f.close()
+def exec_ccncatchunks(slicename, hostname):
+    print "Starting Vlc streamming ..."
+    login = "%s@%s" % (slicename, hostname)
+    command = 'PATH=$PATH:$(ls | egrep nepi-ccnd- | head -1)/bin; ccncatchunks2 ccnx:/VIDEO'
+    proc1 = subprocess.Popen(['ssh', login, command], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell = False)
+    proc2 = subprocess.Popen(['vlc', '-'], stdin=proc1.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return proc2
 
 def create_ed(hostnames, vsys_vnet, slicename, plc_host, pl_user, pl_pwd, pl_ssh_key, 
-        port_base, root_dir, ccn_bin):
+        port_base, root_dir):
 
     # Create the experiment description object
     exp_desc = ExperimentDescription()
@@ -152,26 +146,46 @@ def create_ed(hostnames, vsys_vnet, slicename, plc_host, pl_user, pl_pwd, pl_ssh
     for pl_node in pl_nodes.values():
         create_ccnd(pl_node, slice_desc)
 
-    # Create a ccnpoke in a chosen node to publish some content
-    hostname = pl_nodes.keys()[0]
+    # Create a ccnsendchunks in a randomly chosen node to publish some content
+    hostname = random.choice(pl_nodes.keys())
     pl_node = pl_nodes[hostname]
-    create_ccnpoke(pl_node, slice_desc)
+    pl_app = create_ccnsendchunks(pl_node, slice_desc)
 
-    create_local_ccncatchunks(hostname, ccn_bin)
-
-    return exp_desc
+    return exp_desc, pl_nodes, hostname, pl_app
 
 def run(hostnames, vsys_vnet, slicename, plc_host, pl_user, pl_pwd, pl_ssh_key, 
-        port_base, root_dir, ccn_bin):
+        port_base, root_dir):
 
-    exp_desc = create_ed(hostnames, vsys_vnet, slicename, plc_host, pl_user, 
-            pl_pwd, pl_ssh_key, port_base, root_dir, ccn_bin)
+    exp_desc, pl_nodes, hostname, pl_app = create_ed(hostnames, vsys_vnet, 
+            slicename, plc_host, pl_user, pl_pwd, pl_ssh_key, port_base, 
+            root_dir)
 
     xml = exp_desc.to_xml()
     controller = ExperimentController(xml, root_dir)
     controller.start()
-    while not TERMINATE: 
+    
+    while not TERMINATE and controller.status(pl_app.guid) == AS.STATUS_NOT_STARTED:
         time.sleep(0.5)
+
+    proc = None
+    if not TERMINATE:
+        hostnames = pl_nodes.keys()
+        hostnames.remove(hostname)
+        # Randomnly choose a different hostname, than the one executing 
+        # ccnsendchunks, to execute ccncatchunks and retrieve the VIDEO
+        hostname = random.choice(hostnames)
+        proc = exec_ccncatchunks(slicename, hostname)
+
+    while not TERMINATE and proc and proc.poll() is None:
+        time.sleep(0.5)
+    
+    if proc:
+        if proc.poll() < 1:
+           err = proc.stderr.read()
+           print "ERROR ", err
+        else:   
+           out = proc.stdout.read()
+           print "OUTPUT ", out
 
     controller.stop()
     controller.shutdown()
@@ -187,12 +201,11 @@ if __name__ == '__main__':
     pl_user = os.environ.get('PL_USER')
     pl_pwd = os.environ.get('PL_PASS')
     pl_vsys_vnet = os.environ.get('PL_VSYS_NET')
-    pl_ccn_bin = os.environ.get('PL_CCN_BIN')
     pl_hostnames = os.environ.get('PL_HOSTNAMES')
     default_hostnames = ['openlab02.pl.sophia.inria.fr',
                  'ple4.ipv6.lip6.fr',
                  'planetlab2.di.unito.it',
-                 'merkur.planetlab.haw-hamburg.de',
+                 #'merkur.planetlab.haw-hamburg.de',
                  #'planetlab1.cs.uit.no',
                  #'planetlab3.cs.st-andrews.ac.uk',
                  #'planetlab2.cs.uoi.gr',
@@ -205,7 +218,7 @@ if __name__ == '__main__':
                  #'planet2.elte.hu',
                  'planetlab2.esprit-tn.com' ]
 
-    usage = "usage: %prog -s <pl_slice> -H <pl_host> -b <ccn_bin> -k <ssh_key> -u <pl_user> -p <pl_password> -v <vsys_vnet> -N <host_names> "
+    usage = "usage: %prog -s <pl_slice> -H <pl_host> -k <ssh_key> -u <pl_user> -p <pl_password> -v <vsys_vnet> -N <host_names> "
 
     parser = OptionParser(usage=usage)
     parser.add_option("-s", "--slicename", dest="slicename", 
@@ -213,8 +226,6 @@ if __name__ == '__main__':
     parser.add_option("-H", "--pl-host", dest="pl_host", 
             help="PlanetLab site (e.g. www.planet-lab.eu)", 
             default=pl_host, type="str")
-    parser.add_option("-b", "--ccn-bin", dest="ccn_bin", 
-            help="Path to ccnx bin directory", default=pl_ccn_bin, type="str")
     parser.add_option("-k", "--ssh-key", dest="pl_ssh_key", 
             help="Path to private ssh key used for PlanetLab authentication", 
             default=pl_ssh_key, type="str")
@@ -238,8 +249,17 @@ if __name__ == '__main__':
     pl_user= options.pl_user
     pl_pwd = options.pl_pwd
     pl_ssh_key = options.pl_ssh_key
-    ccn_bin = options.ccn_bin
+
+    """
+    hostnames = ['nepi1.pl.sophia.inria.fr',
+        'nepi2.pl.sophia.inria.fr',
+        'nepi3.pl.sophia.inria.fr',
+        'nepi5.pl.sophia.inria.fr']
+
+    pl_host = "nepiplc.pl.sophia.inria.fr"
+    vsys_vnet = "192.168.2.0/24"
+    """
 
     run(hostnames, vsys_vnet, slicename, pl_host, pl_user, pl_pwd, pl_ssh_key, 
-            port_base, root_dir, ccn_bin)
+            port_base, root_dir)
 
