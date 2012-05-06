@@ -130,7 +130,8 @@ class Node(object):
         self.ident_path = None
         self.server_key = None
         self.home_path = None
-        self.enable_cleanup = False
+        self.enable_proc_cleanup = False
+        self.enable_home_cleanup = False
         
         # Those are filled when an actual node is allocated
         self._node_id = None
@@ -497,9 +498,11 @@ class Node(object):
                     raise UnresponsiveNodeError, "Unresponsive host %s" % (self.hostname,)
         
         # Ensure the node is clean (no apps running that could interfere with operations)
-        if self.enable_cleanup:
-            self.do_cleanup()
-    
+        if self.enable_proc_cleanup:
+            self.do_proc_cleanup()
+        if self.enable_home_cleanup:
+            self.do_home_cleanup()
+   
     def wait_dependencies(self, pidprobe=1, probe=0.5, pidmax=10, probemax=10):
         # Wait for the p2p installer
         if self._yum_dependencies and not self._installed:
@@ -534,8 +537,10 @@ class Node(object):
             return False
     
     def destroy(self):
-        if self.enable_cleanup:
-            self.do_cleanup()
+        if self.enable_proc_cleanup:
+            self.do_proc_cleanup()
+        if self.enable_home_cleanup:
+            self.do_home_cleanup()
     
     def blacklist(self):
         if self._node_id:
@@ -543,12 +548,12 @@ class Node(object):
             import util
             util.appendBlacklist(self.hostname)
     
-    def do_cleanup(self):
+    def do_proc_cleanup(self):
         if self.testbed().recovering:
             # WOW - not now
             return
             
-        self._logger.info("Cleaning up %s", self.hostname)
+        self._logger.info("Cleaning up processes on %s", self.hostname)
         
         cmds = [
             "sudo -S killall python tcpdump || /bin/true ; "
@@ -577,7 +582,36 @@ class Node(object):
                 retry = 3
                 )
             proc.wait()
-    
+     
+    def do_home_cleanup(self):
+        if self.testbed().recovering:
+            # WOW - not now
+            return
+            
+        self._logger.info("Cleaning up home on %s", self.hostname)
+        
+        cmds = [
+            "find . -maxdepth 1 ! -name '.bash*' ! -name '.' -execdir rm -rf {} + "
+        ]
+
+        for cmd in cmds:
+            (out,err),proc = server.popen_ssh_command(
+                # Some apps need two kills
+                cmd % {
+                    'slicename' : self.slicename ,
+                },
+                host = self.hostname,
+                port = None,
+                user = self.slicename,
+                agent = None,
+                ident_key = self.ident_path,
+                server_key = self.server_key,
+                tty = True, # so that ps -N -T works as advertised...
+                timeout = 60,
+                retry = 3
+                )
+            proc.wait()
+   
     def prepare_dependencies(self):
         # Configure p2p yum dependency installer
         if self.required_packages and not self._installed:

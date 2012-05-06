@@ -143,8 +143,10 @@ class TestbedController(testbed_impl.TestbedController):
             get_attribute_value("tapPortBase")
         self.p2pDeployment = self._attributes.\
             get_attribute_value("p2pDeployment")
-        self.dedicatedSlice = self._attributes.\
-            get_attribute_value("dedicatedSlice")
+        self.cleanProc = self._attributes.\
+            get_attribute_value("cleanProc")
+        self.cleanHome = self._attributes.\
+            get_attribute_value("cleanHome")
         self.sfa = self._attributes.\
             get_attribute_value("sfa")
         if self.sfa:
@@ -737,7 +739,8 @@ class TestbedController(testbed_impl.TestbedController):
     def _make_node(self, parameters):
         args = dict({'sliceapi': self.sliceapi})
         node = self._make_generic(parameters, self._node.Node, **args)
-        node.enable_cleanup = self.dedicatedSlice
+        node.enable_proc_cleanup = self.cleanProc
+        node.enable_home_cleanup = self.cleanHome
         return node
 
     def _make_node_iface(self, parameters):
