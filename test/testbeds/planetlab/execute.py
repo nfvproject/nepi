@@ -74,7 +74,7 @@ class PlanetLabExecuteTestCase(unittest.TestCase):
         instance.defer_configure("plcHost", plchost)
         instance.defer_configure("tapPortBase", self.port_base)
         instance.defer_configure("p2pDeployment", False) # it's interactive, we don't want it in tests
-        instance.defer_configure("dedicatedSlice", True)
+        instance.defer_configure("cleanProc", True)
         
         # Hack, but we need vsys_vnet
         instance.do_setup()

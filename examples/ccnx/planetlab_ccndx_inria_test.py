@@ -34,7 +34,7 @@ def create_slice_desc(slicename, plc_host, pl_user, pl_pwd, pl_ssh_key,
     slice_desc.set_attribute_value("plcHost", plc_host)
     slice_desc.set_attribute_value("tapPortBase", port_base)
     # Kills all running processes before starting the experiment
-    slice_desc.set_attribute_value("dedicatedSlice", True)
+    slice_desc.set_attribute_value("cleanProc", True)
     slice_desc.set_attribute_value("plLogLevel", "DEBUG")
     return slice_desc
  

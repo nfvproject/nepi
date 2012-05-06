@@ -34,7 +34,7 @@ pl_desc.set_attribute_value("authPass", pl_pwd)
 pl_desc.set_attribute_value("plcHost", plchost)
 pl_desc.set_attribute_value("tapPortBase", port_base)
 pl_desc.set_attribute_value("p2pDeployment", False) # it's interactive, we don't want it in tests
-pl_desc.set_attribute_value("dedicatedSlice", True)
+pl_desc.set_attribute_value("cleanProc", True)
 pl_desc.set_attribute_value("plLogLevel", "DEBUG")
        
 pl_inet = pl_desc.create("Internet")
