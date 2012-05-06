@@ -76,7 +76,7 @@ def create_tunnel(node, peer, pl_nodes, slice_desc, subnet):
 def create_ccnd(pl_node, slice_desc):
     pl_app = slice_desc.create("CCNxDaemon")
     # Add multicast ccn route
-    pl_app.set_attribute_value("ccnroutes", "udp 224.0.0.204 2869")
+    #pl_app.set_attribute_value("ccnroutes", "udp 224.0.0.204 2869")
     pl_app.enable_trace("stdout")
     pl_app.enable_trace("stderr")
     pl_app.connector("node").connect(pl_node.connector("apps"))
@@ -204,7 +204,7 @@ if __name__ == '__main__':
     pl_hostnames = os.environ.get('PL_HOSTNAMES')
     default_hostnames = ['openlab02.pl.sophia.inria.fr',
                  'ple4.ipv6.lip6.fr',
-                 'planetlab2.di.unito.it',
+                 #'planetlab2.di.unito.it',
                  #'merkur.planetlab.haw-hamburg.de',
                  #'planetlab1.cs.uit.no',
                  #'planetlab3.cs.st-andrews.ac.uk',

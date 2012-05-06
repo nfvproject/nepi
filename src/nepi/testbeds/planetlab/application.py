@@ -1170,6 +1170,7 @@ class CCNxDaemon(Application):
 
     def start(self):
         # configure ccn routes
+        routes = ""
         if self.ccnroutes:
             routes = map(lambda route: "ccndc add ccnx:/ %s" % route, 
                 self.ccnroutes.split("|"))
