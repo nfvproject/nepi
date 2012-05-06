@@ -1,5 +1,20 @@
 #!/usr/bin/env python
 
+##
+## Experiment topology:
+## 
+##  ccncatchunks                                ccnsendchunks
+##       |                                            |
+##       .->  node1 -- .. -- nodei -- .. -- nodeN   <-.
+##    
+##
+##  - Nodes are connected through an overlay network over the Intenet
+##  - On each node runs a CCNx daemon
+##  - Static multicast entries are added to the CCNx FIB on each node to communicate them in series.
+##    (Nodes only have FIB entries to at most two nodes)
+##
+
+
 from nepi.core.design import ExperimentDescription, FactoriesProvider
 from nepi.core.execute import ExperimentController
 from nepi.util.constants import ApplicationStatus as AS
@@ -33,7 +48,10 @@ def create_slice_desc(slicename, plc_host, pl_user, pl_pwd, pl_ssh_key,
     slice_desc.set_attribute_value("plcHost", plc_host)
     slice_desc.set_attribute_value("tapPortBase", port_base)
     # Kills all running processes before starting the experiment
-    slice_desc.set_attribute_value("dedicatedSlice", True)
+    slice_desc.set_attribute_value("cleanProc", True)
+    # NOTICE: Setting 'cleanHome' to 'True' will erase all previous
+    # folders in the sliver Home directory, including result files!
+    #slice_desc.set_attribute_value("cleanHome", True)
     slice_desc.set_attribute_value("plLogLevel", "DEBUG")
     return slice_desc
  
@@ -213,7 +231,7 @@ if __name__ == '__main__':
     default_hostnames = ['openlab02.pl.sophia.inria.fr',
                  'ple4.ipv6.lip6.fr',
                  'planetlab2.di.unito.it',
-                 'merkur.planetlab.haw-hamburg.de',
+                 #'merkur.planetlab.haw-hamburg.de',
                  'planetlab1.cs.uit.no',
                  'planetlab3.cs.st-andrews.ac.uk',
                  'planetlab2.cs.uoi.gr',

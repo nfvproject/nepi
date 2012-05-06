@@ -67,8 +67,10 @@ def create_node(hostname, pl_inet, slice_desc):
 
 def create_ccnd(pl_node, routes, slice_desc):
     pl_app = slice_desc.create("CCNxDaemon")
+    
     # We can specify a default ccnx version to be either ccnx-0.5.1 or ccnx-0.6.0
     #pl_app.set_attribute_value("ccnxversion", "ccnx-0.5.1")
+    
     # We can also specify a custom local source and build and install directives
     path_to_source = os.path.join(os.path.dirname(os.path.abspath(__file__)),
         "ccnx-0.6.0rc3.tar.gz")
@@ -80,6 +82,7 @@ def create_ccnd(pl_node, routes, slice_desc):
     pl_app.set_attribute_value("install", "cp -r ./ccnx-0.6.0rc3/bin ${SOURCES}")
     # We use a wildcard to replace the public IP address of the node during runtime
     routes = "|".join(map(lambda route: "udp {#[iface_%s].addr[0].[Address]#}" % route, routes))
+    
     # Add multicast ccn routes 
     pl_app.set_attribute_value("ccnroutes", routes)
     pl_app.enable_trace("stdout")
@@ -241,16 +244,6 @@ if __name__ == '__main__':
     pl_user= options.pl_user
     pl_pwd = options.pl_pwd
     pl_ssh_key = options.pl_ssh_key
-
-    """
-    hostnames = ['nepi1.pl.sophia.inria.fr',
-        'nepi2.pl.sophia.inria.fr',
-        'nepi3.pl.sophia.inria.fr',
-        'nepi5.pl.sophia.inria.fr']
-
-    pl_host = "nepiplc.pl.sophia.inria.fr"
-    vsys_vnet = "192.168.2.0/24"
-    """
 
     run(hostnames, vsys_vnet, slicename, pl_host, pl_user, pl_pwd, pl_ssh_key, 
             port_base, root_dir)
