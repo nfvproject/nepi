@@ -567,7 +567,7 @@ class Dependency(object):
     def _do_install(self):
         if self.install:
             self._logger.info("Installing %s at %s", self, self.node.hostname)
-            
+           
             # Install application
             try:
                 self._popen_ssh_command(
@@ -1107,41 +1107,62 @@ class CCNxDaemon(Application):
         # Attributes
         self.ccnroutes = None
         self.ccnsources = None
+        self.ccnxversion = "ccnx-0.6.0"
         
-        self.default_ccnx_sources = "http://www.ccnx.org/releases/ccnx-0.5.1.tar.gz"
+        self.ccnx_0_5_1_sources = "http://www.ccnx.org/releases/ccnx-0.5.1.tar.gz"
+        self.ccnx_0_6_0_sources = "http://www.ccnx.org/releases/ccnx-0.6.0.tar.gz"
         self.buildDepends = 'make gcc development-tools openssl-devel expat-devel libpcap-devel libxml2-devel'
 
-        self.default_build = (
+        self.ccnx_0_5_1_build = (
             " ( "
             "  cd .. && "
-            "  test -d ccnx-src/build/bin "
+            "  test -d ccnx-0.5.1-src/build/bin "
             " ) || ( "
                 # Not working, rebuild
                 "("
-                     " mkdir -p ccnx-src && "
-                     " ( %(not_custom_source)s &&"
-                     " wget -q -c -O ccnx-src.tar.gz %(ccnx_source_url)s &&"
-                     " tar xf ccnx-src.tar.gz --strip-components=1 -C ccnx-src "
-                     " ) || ( "
-                     " tar xf %(user_ccnx_tar)s --strip-components=1 -C ccnx-src "
-                     " ) "
+                     " mkdir -p ccnx-0.5.1-src && "
+                     " wget -q -c -O ccnx-0.5.1-src.tar.gz %(ccnx_source_url)s &&"
+                     " tar xf ccnx-0.5.1-src.tar.gz --strip-components=1 -C ccnx-0.5.1-src "
                 ") && "
-                     "cd ccnx-src && "
+                     "cd ccnx-0.5.1-src && "
                      "mkdir -p build/include &&"
                      "mkdir -p build/lib &&"
                      "mkdir -p build/bin &&"
                      "I=$PWD/build && "
                      "INSTALL_BASE=$I ./configure &&"
                      "make && make install"
-             " )")
+             " )") % dict(
+                     ccnx_source_url = server.shell_escape(self.ccnx_0_5_1_sources),
+                )
 
-        self.default_install = (
+        self.ccnx_0_5_1_install = (
+            " ( "
+            "  test -d ${BUILD}/ccnx-0.5.1-src/build/bin && "
+            "  cp -r ${BUILD}/ccnx-0.5.1-src/build/bin ${SOURCES}"
+            " )"
+        )
+
+        self.ccnx_0_6_0_build = (
             " ( "
             "  cd .. && "
-            "  test -d ${SOURCES}/bin "
+            "  test -d ccnx-0.6.0-src/build/bin "
             " ) || ( "
-            "  test -d ${BUILD}/ccnx-src/build/bin && "
-            "  cp -r ${BUILD}/ccnx-src/build/bin ${SOURCES}"
+                # Not working, rebuild
+                "("
+                     " mkdir -p ccnx-0.6.0-src && "
+                     " wget -q -c -O ccnx-0.6.0-src.tar.gz %(ccnx_source_url)s &&"
+                     " tar xf ccnx-0.6.0-src.tar.gz --strip-components=1 -C ccnx-0.6.0-src "
+                ") && "
+                     "cd ccnx-0.6.0-src && "
+                     "./configure && make"
+             " )") % dict(
+                     ccnx_source_url = server.shell_escape(self.ccnx_0_6_0_sources),
+                )
+
+        self.ccnx_0_6_0_install = (
+            " ( "
+            "  test -d ${BUILD}/ccnx-0.6.0-src/bin && "
+            "  cp -r ${BUILD}/ccnx-0.6.0-src/bin ${SOURCES}"
             " )"
         )
 
@@ -1149,22 +1170,17 @@ class CCNxDaemon(Application):
 
     def setup(self):
         # setting ccn sources
-        not_custom_source = "true"
-        sources = ""
-        if self.ccnsources:
-            self.sources = self.ccnsources
-            sources = "${SOURCES}/%s" % os.path.basename(self.ccnsources)
-            not_custom_source = "false"
-
         if not self.build:
-            self.build = self.default_build  % dict(
-                     ccnx_source_url = server.shell_escape(self.default_ccnx_sources),
-                     not_custom_source = server.shell_escape(not_custom_source),
-                     user_ccnx_tar = sources
-                )
-        
+            if self.ccnxversion == 'ccnx-0.6.0':
+                self.build = self.ccnx_0_6_0_build
+            elif self.ccnxversion == 'ccnx-0.5.1':
+                self.build = self.ccnx_0_5_1_build
+
         if not self.install:
-            self.install = self.default_install
+            if self.ccnxversion == 'ccnx-0.6.0':
+                self.install = self.ccnx_0_6_0_install
+            elif self.ccnxversion == 'ccnx-0.5.1':
+                self.install = self.ccnx_0_5_1_install
 
         super(CCNxDaemon, self).setup()
 

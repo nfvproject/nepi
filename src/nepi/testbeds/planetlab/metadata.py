@@ -1187,6 +1187,16 @@ attributes = dict({
                 "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_string
             }),
+    "ccnxversion": dict({      
+                "name": "ccnxversion",
+                "help": "Version of ccnx source code to install in the node.",
+                "type": Attribute.ENUM, 
+                "value": "ccnx-0.6.0",
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+                "allowed": ["ccnx-0.6.0",
+                            "ccnx-0.5.1"],
+                "validation_function": validation.is_enum,
+            }),
     "build": dict({
                 "name": "build",
                 "help": "Build commands to execute after deploying the sources. "
@@ -1573,7 +1583,8 @@ factories_info = dict({
             "status_function": status_application,
             "stop_function": stop_application,
             "configure_function": configure_application,
-            "box_attributes": ["ccnroutes", "ccnsources", "build", "install"],
+            "box_attributes": ["ccnroutes", "ccnsources", "build", 
+                "install", "ccnxversion", "sources"],
             "connector_types": ["node"],
             "traces": ["stdout", "stderr", "buildlog", "output"],
             "tags": [tags.APPLICATION],
@@ -1772,11 +1783,21 @@ testbed_attributes = dict({
             "range": (2000,30000),
             "validation_function": validation.is_integer_range(2000,30000)
         }),
-        "dedicated_slice": dict({
-            "name": "dedicatedSlice",
+        "clean_proc": dict({
+            "name": "cleanProc",
             "help": "Set to True if the slice will be dedicated to this experiment. "
-                    "NEPI will perform node and slice cleanup, making sure slices are "
+                    "NEPI will perform node and slice process cleanup, making sure slices are "
                     "in a clean, repeatable state before running the experiment.",
+            "type": Attribute.BOOL,
+            "value": False,
+            "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+            "validation_function": validation.is_bool
+        }),
+        "clean_home": dict({
+            "name": "cleanHome",
+            "help": "Set to True all preexistent directories in the home "
+                    "directory of each sliver will be removed before the "
+                    "start of the experiment.",
             "type": Attribute.BOOL,
             "value": False,
             "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,

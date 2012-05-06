@@ -46,8 +46,12 @@ def create_slice_desc(slicename, plc_host, pl_user, pl_pwd, pl_ssh_key,
     slice_desc.set_attribute_value("authPass", pl_pwd)
     slice_desc.set_attribute_value("plcHost", plc_host)
     slice_desc.set_attribute_value("tapPortBase", port_base)
+    slice_desc.set_attribute_value("p2pDeployment", True)
     # Kills all running processes before starting the experiment
-    slice_desc.set_attribute_value("dedicatedSlice", True)
+    slice_desc.set_attribute_value("cleanProc", True)
+    # NOTICE: Setting 'cleanHome' to 'True' will erase all previous
+    # folders in the sliver Home directory, including result files!
+    #slice_desc.set_attribute_value("cleanHome", True)
     slice_desc.set_attribute_value("plLogLevel", "DEBUG")
     return slice_desc
  
@@ -63,6 +67,17 @@ def create_node(hostname, pl_inet, slice_desc):
 
 def create_ccnd(pl_node, routes, slice_desc):
     pl_app = slice_desc.create("CCNxDaemon")
+    # We can specify a default ccnx version to be either ccnx-0.5.1 or ccnx-0.6.0
+    #pl_app.set_attribute_value("ccnxversion", "ccnx-0.5.1")
+    # We can also specify a custom local source and build and install directives
+    path_to_source = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+        "ccnx-0.6.0rc3.tar.gz")
+    pl_app.set_attribute_value("sources", path_to_source)
+    pl_app.set_attribute_value("build", 
+            "tar xzf ${SOURCES}/ccnx-0.6.0rc3.tar.gz && "
+            "cd ./ccnx-0.6.0rc3 && "
+            "./configure && make ")
+    pl_app.set_attribute_value("install", "cp -r ./ccnx-0.6.0rc3/bin ${SOURCES}")
     # We use a wildcard to replace the public IP address of the node during runtime
     routes = "|".join(map(lambda route: "udp {#[iface_%s].addr[0].[Address]#}" % route, routes))
     # Add multicast ccn routes 
@@ -177,7 +192,7 @@ if __name__ == '__main__':
     default_hostnames = ['openlab02.pl.sophia.inria.fr',
                  'ple4.ipv6.lip6.fr',
                  'planetlab2.di.unito.it',
-                 'merkur.planetlab.haw-hamburg.de',
+                 #'merkur.planetlab.haw-hamburg.de',
                  'planetlab1.cs.uit.no',
                  'planetlab3.cs.st-andrews.ac.uk',
                  'planetlab2.cs.uoi.gr',
