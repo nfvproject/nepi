@@ -70,7 +70,7 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
         pl_desc.set_attribute_value("plcHost", plchost1)
         pl_desc.set_attribute_value("tapPortBase", self.port_base)
         pl_desc.set_attribute_value("p2pDeployment", False) # it's interactive, we don't want it in tests
-        pl_desc.set_attribute_value("dedicatedSlice", True)
+        pl_desc.set_attribute_value("cleanProc", True)
         pl_desc.set_attribute_value("plLogLevel", "DEBUG")
 
         pl_desc2 = exp_desc.add_testbed_description(pl_provider)
@@ -82,7 +82,7 @@ class PlanetLabMultiIntegrationTestCase(unittest.TestCase):
         pl_desc2.set_attribute_value("plcHost", plchost2)
         pl_desc2.set_attribute_value("tapPortBase", self.port_base+500)
         pl_desc2.set_attribute_value("p2pDeployment", False) # it's interactive, we don't want it in tests
-        pl_desc2.set_attribute_value("dedicatedSlice", True)
+        pl_desc2.set_attribute_value("cleanProc", True)
         pl_desc2.set_attribute_value("plLogLevel", "DEBUG")
         
         return pl_desc, pl_desc2, exp_desc

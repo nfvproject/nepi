@@ -61,7 +61,7 @@ class PlanetLabIntegrationTestCase(unittest.TestCase):
         pl_desc.set_attribute_value("plcHost", plchost)
         pl_desc.set_attribute_value("tapPortBase", self.port_base)
         pl_desc.set_attribute_value("p2pDeployment", False) # it's interactive, we don't want it in tests
-        pl_desc.set_attribute_value("dedicatedSlice", True)
+        pl_desc.set_attribute_value("cleanProc", True)
         pl_desc.set_attribute_value("plLogLevel", "DEBUG")
         if use_sfa:
             pl_desc.set_attribute_value("sfa", True)

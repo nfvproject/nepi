@@ -7,7 +7,7 @@
                 <attribute name="slice" type="STRING" value="##plslice##"/>
                 <attribute name="plLogLevel" type="STRING" value="INFO"/>
                 <attribute name="logLevel" type="STRING" value="Debug"/>
-                <attribute name="dedicatedSlice" type="BOOL" value="True"/>
+                <attribute name="cleanProc" type="BOOL" value="True"/>
                 <attribute name="plcUrl" type="STRING" value="https://%(hostname)s:443/PLCAPI/"/>
                 <attribute name="recoveryPolicy" type="STRING" value="Recover"/>
                 <attribute name="p2pDeployment" type="BOOL" value="False"/>

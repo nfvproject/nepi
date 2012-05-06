@@ -91,7 +91,7 @@ class PlanetLabMulticastOverlay:
         pl_desc.set_attribute_value("plcHost", plchost)
         pl_desc.set_attribute_value("tapPortBase", self.port_base)
         pl_desc.set_attribute_value("p2pDeployment", not self.no_p2p_deploy)
-        pl_desc.set_attribute_value("dedicatedSlice", True)
+        pl_desc.set_attribute_value("cleanProc", True)
         pl_desc.set_attribute_value("plLogLevel", "INFO")
         
         return pl_desc, exp_desc
