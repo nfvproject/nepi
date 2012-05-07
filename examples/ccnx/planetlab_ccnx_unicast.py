@@ -161,21 +161,37 @@ def run(hostnames, vsys_vnet, slicename, plc_host, pl_user, pl_pwd, pl_ssh_key,
     while not TERMINATE and controller.status(pl_app.guid) == AS.STATUS_NOT_STARTED:
         time.sleep(0.5)
 
-    proc = None
+    proc1 = None
     if not TERMINATE:
         hostname = hostnames[-1]
-        proc = exec_ccncatchunks(slicename, hostname)
+        proc1 = exec_ccncatchunks(slicename, hostname)
 
-    while not TERMINATE and proc and proc.poll() is None:
+    if not TERMINATE and proc1:
+        time.sleep(60)
+
+    proc2 = None
+    if not TERMINATE:
+        hostname = hostnames[-2]
+        proc2 = exec_ccncatchunks(slicename, hostname)
+
+    while not TERMINATE and proc1 and proc2 and proc2.poll() is None:
         time.sleep(0.5)
-    
-    if proc:
-        if proc.poll() < 1:
-           err = proc.stderr.read()
-           print "ERROR ", err
+   
+    if proc1:
+        if proc1.poll() < 1:
+           err = proc1.stderr.read()
+           print "Stream 1 ERROR ", err
         else:   
-           out = proc.stdout.read()
-           print "OUTPUT ", out
+           out = proc1.stdout.read()
+           print "Stream 1 OUTPUT ", out
+
+    if proc2:
+        if proc2.poll() < 1:
+           err = proc2.stderr.read()
+           print "Stream 2 ERROR ", err
+        else:   
+           out = proc2.stdout.read()
+           print "Stream 2 OUTPUT ", out
 
     controller.stop()
     controller.shutdown()
@@ -195,10 +211,10 @@ if __name__ == '__main__':
     default_hostnames = ['openlab02.pl.sophia.inria.fr',
                  'ple4.ipv6.lip6.fr',
                  'planetlab2.di.unito.it',
-                 #'merkur.planetlab.haw-hamburg.de',
+                 'merkur.planetlab.haw-hamburg.de',
                  'planetlab1.cs.uit.no',
                  'planetlab3.cs.st-andrews.ac.uk',
-                 'planetlab2.cs.uoi.gr',
+                 #'planetlab2.cs.uoi.gr',
                  'planetlab3.xeno.cl.cam.ac.uk',
                  'planet2.inf.tu-dresden.de',
                  'planetlab2.csg.uzh.ch',
@@ -232,7 +248,7 @@ if __name__ == '__main__':
             default=pl_hostnames, type="str")
     parser.add_option("-c", "--node-count", dest="node_count", 
             help="Number of nodes to use", 
-            default=5, type="str")
+            default=9, type="str")
     (options, args) = parser.parse_args()
 
     hostnames = map(string.strip, options.hostnames.split(",")) if options.hostnames else default_hostnames
