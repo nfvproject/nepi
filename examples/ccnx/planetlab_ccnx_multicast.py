@@ -155,7 +155,7 @@ def create_ed(hostnames, vsys_vnet, slicename, plc_host, pl_user, pl_pwd, pl_ssh
     # Calculate the number of virtual networks required to connect all the nodes 
     # with all other nodes as the binomial coeficient C(n, 2), with n = #nodes
     n = len(hostnames)
-    c = math.factorial(n) / (2 * math.factorial(n-2)) 
+    c = n * (n-1) / 2
 
     # Validate that we can get 'c' /30 subnetworks
     if c > math.pow(2, (30 - base.prefixlen)):
@@ -231,7 +231,7 @@ if __name__ == '__main__':
     default_hostnames = ['openlab02.pl.sophia.inria.fr',
                  'ple4.ipv6.lip6.fr',
                  'planetlab2.di.unito.it',
-                 #'merkur.planetlab.haw-hamburg.de',
+                 'merkur.planetlab.haw-hamburg.de',
                  'planetlab1.cs.uit.no',
                  'planetlab3.cs.st-andrews.ac.uk',
                  'planetlab2.cs.uoi.gr',
