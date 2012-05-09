@@ -116,7 +116,13 @@ def exec_ccncatchunks(slicename, hostname):
     login = "%s@%s" % (slicename, hostname)
     command = 'PATH=$PATH:$(ls | egrep nepi-ccnd- | head -1)/bin; ccncatchunks2 ccnx:/VIDEO'
     proc1 = subprocess.Popen(['ssh', login, command], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell = False)
-    proc2 = subprocess.Popen(['vlc', '-'], stdin=proc1.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc2 = subprocess.Popen(['vlc', 
+        '--sub-filter', 'marq', 
+        '--marq-marquee', 
+        '(c) copyright 2008, Blender Foundation / www.bigbuckbunny.org', 
+        '--marq-position=8', 
+        '--no-video-title-show',  '-'], 
+        stdin=proc1.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     return proc2
 
 def create_ed(hostnames, vsys_vnet, slicename, plc_host, pl_user, pl_pwd, pl_ssh_key, 
