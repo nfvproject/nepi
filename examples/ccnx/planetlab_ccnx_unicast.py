@@ -109,7 +109,7 @@ def exec_ccncatchunks(slicename, hostname):
     return proc2
 
 def create_ed(hostnames, vsys_vnet, slicename, plc_host, pl_user, pl_pwd, pl_ssh_key, 
-        port_base, root_dir):
+        port_base, root_dir, delay):
 
     # Create the experiment description object
     exp_desc = ExperimentDescription()
@@ -148,11 +148,11 @@ def create_ed(hostnames, vsys_vnet, slicename, plc_host, pl_user, pl_pwd, pl_ssh
     return exp_desc, pl_nodes, hostname, pl_app
 
 def run(hostnames, vsys_vnet, slicename, plc_host, pl_user, pl_pwd, pl_ssh_key, 
-        port_base, root_dir):
+        port_base, root_dir, delay):
 
     exp_desc, pl_nodes, hostname, pl_app = create_ed(hostnames, vsys_vnet, 
             slicename, plc_host, pl_user, pl_pwd, pl_ssh_key, port_base, 
-            root_dir)
+            root_dir, delay)
 
     xml = exp_desc.to_xml()
     controller = ExperimentController(xml, root_dir)
@@ -167,7 +167,7 @@ def run(hostnames, vsys_vnet, slicename, plc_host, pl_user, pl_pwd, pl_ssh_key,
         proc1 = exec_ccncatchunks(slicename, hostname)
 
     if not TERMINATE and proc1:
-        time.sleep(60)
+        time.sleep(delay)
 
     proc2 = None
     if not TERMINATE:
@@ -224,7 +224,7 @@ if __name__ == '__main__':
                  'planet2.elte.hu',
                  'planetlab2.esprit-tn.com' ]
 
-    usage = "usage: %prog -s <pl_slice> -H <pl_host> -k <ssh_key> -u <pl_user> -p <pl_password> -v <vsys_vnet> -N <host_names> -c <node_count>"
+    usage = "usage: %prog -s <pl_slice> -H <pl_host> -k <ssh_key> -u <pl_user> -p <pl_password> -v <vsys_vnet> -N <host_names> -c <node_count> -d <delay>"
 
     parser = OptionParser(usage=usage)
     parser.add_option("-s", "--slicename", dest="slicename", 
@@ -249,6 +249,9 @@ if __name__ == '__main__':
     parser.add_option("-c", "--node-count", dest="node_count", 
             help="Number of nodes to use", 
             default=9, type="str")
+    parser.add_option("-d", "--delay", dest="delay", 
+            help="Time to wait before retrieveing the second video stream in seconds", 
+            default=40, type="int")
     (options, args) = parser.parse_args()
 
     hostnames = map(string.strip, options.hostnames.split(",")) if options.hostnames else default_hostnames
@@ -260,7 +263,8 @@ if __name__ == '__main__':
     pl_user= options.pl_user
     pl_pwd = options.pl_pwd
     pl_ssh_key = options.pl_ssh_key
+    delay = options.delay
 
     run(hostnames, vsys_vnet, slicename, pl_host, pl_user, pl_pwd, pl_ssh_key, 
-            port_base, root_dir)
+            port_base, root_dir, delay)
 
