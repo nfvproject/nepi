@@ -220,7 +220,7 @@ if __name__ == '__main__':
                  'merkur.planetlab.haw-hamburg.de',
                  'planetlab1.cs.uit.no',
                  'planetlab3.cs.st-andrews.ac.uk',
-                 #'planetlab2.cs.uoi.gr',
+                 'planetlab2.cs.uoi.gr',
                  'planetlab3.xeno.cl.cam.ac.uk',
                  'planet2.inf.tu-dresden.de',
                  'planetlab2.csg.uzh.ch',
