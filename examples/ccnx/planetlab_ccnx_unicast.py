@@ -167,7 +167,7 @@ def run(hostnames, vsys_vnet, slicename, plc_host, pl_user, pl_pwd, pl_ssh_key,
         proc1 = exec_ccncatchunks(slicename, hostname)
 
     if not TERMINATE and proc1:
-        time.sleep(120)
+        time.sleep(60)
 
     proc2 = None
     if not TERMINATE:
