@@ -1127,7 +1127,7 @@ attributes = dict({
                 "validation_function": validation.is_string
             }),
     "ccnroutes": dict({
-                "name": "ccnroutes",
+                "name": "ccnRoutes",
                 "help": "Route can be static (e.g. udp ip) or multicast (e.g. udp 224.0.0.204 2869). To separate different route use '|' ",
                 "type": Attribute.STRING,
                 "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
@@ -1179,16 +1179,8 @@ attributes = dict({
                 "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_string
             }),
-    "ccnsources": dict({
-                "name": "ccnsources",
-                "help": "Path to local tar with ccnx sources."
-                        "Default source is http://www.ccnx.org/releases/ccnx-0.5.1.tar.gz",
-                "type": Attribute.STRING,
-                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
-                "validation_function": validation.is_string
-            }),
     "ccnxversion": dict({      
-                "name": "ccnxversion",
+                "name": "ccnxVersion",
                 "help": "Version of ccnx source code to install in the node.",
                 "type": Attribute.ENUM, 
                 "value": "ccnx-0.6.0",
@@ -1196,6 +1188,16 @@ attributes = dict({
                 "allowed": ["ccnx-0.6.0",
                             "ccnx-0.5.1"],
                 "validation_function": validation.is_enum,
+            }),
+     "ccnlocalport" : dict({
+            "name" : "ccnLocalPort", 
+            "help" : "Local port to bind the ccn daemon. (i.e. CCN_LOCAL_PORT=)",
+            "type" : Attribute.INTEGER,
+            "flags" : Attribute.DesignInvisible | \
+                    Attribute.ExecInvisible | \
+                    Attribute.ExecImmutable | \
+                    Attribute.Metadata,
+            "validation_function" : validation.is_integer,
             }),
     "build": dict({
                 "name": "build",
@@ -1583,7 +1585,7 @@ factories_info = dict({
             "status_function": status_application,
             "stop_function": stop_application,
             "configure_function": configure_application,
-            "box_attributes": ["ccnroutes", "ccnsources", "build", 
+            "box_attributes": ["ccnroutes", "build", "ccnlocalport",
                 "install", "ccnxversion", "sources"],
             "connector_types": ["node"],
             "traces": ["stdout", "stderr", "buildlog", "output"],
