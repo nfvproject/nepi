@@ -19,6 +19,8 @@ import re
 
 from nepi.util.constants import ApplicationStatus as AS
 
+_ccnre = re.compile("\s*(udp|tcp)\s+(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\s*$")
+
 class Dependency(object):
     """
     A Dependency is in every respect like an application.
@@ -1105,9 +1107,9 @@ class CCNxDaemon(Application):
         super(CCNxDaemon,self).__init__(api)
         
         # Attributes
-        self.ccnroutes = None
-        self.ccnsources = None
-        self.ccnxversion = "ccnx-0.6.0"
+        self.ccnLocalPort = None
+        self.ccnRoutes = None
+        self.ccnxVersion = "ccnx-0.6.0"
         
         self.ccnx_0_5_1_sources = "http://www.ccnx.org/releases/ccnx-0.5.1.tar.gz"
         self.ccnx_0_6_0_sources = "http://www.ccnx.org/releases/ccnx-0.6.0.tar.gz"
@@ -1171,27 +1173,40 @@ class CCNxDaemon(Application):
     def setup(self):
         # setting ccn sources
         if not self.build:
-            if self.ccnxversion == 'ccnx-0.6.0':
+            if self.ccnxVersion == 'ccnx-0.6.0':
                 self.build = self.ccnx_0_6_0_build
-            elif self.ccnxversion == 'ccnx-0.5.1':
+            elif self.ccnxVersion == 'ccnx-0.5.1':
                 self.build = self.ccnx_0_5_1_build
 
         if not self.install:
-            if self.ccnxversion == 'ccnx-0.6.0':
+            if self.ccnxVersion == 'ccnx-0.6.0':
                 self.install = self.ccnx_0_6_0_install
-            elif self.ccnxversion == 'ccnx-0.5.1':
+            elif self.ccnxVersion == 'ccnx-0.5.1':
                 self.install = self.ccnx_0_5_1_install
 
         super(CCNxDaemon, self).setup()
 
     def start(self):
+        self.command = ""
+        if self.ccnLocalPort:
+            self.command = "export CCN_LOCAL_PORT=%s ; " % self.ccnLocalPort
+        self.command += " ccndstart "
+
         # configure ccn routes
-        routes = ""
-        if self.ccnroutes:
+        if self.ccnRoutes:
+            routes = self.ccnRoutes.split("|")
+            
+            if self.ccnLocalPort:
+                routes = map(lambda route: "%s %s" %(route, 
+                    self.ccnLocalPort) if _ccnre.match(route) else route, 
+                        routes)
+
             routes = map(lambda route: "ccndc add ccnx:/ %s" % route, 
-                self.ccnroutes.split("|"))
-            routes = "; " + " ; ".join(routes)
-        self.command = "ccndstart %s" % routes
+                routes)
+
+            routescmd = " ; ".join(routes)
+            self.command += " ; "
+            self.command += routescmd
 
         # Start will be invoked in prestart step
         super(CCNxDaemon, self).start()
@@ -1199,7 +1214,12 @@ class CCNxDaemon(Application):
     def kill(self):
         self._logger.info("Killing %s", self)
 
-        cmd = self._replace_paths("${SOURCES}/bin/ccndstop")
+        command = "${SOURCES}/bin/ccndstop"
+
+        if self.ccnLocalPort:
+            self.command = "export CCN_LOCAL_PORT=%s; %s" % (self.ccnLocalPort, command)
+
+        cmd = self._replace_paths(command)
         command = cStringIO.StringIO()
         command.write(cmd)
         command.seek(0)

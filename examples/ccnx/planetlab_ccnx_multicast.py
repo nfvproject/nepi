@@ -89,32 +89,45 @@ def create_tunnel(node, peer, pl_nodes, slice_desc, subnet):
     peerip.set_attribute_value("Address", peeraddr.exploded)
     peerip.set_attribute_value("NetPrefix", subnet.prefixlen)
 
-def create_ccnd(pl_node, hostname, routes, slice_desc):
+def create_ccnd(pl_node, port, hostname, routes, slice_desc):
     pl_app = slice_desc.create("CCNxDaemon")
     # We use a wildcard to replace the TUN IP address of the node during runtime
     routes = "|".join(map(lambda route: "udp 224.0.23.170 %d 3 1 {#[tun_%s%s].addr[0].[Address]#}" \
             % (route[1], hostname, route[0]), routes))
     # Add multicast ccn routes 
-    pl_app.set_attribute_value("ccnroutes", routes)
+    pl_app.set_attribute_value("ccnRoutes", routes)
+    # Use a specific port to bind the CCNx daemon
+    if port:
+        pl_app.set_attribute_value("ccnLocalPort", port)
     pl_app.enable_trace("stdout")
     pl_app.enable_trace("stderr")
     pl_app.connector("node").connect(pl_node.connector("apps"))
 
-def create_ccnsendchunks(pl_node, slice_desc):
+def create_ccnsendchunks(pl_node, port, slice_desc):
     pl_app = slice_desc.create("Application")
     path_to_video = os.path.join(os.path.dirname(os.path.abspath(__file__)),
         "../big_buck_bunny_240p_mpeg4_lq.ts")
     pl_app.set_attribute_value("stdin", path_to_video)
-    pl_app.set_attribute_value("command", "ccnsendchunks ccnx:/VIDEO")
+
+    command = "ccnsendchunks ccnx:/VIDEO"
+    if port:
+        command = "CCN_LOCAL_PORT=%d %s " % (port, command)
+    pl_app.set_attribute_value("command", command)
+
     pl_app.enable_trace("stdout")
     pl_app.enable_trace("stderr")
     pl_app.connector("node").connect(pl_node.connector("apps"))
     return pl_app
 
-def exec_ccncatchunks(slicename, hostname):
+def exec_ccncatchunks(slicename, port, hostname):
     print "Starting Vlc streamming ..."
+
+    command = 'PATH=$PATH:$(ls | egrep nepi-ccnd- | head -1)/bin;'
+    if port:
+        command += "CCN_LOCAL_PORT=%d " % port
+    command += ' ccncatchunks2 ccnx:/VIDEO'
+
     login = "%s@%s" % (slicename, hostname)
-    command = 'PATH=$PATH:$(ls | egrep nepi-ccnd- | head -1)/bin; ccncatchunks2 ccnx:/VIDEO'
     proc1 = subprocess.Popen(['ssh', login, command], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell = False)
     proc2 = subprocess.Popen(['vlc', 
         '--sub-filter', 'marq', 
@@ -126,7 +139,7 @@ def exec_ccncatchunks(slicename, hostname):
     return proc2
 
 def create_ed(hostnames, vsys_vnet, slicename, plc_host, pl_user, pl_pwd, pl_ssh_key, 
-        port_base, root_dir):
+        port_base, root_dir, port):
 
     # Create the experiment description object
     exp_desc = ExperimentDescription()
@@ -142,16 +155,16 @@ def create_ed(hostnames, vsys_vnet, slicename, plc_host, pl_user, pl_pwd, pl_ssh
     pl_nodes = dict()
     ccn_routes = dict()
     prev_hostname = None
-    port = 49695
+    mport = port
     for hostname in hostnames:
         pl_node = create_node(hostname, pl_inet, slice_desc)
         pl_nodes[hostname] = pl_node
 
         ccn_routes[hostname] = list()
         if prev_hostname:
-            ccn_routes[hostname].append((prev_hostname, port))
-            ccn_routes[prev_hostname].append((hostname,  port))
-            port +=1
+            ccn_routes[hostname].append((prev_hostname, mport))
+            ccn_routes[prev_hostname].append((hostname, mport))
+            mport +=1
         prev_hostname = hostname
 
     # Get the base network segment (slice vsys_vnet) to assign all the IP addresses
@@ -180,21 +193,21 @@ def create_ed(hostnames, vsys_vnet, slicename, plc_host, pl_user, pl_pwd, pl_ssh
     # Create ccnd daemons in all nodes
     for hostname, pl_node in pl_nodes.iteritems():
         routes = ccn_routes[hostname]
-        create_ccnd(pl_node, hostname, routes, slice_desc)
+        create_ccnd(pl_node, port, hostname, routes, slice_desc)
 
     # Create a ccnsendchunks application box in the first node
     hostname = hostnames[0]
     pl_node = pl_nodes[hostname]
-    pl_app = create_ccnsendchunks(pl_node, slice_desc)
+    pl_app = create_ccnsendchunks(pl_node, port, slice_desc)
 
     return exp_desc, pl_nodes, hostname, pl_app
 
 def run(hostnames, vsys_vnet, slicename, plc_host, pl_user, pl_pwd, pl_ssh_key, 
-        port_base, root_dir):
+        port_base, root_dir, port):
 
     exp_desc, pl_nodes, hostname, pl_app = create_ed(hostnames, vsys_vnet, 
             slicename, plc_host, pl_user, pl_pwd, pl_ssh_key, port_base, 
-            root_dir)
+            root_dir, port)
 
     xml = exp_desc.to_xml()
     controller = ExperimentController(xml, root_dir)
@@ -206,7 +219,7 @@ def run(hostnames, vsys_vnet, slicename, plc_host, pl_user, pl_pwd, pl_ssh_key,
     proc = None
     if not TERMINATE:
         hostname = hostnames[-1]
-        proc = exec_ccncatchunks(slicename, hostname)
+        proc = exec_ccncatchunks(slicename, port, hostname)
 
     while not TERMINATE and proc and proc.poll() is None:
         time.sleep(0.5)
@@ -249,8 +262,9 @@ if __name__ == '__main__':
                  'planetlabpc2.upf.edu',
                  'planet2.elte.hu',
                  'planetlab2.esprit-tn.com' ]
+    ccn_local_port = os.environ.get('CCN_LOCAL_PORT', 49695)
 
-    usage = "usage: %prog -s <pl_slice> -H <pl_host> -k <ssh_key> -u <pl_user> -p <pl_password> -v <vsys_vnet> -N <host_names> -c <node_count>"
+    usage = "usage: %prog -s <pl_slice> -H <pl_host> -k <ssh_key> -u <pl_user> -p <pl_password> -v <vsys_vnet> -N <host_names> -c <node_count> -P <ccn-local-port>"
 
     parser = OptionParser(usage=usage)
     parser.add_option("-s", "--slicename", dest="slicename", 
@@ -275,6 +289,10 @@ if __name__ == '__main__':
     parser.add_option("-c", "--node-count", dest="node_count", 
             help="Number of nodes to use", 
             default=5, type="str")
+    parser.add_option("-P", "--ccn-local-port", dest="port", 
+            help="Port to bind the CCNx daemon", 
+            default=ccn_local_port, type="int")
+
     (options, args) = parser.parse_args()
 
     hostnames = map(string.strip, options.hostnames.split(",")) if options.hostnames else default_hostnames
@@ -286,7 +304,8 @@ if __name__ == '__main__':
     pl_user= options.pl_user
     pl_pwd = options.pl_pwd
     pl_ssh_key = options.pl_ssh_key
+    port = options.port
 
     run(hostnames, vsys_vnet, slicename, pl_host, pl_user, pl_pwd, pl_ssh_key, 
-            port_base, root_dir)
+            port_base, root_dir, port)
 
