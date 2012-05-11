@@ -164,7 +164,7 @@ def create_ed(hostnames, vsys_vnet, slicename, plc_host, pl_user, pl_pwd, pl_ssh
         if prev_hostname:
             ccn_routes[hostname].append((prev_hostname, mport))
             ccn_routes[prev_hostname].append((hostname, mport))
-            mport +=1
+            mport = port if mport != port else port + 1
         prev_hostname = hostname
 
     # Get the base network segment (slice vsys_vnet) to assign all the IP addresses
