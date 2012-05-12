@@ -41,6 +41,8 @@ else:
 
 SHELL_SAFE = re.compile('^[-a-zA-Z0-9_=+:.,/]*$')
 
+hostbyname_cache = dict()
+
 def openssh_has_persist():
     global OPENSSH_HAS_PERSIST
     if OPENSSH_HAS_PERSIST is None:
@@ -569,9 +571,14 @@ def _make_server_key_args(server_key, host, port, args):
         host = '%s:%s' % (host,port)
     # Create a temporary server key file
     tmp_known_hosts = tempfile.NamedTemporaryFile()
-    
+   
+    hostbyname = hostbyname_cache.get(host)
+    if not hostbyname:
+        hostbyname = socket.gethostbyname(host)
+        hostbyname_cache[host] = hostbyname
+
     # Add the intended host key
-    tmp_known_hosts.write('%s,%s %s\n' % (host, socket.gethostbyname(host), server_key))
+    tmp_known_hosts.write('%s,%s %s\n' % (host, hostbyname, server_key))
     
     # If we're not in strict mode, add user-configured keys
     if os.environ.get('NEPI_STRICT_AUTH_MODE',"").lower() not in ('1','true','on'):
