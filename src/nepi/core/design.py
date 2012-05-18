@@ -55,6 +55,11 @@ class Connector(object):
         self._connections.append(connector)
         connector._connections.append(self)
 
+    def get_connected_box(self, idx = 0):
+        if len(self._connections) == 0:
+            return None
+        return self._connections[idx].box
+
     def disconnect(self, connector):
         if connector not in self._connections or\
                 self not in connector._connections:
