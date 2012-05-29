@@ -113,7 +113,7 @@ class Node(object):
         self.maxLoad = None
         self.min_num_external_ifaces = None
         self.max_num_external_ifaces = None
-        self.timeframe = 'm'
+        self._timeframe = 'w'
         
         # Applications and routes add requirements to connected nodes
         self.required_packages = set()
@@ -140,6 +140,27 @@ class Node(object):
 
         # Logging
         self._logger = logging.getLogger('nepi.testbeds.planetlab')
+
+    def set_timeframe(self, timeframe):
+        if timeframe == "latest":
+            self._timeframe = ""
+        elif timeframe == "month":
+            self._timeframe = "m"
+        elif timeframe == "year":
+            self._timeframe = "y"
+        else:
+            self._timeframe = "w"
+
+    def get_timeframe(self):
+        if self._timeframe == "":
+            return "latest"
+        if self._timeframe == "m":
+            return "month"
+        if self._timeframe == "y":
+            return "year"
+        return "week"
+
+    timeframe = property(get_timeframe, set_timeframe)
     
     def _nepi_testbed_environment_setup_get(self):
         command = cStringIO.StringIO()
@@ -154,8 +175,10 @@ class Node(object):
                 for envval in envvals:
                     command.write(' ; export %s=%s' % (envkey, envval))
         return command.getvalue()
+
     def _nepi_testbed_environment_setup_set(self, value):
         pass
+
     _nepi_testbed_environment_setup = property(
         _nepi_testbed_environment_setup_get,
         _nepi_testbed_environment_setup_set)
@@ -179,7 +202,7 @@ class Node(object):
         self._logger.info("Finding candidates for %s", self.make_filter_description())
         
         fields = ('node_id',)
-        replacements = {'timeframe':self.timeframe}
+        replacements = {'timeframe':self._timeframe}
         
         # get initial candidates (no tag filters)
         basefilters = self.build_filters({}, self.BASEFILTERS)
@@ -210,9 +233,9 @@ class Node(object):
             if attr in applicable:
                 tagfilter = rootfilters.copy()
                 tagfilter['tagname'] = tagname % replacements
-                tagfilter[expr % replacements] = getattr(self,attr)
+                tagfilter[expr % replacements] = str(getattr(self,attr))
                 tagfilter['node_id'] = list(candidates)
-                
+              
                 candidates &= set(map(operator.itemgetter('node_id'),
                     self._sliceapi.GetNodeTags(filters=tagfilter, fields=fields)))
 
@@ -346,7 +369,7 @@ class Node(object):
     def rate_nodes(self, nodes):
         rates = collections.defaultdict(int)
         tags = collections.defaultdict(dict)
-        replacements = {'timeframe':self.timeframe}
+        replacements = {'timeframe':self._timeframe}
         tagnames = [ tagname % replacements 
                      for tagname, weight, default in self.RATE_FACTORS ]
        
@@ -381,9 +404,9 @@ class Node(object):
         orig_attrs['max_num_external_ifaces'] = self.max_num_external_ifaces
         self.min_num_external_ifaces = None
         self.max_num_external_ifaces = None
-        self.timeframe = 'm'
+        if not self._timeframe: self._timeframe = 'w'
         
-        replacements = {'timeframe':self.timeframe}
+        replacements = {'timeframe':self._timeframe}
 
         for attr, tag in self.BASEFILTERS.iteritems():
             if tag in info:

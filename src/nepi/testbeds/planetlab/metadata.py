@@ -1042,7 +1042,19 @@ attributes = dict({
                 "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_number,
             }),
-            
+     "timeframe": dict({
+                "name": "timeframe",
+                "help": "Past time period in which to check information about the node. Values are year,month, week, latest", 
+                "type": Attribute.ENUM, 
+                "value": "week",
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+                "allowed": ["latest",
+                            "week",
+                            "month",
+                            "year"],
+                "validation_function": validation.is_enum,
+            }),
+           
     "up": dict({
                 "name": "up",
                 "help": "Link up",
@@ -1409,6 +1421,7 @@ factories_info = dict({
                 "max_load",
                 "min_cpu",
                 "max_cpu",
+                "timeframe",
                 
                 # NEPI-in-NEPI attributes
                 ATTR_NEPI_TESTBED_ENVIRONMENT_SETUP,
@@ -1768,7 +1781,7 @@ testbed_attributes = dict({
         "pl_log_level": dict({      
             "name": "plLogLevel",
             "help": "Verbosity of logging of planetlab events.",
-            "value": "ERROR",
+            "value": "INFO",
             "type": Attribute.ENUM, 
             "allowed": ["DEBUG",
                         "INFO",
