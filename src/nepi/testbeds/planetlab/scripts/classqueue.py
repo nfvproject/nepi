@@ -139,7 +139,7 @@ class ClassQueue(object):
         self.cyclelen = None
         self.cycle_update = True
         self.len = 0
-        self.queues = [ collections.deque() for cls in xrange(len(self.classspec)) ]
+        self.queues[:] = [ collections.deque() for cls in xrange(len(self.classspec)) ]
     
     def queuefor(self, packet, ord=ord, len=len, classmask=0xEC):
         if len(packet) >= 10:
@@ -183,6 +183,7 @@ class ClassQueue(object):
             else:
                 astats[proto] += 1
             self.dump_stats()
+        return dropped
 
     def appendleft(self, packet):
         self.queues[-1].append(packet)
