@@ -578,6 +578,23 @@ class ClassQueueFilter(TunFilter):
         # Attributes
         self.module = "classqueue.py"
 
+class LoggingClassQueueFilter(ClassQueueFilter):
+    _TRACEMAP = ClassQueueFilter._TRACEMAP.copy()
+    _TRACEMAP.update({
+        # tracename : (remotename, localname)
+        'queue_stats'   : ('queue_stats', 'queue_stats')
+    })
+    
+    def __init__(self, api=None):
+        super(LoggingClassQueueFilter, self).__init__(api)
+        # Attributes
+        self.module = "loggingclassqueue.py"
+        
+        # Inject outpath
+        args = dict(map(lambda x:x.split('=',1),self.args.split(',')))
+        args["outpath"] = "queue_stats"
+        self.args = ",".join(map("=".join, args.iteritems()))
+
 class ToSQueueFilter(TunFilter):
     def __init__(self, api=None):
         super(ToSQueueFilter, self).__init__(api)
