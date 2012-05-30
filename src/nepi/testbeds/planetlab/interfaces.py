@@ -591,7 +591,7 @@ class LoggingClassQueueFilter(ClassQueueFilter):
         self.module = "loggingclassqueue.py"
         
         # Inject outpath
-        args = dict(map(lambda x:x.split('=',1),self.args.split(',')))
+        args = dict(filter(lambda x:len(x)>1, map(lambda x:x.split('=',1),(self.args or "").split(','))))
         args["outpath"] = "queue_stats"
         self.args = ",".join(map("=".join, args.iteritems()))
 
