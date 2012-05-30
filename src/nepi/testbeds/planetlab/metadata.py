@@ -1372,6 +1372,10 @@ traces = dict({
                 "name": "dropped_stats",
                 "help": "Information on dropped packets on a filer or queue associated to a network interface",
             }),
+    "queue_stats": dict({
+                "name": "queue_stats",
+                "help": "Detailled, fine-grained information on queue state, csv format.",
+            }),
     })
 
 create_order = [ 
