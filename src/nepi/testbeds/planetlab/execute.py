@@ -778,6 +778,9 @@ class TestbedController(testbed_impl.TestbedController):
     def _make_class_queue_filter(self, parameters):
         return self._make_generic(parameters, self._interfaces.ClassQueueFilter)
 
+    def _make_logging_class_queue_filter(self, parameters):
+        return self._make_generic(parameters, self._interfaces.LoggingClassQueueFilter)
+
     def _make_tos_queue_filter(self, parameters):
         return self._make_generic(parameters, self._interfaces.ToSQueueFilter)
 

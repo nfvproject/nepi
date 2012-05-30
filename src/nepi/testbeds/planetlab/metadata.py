@@ -30,14 +30,15 @@ INTERNET = "Internet"
 NETPIPE = "NetPipe"
 TUNFILTER = "TunFilter"
 CLASSQUEUEFILTER = "ClassQueueFilter"
+LOGGINGCLASSQUEUEFILTER = "LoggingClassQueueFilter"
 TOSQUEUEFILTER = "TosQueueFilter"
 MULTICASTFORWARDER = "MulticastForwarder"
 MULTICASTANNOUNCER = "MulticastAnnouncer"
 MULTICASTROUTER = "MulticastRouter"
 
-TUNFILTERS = (TUNFILTER, CLASSQUEUEFILTER, TOSQUEUEFILTER)
+TUNFILTERS = (TUNFILTER, CLASSQUEUEFILTER, LOGGINGCLASSQUEUEFILTER, TOSQUEUEFILTER)
 TAPFILTERS = (TUNFILTER, )
-ALLFILTERS = (TUNFILTER, CLASSQUEUEFILTER, TOSQUEUEFILTER)
+ALLFILTERS = (TUNFILTER, CLASSQUEUEFILTER, LOGGINGCLASSQUEUEFILTER, TOSQUEUEFILTER)
 
 PL_TESTBED_ID = "planetlab"
 
@@ -308,6 +309,11 @@ def create_tunfilter(testbed_instance, guid):
 def create_classqueuefilter(testbed_instance, guid):
     parameters = testbed_instance._get_parameters(guid)
     element = testbed_instance._make_class_queue_filter(parameters)
+    testbed_instance.elements[guid] = element
+
+def create_loggingclassqueuefilter(testbed_instance, guid):
+    parameters = testbed_instance._get_parameters(guid)
+    element = testbed_instance._make_logging_class_queue_filter(parameters)
     testbed_instance.elements[guid] = element
 
 def create_tosqueuefilter(testbed_instance, guid):
@@ -1527,7 +1533,7 @@ factories_info = dict({
             "connector_types": ["->fd","udp","tcp"],
         }),
     CLASSQUEUEFILTER : dict({
-            "help": "TUN classfull queue, uses a separate queue for each user-definable class.\n\n"
+            "help": "TUN classful queue, uses a separate queue for each user-definable class.\n\n"
                     "It takes two arguments, both of which have sensible defaults:\n"
                     "\tsize: the base size of each class' queue\n"
                     "\tclasses: the class definitions, which follow the following syntax:\n"
@@ -1560,6 +1566,18 @@ factories_info = dict({
             ],
             "connector_types": ["->fd","udp","tcp"],
             "traces": ["dropped_stats"],
+        }),
+    LOGGINGCLASSQUEUEFILTER : dict({
+            "help": "TUN classful queue, uses a separate queue for each user-definable class.\n"
+                    "See ClassQueueFilter. This version adds detailled queue state tracing.",
+            "category": FC.CATEGORY_CHANNELS,
+            "create_function": create_loggingclassqueuefilter,
+            "box_attributes": [
+                "args",
+                "tun_proto", "tun_addr", "tun_port", "tun_key", "tun_cipher",
+            ],
+            "connector_types": ["->fd","udp","tcp"],
+            "traces": ["dropped_stats","queue_stats"],
         }),
     TOSQUEUEFILTER : dict({
             "help": "TUN classfull queue that classifies according to the TOS (RFC 791) IP field.\n\n"
