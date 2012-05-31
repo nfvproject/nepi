@@ -588,7 +588,7 @@ class LoggingClassQueueFilter(ClassQueueFilter):
     def __init__(self, api=None):
         super(LoggingClassQueueFilter, self).__init__(api)
         # Attributes
-        self.module = "loggingclassqueue.py"
+        self.module = "loggingclassqueue.py classqueue.py"
         
         # Inject outpath
         args = dict(filter(lambda x:len(x)>1, map(lambda x:x.split('=',1),(self.args or "").split(','))))
