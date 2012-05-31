@@ -106,5 +106,5 @@ queueclass = LoggingClassQueue
 def init(outpath="output", interval=0, **kw):
     global _outpath, _interval
     _outpath = outpath
-    _interval = interval
+    _interval = float(interval)
     classqueue.init(**kw)
