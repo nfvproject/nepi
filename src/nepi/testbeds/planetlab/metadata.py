@@ -1372,9 +1372,13 @@ traces = dict({
                 "name": "dropped_stats",
                 "help": "Information on dropped packets on a filer or queue associated to a network interface",
             }),
-    "queue_stats": dict({
-                "name": "queue_stats",
-                "help": "Detailled, fine-grained information on queue state, csv format.",
+    "queue_stats_f": dict({
+                "name": "queue_stats_f",
+                "help": "Detailled, fine-grained information on egress queue state, csv format.",
+            }),
+    "queue_stats_b": dict({
+                "name": "queue_stats_b",
+                "help": "Detailled, fine-grained information on ingress queue state, csv format.",
             }),
     })
 
@@ -1581,7 +1585,7 @@ factories_info = dict({
                 "tun_proto", "tun_addr", "tun_port", "tun_key", "tun_cipher",
             ],
             "connector_types": ["->fd","udp","tcp"],
-            "traces": ["dropped_stats","queue_stats"],
+            "traces": ["dropped_stats","queue_stats_f","queue_stats_b"],
         }),
     TOSQUEUEFILTER : dict({
             "help": "TUN classfull queue that classifies according to the TOS (RFC 791) IP field.\n\n"
