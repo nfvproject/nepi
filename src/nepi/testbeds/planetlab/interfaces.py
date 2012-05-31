@@ -223,11 +223,11 @@ class TunIface(object):
                 
             dest, destprefix, nexthop, metric = route
             
-            myNet = ipaddr.IPNetwork("%s/%d" % (addr, prefix))
-            gwIp = ipaddr.IPNetwork(nexthop)
+            myNet = ipaddr.IPv4Network("%s/%d" % (addr, prefix))
+            gwIp = ipaddr.IPv4Network(nexthop)
             
             if pointopoint:
-                peerIp = ipaddr.IPNetwork(pointopoint)
+                peerIp = ipaddr.IPv4Network(pointopoint)
                 
                 if gwIp == peerIp:
                     return True
