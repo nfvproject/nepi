@@ -670,10 +670,10 @@ class Node(object):
         if len(routes) > MAX_VROUTE_ROUTES:
             return 'sliceip'
         
-        vsys_vnet = ipaddr.IPNetwork(vsys_vnet)
+        vsys_vnet = ipaddr.IPv4Network(vsys_vnet)
         for route in routes:
             dest, prefix, nexthop, metric = route
-            dest = ipaddr.IPNetwork("%s/%d" % (dest,prefix))
+            dest = ipaddr.IPv4Network("%s/%d" % (dest,prefix))
             nexthop = ipaddr.IPAddress(nexthop)
             if dest not in vsys_vnet or nexthop not in vsys_vnet:
                 return 'sliceip'
