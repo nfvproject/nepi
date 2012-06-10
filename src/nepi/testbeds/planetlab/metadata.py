@@ -1065,7 +1065,7 @@ attributes = dict({
                 "name": "up",
                 "help": "Link up",
                 "type": Attribute.BOOL,
-                "value": False,
+                "value": True,
                 "validation_function": validation.is_bool
             }),
     "primary": dict({
