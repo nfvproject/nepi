@@ -905,9 +905,10 @@ class NS3Dependency(Dependency):
         self.buildDepends = 'make waf gcc gcc-c++ gccxml unzip bzr'
         
         # We have to download the sources, untar, build...
-        pygccxml_source_url = "http://leaseweb.dl.sourceforge.net/project/pygccxml/pygccxml/pygccxml-1.0/pygccxml-1.0.0.zip"
-        ns3_source_url = "http://nepi.pl.sophia.inria.fr/code/nepi-ns3.13/archive/tip.tar.gz"
-        passfd_source_url = "http://nepi.pl.sophia.inria.fr/code/python-passfd/archive/tip.tar.gz"
+        #pygccxml_source_url = "http://leaseweb.dl.sourceforge.net/project/pygccxml/pygccxml/pygccxml-1.0/pygccxml-1.0.0.zip"
+        pygccxml_source_url = "http://yans.pl.sophia.inria.fr/libs/pygccxml-1.0.0.zip"
+        ns3_source_url = "http://nepi.inria.fr/code/nepi-ns3.13/archive/tip.tar.gz"
+        passfd_source_url = "http://nepi.inria.fr/code/python-passfd/archive/tip.tar.gz"
         
         pybindgen_version = "797"
 
@@ -1111,8 +1112,10 @@ class CCNxDaemon(Application):
         self.ccnRoutes = None
         self.ccnxVersion = "ccnx-0.6.0"
         
-        self.ccnx_0_5_1_sources = "http://www.ccnx.org/releases/ccnx-0.5.1.tar.gz"
-        self.ccnx_0_6_0_sources = "http://www.ccnx.org/releases/ccnx-0.6.0.tar.gz"
+        #self.ccnx_0_5_1_sources = "http://www.ccnx.org/releases/ccnx-0.5.1.tar.gz"
+        self.ccnx_0_5_1_sources = "http://yans.pl.sophia.inria.fr/libs/ccnx-0.5.1.tar.gz"
+        #self.ccnx_0_6_0_sources = "http://www.ccnx.org/releases/ccnx-0.6.0.tar.gz"
+        self.ccnx_0_6_0_sources = "http://yans.pl.sophia.inria.fr/libs/ccnx-0.6.0.tar.gz"
         self.buildDepends = 'make gcc development-tools openssl-devel expat-devel libpcap-devel libxml2-devel'
 
         self.ccnx_0_5_1_build = (
