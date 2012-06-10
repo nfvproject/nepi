@@ -406,6 +406,7 @@ attributes = dict({
                 "help": "Link up",
                 "type": Attribute.BOOL,
                 "value": True,
+                "flags": Attribute.NoDefaultValue, 
                 "validation_function": validation.is_bool
             }),
     "device_name": dict({
