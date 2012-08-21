@@ -109,7 +109,7 @@ class OMFClient(sleekxmpp.ClientXMPP):
         try:
             result = self['xep_0060'].publish(self._server,node,payload=data)
             id = result['pubsub']['publish']['item']['id']
-            print('Published at item id: %s' % id)
+            #print('Published at item id: %s' % id)
         except:
             print traceback.format_exc()
             logging.error('Could not publish to: %s' % self.boundjid)
