@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 
+import functools
+import weakref
+
 from constants import TESTBED_ID, TESTBED_VERSION
 from nepi.core import metadata
 from nepi.core.attributes import Attribute
@@ -7,92 +10,128 @@ from nepi.util import tags, validation
 from nepi.util.constants import ApplicationStatus as AS, \
         FactoryCategories as FC, DeploymentConfiguration as DC
 
+##############################################################################
+
+class OmfResource(object):
+    def __init__(self, guid, tc):
+        super(OmfResource, self).__init__()
+        self._tc = weakref.ref(tc)
+        self._guid = guid
+
+    @property
+    def tc(self):
+        return self._tc and self._tc()
+
+    def configure(self):
+        pass
+
+    def start(self):
+        pass
+
+    def stop(self):
+        pass
+
+    def status(self):
+        pass
+
+    def shutdown(self):
+        pass
+
+## NODE #######################################################################
+
+class OmfNode(OmfResource):
+    def __init__(self, guid, tc):
+        super(OmfNode, self).__init__(guid, tc)
+        self.hostname = self.tc._get_parameters(guid)['hostname']
+        self.tc.api.enroll_host(self.hostname)
+
+## APPLICATION ################################################################
+
+class OmfApplication(OmfResource):
+    def __init__(self, guid, tc):
+        super(OmfApplication, self).__init__(guid, tc)
+        node_guids = tc.get_connected(guid, "node", "apps")
+        if len(node_guids) == 0:
+            raise RuntimeError("Can't instantiate interface %d outside node" % guid)
+
+        self._node_guid = node_guids[0] 
+        self.app_id = None
+        self.arguments = None
+        self.path = None
+
+    def start(self):
+        node = self.tc.elements.get(self._node_guid)
+        self.tc.api.execute(node.hostname, 
+                self.appId, 
+                self.arguments, 
+                self.path)
+
+    def status(self):
+        if guid not in testbed_instance.elements.keys():
+            return AS.STATUS_NOT_STARTED
+        return AS.STATUS_RUNNING
+        # TODO!!!!
+        #return AS.STATUS_FINISHED
+
+
+## WIFIIFACE ########################################################
+
+class OmfWifiInterface(OmfResource):
+    def __init__(self, guid, tc):
+        super(OmfWifiInterface, self).__init__(guid, tc)
+        node_guids = tc.get_connected(guid, "node", "devs")
+        if len(node_guids) == 0:
+            raise RuntimeError("Can't instantiate interface %d outside node" % guid)
+
+        self._node_guid = node_guids[0] 
+        self.mode = None
+        self.type = None
+        self.essid = None
+        self.channel = None
+        self.ip = None
+
+    def __setattr__(self, name, value):
+        if name in ["ip", "mode", "type", "essid", "channel"]:
+            node = self.tc.elements.get(self._node_guid)    
+            attribute = "net/w0/%s" % name
+            self._tc().api.configure(node.hostname, attribute, value)
+        else:
+            super(OmfWifiInterface, self).__setattr__(name, value)
+
 # Factories
 NODE = "Node"
 WIFIIFACE = "WifiInterface"
-ETHIFACE = "EthInterface"
 CHANNEL = "Channel"
-APPLICATION = "Application"
+OMFAPPLICATION = "OmfApplication"
 
-### Connection functions ####
+def create(factory, testbed_instance, guid):
+    clazz = OmfResource
+    if factory == NODE:
+        clazz = OmfNode
+    elif factory == OMFAPPLICATION:
+        clazz = OmfApplication
+    elif factory == WIFIIFACE:
+        clazz = OmfWifiInterface
 
-### Creation functions ###
+    element = clazz(guid, testbed_instance)
+    #import pdb; pdb.set_trace()
+    testbed_instance._elements[guid] = element
 
-def create_node(testbed_instance, guid):
-    parameters = testbed_instance._get_parameters(guid)
-    hostname = parameters['hostname']
-    testbed_instance._elements[guid] = hostname
-    testbed_instance._publish_and_enroll_host(hostname)
+def start(testbed_instance, guid):
+    element = testbed_instance.elements.get(guid)
+    element.start()
 
-def create_wifiiface(testbed_instance, guid):
-    pass
+def stop(testbed_instance, guid):
+    element = testbed_instance.elements.get(guid)
+    element.stop()
 
-def create_ethiface(testbed_instance, guid):
-    pass
+def status(testbed_instance, guid):
+    element = testbed_instance.elements.get(guid)
+    return element.status()
 
-def create_channel(testbed_instance, guid):
-    pass
-
-def create_application(testbed_instance, guid):
-    pass
-
-### Start/Stop functions ###
-
-def start_application(testbed_instance, guid):
-    # search for the node asociated with the device
-    node_guids = testbed_instance.get_connected(guid, "node", "apps")
-    if len(node_guids) == 0:
-        raise RuntimeError("Can't instantiate interface %d outside node" % guid)
-
-    # node attributes
-    node_parameters = testbed_instance._get_parameters(node_guids[0])
-    hostname = node_parameters['hostname']
-
-    # application attributes
-    parameters = testbed_instance._get_parameters(guid)
-    app_id = parameters.get("appId")
-    arguments = parameters.get("arguments")
-    path = parameters.get("path")
-    testbed_instance._publish_execute(hostname, app_id, arguments, path)
-
-def stop_application(testbed_instance, guid):
-    pass
-
-### Status functions ###
-
-def status_application(testbed_instance, guid):
-    if guid not in testbed_instance.elements.keys():
-        return AS.STATUS_NOT_STARTED
-    return AS.STATUS_RUNNING
-    # TODO!!!!
-    #return AS.STATUS_FINISHED
-
-### Configure functions ###
-
-def configure_wifiiface(testbed_instance, guid):
-    # search for the node asociated with the device
-    node_guids = testbed_instance.get_connected(guid, "node", "devs")
-    if len(node_guids) == 0:
-        raise RuntimeError("Can't instantiate interface %d outside node" % guid)
-
-    # node attributes
-    node_parameters = testbed_instance._get_parameters(node_guids[0])
-    hostname = node_parameters['hostname']
-
-    # wifi iface attributes
-    parameters = testbed_instance._get_parameters(guid)
-
-    for attr in ["mode", "type", "channel", "essid"]: 
-        attribute = "net/w0/%s" % attr
-        value = parameters.get(attr)
-        if value:
-            testbed_instance._publish_configure(hostname, attribute, value)
-
-    if guid in testbed_instance._add_address: 
-        attribute = "net/w0/ip"
-        addresses = testbed_instance._add_address[guid]
-        (value, netprefix, broadcast) = addresses[0]
-        testbed_instance._publish_configure(hostname, attribute, value)
+def configure(testbed_instance, guid):
+    element = testbed_instance.elements.get(guid)
+    return element.status()
 
 ### Factory information ###
 
@@ -130,18 +169,13 @@ connections = [
         "can_cross": False
     }),
     dict({
-        "from": (TESTBED_ID, NODE, "devs"),
-        "to":   (TESTBED_ID, ETHIFACE, "node"),
-        "can_cross": False
-    }),
-    dict({
         "from": (TESTBED_ID, WIFIIFACE, "chan"),
         "to":   (TESTBED_ID, CHANNEL, "devs"),
         "can_cross": False
     }),
     dict({
         "from": (TESTBED_ID, NODE, "apps"),
-        "to":   (TESTBED_ID, APPLICATION, "node"),
+        "to":   (TESTBED_ID, OMFAPPLICATION, "node"),
         "can_cross": False
     }),
  ]
@@ -179,44 +213,52 @@ attributes = dict({
                 "name": "mode",
                 "help": "Corresponds to the OMF attributes net/w0/mode",
                 "type": Attribute.STRING,
-                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+                "flags": Attribute.NoDefaultValue, 
                 "validation_function": validation.is_string
             }),
     "type": dict({
                 "name": "type",
                 "help": "Corresponds to the OMF attributes net/w0/type",
                 "type": Attribute.STRING,
-                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+                "flags": Attribute.NoDefaultValue, 
                 "validation_function": validation.is_string
             }),
     "channel": dict({
                 "name": "channel",
                 "help": "Corresponds to the OMF attributes net/w0/channel",
                 "type": Attribute.STRING,
-                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+                "flags": Attribute.NoDefaultValue, 
                 "validation_function": validation.is_string
             }),
     "essid": dict({
                 "name": "essid",
                 "help": "Corresponds to the OMF attributes net/w0/essid",
                 "type": Attribute.STRING,
-                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+                "flags": Attribute.NoDefaultValue, 
                 "validation_function": validation.is_string
             }),
+    "ip": dict({
+                "name": "ip",
+                "help": "Corresponds to the OMF attributes net/w0/ip",
+                "type": Attribute.STRING,
+                "flags": Attribute.NoDefaultValue, 
+                "validation_function": validation.is_ip4_address
+            }),
+
 
 
     })
 
 traces = dict()
 
-create_order = [ NODE, WIFIIFACE, ETHIFACE, CHANNEL, APPLICATION ]
-configure_order = [ WIFIIFACE, ETHIFACE, NODE, CHANNEL, APPLICATION ]
+create_order = [ NODE, WIFIIFACE, CHANNEL, OMFAPPLICATION ]
+configure_order = [ WIFIIFACE,  NODE, CHANNEL, OMFAPPLICATION ]
 
 factories_info = dict({
     NODE: dict({
             "help": "OMF Node",
             "category": FC.CATEGORY_NODES,
-            "create_function": create_node,
+            "create_function": functools.partial(create, NODE),
             "box_attributes": ["hostname"],
             "connector_types": ["devs", "apps"],
             "tags": [tags.NODE, tags.ALLOW_ROUTES],
@@ -224,34 +266,27 @@ factories_info = dict({
     WIFIIFACE: dict({
             "help": "Wireless network interface",
             "category": FC.CATEGORY_DEVICES,
-            "create_function": create_wifiiface,
-            "configure_function": configure_wifiiface,
-            "box_attributes": ["mode", "type", "channel", "essid"],
+            "create_function": functools.partial(create, WIFIIFACE),
+            "configure_function": configure,
+            "box_attributes": ["mode", "type", "channel", "essid", "ip"],
             "connector_types": ["node", "chan"],
-            "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
-       }),
-    ETHIFACE: dict({
-            "help": "Ethernet network interface",
-            "category": FC.CATEGORY_DEVICES,
-            "create_function": create_ethiface,
-            #"box_attributes": [""],
-            "connector_types": ["node"],
-            "tags": [tags.INTERFACE, tags.ALLOW_ADDRESSES],
+            "tags": [tags.INTERFACE, tags.HAS_ADDRESSES],
        }),
     CHANNEL: dict({
             "help": "Wireless channel",
             "category": FC.CATEGORY_DEVICES,
-            "create_function": create_channel,
+            "create_function": create,
+            "create_function": functools.partial(create, CHANNEL),
             "box_attributes": ["mode", "type", "channel", "essid"],
             "connector_types": ["devs"],
        }),
-    APPLICATION: dict({
+    OMFAPPLICATION: dict({
             "help": "Generic executable command line application",
             "category": FC.CATEGORY_APPLICATIONS,
-            "create_function": create_application,
-            "start_function": start_application,
-            "stop_function": stop_application,
-            "status_function": status_application,
+            "create_function": functools.partial(create, OMFAPPLICATION),
+            "start_function": start,
+            "stop_function": stop,
+            "status_function": status,
             "box_attributes": ["appId", "arguments", "path"],
             "connector_types": ["node"],
             "tags": [tags.APPLICATION],
