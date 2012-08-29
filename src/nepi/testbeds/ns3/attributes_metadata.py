@@ -2095,6 +2095,20 @@ attributes = dict({
         "type": Attribute.DOUBLE,
         "help": "The default value for propagation loss, dB."
     }),
+    "Loss": dict({
+        "name": "Loss",
+        "validation_function": validation.is_double,
+        "value": 1.7976900000000001e+308,
+        "type": Attribute.DOUBLE,
+        "help": "The default value for propagation loss, dB."
+    }),
+   "Symmetric": dict({
+        "name": "Symmetric",
+        "validation_function": validation.is_bool,
+        "value": True,
+        "type": Attribute.BOOL,
+        "help": "Symmetry between in the propagation loss model between nodes."
+    }),
     "IntervalT3": dict({
         "name": "IntervalT3",
         "validation_function": validation.is_time,
@@ -2559,6 +2573,13 @@ attributes = dict({
         "help" : "Flag to enable or disable interface",
         "type" : Attribute.BOOL,
         "value" : True,
-        "validation_function" : validation.is_integer,
+        "validation_function" : validation.is_bool,
+        }),
+    "QosSupported" : dict({
+        "name" : "QosSupported", 
+        "help" : "Flag to enable or disable QoS support at wifi MAC layer",
+        "type" : Attribute.BOOL,
+        "value" : False,
+        "validation_function" : validation.is_bool,
         }),
 })

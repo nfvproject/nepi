@@ -47,12 +47,12 @@ def connect_mac_device(testbed_instance, mac_guid, device_guid):
     device = testbed_instance._elements[device_guid]
     device.SetMac(mac)
 
-def connect_errormodel_device(testbed_instance, model_guid, device_guid):
+def connect_error_model_device(testbed_instance, model_guid, device_guid):
     model = testbed_instance._elements[model_guid]
     device = testbed_instance._elements[device_guid]
     device.SetReceiveErrorModel(model)
 
-def connect_errormodel_phy(testbed_instance, err_guid, phy_guid):
+def connect_error_model_phy(testbed_instance, err_guid, phy_guid):
     err = testbed_instance._elements[err_guid]
     phy = testbed_instance._elements[phy_guid]
     phy.SetErrorRateModel(err)
@@ -282,6 +282,36 @@ connector_types = dict({
                 "max": 1,
                 "min": 0
             }),
+    "mobpair": dict({
+                "help": "Connector from MatrixPropagationLossModel to MobilityPair", 
+                "name": "mobpair",
+                "max": -1,
+                "min": 0
+            }),
+   "matrix": dict({
+                "help": "Connector from MobilityPair to MatrixPropagationLossModel", 
+                "name": "matrix",
+                "max": 1,
+                "min": 0
+            }),
+    "mp": dict({
+                "help": "Connector from MobilityModel to MobilityPair", 
+                "name": "mp",
+                "max": -1,
+                "min": 0
+            }),
+    "ma": dict({
+                "help": "Connector to the 'ma' source mobility model, in the context of a mobility loss pair ", 
+                "name": "ma",
+                "max": 1,
+                "min": 0 
+            }),
+    "mb": dict({
+                "help": "Connector to the 'mb' destination mobility model, in the context of a mobility loss pair ", 
+                "name": "mb",
+                "max": 1,
+                "min": 1
+            }),
     "tcp": dict({
                 "help": "Connector for ip-ip tunneling over TCP link", 
                 "name": "tcp",
@@ -490,33 +520,39 @@ connections = [
             "can_cross": False
     }),
     dict({
+            "from": ( "ns3", "ns3::AdhocWifiMac", "dev" ),
+            "to":   ( "ns3", "ns3::WifiNetDevice", "mac" ),
+            "init_code": connect_mac_device,
+            "can_cross": False
+    }),
+    dict({
             "from": ( "ns3", "ns3::RateErrorModel", "dev" ),
             "to":   ( "ns3", "ns3::CsmaNetDevice", "err" ),
-            "init_code": connect_errormodel_device,
+            "init_code": connect_error_model_device,
             "can_cross": False
     }),
     dict({
             "from": ( "ns3", "ns3::RateErrorModel", "dev" ),
             "to":   ( "ns3", "ns3::PointToPointNetDevice", "err" ),
-            "init_code": connect_errormodel_device,
+            "init_code": connect_error_model_device,
             "can_cross": False
     }),
     dict({
             "from": ( "ns3", "ns3::ListErrorModel", "dev" ),
             "to":   ( "ns3", "ns3::CsmaNetDevice", "err" ),
-            "init_code": connect_errormodel_device,
+            "init_code": connect_error_model_device,
             "can_cross": False
     }),
     dict({
             "from": ( "ns3", "ns3::ListErrorModel", "dev" ),
             "to":   ( "ns3", "ns3::PointToPointNetDevice", "err" ),
-            "init_code": connect_errormodel_device,
+            "init_code": connect_error_model_device,
             "can_cross": False
     }),
     dict({
         "from": ( "ns3", "ns3::NistErrorRateModel", "phy" ),        
         "to":   ( "ns3", "ns3::YansWifiPhy", "err" ),
-        "init_code": connect_errormodel_phy,
+        "init_code": connect_error_model_phy,
         "can_cross": False
     }),
     dict({
@@ -662,6 +698,59 @@ connections = [
         "init_code": connect_node_other,
         "can_cross": False
     }),
+
+
+    dict({
+        "from": ( "ns3", "ns3::Nepi::MobilityPair", "matrix" ),
+        "to":   ( "ns3", "ns3::MatrixPropagationLossModel", "mobpair" ),
+        "init_code": connect_dummy,
+        "can_cross": False
+    }),
+    dict({
+        "from": ( "ns3", "ns3::Nepi::MobilityPair", "ma" ),
+        "to":   ( "ns3", "ns3::ConstantVelocityMobilityModel", "mp" ),
+        "init_code": connect_dummy,
+        "can_cross": False
+    }),
+    dict({
+        "from": ( "ns3", "ns3::Nepi::MobilityPair", "mb" ),
+        "to":   ( "ns3", "ns3::ConstantVelocityMobilityModel", "mp" ),
+        "init_code": connect_dummy,
+        "can_cross": False
+    }),
+    dict({
+        "from": ( "ns3", "ns3::Nepi::MobilityPair", "ma" ),
+        "to":   ( "ns3", "ns3::ConstantAccelerationMobilityModel", "mp" ),
+        "init_code": connect_dummy,
+        "can_cross": False
+    }),
+    dict({
+        "from": ( "ns3", "ns3::Nepi::MobilityPair", "mb" ),
+        "to":   ( "ns3", "ns3::ConstantAccelerationMobilityModel", "mp" ),
+        "init_code": connect_dummy,
+        "can_cross": False
+    }),
+    dict({
+        "from": ( "ns3", "ns3::Nepi::MobilityPair", "ma" ),
+        "to":   ( "ns3", "ns3::ConstantPositionMobilityModel", "mp" ),
+        "init_code": connect_dummy,
+        "can_cross": False
+    }),
+    dict({
+        "from": ( "ns3", "ns3::Nepi::MobilityPair", "mb" ),
+        "to":   ( "ns3", "ns3::ConstantPositionMobilityModel", "mp" ),
+        "init_code": connect_dummy,
+        "can_cross": False
+    }),
+    dict({
+        "from": ( "ns3", "ns3::MatrixPropagationLossModel", "chan" ),  
+        "to":   ( "ns3", "ns3::YansWifiChannel", "loss" ),
+        "init_code": connect_loss_channel,
+        "can_cross": False
+    }),
+
+
+
     dict({
         "from": ( "ns3", "ns3::Node", "mobility" ),
         "to":   ( "ns3", "ns3::ConstantAccelerationMobilityModel", "node" ),
