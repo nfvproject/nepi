@@ -178,7 +178,7 @@ def create_node(testbed_instance, guid):
     element = testbed_instance._elements[guid]
     element.AggregateObject(testbed_instance.ns3.PacketSocketFactory())
 
-def create_wifi_standard_model(testbed_instance, guid):
+def create_wifi_phy(testbed_instance, guid):
     create_element(testbed_instance, guid)
     element = testbed_instance._elements[guid]
     parameters = testbed_instance._get_parameters(guid)
@@ -186,6 +186,20 @@ def create_wifi_standard_model(testbed_instance, guid):
     if not standard:
         raise RuntimeError("No wifi standard set for %d" % guid)
     element.ConfigureStandard(wifi_standards[standard])
+
+def create_wifi_mac(testbed_instance, guid):
+    create_element(testbed_instance, guid)
+    element = testbed_instance._elements[guid]
+    parameters = testbed_instance._get_parameters(guid)
+    standard = parameters.get("Standard")
+    if not standard:
+        raise RuntimeError("No wifi standard set for %d" % guid)
+    element.ConfigureStandard(wifi_standards[standard])
+    qos = parameters.get("QosSupported")
+    # BUG: There seems to be an inheritance problem with the Python Bindings and SetQosSupported.
+    #      It seems to be onbly defined for regular-wifi-mac.h and not for its children...
+    #      Report this!
+    # element.SetQosSupported(qos)
 
 def create_waypoint_mobility(testbed_instance, guid):
     create_element(testbed_instance, guid)
@@ -496,6 +510,24 @@ def configure_station(testbed_instance, guid):
     element = testbed_instance._elements[guid]
     element.Start()
 
+def configure_matrix_propagation(testbed_instance, guid):
+    create_element(testbed_instance, guid)
+    element = testbed_instance._elements[guid]
+    mp_guids = testbed_instance.get_connected(guid, "mobpair", "matrix")
+    for mpg in mp_guids:
+        mp = testbed_instance._elements[mpg]
+        mas = testbed_instance.get_connected(mpg, "ma", "mp")
+        if len(mas) != 1:
+            raise RuntimeError("Wrong number of source mobility models for MobilityPair %d" % guid)
+        mbs = testbed_instance.get_connected(mpg, "mb", "mp")
+        if len(mbs) != 1:
+            raise RuntimeError("Wrong number of destination mobility models for MobilityPair %d" % guid)
+        parameters = testbed_instance._get_parameters(mpg)
+        loss = parameters.get("Loss")
+        symmetric = parameters.get("Symmetric")
+        element.SetLoss(mas[0].element, mbs[0].element, loss, symemtric)    
+
+
 ###  Factories  ###
 
 factories_create_order = ["ns3::BasicEnergySource",
@@ -548,7 +580,6 @@ factories_create_order = ["ns3::BasicEnergySource",
     "ns3::EdcaTxopN",
     "ns3::StaWifiMac",
     "ns3::ApWifiMac",
-    "ns3::QadhocWifiMac",
     "ns3::MinstrelWifiManager",
     "ns3::CaraWifiManager",
     "ns3::AarfcdWifiManager",
@@ -636,6 +667,7 @@ factories_create_order = ["ns3::BasicEnergySource",
     "ns3::NakagamiPropagationLossModel",
     "ns3::FixedRssLossModel",
     "ns3::MatrixPropagationLossModel",
+    "ns3::Nepi::MobilityPair",
     "ns3::RangePropagationLossModel",
     "ns3::RandomPropagationDelayModel",
     "ns3::ConstantSpeedPropagationDelayModel",
@@ -707,7 +739,6 @@ factories_configure_order = ["ns3::BasicEnergySource",
     "ns3::EdcaTxopN",
     "ns3::StaWifiMac",
     "ns3::ApWifiMac",
-    "ns3::QadhocWifiMac",
     "ns3::MinstrelWifiManager",
     "ns3::CaraWifiManager",
     "ns3::AarfcdWifiManager",
@@ -797,6 +828,7 @@ factories_configure_order = ["ns3::BasicEnergySource",
     "ns3::NakagamiPropagationLossModel",
     "ns3::FixedRssLossModel",
     "ns3::MatrixPropagationLossModel",
+    "ns3::Nepi::MobilityPair",
     "ns3::RangePropagationLossModel",
     "ns3::RandomPropagationDelayModel",
     "ns3::ConstantSpeedPropagationDelayModel",
@@ -913,7 +945,7 @@ factories_info = dict({
         "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
-        "connector_types": ["node"],
+        "connector_types": ["node", "mp"],
         "box_attributes": ["Position",
            "Velocity"],
         "tags": [tags.MOBILE],
@@ -1033,10 +1065,10 @@ factories_info = dict({
     }),
      "ns3::AdhocWifiMac": dict({
         "category": FC.CATEGORY_MAC_MODELS,
-        "create_function": create_element,
+        "create_function": create_wifi_mac,
         "configure_function": configure_element,
         "help": "",
-        "connector_types": [],
+        "connector_types": ["dev"],
         "box_attributes": ["CtsTimeout",
             "AckTimeout",
             "BasicBlockAckTimeout",
@@ -1046,14 +1078,16 @@ factories_info = dict({
             "Slot",
             "Pifs",
             "MaxPropagationDelay",
-            "Ssid"],
+            "Ssid",
+            "Standard",
+            "QosSupported"],
     }),
      "ns3::ConstantAccelerationMobilityModel": dict({
         "category": FC.CATEGORY_MOBILITY_MODELS,
         "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
-        "connector_types": ["node"],
+        "connector_types": ["node", "mp"],
         "box_attributes": ["Position",
             "Velocity"],
         "tags": [tags.MOBILE],
@@ -1668,10 +1702,16 @@ factories_info = dict({
      "ns3::MatrixPropagationLossModel": dict({
         "category": FC.CATEGORY_LOSS_MODELS,
         "create_function": create_element,
-        "configure_function": configure_element,
+        "configure_function": configure_matrix_propagation,
         "help": "",
-        "connector_types": [],
+        "connector_types": ["mobpair", "chan"],
         "box_attributes": ["DefaultLoss"],
+    }),
+    "ns3::Nepi::MobilityPair": dict({
+        "category": FC.CATEGORY_LOSS_MODELS,
+        "help": "",
+        "connector_types": ["matrix", "ma", "mb"],
+        "box_attributes": ["Loss", "Symmetric"],
     }),
      "ns3::WifiNetDevice": dict({
         "category": FC.CATEGORY_DEVICES,
@@ -1712,7 +1752,7 @@ factories_info = dict({
     }),
      "ns3::StaWifiMac": dict({
         "category": FC.CATEGORY_MAC_MODELS,
-        "create_function": create_wifi_standard_model,
+        "create_function": create_wifi_mac,
         "configure_function": configure_element,
         "help": "Station Wifi MAC Model",
         "connector_types": ["dev"],
@@ -1729,7 +1769,8 @@ factories_info = dict({
             "Pifs",
             "MaxPropagationDelay",
             "Ssid",
-            "Standard"],
+            "Standard",
+            "QosSupported"],
     }),
      "ns3::UdpEchoClient": dict({
         "category": FC.CATEGORY_APPLICATIONS,
@@ -1797,7 +1838,7 @@ factories_info = dict({
         "create_function": create_element,
         "configure_function": configure_element,
         "help": "",
-        "connector_types": ["node"],
+        "connector_types": ["node", "mp"],
         "box_attributes": ["Position",
             "Velocity"],
         "tags": [tags.MOBILE],
@@ -1881,7 +1922,7 @@ factories_info = dict({
     }),
      "ns3::ApWifiMac": dict({
         "category": FC.CATEGORY_MAC_MODELS,
-        "create_function": create_wifi_standard_model,
+        "create_function": create_wifi_mac,
         "configure_function": configure_element,
         "help": "Access point Wifi MAC Model",
         "connector_types": ["dev"],
@@ -1897,7 +1938,8 @@ factories_info = dict({
             "Pifs",
             "MaxPropagationDelay",
             "Ssid",
-            "Standard"],
+            "Standard",
+            "QosSupported"],
     }),
      "ns3::YansErrorRateModel": dict({
         "category": FC.CATEGORY_ERROR_MODELS,
@@ -1982,7 +2024,7 @@ factories_info = dict({
     }),
      "ns3::YansWifiPhy": dict({
         "category": FC.CATEGORY_PHY_MODELS,
-        "create_function": create_wifi_standard_model,
+        "create_function": create_wifi_phy,
         "configure_function": configure_element,
         "help": "",
         "connector_types": ["dev", "err", "chan"],
@@ -2275,23 +2317,6 @@ factories_info = dict({
             "RtsCtsThreshold",
             "FragmentationThreshold",
             "NonUnicastMode"],
-    }),
-     "ns3::QadhocWifiMac": dict({
-        "category": FC.CATEGORY_MAC_MODELS,
-        "create_function": create_element,
-        "configure_function": configure_element,
-        "help": "",
-        "connector_types": [],
-        "box_attributes": ["CtsTimeout",
-            "AckTimeout",
-            "BasicBlockAckTimeout",
-            "CompressedBlockAckTimeout",
-            "Sifs",
-            "EifsNoDifs",
-            "Slot",
-            "Pifs",
-            "MaxPropagationDelay",
-            "Ssid"],
     }),
      "ns3::JakesPropagationLossModel": dict({
         "category": FC.CATEGORY_LOSS_MODELS,
