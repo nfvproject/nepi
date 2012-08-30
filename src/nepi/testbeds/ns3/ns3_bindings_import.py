@@ -16,7 +16,7 @@ from ns.dsdv import *
 #from ns.click import *
 from ns.mobility import *
 from ns.wifi import *
-from ns.netanim import *
+#from ns.netanim import *
 from ns.stats import *
 from ns.uan import *
 from ns.spectrum import *

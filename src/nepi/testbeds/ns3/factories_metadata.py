@@ -515,7 +515,6 @@ def configure_matrix_propagation(testbed_instance, guid):
     element = testbed_instance._elements[guid]
     mp_guids = testbed_instance.get_connected(guid, "mobpair", "matrix")
     for mpg in mp_guids:
-        mp = testbed_instance._elements[mpg]
         mas = testbed_instance.get_connected(mpg, "ma", "mp")
         if len(mas) != 1:
             raise RuntimeError("Wrong number of source mobility models for MobilityPair %d" % guid)
@@ -525,7 +524,9 @@ def configure_matrix_propagation(testbed_instance, guid):
         parameters = testbed_instance._get_parameters(mpg)
         loss = parameters.get("Loss")
         symmetric = parameters.get("Symmetric")
-        element.SetLoss(mas[0].element, mbs[0].element, loss, symemtric)    
+        mas_elem = testbed_instance._elements[mas[0]]
+        mbs_elem = testbed_instance._elements[mbs[0]]
+        element.SetLoss(mas_elem, mbs_elem, loss, symmetric)    
 
 
 ###  Factories  ###
