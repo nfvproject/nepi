@@ -49,7 +49,6 @@ def create_wifi_device(ns3_desc, node, channel):
     phy.set_attribute_value("Standard",  "WIFI_PHY_STANDARD_80211b")
     dev.connector("phy").connect(phy.connector("dev"))
     channel.connector("phys").connect(phy.connector("chan"))
-    # Without the error model it doesn'y work!!
     error = ns3_desc.create("ns3::NistErrorRateModel")
     phy.connector("err").connect(error.connector("phy"))
  
@@ -93,9 +92,6 @@ mp2.connector("mb").connect(mob2.connector("mp"))
 # 4. Create & setup wifi channel
 channel = ns3_desc.create("ns3::YansWifiChannel")
 channel.connector("loss").connect(matrix.connector("chan"))
-# DEBUG: Works with ns3::LogDistancePropagationLossModel but now with ns3::MatrixPropagationLossModel
-# loss = ns3_desc.create("ns3::LogDistancePropagationLossModel")
-# channel.connector("loss").connect(loss.connector("prev"))
 delay = ns3_desc.create("ns3::ConstantSpeedPropagationDelayModel")
 channel.connector("delay").connect(delay.connector("chan"))
 

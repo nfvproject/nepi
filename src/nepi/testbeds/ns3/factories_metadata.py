@@ -338,6 +338,24 @@ def create_ipcs_classifier_record(testbed_instance, guid):
         dst_port_high, l4_protocols[protocol], priority)
     testbed_instance._elements[guid] = element
 
+def create_matrix_propagation(testbed_instance, guid):
+    create_element(testbed_instance, guid)
+    element = testbed_instance._elements[guid]
+    mp_guids = testbed_instance.get_connected(guid, "mobpair", "matrix")
+    for mpg in mp_guids:
+        mas = testbed_instance.get_connected(mpg, "ma", "mp")
+        if len(mas) != 1:
+            raise RuntimeError("Wrong number of source mobility models for MobilityPair %d" % guid)
+        mbs = testbed_instance.get_connected(mpg, "mb", "mp")
+        if len(mbs) != 1:
+            raise RuntimeError("Wrong number of destination mobility models for MobilityPair %d" % guid)
+        parameters = testbed_instance._get_parameters(mpg)
+        loss = parameters.get("Loss")
+        symmetric = parameters.get("Symmetric")
+        mas_elem = testbed_instance._elements[mas[0]]
+        mbs_elem = testbed_instance._elements[mbs[0]]
+        element.SetLoss(mas_elem, mbs_elem, loss, symmetric)
+
 ### Start/Stop functions ###
 
 def start_application(testbed_instance, guid):
@@ -509,25 +527,6 @@ def configure_station(testbed_instance, guid):
     configure_device(testbed_instance, guid)
     element = testbed_instance._elements[guid]
     element.Start()
-
-def configure_matrix_propagation(testbed_instance, guid):
-    create_element(testbed_instance, guid)
-    element = testbed_instance._elements[guid]
-    mp_guids = testbed_instance.get_connected(guid, "mobpair", "matrix")
-    for mpg in mp_guids:
-        mas = testbed_instance.get_connected(mpg, "ma", "mp")
-        if len(mas) != 1:
-            raise RuntimeError("Wrong number of source mobility models for MobilityPair %d" % guid)
-        mbs = testbed_instance.get_connected(mpg, "mb", "mp")
-        if len(mbs) != 1:
-            raise RuntimeError("Wrong number of destination mobility models for MobilityPair %d" % guid)
-        parameters = testbed_instance._get_parameters(mpg)
-        loss = parameters.get("Loss")
-        symmetric = parameters.get("Symmetric")
-        mas_elem = testbed_instance._elements[mas[0]]
-        mbs_elem = testbed_instance._elements[mbs[0]]
-        element.SetLoss(mas_elem, mbs_elem, loss, symmetric)    
-
 
 ###  Factories  ###
 
@@ -1702,8 +1701,8 @@ factories_info = dict({
     }),
      "ns3::MatrixPropagationLossModel": dict({
         "category": FC.CATEGORY_LOSS_MODELS,
-        "create_function": create_element,
-        "configure_function": configure_matrix_propagation,
+        "create_function": create_matrix_propagation,
+        "configure_function": configure_element,
         "help": "",
         "connector_types": ["mobpair", "chan"],
         "box_attributes": ["DefaultLoss"],
