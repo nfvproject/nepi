@@ -57,7 +57,9 @@ class TestbedController(testbed_impl.TestbedController):
     LOCAL_FACTORIES = {
         'ns3::Nepi::TunChannel' : TunChannel,
     }
-    
+   
+    DUMMY_FACTORIES = ['ns3::Nepi::MobilityPair']
+
     LOCAL_TYPES = tuple(LOCAL_FACTORIES.values())
 
     def __init__(self):
@@ -102,8 +104,12 @@ class TestbedController(testbed_impl.TestbedController):
 
     def set(self, guid, name, value, time = TIME_NOW):
         super(TestbedController, self).set(guid, name, value, time)
+
         # TODO: take on account schedule time for the task
         factory_id = self._create[guid]
+        if factory_id in self.DUMMY_FACTORIES:
+            return 
+
         factory = self._factories[factory_id]
         element = self._elements[guid]
         if factory_id in self.LOCAL_FACTORIES:
@@ -128,8 +134,12 @@ class TestbedController(testbed_impl.TestbedController):
 
     def get(self, guid, name, time = TIME_NOW):
         value = super(TestbedController, self).get(guid, name, time)
+
         # TODO: take on account schedule time for the task
         factory_id = self._create[guid]
+        if factory_id in self.DUMMY_FACTORIES:
+            return 
+
         factory = self._factories[factory_id]
         element = self._elements[guid]
         if factory_id in self.LOCAL_FACTORIES:
