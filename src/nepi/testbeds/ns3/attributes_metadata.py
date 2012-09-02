@@ -2099,6 +2099,7 @@ attributes = dict({
         "name": "Loss",
         "validation_function": validation.is_double,
         "value": 1.7976900000000001e+308,
+        "flags": Attribute.NoDefaultValue,
         "type": Attribute.DOUBLE,
         "help": "The default value for propagation loss, dB."
     }),
