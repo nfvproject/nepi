@@ -2106,6 +2106,7 @@ attributes = dict({
         "name": "Symmetric",
         "validation_function": validation.is_bool,
         "value": True,
+        "flags": Attribute.NoDefaultValue,
         "type": Attribute.BOOL,
         "help": "Symmetry between in the propagation loss model between nodes."
     }),

@@ -113,7 +113,7 @@ ip3.set_attribute_value("Address", "10.0.0.3")
 ip3.set_attribute_value("NetPrefix", 8)
 
 app = ns3_desc.create("ns3::V4Ping")
-app.set_attribute_value("Remote", "10.0.0.3")
+app.set_attribute_value("Remote", "10.0.0.2")
 app.set_attribute_value("Verbose", True)
 app.set_attribute_value("StartTime", "0s")
 app.set_attribute_value("StopTime", "20s")
