@@ -58,13 +58,20 @@ class OmfApplication(OmfResource):
         self.app_id = None
         self.arguments = None
         self.path = None
+        self.env = None
 
     def start(self):
         node = self.tc.elements.get(self._node_guid)
         self.tc.api.execute(node.hostname, 
                 self.appId, 
                 self.arguments, 
-                self.path)
+                self.path,
+                self.env)
+
+    def stop(self):
+        node = self.tc.elements.get(self._node_guid)
+        self.tc.api.exit(node.hostname, 
+                self.appId) 
 
     def status(self):
         if guid not in testbed_instance.elements.keys():
@@ -202,6 +209,13 @@ attributes = dict({
                 "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_string
             }),
+    "env": dict({
+                "name": "env",
+                "help": "String with space separated values of environment variables to set before starting application (e.g 'FOO=foo BAR=bar')",
+                "type": Attribute.STRING,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+                "validation_function": validation.is_string
+            }),
     "hostname": dict({
                 "name": "hostname",
                 "help": "Hostname for the target OMF node",
@@ -287,7 +301,7 @@ factories_info = dict({
             "start_function": start,
             "stop_function": stop,
             "status_function": status,
-            "box_attributes": ["appId", "arguments", "path"],
+            "box_attributes": ["appId", "arguments", "path", "env"],
             "connector_types": ["node"],
             "tags": [tags.APPLICATION],
         }),

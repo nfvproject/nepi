@@ -8,7 +8,7 @@ from nepi.testbeds.omf.omf_client import OMFClient
 from nepi.testbeds.omf.omf_messages import MessageHandler
 
 class OmfAPI(object):
-    def __init__(self, slice, host, port, password, debug):
+    def __init__(self, slice, host, port, password):
         date = datetime.datetime.now().strftime("%Y-%m-%dt%H.%M.%S")
         tz = -time.altzone if time.daylight != 0 else -time.timezone
         date += "%+06.2f" % (tz / 3600) # timezone difference is in seconds
@@ -19,9 +19,7 @@ class OmfAPI(object):
         self._password = password
         self._hostnames = []
 
-        self._logger = logging.getLogger('nepi.testbeds.omfapi')
-        if debug:
-            self._logger.setLevel(logging.DEBUG)
+        self._logger = logging.getLogger("nepi.testbeds.omf")
 
         # OMF xmpp client
         self._client = None
@@ -123,8 +121,13 @@ class OmfAPI(object):
         xmpp_node =  self._host_session_id(hostname)
         self._client.publish(payload, xmpp_node)
 
-    def execute(self, hostname, app_id, arguments, path):
-        payload = self._message.executefunction(hostname, app_id, arguments, path)
+    def execute(self, hostname, app_id, arguments, path, env):
+        payload = self._message.executefunction(hostname, app_id, arguments, path, env)
+        xmpp_node =  self._host_session_id(hostname)
+        self._client.publish(payload, xmpp_node)
+
+    def exit(self, hostname, app_id):
+        payload = self._message.exitfunction(hostname, app_id)
         xmpp_node =  self._host_session_id(hostname)
         self._client.publish(payload, xmpp_node)
 
