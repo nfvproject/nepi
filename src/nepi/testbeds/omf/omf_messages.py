@@ -31,7 +31,6 @@ class MessageHandler():
         print "init" + self.ExpID +"  "+ self.SliceID
         pass
 
-
     def Mid(self, parent, keyword):
         mid = ET.SubElement(parent, keyword)
         mid.set("id", "\'omf-payload\'")
@@ -42,17 +41,25 @@ class MessageHandler():
         mtext.text = text
         return mtext
 
-
-    def executefunction(self, target, appid, cmdlineargs, path):
+    def executefunction(self, target, appid, cmdlineargs, path, env):
         payload = ET.Element("omf-message")
         execute = self.Mid(payload,"EXECUTE")
-        env = self.Mtext(execute, "ENV", "")
+        env = self.Mtext(execute, "ENV", env)
         sliceid = self.Mtext(execute,"SLICEID",self.SliceID)
         expid = self.Mtext(execute,"EXPID",self.ExpID)
         target = self.Mtext(execute,"TARGET",target)
         appid = self.Mtext(execute,"APPID",appid)
         cmdlineargs = self.Mtext(execute,"CMDLINEARGS",cmdlineargs)
         path = self.Mtext(execute,"PATH",path)
+        return payload
+
+    def exitfunction(self, target, appid):
+        payload = ET.Element("omf-message")
+        execute = self.Mid(payload,"EXIT")
+        sliceid = self.Mtext(execute,"SLICEID",self.SliceID)
+        expid = self.Mtext(execute,"EXPID",self.ExpID)
+        target = self.Mtext(execute,"TARGET",target)
+        appid = self.Mtext(execute,"APPID",appid)
         return payload
 
     def configurefunction(self, target, value, path):
@@ -102,17 +109,6 @@ class MessageHandler():
         sliceid = self.Mtext(noop,"SLICEID",self.SliceID)
         expid = self.Mtext(noop,"EXPID",self.ExpID)
         target = self.Mtext(noop,"TARGET",target)
-        return payload
-
-    def enrollfunction(self, enrollkey, image, index, target ):
-        payload = ET.Element("omf-message")
-        enroll = self.Mid(payload,"ENROLL")
-        enrollkey = self.Mtext(enroll,"ENROLLKEY",enrollkey)
-        sliceid = self.Mtext(enroll,"SLICEID",self.SliceID)
-        image = self.Mtext(enroll,"IMAGE",image)
-        expid = self.Mtext(enroll,"EXPID",self.ExpID)
-        index = self.Mtext(enroll,"INDEX",index)
-        target = self.Mtext(enroll,"TARGET",target)
         return payload
 
     def newexpfunction(self, experimentid, address):
