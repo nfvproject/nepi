@@ -761,8 +761,10 @@ class TestbedControllerServer(BaseServer):
     @Marshalling.handles(ADD_ROUTE)
     @Marshalling.args(int, str, int, str, int)
     @Marshalling.retvoid
-    def defer_add_route(self, guid, destination, netprefix, nexthop, metric):
-        self._testbed.defer_add_route(guid, destination, netprefix, nexthop, metric)
+    def defer_add_route(self, guid, destination, netprefix, nexthop, 
+            metric, device):
+        self._testbed.defer_add_route(guid, destination, netprefix, nexthop, 
+                metric, device)
 
     @Marshalling.handles(DO_SETUP)
     @Marshalling.args()

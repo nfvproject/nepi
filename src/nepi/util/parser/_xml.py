@@ -131,7 +131,7 @@ class XmlExperimentParser(ExperimentParser):
 
     def routes_data_to_xml(self, doc, parent_tag, guid, data):
         routes_tag = doc.createElement("routes") 
-        for (destination, netprefix, nexthop, metric) \
+        for (destination, netprefix, nexthop, metric, device) \
                 in data.get_route_data(guid):
             route_tag = doc.createElement("route") 
             routes_tag.appendChild(route_tag)
@@ -139,6 +139,7 @@ class XmlExperimentParser(ExperimentParser):
             route_tag.setAttribute("NetPrefix", xmlencode(netprefix))
             route_tag.setAttribute("NextHop", xmlencode(nexthop))
             route_tag.setAttribute("Metric", xmlencode(metric))
+            route_tag.setAttribute("Device", xmlencode(device))
         if routes_tag.hasChildNodes():
             parent_tag.appendChild(routes_tag)
 
@@ -283,8 +284,9 @@ class XmlExperimentParser(ExperimentParser):
                 nexthop = xmldecode(route_tag.getAttribute("NextHop"))
                 metric = int(route_tag.getAttribute("Metric")) \
                         if route_tag.hasAttribute("Metric") else 0
+                device = xmldecode(route_tag.getAttribute("Device"))
                 data.add_route_data(guid, destination, netprefix, 
-                        nexthop, metric)
+                        nexthop, metric, device)
 
     def connections_data_from_xml(self, tag, guid, data):
         connections_tag_list = tag.getElementsByTagName("connections")

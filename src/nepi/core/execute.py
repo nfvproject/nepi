@@ -83,7 +83,8 @@ class TestbedController(object):
         """Instructs the addition of an address"""
         raise NotImplementedError
 
-    def defer_add_route(self, guid, destination, netprefix, nexthop, metric = 0):
+    def defer_add_route(self, guid, destination, netprefix, nexthop, 
+            metric = 0, device = None):
         """Instructs the addition of a route"""
         raise NotImplementedError
 
@@ -1017,8 +1018,10 @@ class ExperimentController(object):
                         testbed.defer_add_address(guid, address, netprefix, 
                                 broadcast)
                 # routes
-                for (destination, netprefix, nexthop, metric) in data.get_route_data(guid):
-                    testbed.defer_add_route(guid, destination, netprefix, nexthop, metric)
+                for (destination, netprefix, nexthop, metric, device) in \
+                        data.get_route_data(guid):
+                    testbed.defer_add_route(guid, destination, netprefix, nexthop, 
+                            metric, device)
                 # store connections data
                 for (connector_type_name, other_guid, other_connector_type_name) \
                         in data.get_connection_data(guid):

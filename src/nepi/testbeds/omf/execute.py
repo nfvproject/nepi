@@ -34,7 +34,8 @@ class TestbedController(testbed_impl.TestbedController):
         port = self._attributes.get_attribute_value("xmppPort")
         password = self._attributes.get_attribute_value("xmppPassword")
 
-        self._api = OmfAPI(slice, host, port, password)
+        xmpp_root = self._attributes.get_attribute_value("xmppRoot")
+        self._api = OmfAPI(slice, host, port, password, xmpp_root)
  
         super(TestbedController, self).do_setup()
 
