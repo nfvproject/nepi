@@ -672,7 +672,7 @@ class Node(object):
         
         vsys_vnet = ipaddr.IPv4Network(vsys_vnet)
         for route in routes:
-            dest, prefix, nexthop, metric = route
+            dest, prefix, nexthop, metric, device = route
             dest = ipaddr.IPv4Network("%s/%d" % (dest,prefix))
             nexthop = ipaddr.IPAddress(nexthop)
             if dest not in vsys_vnet or nexthop not in vsys_vnet:
@@ -681,7 +681,7 @@ class Node(object):
         return 'vroute'
     
     def format_route(self, route, dev, method, action):
-        dest, prefix, nexthop, metric = route
+        dest, prefix, nexthop, metric, device = route
         if method == 'vroute':
             return (
                 "%s %s%s gw %s %s" % (

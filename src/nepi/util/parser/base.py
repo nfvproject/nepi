@@ -85,7 +85,7 @@ class ExperimentData(object):
             address_data["Broadcast"] = broadcast
         addresses_data.append(address_data)
 
-    def add_route_data(self, guid, destination, netprefix, nexthop, metric):
+    def add_route_data(self, guid, destination, netprefix, nexthop, metric, device):
         data = self.data[guid]
         if not "routes" in data:
             data["routes"] = list()
@@ -94,7 +94,8 @@ class ExperimentData(object):
             "Destination": destination,
             "NetPrefix": netprefix, 
             "NextHop": nexthop, 
-            "Metric": metric
+            "Metric": metric,
+            "Device": device
             })
         routes_data.append(route_data)
 
@@ -183,7 +184,8 @@ class ExperimentData(object):
         return [(data["Destination"],
                  data["NetPrefix"],
                  data["NextHop"],
-                 data["Metric"]) \
+                 data["Metric"],
+                 data["Device"]) \
                          for data in routes_data]
 
 class ExperimentParser(object):
@@ -254,7 +256,9 @@ class ExperimentParser(object):
              netprefix = route.get_attribute_value("NetPrefix")
              nexthop = route.get_attribute_value("NextHop")
              metric = route.get_attribute_value("Metric")
-             data.add_route_data(guid, destination, netprefix, nexthop, metric)
+             device = route.get_attribute_value("Device")
+             data.add_route_data(guid, destination, netprefix, nexthop, 
+                     metric, device)
 
     def from_data(self, experiment_description, data):
         box_guids = list()
@@ -325,13 +329,14 @@ class ExperimentParser(object):
                 addr.set_attribute_value("Broadcast", broadcast)
 
     def routes_from_data(self, box, data):
-         for (destination, netprefix, nexthop, metric) \
+         for (destination, netprefix, nexthop, metric, device) \
                  in data.get_route_data(box.guid):
             addr = box.add_route()
             addr.set_attribute_value("Destination", destination)
             addr.set_attribute_value("NetPrefix", netprefix)
             addr.set_attribute_value("NextHop", nexthop)
             addr.set_attribute_value("Metric", metric)
+            addr.set_attribute_value("Device", device)
 
     def connections_from_data(self, experiment_description, guids, data):
         for guid in guids:

@@ -8,7 +8,7 @@ from nepi.testbeds.omf.omf_client import OMFClient
 from nepi.testbeds.omf.omf_messages import MessageHandler
 
 class OmfAPI(object):
-    def __init__(self, slice, host, port, password):
+    def __init__(self, slice, host, port, password, xmpp_root = None):
         date = datetime.datetime.now().strftime("%Y-%m-%dt%H.%M.%S")
         tz = -time.altzone if time.daylight != 0 else -time.timezone
         date += "%+06.2f" % (tz / 3600) # timezone difference is in seconds
@@ -18,6 +18,7 @@ class OmfAPI(object):
         self._port = port
         self._password = password
         self._hostnames = []
+        self._xmpp_root = xmpp_root or "OMF"
 
         self._logger = logging.getLogger("nepi.testbeds.omf")
 
@@ -61,9 +62,9 @@ class OmfAPI(object):
         self._client.create(xmpp_node)
         self._client.subscribe(xmpp_node)
 
-        address = "/%s/OMF/%s/%s" % (self._host, self._slice, self._user)
+        address = "/%s/%s/%s/%s" % (self._host, self._xmpp_root, self._slice, self._user)
         payload = self._message.newexpfunction(self._user, address)
-        slice_sid = "/OMF/%s" % (self._slice)
+        slice_sid = "/%s/%s" % (self._xmpp_root, self._slice)
         self._client.publish(payload, slice_sid)
 
     def _enroll_logger(self):
@@ -78,18 +79,18 @@ class OmfAPI(object):
         self._client.publish(payload, xmpp_node)
 
     def _host_session_id(self, hostname):
-        return "/OMF/%s/%s/%s" % (self._slice, self._user, hostname)
+        return "/%s/%s/%s/%s" % (self._xmpp_root, self._slice, self._user, hostname)
 
     def _host_resource_id(self, hostname):
-        return "/OMF/%s/resources/%s" % (self._slice, hostname)
+        return "/%s/%s/resources/%s" % (self._xmpp_root, self._slice, hostname)
 
     @property
     def _exp_session_id(self):
-        return "/OMF/%s/%s" % (self._slice, self._user)
+        return "/%s/%s/%s" % (self._xmpp_root, self._slice, self._user)
 
     @property
     def _logger_session_id(self):
-        return "/OMF/%s/%s/LOGGER" % (self._slice, self._user)
+        return "/%s/%s/%s/LOGGER" % (self._xmpp_root, self._slice, self._user)
 
     def delete(self, hostname):
         if not hostname in self._hostnames:

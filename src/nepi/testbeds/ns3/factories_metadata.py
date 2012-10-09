@@ -477,7 +477,7 @@ def configure_node(testbed_instance, guid):
     ns3 = testbed_instance.ns3
     routes = testbed_instance._add_route[guid]
     for route in routes:
-        (destination, netprefix, nexthop, metric) = route
+        (destination, netprefix, nexthop, metric, device) = route
         address = ns3.Ipv4Address(destination)
         if nexthop:
             nexthop_address = ns3.Ipv4Address(nexthop)
@@ -497,7 +497,7 @@ def configure_node(testbed_instance, guid):
                     break
             if ifindex < 0:
                 # Check previous ptp routes
-                for chaindest, chainprefix, chainhop, metric in routes:
+                for chaindest, chainprefix, chainhop, metric, device in routes:
                     if chaindest == nexthop and chainprefix == 32:
                         chainhop_address = ns3.Ipv4Address(chainhop)
                         for ifidx in xrange(nifaces):

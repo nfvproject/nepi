@@ -150,12 +150,14 @@ class TestbedController(execute.TestbedController):
             self._add_address[guid] = list()
         self._add_address[guid].append((address, netprefix, broadcast))
 
-    def defer_add_route(self, guid, destination, netprefix, nexthop, metric = 0):
+    def defer_add_route(self, guid, destination, netprefix, nexthop, 
+            metric = 0, device = None):
         self._validate_guid(guid)
         self._validate_allow_routes(guid)
         if not guid in self._add_route:
             self._add_route[guid] = list()
-        self._add_route[guid].append((destination, netprefix, nexthop, metric)) 
+        self._add_route[guid].append((destination, netprefix, nexthop, 
+            metric, device)) 
 
     def do_setup(self):
         self._root_directory = self._attributes.\

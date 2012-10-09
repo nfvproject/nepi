@@ -157,6 +157,12 @@ class Route(AttributesMap):
                 value = 0,
                 flags = Attribute.NoDefaultValue,
                 validation_function = validation.is_integer)
+        self.add_attribute(name = "Device",
+                help = "Device name", 
+                type = Attribute.STRING,
+                value = None,
+                flags = Attribute.NoDefaultValue,
+                validation_function = validation.is_string)
 
 class Box(AttributesMap, Taggable):
     def __init__(self, guid, factory, testbed_guid, container = None):

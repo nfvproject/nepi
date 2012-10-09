@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 
 import functools
+import random
 import weakref
 
 from constants import TESTBED_ID, TESTBED_VERSION
 from nepi.core import metadata
 from nepi.core.attributes import Attribute
-from nepi.util import tags, validation
+from nepi.util import tags, validation, ipaddr2
 from nepi.util.constants import ApplicationStatus as AS, \
         FactoryCategories as FC, DeploymentConfiguration as DC
 
@@ -21,6 +22,10 @@ class OmfResource(object):
     @property
     def tc(self):
         return self._tc and self._tc()
+
+    @property
+    def guid(self):
+        return self._guid
 
     def configure(self):
         pass
@@ -44,6 +49,26 @@ class OmfNode(OmfResource):
         super(OmfNode, self).__init__(guid, tc)
         self.hostname = self.tc._get_parameters(guid)['hostname']
         self.tc.api.enroll_host(self.hostname)
+
+    def configure(self):
+        routes = self.tc._add_route.get(self.guid, [])
+        iface_guids = self.tc.get_connected(self.guid, "devs", "node")
+       
+        for route in routes:
+            (destination, netprefix, nexthop, metric, device) = route
+            netmask = ipaddr2.ipv4_mask2dot(netprefix)
+
+            # Validate that the interface is associated to the node
+            for iface_guid in iface_guids:
+                iface = self.tc.elements.get(iface_guid)
+                if iface.devname == device:
+                    self.tc.api.execute(self.hostname, 
+                        "Id#%s" % str(random.getrandbits(128)), 
+                        "add -net %s netmask %s dev %s" % (destination, netmask, iface.devname), 
+                        "/sbin/route", # path
+                        None, # env
+                     )
+                    break
 
 ## APPLICATION ################################################################
 
@@ -84,6 +109,8 @@ class OmfApplication(OmfResource):
 ## WIFIIFACE ########################################################
 
 class OmfWifiInterface(OmfResource):
+    alias2name = dict({'w0':'wlan0', 'w1':'wlan1'})
+
     def __init__(self, guid, tc):
         super(OmfWifiInterface, self).__init__(guid, tc)
         node_guids = tc.get_connected(guid, "node", "devs")
@@ -91,19 +118,24 @@ class OmfWifiInterface(OmfResource):
             raise RuntimeError("Can't instantiate interface %d outside node" % guid)
 
         self._node_guid = node_guids[0] 
+        self.alias = None
         self.mode = None
         self.type = None
         self.essid = None
         self.channel = None
         self.ip = None
+        self.devname = None
 
     def __setattr__(self, name, value):
+        if name == "alias":
+            self.devname = self.alias2name.get(value)
+
         if name in ["ip", "mode", "type", "essid", "channel"]:
             node = self.tc.elements.get(self._node_guid)    
-            attribute = "net/w0/%s" % name
+            attribute = "net/%s/%s" % (self.alias, name)
             self._tc().api.configure(node.hostname, attribute, value)
-        else:
-            super(OmfWifiInterface, self).__setattr__(name, value)
+        
+        super(OmfWifiInterface, self).__setattr__(name, value)
 
 # Factories
 NODE = "Node"
@@ -138,7 +170,7 @@ def status(testbed_instance, guid):
 
 def configure(testbed_instance, guid):
     element = testbed_instance.elements.get(guid)
-    return element.status()
+    return element.configure()
 
 ### Factory information ###
 
@@ -258,9 +290,14 @@ attributes = dict({
                 "flags": Attribute.NoDefaultValue, 
                 "validation_function": validation.is_ip4_address
             }),
-
-
-
+    "alias": dict({
+                "name": "alias",
+                "help": "Alias for device (e.g. w0, w1, etc)",
+                "type": Attribute.STRING,
+                "value": "w0",
+                "flags": Attribute.NoDefaultValue, 
+                "validation_function": validation.is_string
+            }),
     })
 
 traces = dict()
@@ -273,6 +310,7 @@ factories_info = dict({
             "help": "OMF Node",
             "category": FC.CATEGORY_NODES,
             "create_function": functools.partial(create, NODE),
+            "configure_function": configure,
             "box_attributes": ["hostname"],
             "connector_types": ["devs", "apps"],
             "tags": [tags.NODE, tags.ALLOW_ROUTES],
@@ -282,7 +320,7 @@ factories_info = dict({
             "category": FC.CATEGORY_DEVICES,
             "create_function": functools.partial(create, WIFIIFACE),
             "configure_function": configure,
-            "box_attributes": ["mode", "type", "channel", "essid", "ip"],
+            "box_attributes": ["mode", "type", "channel", "essid", "ip", "alias"],
             "connector_types": ["node", "chan"],
             "tags": [tags.INTERFACE, tags.HAS_ADDRESSES],
        }),
@@ -340,6 +378,14 @@ testbed_attributes = dict({
                 "name": "xmppPassword",
                 "help": "OMF XMPP slice password",
                 "type": Attribute.STRING,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+                "validation_function": validation.is_string
+            }),
+    "xmppRoot": dict({
+                "name": "xmppRoot",
+                "help": "Root node of the xmpp server pubsub tree",
+                "type": Attribute.STRING,
+                "value": "OMF",
                 "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_string
             }),

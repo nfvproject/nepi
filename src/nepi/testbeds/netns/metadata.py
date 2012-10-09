@@ -245,7 +245,7 @@ def configure_node(testbed_instance, guid):
         return
     routes = testbed_instance._add_route[guid]
     for route in routes:
-        (destination, netprefix, nexthop, metric) = route
+        (destination, netprefix, nexthop, metric, device) = route
         element.add_route(prefix = destination, prefix_len = netprefix,
             nexthop = nexthop, metric = metric)
 
