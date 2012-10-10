@@ -71,7 +71,7 @@ route2.set_attribute_value("Destination", "224.0.0.0")
 route2.set_attribute_value("NetPrefix", 4)
 route2.set_attribute_value("Device", "wlan0")
 
-# Add a channel... this could be ommited
+# Add a channel
 channel = omf_desc.create("Channel")
 channel.set_attribute_value("mode", "adhoc")
 channel.set_attribute_value("channel", "6")

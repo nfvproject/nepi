@@ -118,22 +118,20 @@ class OmfWifiInterface(OmfResource):
             raise RuntimeError("Can't instantiate interface %d outside node" % guid)
 
         self._node_guid = node_guids[0] 
-        self.alias = None
+        self.alias = self.tc._get_parameters(self.guid)['alias']
+        self.devname = self.alias2name.get(self.alias)
         self.mode = None
         self.type = None
         self.essid = None
         self.channel = None
         self.ip = None
-        self.devname = None
 
     def __setattr__(self, name, value):
-        if name == "alias":
-            self.devname = self.alias2name.get(value)
-
         if name in ["ip", "mode", "type", "essid", "channel"]:
-            node = self.tc.elements.get(self._node_guid)    
-            attribute = "net/%s/%s" % (self.alias, name)
-            self._tc().api.configure(node.hostname, attribute, value)
+            if value is not None:
+                node = self.tc.elements.get(self._node_guid)    
+                attribute = "net/%s/%s" % (self.alias, name)
+                self._tc().api.configure(node.hostname, attribute, value)
         
         super(OmfWifiInterface, self).__setattr__(name, value)
 
