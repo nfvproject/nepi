@@ -127,13 +127,18 @@ class OmfWifiInterface(OmfResource):
         self.ip = None
 
     def __setattr__(self, name, value):
-        if name in ["ip", "mode", "type", "essid", "channel"]:
-            if value is not None:
-                node = self.tc.elements.get(self._node_guid)    
-                attribute = "net/%s/%s" % (self.alias, name)
-                self._tc().api.configure(node.hostname, attribute, value)
-        
         super(OmfWifiInterface, self).__setattr__(name, value)
+
+        try:
+            if self.mode and self.type and self.essid and self.channel and self.ip:
+                node = self.tc.elements.get(self._node_guid)    
+                for attrname in ["mode", "type", "essid", "channel", "ip"]:
+                    attrval = getattr(self, attrname)
+                    attrname = "net/%s/%s" % (self.alias, attrname)
+                    self._tc().api.configure(node.hostname, attrname, attrval)
+        except AttributeError:
+            # If the attribute is not yet defined, ignore the error
+            pass
 
 # Factories
 NODE = "Node"
