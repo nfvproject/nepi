@@ -1,0 +1,21 @@
+NODE = "node"
+NETWORK_INTERFACE = "network interface"
+SWITCH = "switch"
+TUNNEL = "tunnel"
+APPLICATION = "application"
+CHANNEL = "channel"
+CPU = "cpu"
+
+IP4ADDRESS = "ipv4"
+IP6ADDRESS = "ipv6"
+MACADDRESS = "mac"
+IPADDRESS = "ip"
+ROUTE = "route"
+FLOW = "flow"
+
+WIRELESS = "wireless"
+ETHERNET = "ethernet"
+SIMULATED = "simulated"
+VIRTUAL = "virtual"
+MOBILE = "mobile"
+
