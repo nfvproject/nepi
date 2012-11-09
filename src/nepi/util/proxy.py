@@ -759,7 +759,7 @@ class TestbedControllerServer(BaseServer):
                 broadcast)
 
     @Marshalling.handles(ADD_ROUTE)
-    @Marshalling.args(int, str, int, str, int)
+    @Marshalling.args(int, str, int, str, int, str)
     @Marshalling.retvoid
     def defer_add_route(self, guid, destination, netprefix, nexthop, 
             metric, device):
