@@ -1,5 +1,5 @@
 from neco.execution.resource import Resource
-from neco.util.sshfuncs import eintr_retry, shell_escape, rexec, rcopy, \
+from neco.util.sshfuncs import eintr_retry, rexec, rcopy, \
         rspawn, rcheck_pid, rstatus, rkill, RUNNING 
 
 import cStringIO
@@ -131,19 +131,19 @@ class LinuxNode(Resource):
     def mkdir(self, path, clean = True):
         if clean:
             self.execute(
-                "rm -f %s" % shell_escape(path),
+                "rm -rf %s" % path,
                 timeout = 120,
                 retry = 3
                 )
 
         self.execute(
-            "mkdir -p %s" % shell_escape(path),
+            "mkdir -p %s" % path,
             timeout = 120,
             retry = 3
             )
 
     def run(self, command, home, 
-            stdin = 'stdin', 
+            stdin = None, 
             stdout = 'stdout', 
             stderr = 'stderr', 
             sudo = False):

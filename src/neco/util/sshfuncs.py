@@ -160,8 +160,6 @@ def rexec(command, host, user,
         command = "sudo " + command
     args.append(command)
 
-    print " ".join(args)
-
     for x in xrange(retry or 3):
         # connects to the remote host and starts a remote connection
         proc = subprocess.Popen(args, 
@@ -250,9 +248,9 @@ def rcopy(source, dest, host, user,
             args.extend(('-i', identity_file))
         
         if isinstance(source, file) or hasattr(source, 'read'):
-            args.append('cat > %s' % (shell_escape(dest),))
+            args.append('cat > %s' % dest)
         elif isinstance(dest, file) or hasattr(dest, 'write'):
-            args.append('cat %s' % (shell_escape(dest),))
+            args.append('cat %s' % dest)
         else:
             raise AssertionError, "Unreachable code reached! :-Q"
         
@@ -436,21 +434,21 @@ def rspawn(command, pidfile,
     
     daemon_command = '{ { %(command)s  > %(stdout)s 2>%(stderr)s < %(stdin)s & } ; echo $! 1 > %(pidfile)s ; }' % {
         'command' : command,
-        'pidfile' : shell_escape(pidfile),
+        'pidfile' : pidfile,
         
         'stdout' : stdout,
         'stderr' : stderr,
         'stdin' : stdin,
     }
     
-    cmd = "%(create)s%(gohome)s rm -f %(pidfile)s ; %(sudo)s nohup bash -c %(command)s " % {
-            'command' : shell_escape(daemon_command),
+    cmd = "%(create)s%(gohome)s rm -f %(pidfile)s ; %(sudo)s nohup bash -c '%(command)s' " % {
+            'command' : daemon_command,
             
             'sudo' : 'sudo -S' if sudo else '',
             
-            'pidfile' : shell_escape(pidfile),
-            'gohome' : 'cd %s ; ' % (shell_escape(home),) if home else '',
-            'create' : 'mkdir -p %s ; ' % (shell_escape,) if create_home else '',
+            'pidfile' : pidfile,
+            'gohome' : 'cd %s ; ' % home if home else '',
+            'create' : 'mkdir -p %s ; ' % home if create_home else '',
         }
 
     (out,err), proc = rexec(

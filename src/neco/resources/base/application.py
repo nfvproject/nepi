@@ -42,7 +42,7 @@ class Application(Resource):
         self.kill()
 
     def run(self):
-        dst = os.path.join(self.app_home, "app.ssh")
+        dst = os.path.join(self.app_home, "app.sh")
         
         # Create shell script with the command
         # This way, complex commands and scripts can be ran seamlessly
@@ -56,8 +56,9 @@ class Application(Resource):
         cmd += self.command
         self.node.upload(cmd, dst)
 
-        cmd = "bash ./app.sh",
-        self.node.run(cmd, self.app_home)
+        command = 'bash ./app.sh'
+        stdin = 'stdin' if self.stdin else None
+        self.node.run(command, self.app_home, stdin = stdin)
         self.pid, self.ppid = self.node.checkpid(self.app_home)
 
     def status(self):
