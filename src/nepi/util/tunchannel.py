@@ -180,7 +180,7 @@ def decrypt(packet, crypter, ord=ord):
         padding = ord(packet[-1])
         if not (0 < padding <= crypter.block_size):
             # wrong padding
-            raise RuntimeError, "Truncated packet"
+            raise RuntimeError, "Truncated packet %s"
         packet = packet[:-padding]
     
     return packet
@@ -216,18 +216,27 @@ def tun_fwd(tun, remote, with_pi, ether_mode, cipher_key, udp, TERMINATE, SUSPEN
             ciphername = cipher
             cipher = getattr(Crypto.Cipher, cipher)
             hashed_key = hashlib.sha256(cipher_key).digest()
-            if getattr(cipher, 'key_size'):
-                hashed_key = hashed_key[:cipher.key_size]
+
+            if ciphername == 'AES':
+                hashed_key = hashed_key[:16]
+            elif ciphername == 'Blowfish':
+                hashed_key = hashed_key[:24]
+            elif ciphername == 'DES':
+                hashed_key = hashed_key[:8]
             elif ciphername == 'DES3':
                 hashed_key = hashed_key[:24]
+
             crypter = cipher.new(
                 hashed_key, 
                 cipher.MODE_ECB)
             crypto_mode = True
     except:
+        # We don't want decription to work only on one side,
+        # This could break things really bad
+        #crypto_mode = False
+        #crypter = None
         traceback.print_exc(file=sys.stderr)
-        crypto_mode = False
-        crypter = None
+        raise
 
     if stderr is not None:
         if crypto_mode:
