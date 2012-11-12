@@ -118,7 +118,6 @@ def rexec(command, host, user,
         stdin = "", 
         identity_file = None,
         tty = False,
-        tty2 = False,
         timeout = None,
         retry = 0,
         err_on_timeout = True,
@@ -153,9 +152,9 @@ def rexec(command, host, user,
         args.extend(('-i', identity_file))
     if tty:
         args.append('-t')
-    elif tty2:
-        args.append('-t')
-        args.append('-t')
+        if sudo:
+            args.append('-t')
+
     if sudo:
         command = "sudo " + command
     args.append(command)
@@ -582,10 +581,7 @@ def rkill(pid, ppid,
         Nothing, should have killed the process
     """
     
-    if sudo:
-        subkill = "$(ps --ppid %(pid)d -o pid h)" % { 'pid' : pid }
-    else:
-        subkill = ""
+    subkill = "$(ps --ppid %(pid)d -o pid h)" % { 'pid' : pid }
     cmd = """
 SUBKILL="%(subkill)s" ;
 %(sudo)s kill -- -%(pid)d $SUBKILL || /bin/true

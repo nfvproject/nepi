@@ -8,6 +8,8 @@ import unittest
 
 class BoxPlotTestCase(unittest.TestCase):
     def xtest_plot(self):
+        """ XXX: This test is interactive, it will open an evince instance,
+        so it should not run automatically """
         node1 = Box(label="node1")
         ping1 = Box(label="ping")
         mobility1 = Box(label="mob1")

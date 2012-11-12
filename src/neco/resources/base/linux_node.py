@@ -36,60 +36,31 @@ class LinuxNode(Resource):
         out = self.execute("cat /etc/issue")
 
         if out.find("Fedora") == 0:
-            self._pm = "yum -y "
+            self._pm = "yum"
         elif out.find("Debian") == 0 or out.find("Ubuntu") ==0:
-            self._pm = "apt-get -y "
+            self._pm = "apt-get"
         else:
             msg = "Can't resolve package management system. Unknown OS."
             self._logger.error(msg)
             raise RuntimeError(msg)
 
         return self._pm
-    
-    def execute(self, command,
-            agent = True,
-            sudo = False,
-            stdin = "", 
-            tty = False,
-            timeout = None,
-            retry = 0,
-            err_on_timeout = True,
-            connect_timeout = 30,
-            persistent = True):
-        """ Notice that this invocation will block until the
-        execution finishes. If this is not the desired behavior,
-        use 'run' instead."""
-        (out, err), proc = eintr_retry(rexec)(
-                command, 
-                self.host or self.ip, 
-                self.user,
-                port = self.port, 
-                agent = agent,
-                sudo = sudo,
-                stdin = stdin, 
-                identity_file = self.identity_file,
-                tty = tty,
-                timeout = timeout,
-                retry = retry,
-                err_on_timeout = err_on_timeout,
-                connect_timeout = connect_timeout,
-                persistent = persistent)
 
-        if proc.wait():
-            msg = "Failed to execute command %s at node %s: %s %s" % \
-                    (command, self.host or self.ip, out, err,)
-            self._logger.warn(msg)
-            raise RuntimeError(msg)
+    def install(self, packages):
+        if not isinstance(packages, list):
+            packages = [packages]
 
-        return out
+        for p in packages:
+            self.execute("%s -y install %s" % (self.pm, p), sudo = True, 
+                    tty = True)
 
-    def package_install(self, dependencies):
-        if not isinstance(dependencies, list):
-            dependencies = [dependencies]
+    def uninstall(self, packages):
+        if not isinstance(packages, list):
+            packages = [packages]
 
-        for d in dependencies:
-            self.execute("%s install %s" % (self.pm, d), sudo = True, 
-                    tty2 = True)
+        for p in packages:
+            self.execute("%s -y remove %s" % (self.pm, p), sudo = True, 
+                    tty = True)
 
     def upload(self, src, dst):
         if not os.path.isfile(src):
@@ -130,17 +101,57 @@ class LinuxNode(Resource):
 
     def mkdir(self, path, clean = True):
         if clean:
-            self.execute(
-                "rm -rf %s" % path,
-                timeout = 120,
-                retry = 3
-                )
+            self.rmdir(path)
 
         self.execute(
             "mkdir -p %s" % path,
             timeout = 120,
             retry = 3
             )
+
+    def rmdir(self, path):
+        self.execute(
+            "rm -rf %s" % path,
+            timeout = 120,
+            retry = 3
+            )
+
+    def execute(self, command,
+            agent = True,
+            sudo = False,
+            stdin = "", 
+            tty = False,
+            timeout = None,
+            retry = 0,
+            err_on_timeout = True,
+            connect_timeout = 30,
+            persistent = True):
+        """ Notice that this invocation will block until the
+        execution finishes. If this is not the desired behavior,
+        use 'run' instead."""
+        (out, err), proc = eintr_retry(rexec)(
+                command, 
+                self.host or self.ip, 
+                self.user,
+                port = self.port, 
+                agent = agent,
+                sudo = sudo,
+                stdin = stdin, 
+                identity_file = self.identity_file,
+                tty = tty,
+                timeout = timeout,
+                retry = retry,
+                err_on_timeout = err_on_timeout,
+                connect_timeout = connect_timeout,
+                persistent = persistent)
+
+        if proc.wait():
+            msg = "Failed to execute command %s at node %s: %s %s" % \
+                    (command, self.host or self.ip, out, err,)
+            self._logger.warn(msg)
+            raise RuntimeError(msg)
+
+        return out
 
     def run(self, command, home, 
             stdin = None, 
