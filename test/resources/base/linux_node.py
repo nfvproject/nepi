@@ -11,42 +11,46 @@ class DummyEC(object):
     pass
 
 class LinuxBoxTestCase(unittest.TestCase):
-    def test_execute(self):
+    def setUp(self):
+        host = 'nepi2.pl.sophia.inria.fr'
+        user = 'inria_nepi'
+        self.node_fedora = self.create_node(host, user)
+
+        host = 'roseval.pl.sophia.inria.fr'
+        user = 'alina'
+        self.node_ubuntu = self.create_node(host, user)
+        
+        self.target = 'nepi5.pl.sophia.inria.fr'
+        self.home = '${HOME}/test-app'
+
+    def create_node(self, host, user):
         box = Box()
         ec = DummyEC()
 
         node = LinuxNode(box, ec)
-        node.host = 'nepi2.pl.sophia.inria.fr'
-        node.user = 'inria_nepi'
+        node.host = host
+        node.user = user
 
-        self.assertEquals(node.pm, "yum")
-        self.assertTrue(node.is_alive())
+        return node
 
-        command = "ping -qc3 nepi5.pl.sophia.inria.fr"
+    def t_execute(self, node, target):
+        command = "ping -qc3 %s" % target
         out = node.execute(command)
 
         expected = """3 packets transmitted, 3 received, 0% packet loss"""
 
         self.assertTrue(out.find(expected) > 0)
 
-    def test_run(self):
-        box = Box()
-        ec = DummyEC()
-
-        node = LinuxNode(box, ec)
-        node.host = 'nepi2.pl.sophia.inria.fr'
-        node.user = 'inria_nepi'
-
-        home = '${HOME}/test-app'
-        node.mkdir(home, clean = True)
+    def t_run(self, node, target):
+        node.mkdir(self.home, clean = True)
         
-        command = "ping nepi5.pl.sophia.inria.fr"
-        dst = os.path.join(home, "app.sh")
+        command = "ping %s" % target
+        dst = os.path.join(self.home, "app.sh")
         node.upload(command, dst)
         
         cmd = "bash ./app.sh"
-        node.run(cmd, home)
-        pid, ppid = node.checkpid(home)
+        node.run(cmd, self.home)
+        pid, ppid = node.checkpid(self.home)
 
         status = node.status(pid, ppid)
         self.assertTrue(status, RUNNING)
@@ -55,21 +59,10 @@ class LinuxBoxTestCase(unittest.TestCase):
         status = node.status(pid, ppid)
         self.assertTrue(status, FINISHED)
 
-        node.rmdir(home)
+        node.rmdir(self.home)
 
-    def test_install(self):
-        box = Box()
-        ec = DummyEC()
-
-        node = LinuxNode(box, ec)
-        node.host = 'nepi2.pl.sophia.inria.fr'
-        node.user = 'inria_nepi'
-
-        self.assertEquals(node.pm, "yum")
-        self.assertTrue(node.is_alive())
-
-        home = '${HOME}/test-app'
-        node.mkdir(home, clean = True)
+    def t_install(self, node, target):
+        node.mkdir(self.home, clean = True)
 
         prog = """#include <stdio.h>
 
@@ -80,21 +73,39 @@ main (void)
     return 0;
 }
 """
-        dst = os.path.join(home, "hello.c")
+        dst = os.path.join(self.home, "hello.c")
         node.upload(prog, dst)
 
         node.install('gcc')
 
-        command = "cd ${HOME}/test-app; gcc -Wall hello.c -o hello"
+        command = "cd %s; gcc -Wall hello.c -o hello" % self.home
         out = node.execute(command)
 
-        command = "${HOME}/test-app/hello"
+        command = "%s/hello" % self.home
         out = node.execute(command)
 
         self.assertEquals(out, "Hello, world!\n")
 
         node.uninstall('gcc')
-        node.rmdir(home)
+        node.rmdir(self.home)
+
+    def test_execute_fedora(self):
+        self.t_execute(self.node_fedora, self.target)
+
+    def test_execute_ubuntu(self):
+        self.t_execute(self.node_ubuntu, self.target)
+
+    def test_run_fedora(self):
+        self.t_run(self.node_fedora, self.target)
+
+    def test_run_ubuntu(self):
+        self.t_run(self.node_ubuntu, self.target)
+
+    def test_intall_fedora(self):
+        self.t_install(self.node_fedora, self.target)
+
+    def test_install_ubuntu(self):
+        self.t_install(self.node_ubuntu, self.target)
 
 if __name__ == '__main__':
     unittest.main()
