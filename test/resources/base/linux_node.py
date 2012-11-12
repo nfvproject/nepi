@@ -7,6 +7,7 @@ import os.path
 import time
 import unittest
 
+
 class DummyEC(object):
     pass
 
@@ -34,6 +35,10 @@ class LinuxBoxTestCase(unittest.TestCase):
         return node
 
     def t_execute(self, node, target):
+        if not node.is_alive():
+            print "*** WARNING: Skipping test: Node %s is not alive\n" % (node.host)
+            return 
+
         command = "ping -qc3 %s" % target
         out = node.execute(command)
 
@@ -42,6 +47,10 @@ class LinuxBoxTestCase(unittest.TestCase):
         self.assertTrue(out.find(expected) > 0)
 
     def t_run(self, node, target):
+        if not node.is_alive():
+            print "*** WARNING: Skipping test: Node %s is not alive\n" % (node.host)
+            return
+
         node.mkdir(self.home, clean = True)
         
         command = "ping %s" % target
@@ -62,6 +71,10 @@ class LinuxBoxTestCase(unittest.TestCase):
         node.rmdir(self.home)
 
     def t_install(self, node, target):
+        if not node.is_alive():
+            print "*** WARNING: Skipping test: Node %s is not alive\n" % (node.host)
+            return
+
         node.mkdir(self.home, clean = True)
 
         prog = """#include <stdio.h>

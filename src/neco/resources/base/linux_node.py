@@ -91,12 +91,14 @@ class LinuxNode(Resource):
                 persistent = False)
         
         if proc.wait():
-            self._logger.warn("Unresponsive node %s got:\n%s%s", self.host, out, err)
+            if verbose:
+                self._logger.warn("Unresponsive node %s got:\n%s%s", self.host, out, err)
             return False
         elif out.strip().startswith('ALIVE'):
             return True
         else:
-            self._logger.warn("Unresponsive node %s got:\n%s%s", self.host, out, err)
+            if verbose:
+                self._logger.warn("Unresponsive node %s got:\n%s%s", self.host, out, err)
             return False
 
     def mkdir(self, path, clean = True):
