@@ -1,6 +1,6 @@
 from neco.execution.resource import Resource
 from neco.util.sshfuncs import eintr_retry, rexec, rcopy, \
-        rspawn, rcheck_pid, rstatus, rkill, RUNNING 
+        rspawn, rcheck_pid, rstatus, rkill, make_control_path, RUNNING 
 
 import cStringIO
 import logging
@@ -14,6 +14,9 @@ class LinuxNode(Resource):
         self.user = None
         self.port = None
         self.identity_file = None
+        self.enable_x11 = False
+        self.forward_agent = True
+
         # packet management system - either yum or apt for now...
         self._pm = None
        
@@ -22,6 +25,20 @@ class LinuxNode(Resource):
         self._logger = logging.getLogger("neco.resources.base.LinuxNode.%s" %\
                 self.box.guid)
         self._logger.setLevel(getattr(logging, loglevel.upper()))
+
+        # For ssh connections we use the ControlMaster option which 
+        # allows us to decrease the number of open ssh network connections.
+        # Subsequent ssh connections will reuse a same master connection.
+        # This might pose a problem when using X11 and ssh-agent, since
+        # display and agent forwarded will be those of the first connection,
+        # which created the master. 
+        # To avoid reusing a master created by a previous LinuxNode instance,
+        # we explicitly erase the ControlPath socket.
+        control_path = make_control_path(self.user, self.host, self.port)
+        try:
+            os.remove(control_path)
+        except:
+            pass
 
     @property
     def pm(self):
@@ -66,10 +83,26 @@ class LinuxNode(Resource):
         if not os.path.isfile(src):
             src = cStringIO.StringIO(src)
 
+        # Build destination as <user>@<server>:<path>
+        dst = "%s@%s:%s" % (self.user, self.host or self.ip, dst)
+
         (out, err), proc = eintr_retry(rcopy)(
             src, dst, 
-            self.host or self.ip, 
-            self.user,
+            port = self.port,
+            identity_file = self.identity_file)
+
+        if proc.wait():
+            msg = "Error uploading to %s got:\n%s%s" %\
+                    (self.host or self.ip, out, err)
+            self._logger.error(msg)
+            raise RuntimeError(msg)
+
+    def download(self, src, dst):
+        # Build destination as <user>@<server>:<path>
+        src = "%s@%s:%s" % (self.user, self.host or self.ip, src)
+
+        (out, err), proc = eintr_retry(rcopy)(
+            src, dst, 
             port = self.port,
             identity_file = self.identity_file)
 
@@ -85,7 +118,9 @@ class LinuxNode(Resource):
                 self.host or self.ip, 
                 self.user,
                 port = self.port, 
+                agent = self.forward_agent,
                 identity_file = self.identity_file,
+                x11 = self.enable_x11,
                 timeout = 60,
                 err_on_timeout = False,
                 persistent = False)
@@ -119,10 +154,10 @@ class LinuxNode(Resource):
             )
 
     def execute(self, command,
-            agent = True,
             sudo = False,
             stdin = "", 
             tty = False,
+            env = None,
             timeout = None,
             retry = 0,
             err_on_timeout = True,
@@ -136,11 +171,13 @@ class LinuxNode(Resource):
                 self.host or self.ip, 
                 self.user,
                 port = self.port, 
-                agent = agent,
+                agent = self.forward_agent,
                 sudo = sudo,
                 stdin = stdin, 
                 identity_file = self.identity_file,
                 tty = tty,
+                x11 = self.enable_x11,
+                env = env,
                 timeout = timeout,
                 retry = retry,
                 err_on_timeout = err_on_timeout,
@@ -175,6 +212,7 @@ class LinuxNode(Resource):
             host = self.host,
             user = self.user,
             port = self.port,
+            agent = self.forward_agent,
             identity_file = self.identity_file
             )
         
@@ -189,6 +227,7 @@ class LinuxNode(Resource):
             host = self.host,
             user = self.user,
             port = self.port,
+            agent = self.forward_agent,
             identity_file = self.identity_file
             )
         
@@ -200,6 +239,7 @@ class LinuxNode(Resource):
                 host = self.host,
                 user = self.user,
                 port = self.port,
+                agent = self.forward_agent,
                 identity_file = self.identity_file
                 )
            
@@ -214,6 +254,7 @@ class LinuxNode(Resource):
                 host = self.host,
                 user = self.user,
                 port = self.port,
+                agent = self.forward_agent,
                 sudo = sudo,
                 identity_file = self.identity_file
                 )

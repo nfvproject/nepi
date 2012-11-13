@@ -34,6 +34,21 @@ class LinuxBoxTestCase(unittest.TestCase):
 
         return node
 
+    def t_xterm(self, node, target):
+        if not node.is_alive():
+            print "*** WARNING: Skipping test: Node %s is not alive\n" % (node.host)
+            return 
+
+        node.enable_x11 = True
+
+        node.install('xterm')
+
+        out = node.execute('xterm')
+
+        node.uninstall('xterm')
+
+        self.assertEquals(out, "")
+
     def t_execute(self, node, target):
         if not node.is_alive():
             print "*** WARNING: Skipping test: Node %s is not alive\n" % (node.host)
@@ -97,10 +112,10 @@ main (void)
         command = "%s/hello" % self.home
         out = node.execute(command)
 
-        self.assertEquals(out, "Hello, world!\n")
-
         node.uninstall('gcc')
         node.rmdir(self.home)
+
+        self.assertEquals(out, "Hello, world!\n")
 
     def test_execute_fedora(self):
         self.t_execute(self.node_fedora, self.target)
@@ -119,6 +134,16 @@ main (void)
 
     def test_install_ubuntu(self):
         self.t_install(self.node_ubuntu, self.target)
+
+    def xtest_xterm_fedora(self):
+        """ PlanetLab doesn't currently support X11 forwarding.
+        Interactive test. Should not run automatically """
+        self.t_xterm(self.node_fedora, self.target)
+
+    def xtest_xterm_ubuntu(self):
+        """ Interactive test. Should not run automatically """
+        self.t_xterm(self.node_ubuntu, self.target)
+
 
 if __name__ == '__main__':
     unittest.main()
