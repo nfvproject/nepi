@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from neco.resources.base.linux_node import LinuxNode
+from neco.resources.linux.node import LinuxNode
 from neco.design.box import Box
 from neco.util.sshfuncs import RUNNING, FINISHED
 
