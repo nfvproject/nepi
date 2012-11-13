@@ -5,6 +5,7 @@ from neco.util.sshfuncs import RUNNING, FINISHED
 
 import os.path
 import time
+import tempfile
 import unittest
 
 
@@ -34,7 +35,7 @@ class LinuxBoxTestCase(unittest.TestCase):
 
         return node
 
-    def t_xterm(self, node, target):
+    def t_xterm(self, node):
         if not node.is_alive():
             print "*** WARNING: Skipping test: Node %s is not alive\n" % (node.host)
             return 
@@ -85,7 +86,7 @@ class LinuxBoxTestCase(unittest.TestCase):
 
         node.rmdir(self.home)
 
-    def t_install(self, node, target):
+    def t_install(self, node):
         if not node.is_alive():
             print "*** WARNING: Skipping test: Node %s is not alive\n" % (node.host)
             return
@@ -101,20 +102,41 @@ main (void)
     return 0;
 }
 """
+        # upload the test program
         dst = os.path.join(self.home, "hello.c")
         node.upload(prog, dst)
 
+        # install gcc
         node.install('gcc')
 
+        # compile the program using gcc
         command = "cd %s; gcc -Wall hello.c -o hello" % self.home
         out = node.execute(command)
 
+        # execute the program and get the output from stout
         command = "%s/hello" % self.home
         out = node.execute(command)
+
+        # execute the program and get the output from a file
+        command = "%s/hello > %s/hello.out" % (self.home, self.home)
+        node.execute(command)
+
+        # retrieve the output file 
+        src = os.path.join(self.home, "hello.out")
+        f = tempfile.NamedTemporaryFile(delete=False)
+        dst = f.name
+        node.download(src, dst)
+        f.close()
 
         node.uninstall('gcc')
         node.rmdir(self.home)
 
+        self.assertEquals(out, "Hello, world!\n")
+
+        f = open(dst, "r")
+        out = f.read()
+        f.close()
+        
         self.assertEquals(out, "Hello, world!\n")
 
     def test_execute_fedora(self):
@@ -130,19 +152,19 @@ main (void)
         self.t_run(self.node_ubuntu, self.target)
 
     def test_intall_fedora(self):
-        self.t_install(self.node_fedora, self.target)
+        self.t_install(self.node_fedora)
 
     def test_install_ubuntu(self):
-        self.t_install(self.node_ubuntu, self.target)
+        self.t_install(self.node_ubuntu)
 
     def xtest_xterm_fedora(self):
         """ PlanetLab doesn't currently support X11 forwarding.
         Interactive test. Should not run automatically """
-        self.t_xterm(self.node_fedora, self.target)
+        self.t_xterm(self.node_fedora)
 
     def xtest_xterm_ubuntu(self):
         """ Interactive test. Should not run automatically """
-        self.t_xterm(self.node_ubuntu, self.target)
+        self.t_xterm(self.node_ubuntu)
 
 
 if __name__ == '__main__':
