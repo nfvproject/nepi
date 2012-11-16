@@ -72,7 +72,7 @@ class PLCAPI(object):
      
     _required_methods = set()
 
-    def __init__(self, username=None, password=None, sessionkey=None,
+    def __init__(self, username=None, password=None, sessionkey=None, proxy=None,
             hostname = "www.planet-lab.eu",
             urlpattern = "https://%(hostname)s:443/PLCAPI/",
             localPeerName = "PLE"):
@@ -85,6 +85,21 @@ class PLCAPI(object):
         
         self._localPeerName = localPeerName
         self._url = urlpattern % {'hostname':hostname}
+        if (proxy is not None):
+            import urllib2
+            class HTTPSProxyTransport(xmlrpclib.Transport):
+                def __init__(self, proxy, use_datetime=0):
+                    opener = urllib2.build_opener(urllib2.ProxyHandler({"https" : proxy}))
+                    xmlrpclib.Transport.__init__(self, use_datetime)
+                    self.opener = opener
+                def request(self, host, handler, request_body, verbose=0):
+                    req = urllib2.Request('https://%s%s' % (host, handler), request_body)
+                    req.add_header('User-agent', self.user_agent)
+                    self.verbose = verbose
+                    return self.parse_response(self.opener.open(req))
+            self._proxyTransport = lambda : HTTPSProxyTransport(proxy)
+        else:
+            self._proxyTransport = lambda : None
         
         self.threadlocal = threading.local()
     
@@ -93,6 +108,7 @@ class PLCAPI(object):
         # Cannot reuse same proxy in all threads, py2.7 is not threadsafe
         return xmlrpclib.ServerProxy(
             self._url ,
+            transport = self._proxyTransport(),
             allow_none = True)
         
     @property
@@ -329,14 +345,15 @@ class PLCAPI(object):
         else:
             return None
  
-def plcapi(auth_user, auth_string, plc_host, plc_url):
+def plcapi(auth_user, auth_string, plc_host, plc_url, proxy):
     api = None
     if auth_user:
         api = PLCAPI(
             username = auth_user,
             password = auth_string,
             hostname = plc_host,
-            urlpattern = plc_url
+            urlpattern = plc_url,
+            proxy = proxy
         )
     else:
         # anonymous access - may not be enough for much
