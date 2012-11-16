@@ -36,7 +36,7 @@ signal.signal(signal.SIGTERM, _finalize)
 signal.signal(signal.SIGINT, _finalize)
 
 def create_slice_desc(slicename, plc_host, pl_user, pl_pwd, pl_ssh_key, 
-        port_base, root_dir, exp_desc):
+        port_base, root_dir, proxy, exp_desc):
     pl_provider = FactoriesProvider("planetlab")
     slice_desc = exp_desc.add_testbed_description(pl_provider)
     slice_desc.set_attribute_value("homeDirectory", root_dir)
@@ -45,6 +45,8 @@ def create_slice_desc(slicename, plc_host, pl_user, pl_pwd, pl_ssh_key,
     slice_desc.set_attribute_value("authUser", pl_user)
     slice_desc.set_attribute_value("authPass", pl_pwd)
     slice_desc.set_attribute_value("plcHost", plc_host)
+    if proxy:
+        slice_desc.set_attribute_value("proxy", proxy)
     slice_desc.set_attribute_value("tapPortBase", port_base)
     slice_desc.set_attribute_value("p2pDeployment", True)
     # Kills all running processes before starting the experiment
@@ -132,14 +134,14 @@ def exec_ccncatchunks(slicename, port, hostname):
     return proc2
 
 def create_ed(hostnames, vsys_vnet, slicename, plc_host, pl_user, pl_pwd, pl_ssh_key, 
-        port_base, root_dir, delay, port):
+        port_base, root_dir, delay, port, proxy):
 
     # Create the experiment description object
     exp_desc = ExperimentDescription()
 
     # Create the slice description object
     slice_desc = create_slice_desc(slicename, plc_host, pl_user, pl_pwd, pl_ssh_key, 
-        port_base, root_dir, exp_desc)
+        port_base, root_dir, proxy, exp_desc)
     
     # Create the Internet box object
     pl_inet = slice_desc.create("Internet")
@@ -171,11 +173,11 @@ def create_ed(hostnames, vsys_vnet, slicename, plc_host, pl_user, pl_pwd, pl_ssh
     return exp_desc, pl_nodes, hostname, pl_app
 
 def run(hostnames, vsys_vnet, slicename, plc_host, pl_user, pl_pwd, pl_ssh_key, 
-        port_base, root_dir, delay, port):
+        port_base, root_dir, delay, port, proxy):
 
     exp_desc, pl_nodes, hostname, pl_app = create_ed(hostnames, vsys_vnet, 
             slicename, plc_host, pl_user, pl_pwd, pl_ssh_key, port_base, 
-            root_dir, delay, port)
+            root_dir, delay, port, proxy)
 
     xml = exp_desc.to_xml()
     controller = ExperimentController(xml, root_dir)
@@ -199,7 +201,7 @@ def run(hostnames, vsys_vnet, slicename, plc_host, pl_user, pl_pwd, pl_ssh_key,
 
     while not TERMINATE and proc1 and proc2 and proc2.poll() is None:
         time.sleep(0.5)
-   
+
     if proc1:
         if proc1.poll() < 1:
            err = proc1.stderr.read()
@@ -248,7 +250,7 @@ if __name__ == '__main__':
                  'planetlab2.esprit-tn.com' ]
     ccn_local_port = os.environ.get('CCN_LOCAL_PORT')
 
-    usage = "usage: %prog -s <pl_slice> -H <pl_host> -k <ssh_key> -u <pl_user> -p <pl_password> -v <vsys_vnet> -N <host_names> -c <node_count> -d <delay> -P <ccn-local-port>"
+    usage = "usage: %prog -s <pl_slice> -H <pl_host> -k <ssh_key> -u <pl_user> -p <pl_password> -v <vsys_vnet> -N <host_names> -c <node_count> -d <delay> -P <ccn-local-port> -x <proxy>"
 
     parser = OptionParser(usage=usage)
     parser.add_option("-s", "--slicename", dest="slicename", 
@@ -272,18 +274,22 @@ if __name__ == '__main__':
             default=pl_hostnames, type="str")
     parser.add_option("-c", "--node-count", dest="node_count", 
             help="Number of nodes to use", 
-            default=9, type="str")
+            default=9, type="int")
     parser.add_option("-d", "--delay", dest="delay", 
             help="Time to wait before retrieveing the second video stream in seconds", 
             default=40, type="int")
     parser.add_option("-P", "--ccn-local-port", dest="port", 
             help="Port to bind the CCNx daemon", 
             default=ccn_local_port, type="int")
+    parser.add_option("-x", "--proxy", dest="proxy", 
+            help="Https proxy between here and PlanetLab machines", 
+            default=None, type="str")
     (options, args) = parser.parse_args()
 
     hostnames = map(string.strip, options.hostnames.split(",")) if options.hostnames else default_hostnames
     if options.node_count > 0 and options.node_count < len(hostnames):
        hostnames = hostnames[0:options.node_count]
+
     vsys_vnet = options.vsys_vnet
     slicename = options.slicename
     pl_host = options.pl_host
@@ -292,7 +298,8 @@ if __name__ == '__main__':
     pl_ssh_key = options.pl_ssh_key
     delay = options.delay
     port = options.port
+    proxy = options.proxy
 
     run(hostnames, vsys_vnet, slicename, pl_host, pl_user, pl_pwd, pl_ssh_key, 
-            port_base, root_dir, delay, port)
+            port_base, root_dir, delay, port, proxy)
 

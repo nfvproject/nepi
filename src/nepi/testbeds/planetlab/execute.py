@@ -70,7 +70,8 @@ class TestbedController(testbed_impl.TestbedController):
                     self.authUser,
                     self.authString,
                     self.plcHost,
-                    self.plcUrl
+                    self.plcUrl,
+                    self.proxy
                     )
         return self._plcapi
 
@@ -139,6 +140,8 @@ class TestbedController(testbed_impl.TestbedController):
             get_attribute_value("plcUrl")
         self.logLevel = self._attributes.\
             get_attribute_value("plLogLevel")
+        self.proxy = self._attributes.\
+            get_attribute_value("proxy")
         self.tapPortBase = self._attributes.\
             get_attribute_value("tapPortBase")
         self.p2pDeployment = self._attributes.\

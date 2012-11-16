@@ -1787,6 +1787,13 @@ testbed_attributes = dict({
             "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
             "validation_function": validation.is_string
         }),
+        "proxy": dict({
+            "name": "proxy",
+            "help": "Https proxy to connect to the outside world",
+            "type": Attribute.STRING,
+            "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+            "validation_function": validation.is_string
+        }),
         "p2p_deployment": dict({
             "name": "p2pDeployment",
             "help": "Enable peer-to-peer deployment of applications and dependencies. "
