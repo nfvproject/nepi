@@ -91,7 +91,10 @@ class Dependency(object):
             self.__class__.__name__,
             ' '.join(filter(bool,(self.depends, self.sources)))
         )
-    
+   
+    def deployed(self):
+        return self._setup
+
     def validate(self):
         if self.home_path is None:
             raise AssertionError, "Misconfigured application: missing home path"

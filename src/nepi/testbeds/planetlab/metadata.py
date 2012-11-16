@@ -440,6 +440,15 @@ def status_application(testbed_instance, guid):
     app = testbed_instance.elements[guid]
     return app.status()
 
+def status_dependency(testbed_instance, guid):
+    if guid not in testbed_instance.elements.keys():
+        return AS.STATUS_NOT_STARTED
+    
+    dep = testbed_instance.elements[guid]
+    if dep.deployed():
+        return AS.STATUS_RUNNING
+    return AS.STATUS_FINISHED
+
 ### Configure functions ###
 
 def configure_nodeiface(testbed_instance, guid):
@@ -1636,6 +1645,7 @@ factories_info = dict({
             "category": FC.CATEGORY_APPLICATIONS,
             "create_function": create_dependency,
             "preconfigure_function": configure_dependency,
+            "status_function": status_dependency,
             "box_attributes": ["depends", "build-depends", "build", "install",
                                "sources", "rpm-fusion" ],
             "connector_types": ["node"],
