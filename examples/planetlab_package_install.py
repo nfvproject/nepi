@@ -74,9 +74,10 @@ while not stop:
     stop = True
     for pl_dep in set(deps):
         if not controller.is_finished(pl_dep.guid):
-            deps.remove(pl_dep)
             stop = False
             break
+        else:
+            deps.remove(pl_dep)
 
     time.sleep(0.5)
 
