@@ -72,15 +72,17 @@ controller = ExperimentController(xml, root_dir)
 controller.start()
 
 stop = False
+
 while not stop:
+    time.sleep(0.5)
+
     stop = True
     for pl_app in set(apps):
         if not controller.is_finished(pl_app.guid):
-            apps.remove(pl_app)
             stop = False
             break
-
-    time.sleep(0.5)
+        else:
+            apps.remove(pl_app)
 
 controller.stop()
 controller.shutdown()

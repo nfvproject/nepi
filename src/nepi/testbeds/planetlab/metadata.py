@@ -446,8 +446,8 @@ def status_dependency(testbed_instance, guid):
     
     dep = testbed_instance.elements[guid]
     if dep.deployed():
-        return AS.STATUS_RUNNING
-    return AS.STATUS_FINISHED
+        return AS.STATUS_FINISHED
+    return AS.STATUS_RUNNING
 
 ### Configure functions ###
 
