@@ -122,9 +122,14 @@ def exec_ccncatchunks(slicename, port, hostname):
     command += ' ccncatchunks2 ccnx:/VIDEO'
 
     login = "%s@%s" % (slicename, hostname)
-    proc1 = subprocess.Popen(['ssh', login, command], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell = False)
+    proc1 = subprocess.Popen(['ssh',
+        '-o', 'StrictHostKeyChecking=no',
+        login, 
+        command], 
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell = False)
     
     proc2 = subprocess.Popen(['vlc', 
+        '--ffmpeg-threads=1',
         '--sub-filter', 'marq', 
         '--marq-marquee', 
         '(c) copyright 2008, Blender Foundation / www.bigbuckbunny.org', 
@@ -248,6 +253,7 @@ if __name__ == '__main__':
                  'planetlabpc2.upf.edu',
                  'planet2.elte.hu',
                  'planetlab2.esprit-tn.com' ]
+
     ccn_local_port = os.environ.get('CCN_LOCAL_PORT')
 
     usage = "usage: %prog -s <pl_slice> -H <pl_host> -k <ssh_key> -u <pl_user> -p <pl_password> -v <vsys_vnet> -N <host_names> -c <node_count> -d <delay> -P <ccn-local-port> -x <proxy>"
