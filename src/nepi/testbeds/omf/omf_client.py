@@ -166,7 +166,8 @@ class OMFClient(sleekxmpp.ClientXMPP):
 
     def handle_omf_message(self, iq):
         for i in iq['pubsub_event']['items']:
-            self._logger.debug(i)
+            #self._logger.debug(i)
+            print ""
 
             #<item xmlns="http://jabber.org/protocol/pubsub#event" id="dFbv6WRlMuKghJ0"><omf-message xmlns="http://jabber.org/protocol/pubsub"><LOGGING id="&apos;omf-payload&apos;"><LEVEL>2</LEVEL><SLICEID>default_slice</SLICEID><LOGGER>nodeHandler::NodeHandler</LOGGER><EXPID>default_slice-2012-09-28t16.22.17+02.00</EXPID><LEVEL_NAME>INFO</LEVEL_NAME><DATA>OMF Experiment Controller 5.4 (git 529a626)</DATA></LOGGING></omf-message></item>
 

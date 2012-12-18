@@ -106,11 +106,11 @@ controller.start()
 #        controller.is_finished(app2.guid)):
 #    time.sleep(0.5)
 
-time.sleep(30)
+time.sleep(5)
 
-controller.set(iface2.guid, "channel", "1")
+#controller.set(iface2.guid, "channel", "1")
 
-time.sleep(15)
+#time.sleep(5)
 
 controller.stop()
 controller.shutdown()
