@@ -2,6 +2,7 @@ import logging
 import sleekxmpp
 from sleekxmpp.exceptions import IqError, IqTimeout
 import traceback
+import xml.etree.ElementTree as ET
 
 class OMFClient(sleekxmpp.ClientXMPP):
     def __init__(self, jid, password):
@@ -164,10 +165,45 @@ class OMFClient(sleekxmpp.ClientXMPP):
             self._logger.error('Could not unsubscribe %s from node %s\ntraceback:\n%s' \
                     % (self.boundjid.bare, node, error))
 
+    def _check_for_tag(self, treeroot, namespaces, tag):
+        for element in treeroot.iter(namespaces+tag):
+            if element.text:
+                return element
+            else : 
+                return None    
+
+    def _check_app_event(self, treeroot, namespaces):
+        message = self._check_for_tag(treeroot, namespaces, 'MESSAGE')
+        if message is not None :
+            target = self._check_for_tag(treeroot, namespaces, 'TARGET')
+            if target is not None :
+                self._logger.info(target.text + ": APP_EVENT: " + message.text)
+
+    def _check_configure(self, treeroot, namespaces, status):
+        for message in treeroot.iter(namespaces + status):
+            reason = self._check_for_tag(treeroot, namespaces, 'REASON')
+            if reason is not None and reason.text!="ENROLLED" :
+                target = self._check_for_tag(treeroot, namespaces, 'TARGET')
+                if target is not None :
+                    path = self._check_for_tag(treeroot, namespaces, 'PATH')
+                    if path is not None :
+                        self._logger.debug(target.text+ ": " +reason.text+ ": " +path.text)
+                    else :
+                        self._logger.debug(target.text+ ": " +reason.text ) 
+
     def handle_omf_message(self, iq):
+        namespaces = "{http://jabber.org/protocol/pubsub}"
         for i in iq['pubsub_event']['items']:
+            root = ET.fromstring(str(i))
+            self._check_app_event(root, namespaces)
+            self._check_configure(root, namespaces, "OK")
+            self._check_configure(root, namespaces, "ERROR")
             #self._logger.debug(i)
-            print ""
+
+           
+#<item xmlns="http://jabber.org/protocol/pubsub#event" id="WlO9GaRXpy6ayRB"><omf-message xmlns="http://jabber.org/protocol/pubsub"><OK id="omf-payload"><EXPID>default_slice-2012-12-20t12.07.02+02.00</EXPID><MESSAGE /><REASON>CONFIGURED</REASON><TARGET>omf.plexus.wlab17</TARGET><SLICEID>default_slice</SLICEID><VALUE>cvlcmode</VALUE><PATH>net/w0/essid</PATH></OK></omf-message></item>
+
+#<item xmlns="http://jabber.org/protocol/pubsub#event" id="nL1uzyXRMe86jEV"><omf-message xmlns="http://jabber.org/protocol/pubsub"><ERROR id="omf-payload"><EXPID>default_slice-2012-12-20t12.07.02+02.00</EXPID><MESSAGE /><REASON>FAILED_CONFIGURE</REASON><TARGET>omf.plexus.wlab17</TARGET><SLICEID>default_slice</SLICEID><VALUE>g</VALUE><PATH>net/w0/type</PATH></ERROR></omf-message></item>
 
             #<item xmlns="http://jabber.org/protocol/pubsub#event" id="dFbv6WRlMuKghJ0"><omf-message xmlns="http://jabber.org/protocol/pubsub"><LOGGING id="&apos;omf-payload&apos;"><LEVEL>2</LEVEL><SLICEID>default_slice</SLICEID><LOGGER>nodeHandler::NodeHandler</LOGGER><EXPID>default_slice-2012-09-28t16.22.17+02.00</EXPID><LEVEL_NAME>INFO</LEVEL_NAME><DATA>OMF Experiment Controller 5.4 (git 529a626)</DATA></LOGGING></omf-message></item>
 
