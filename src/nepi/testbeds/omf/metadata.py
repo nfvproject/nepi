@@ -388,7 +388,7 @@ testbed_attributes = dict({
                 "name": "xmppRoot",
                 "help": "Root node of the xmpp server pubsub tree",
                 "type": Attribute.STRING,
-                "value": "OMF",
+                "value": "OMF_5.4",
                 "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_string
             }),
