@@ -21,7 +21,7 @@ class OMFClient(sleekxmpp.ClientXMPP):
         self.add_event_handler("pubsub_publish", self.handle_omf_message)
         
         self._logger = logging.getLogger("nepi.testbeds.omf")
-    
+
     @property
     def ready(self):
         return self._ready
