@@ -294,6 +294,20 @@ class SLICEAPI(object):
             filters.update(kw)
             return _retry(self.mcapi.Get)(self.auth, 'slice', filters, {}, *fieldstuple)
 
+## Habria que hacer una query por leases, pero averiguar bien porq lease tambien es un metodo!
+
+    def GetLeases(self, nodeIdOrName=None, fields=None, **kw):
+        if fields is not None:
+            fieldstuple = (fields,)
+        else:
+            fieldstuple = ()
+        if nodeIdOrName is not None:
+            return _retry(self.mcapi.Get)(self.auth, 'slice', [['node_id', '=', nodeIdOrName]], {}, ['lease.start_time', 'lease.duration', 'lease.urn', 'lease.granularity','lease.slice_id', *fieldstuple])
+        else:
+            filters = kw.pop('filters',{})
+            filters.update(kw)
+        return _retry(self.mcapi.Get)(self.auth, 'slice', filters, {}, ['lease.start_time', 'lease.duration', 'lease.urn', 'lease.granularity','lease.slice_id', *fieldstuple])        
+
     def UpdateSlice(self, sliceIdOrName, **kw):
         return _retry(self.mcapi.Update)(self.auth, 'slice', sliceIdOrName, kw)
 

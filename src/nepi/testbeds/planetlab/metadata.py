@@ -941,6 +941,27 @@ attributes = dict({
                 "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
                 "validation_function": validation.is_string,
             }),
+    "reservable": dict({
+                "name": "reservable",
+                "help": "Node capability to be reserved for a period of time.",
+                "type": Attribute.BOOL,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+                "validation_function": validation.is_bool,
+            }),
+    "start_time": dict({
+                "name": "start_time",
+                "help": "Starting time of reserved slot of time for reservable resources.",
+                "type": Attribute.INTEGER,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+                "validation_function": validation.is_integer,
+            }),
+    "duration": dict({
+                "name": "duration",
+                "help": "Amount of reserved time slots for reservable resources. The duration for the time slot change for different testbeds, e.g.: PL 30min ",
+                "type": Attribute.INTEGER,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+                "validation_function": validation.is_integer,
+            }),
     "city": dict({      
                 "name": "city",
                 "help": "Constrain location (city) during resource discovery. May use wildcards.",
@@ -1434,6 +1455,7 @@ factories_info = dict({
             "box_attributes": [
                 "forward_X11",
                 "hostname",
+                "reservable",
                 "architecture",
                 "operating_system",
                 "site",
