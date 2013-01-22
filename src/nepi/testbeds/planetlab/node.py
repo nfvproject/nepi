@@ -21,6 +21,8 @@ from nepi.util import parallel
 
 import application
 
+import ipdb
+
 MAX_VROUTE_ROUTES = 5
 
 class UnresponsiveNodeError(RuntimeError):
@@ -64,6 +66,7 @@ class Node(object):
         'maxLoad' : ('load%(timeframe)s', '[value'),
         'minCpu' : ('cpu%(timeframe)s', ']value'),
         'maxCpu' : ('cpu%(timeframe)s', '[value'),
+        'reservable': ('','')
     }
     
     RATE_FACTORS = (
@@ -204,9 +207,19 @@ class Node(object):
         fields = ('node_id',)
         replacements = {'timeframe':self._timeframe}
         
+        print 1,replacements
+        
         # get initial candidates (no tag filters)
         basefilters = self.build_filters({}, self.BASEFILTERS)
+
+        print 2,basefilters
+
         rootfilters = basefilters.copy()
+
+        print 3,rootfilters
+
+        print 4,filter_slice_id
+
         if filter_slice_id:
             basefilters['|slice_ids'] = (filter_slice_id,)
         
@@ -214,34 +227,53 @@ class Node(object):
         basefilters['run_level'] = 'boot'
         basefilters['boot_state'] = 'boot'
         basefilters['node_type'] = 'regular' # nepi can only handle regular nodes (for now)
-        basefilters['>last_contact'] = int(time.time()) - 5*3600 # allow 5h out of contact, for timezone discrepancies
-        
+        basefilters['>last_contact'] = int(time.time()) - 2*3600 # allow 5h out of contact, for timezone discrepancies
+
+        print 5,basefilters
+
         # keyword-only "pseudofilters"
         extra = {}
         if self.site:
+            print 6,self.site
             extra['peer'] = self.site
             
+        # Solo los node_ids solo da 263 nodos, con 96 horas da 267, sacando last_contact da 809 - 20120116
         candidates = set(map(operator.itemgetter('node_id'), 
             self._sliceapi.GetNodes(filters=basefilters, fields=fields, **extra)))
 
+        print candidates
+
+
         # filter by tag, one tag at a time
         applicable = self.applicable_filters
+        print 7,applicable
+
         for tagfilter in self.TAGFILTERS.iteritems():
+            print 8,tagfilter
             attr, (tagname, expr) = tagfilter
+            print 9,attr, (tagname,expr)
+
             
             # don't bother if there's no filter defined
             if attr in applicable:
+                print 10, attr
                 tagfilter = rootfilters.copy()
                 tagfilter['tagname'] = tagname % replacements
                 tagfilter[expr % replacements] = str(getattr(self,attr))
                 tagfilter['node_id'] = list(candidates)
-              
+                print tagfilter
+        
+        # and ?      
                 candidates &= set(map(operator.itemgetter('node_id'),
                     self._sliceapi.GetNodeTags(filters=tagfilter, fields=fields)))
+
+        #print candidates
+
 
         # filter by vsys tags - special case since it doesn't follow
         # the usual semantics
         if self.required_vsys:
+            print 11
             newcandidates = collections.defaultdict(set)
             
             vsys_tags = self._sliceapi.GetNodeTags(
@@ -249,9 +281,14 @@ class Node(object):
                 node_id = list(candidates), 
                 fields = ['node_id','value'])
 
+            print 12,vsys_tags
+
             vsys_tags = map(
                 operator.itemgetter(['node_id','value']),
                 vsys_tags)
+
+            print 13,vsys_tags
+
             
             required_vsys = self.required_vsys
             for node_id, value in vsys_tags:
@@ -266,6 +303,7 @@ class Node(object):
         
         # filter by iface count
         if self.min_num_external_ifaces is not None or self.max_num_external_ifaces is not None:
+            print 14
             # fetch interfaces for all, in one go
             filters = basefilters.copy()
             filters['node_id'] = list(candidates)
@@ -286,20 +324,26 @@ class Node(object):
             candidates = set(filter(predicate, candidates))
        
         # make sure hostnames are resolvable
-        hostnames = dict() 
+        hostnames = dict()
+        print 15, hostnames
+ 
         if candidates:
             self._logger.info("  Found %s candidates. Checking for reachability...", len(candidates))
            
             hostnames = dict(map(operator.itemgetter('node_id','hostname'),
                 self._sliceapi.GetNodes(list(candidates), ['node_id','hostname'])
             ))
+    
+            print hostnames
 
             def resolvable(node_id):
                 try:
                     addr = socket.gethostbyname(hostnames[node_id])
+                    print addr
                     return addr is not None
                 except:
                     return False
+
             candidates = set(parallel.pfilter(resolvable, candidates,
                 maxthreads = 16))
 
