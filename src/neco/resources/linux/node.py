@@ -8,8 +8,8 @@ import os.path
 import subprocess
 
 class LinuxNode(Resource):
-    def __init__(self, box, ec):
-        super(LinuxNode, self).__init__(box, ec)
+    def __init__(self, ec, guif):
+        super(LinuxNode, self).__init__(ec, guid)
         self.ip = None
         self.host = None
         self.user = None
@@ -24,7 +24,7 @@ class LinuxNode(Resource):
         # Logging
         loglevel = "debug"
         self._logger = logging.getLogger("neco.resources.base.LinuxNode.%s" %\
-                self.box.guid)
+                self.guid)
         self._logger.setLevel(getattr(logging, loglevel.upper()))
 
         # For ssh connections we use the ControlMaster option which 

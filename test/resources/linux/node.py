@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 from neco.resources.linux.node import LinuxNode
-from neco.design.box import Box
 from neco.util.sshfuncs import RUNNING, FINISHED
 
 import os.path
@@ -12,7 +11,7 @@ import unittest
 class DummyEC(object):
     pass
 
-class LinuxBoxTestCase(unittest.TestCase):
+class LinuxNodeTestCase(unittest.TestCase):
     def setUp(self):
         host = 'nepi2.pl.sophia.inria.fr'
         user = 'inria_nepi'
@@ -26,10 +25,9 @@ class LinuxBoxTestCase(unittest.TestCase):
         self.home = '${HOME}/test-app'
 
     def create_node(self, host, user):
-        box = Box()
         ec = DummyEC()
 
-        node = LinuxNode(box, ec)
+        node = LinuxNode(ec, 1)
         node.host = host
         node.user = user
 
