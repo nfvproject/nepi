@@ -20,7 +20,6 @@ setup(
             "neco.resources.ns3",
             "neco.resources.omf",
             "neco.resources.planetlab",
-            "neco.tags",
             "neco.util"],
         package_dir = {"": "src"},
     )
