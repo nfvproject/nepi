@@ -8,7 +8,7 @@ import os.path
 import subprocess
 
 class LinuxNode(Resource):
-    def __init__(self, ec, guif):
+    def __init__(self, ec, guid):
         super(LinuxNode, self).__init__(ec, guid)
         self.ip = None
         self.host = None

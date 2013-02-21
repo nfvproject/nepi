@@ -14,7 +14,7 @@ class Resource(object):
 
     @property
     def guid(self):
-        return self._guid()
+        return self._guid
 
     @property
     def ec(self):
