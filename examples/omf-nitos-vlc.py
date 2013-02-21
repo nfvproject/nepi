@@ -83,7 +83,8 @@ channel.connector("devs").connect(iface2.connector("chan"))
 # Add a vlc server to stream a video using multicast
 app1 = omf_desc.create("OmfApplication")
 app1.set_attribute_value("appId", "Vlc#1")
-app1.set_attribute_value("arguments", "/opt/bbb_240p_mpeg4_lq.ts --sout '#rtp{dst=239.255.0.1,port=1234,mux=ts}' vlc://quit")
+#app1.set_attribute_value("arguments", "/opt/bbb_240p_mpeg4_lq.ts --sout '#rtp{dst=239.255.0.1,port=1234,mux=ts}' vlc://quit")
+app1.set_attribute_value("arguments", "/opt/10-by-p0d.avi --sout '#rtp{dst=192.168.0.20,port=1234,mux=ts}' vlc://quit")
 app1.set_attribute_value("path", "/opt/vlc-1.1.13/cvlc")
 app1.set_attribute_value("env", "DISPLAY=localhost:10.0 XAUTHORITY=/root/.Xauthority")
 app1.connector("node").connect(node1.connector("apps"))
@@ -91,7 +92,8 @@ app1.connector("node").connect(node1.connector("apps"))
 # Add a vlc client to receive the video stream
 app2 = omf_desc.create("OmfApplication")
 app2.set_attribute_value("appId", "Vlc#2")
-app2.set_attribute_value("arguments", "rtp://239.255.0.1:1234")
+#app2.set_attribute_value("arguments", "rtp://239.255.0.1:1234")
+app2.set_attribute_value("arguments", "rtp://192.168.0.20:1234")
 app2.set_attribute_value("path", "/opt/vlc-1.1.13/cvlc")
 # To see the stream to a ssh -X connection, the DISPLAY variable must be set to the value of the node.
 # Also don't forget to execute in 'xhost + localhost' in the node
