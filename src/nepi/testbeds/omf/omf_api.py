@@ -18,7 +18,7 @@ class OmfAPI(object):
         self._port = port
         self._password = password
         self._hostnames = []
-        self._xmpp_root = xmpp_root or "OMF"
+        self._xmpp_root = xmpp_root or "OMF_5.4"
 
         self._logger = logging.getLogger("nepi.testbeds.omf")
 
@@ -60,9 +60,13 @@ class OmfAPI(object):
     def _enroll_experiment(self):
         xmpp_node = self._exp_session_id
         self._client.create(xmpp_node)
+        #print "Create experiment sesion id topics !!" 
         self._client.subscribe(xmpp_node)
+        #print "Subscribe to experiment sesion id topics !!" 
+
 
         address = "/%s/%s/%s/%s" % (self._host, self._xmpp_root, self._slice, self._user)
+        print address
         payload = self._message.newexpfunction(self._user, address)
         slice_sid = "/%s/%s" % (self._xmpp_root, self._slice)
         self._client.publish(payload, slice_sid)

@@ -26,14 +26,14 @@ omf_provider = FactoriesProvider(testbed_id)
 omf_desc = exp_desc.add_testbed_description(omf_provider)
 omf_desc.set_attribute_value("homeDirectory", root_dir)
 omf_desc.set_attribute_value("enableDebug", True)
-omf_desc.set_attribute_value("xmppSlice", "nepi")
-omf_desc.set_attribute_value("xmppHost", "xmpp-plexus.onelab.eu")
+omf_desc.set_attribute_value("xmppSlice", "default_slice_iMinds")
+omf_desc.set_attribute_value("xmppHost", "xmpp.ilabt.iminds.be")
 omf_desc.set_attribute_value("xmppPort", 5222)
 omf_desc.set_attribute_value("xmppPassword", "1234")
 
 # Add node1
 node1 = omf_desc.create("Node")
-node1.set_attribute_value("hostname", "omf.plexus.wlab17")
+node1.set_attribute_value("hostname", "omf.ibbt.open.node3")
 
 # Add configuration for interface 1
 iface1 = omf_desc.create("WifiInterface")
@@ -42,7 +42,7 @@ iface1.set_attribute_value("mode", "adhoc")
 iface1.set_attribute_value("channel", "6")
 iface1.set_attribute_value("type", "g")
 iface1.set_attribute_value("essid", "cvlcmode")
-iface1.set_attribute_value("ip", "10.0.0.17")
+iface1.set_attribute_value("ip", "192.168.0.3")
 node1.connector("devs").connect(iface1.connector("node"))
 
 # Add multicast route to node 1
@@ -53,7 +53,7 @@ route1.set_attribute_value("Device", "wlan0")
 
 # Add node2
 node2 = omf_desc.create("Node")
-node2.set_attribute_value("hostname", "omf.plexus.wlab37")
+node2.set_attribute_value("hostname", "omf.ibbt.open.node4")
 
 # Add configuration for interface 2
 iface2 = omf_desc.create("WifiInterface")
@@ -62,7 +62,7 @@ iface2.set_attribute_value("mode", "adhoc")
 iface2.set_attribute_value("channel", "6")
 iface2.set_attribute_value("type", "g")
 iface2.set_attribute_value("essid", "cvlcmode")
-iface2.set_attribute_value("ip", "10.0.0.37")
+iface2.set_attribute_value("ip", "192.168.0.4")
 node2.connector("devs").connect(iface2.connector("node"))
 
 # Add multicast route to node 2
@@ -83,8 +83,7 @@ channel.connector("devs").connect(iface2.connector("chan"))
 # Add a vlc server to stream a video using multicast
 app1 = omf_desc.create("OmfApplication")
 app1.set_attribute_value("appId", "Vlc#1")
-#app1.set_attribute_value("arguments", "/opt/bbb_240p_mpeg4_lq.ts --sout '#rtp{dst=239.255.0.1,port=1234,mux=ts}' vlc://quit")
-app1.set_attribute_value("arguments", "/opt/10-by-p0d.avi --sout '#rtp{dst=10.0.0.37,port=1234,mux=ts}' vlc://quit")
+app1.set_attribute_value("arguments", "/opt/bbb_240p_mpeg4_lq.ts --sout '#rtp{dst=239.255.0.1,port=1234,mux=ts}' vlc://quit")
 app1.set_attribute_value("path", "/opt/vlc-1.1.13/cvlc")
 app1.set_attribute_value("env", "DISPLAY=localhost:10.0 XAUTHORITY=/root/.Xauthority")
 app1.connector("node").connect(node1.connector("apps"))
@@ -92,8 +91,7 @@ app1.connector("node").connect(node1.connector("apps"))
 # Add a vlc client to receive the video stream
 app2 = omf_desc.create("OmfApplication")
 app2.set_attribute_value("appId", "Vlc#2")
-#app2.set_attribute_value("arguments", "rtp://239.255.0.1:1234")
-app2.set_attribute_value("arguments", "rtp://10.0.0.37:1234")
+app2.set_attribute_value("arguments", "rtp://239.255.0.1:1234")
 app2.set_attribute_value("path", "/opt/vlc-1.1.13/cvlc")
 # To see the stream to a ssh -X connection, the DISPLAY variable must be set to the value of the node.
 # Also don't forget to execute in 'xhost + localhost' in the node
@@ -108,7 +106,7 @@ controller.start()
 #        controller.is_finished(app2.guid)):
 #    time.sleep(0.5)
 
-time.sleep(30)
+time.sleep(10)
 
 #controller.set(iface2.guid, "channel", "1")
 
