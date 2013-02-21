@@ -149,8 +149,10 @@ class OMFClient(sleekxmpp.ClientXMPP):
     def subscribe(self, node):
         try:
             result = self['xep_0060'].subscribe(self._server, node)
+            #self._logger.debug('Subscribed %s to node %s' \
+                    #% (self.boundjid.bare, node))
             self._logger.info('Subscribed %s to node %s' \
-                    % (self.boundjid.bare, self.boundjid))
+                    % (self.boundjid.user, node))
         except:
             error = traceback.format_exc()
             self._logger.error('Could not subscribe %s to node %s\ntraceback:\n%s' \
@@ -172,40 +174,30 @@ class OMFClient(sleekxmpp.ClientXMPP):
             else : 
                 return None    
 
-    def _check_app_event(self, treeroot, namespaces):
-        message = self._check_for_tag(treeroot, namespaces, 'MESSAGE')
-        if message is not None :
-            target = self._check_for_tag(treeroot, namespaces, 'TARGET')
-            if target is not None :
-                self._logger.info(target.text + ": APP_EVENT: " + message.text)
-
-    def _check_configure(self, treeroot, namespaces, status):
-        for message in treeroot.iter(namespaces + status):
-            reason = self._check_for_tag(treeroot, namespaces, 'REASON')
-            if reason is not None and reason.text!="ENROLLED" :
-                target = self._check_for_tag(treeroot, namespaces, 'TARGET')
-                if target is not None :
-                    path = self._check_for_tag(treeroot, namespaces, 'PATH')
-                    if path is not None :
-                        self._logger.debug(target.text+ ": " +reason.text+ ": " +path.text)
-                    else :
-                        self._logger.debug(target.text+ ": " +reason.text ) 
+    def _check_output(self, treeroot, namespaces):
+        output_param = ["TARGET", "REASON", "PATH", "APPID", "VALUE"]
+        response = ""
+        for elt in output_param:
+            msg = self._check_for_tag(treeroot, namespaces, elt)
+            if msg is not None:
+                response = response + msg.text + ": "
+        #if (log = Debug !!!) :
+        #    deb = self._check_for_tag(treeroot, namespaces, "MESSAGE")
+        #    if deb is not None:
+        #        self._logger.debug(response + deb.text)
+        #else :
+        #    self._logger.info(response)
+        deb = self._check_for_tag(treeroot, namespaces, "MESSAGE")
+        if deb is not None:
+            self._logger.debug(response + deb.text)
+        else :
+            self._logger.debug(response)
 
     def handle_omf_message(self, iq):
         namespaces = "{http://jabber.org/protocol/pubsub}"
         for i in iq['pubsub_event']['items']:
             root = ET.fromstring(str(i))
-            self._check_app_event(root, namespaces)
-            self._check_configure(root, namespaces, "OK")
-            self._check_configure(root, namespaces, "ERROR")
+            self._check_output(root, namespaces)
             #self._logger.debug(i)
-
-           
-#<item xmlns="http://jabber.org/protocol/pubsub#event" id="WlO9GaRXpy6ayRB"><omf-message xmlns="http://jabber.org/protocol/pubsub"><OK id="omf-payload"><EXPID>default_slice-2012-12-20t12.07.02+02.00</EXPID><MESSAGE /><REASON>CONFIGURED</REASON><TARGET>omf.plexus.wlab17</TARGET><SLICEID>default_slice</SLICEID><VALUE>cvlcmode</VALUE><PATH>net/w0/essid</PATH></OK></omf-message></item>
-
-#<item xmlns="http://jabber.org/protocol/pubsub#event" id="nL1uzyXRMe86jEV"><omf-message xmlns="http://jabber.org/protocol/pubsub"><ERROR id="omf-payload"><EXPID>default_slice-2012-12-20t12.07.02+02.00</EXPID><MESSAGE /><REASON>FAILED_CONFIGURE</REASON><TARGET>omf.plexus.wlab17</TARGET><SLICEID>default_slice</SLICEID><VALUE>g</VALUE><PATH>net/w0/type</PATH></ERROR></omf-message></item>
-
-            #<item xmlns="http://jabber.org/protocol/pubsub#event" id="dFbv6WRlMuKghJ0"><omf-message xmlns="http://jabber.org/protocol/pubsub"><LOGGING id="&apos;omf-payload&apos;"><LEVEL>2</LEVEL><SLICEID>default_slice</SLICEID><LOGGER>nodeHandler::NodeHandler</LOGGER><EXPID>default_slice-2012-09-28t16.22.17+02.00</EXPID><LEVEL_NAME>INFO</LEVEL_NAME><DATA>OMF Experiment Controller 5.4 (git 529a626)</DATA></LOGGING></omf-message></item>
-
 
 
