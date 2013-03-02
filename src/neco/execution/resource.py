@@ -86,13 +86,13 @@ class Resource(object):
         return True
 
 class ResourceFactory(object):
-    def __init__(self):
-        self._resource_types = dict()
+    _resource_types = dict()
 
-    def register_type(self, rtype, rclass):
-        self._resource_types[rtype] = rclass
+    @classmethod
+    def register_type(cls, rtype, rclass):
+        cls._resource_types[rtype] = rclass
 
-    def create(self, rtype, ec, guid):
-        rclass = self._resource[rtype]
+    @classmethod
+    def create(cls, rtype, ec, guid):
+        rclass = cls._resource[rtype]
         return rclass(ec, guid)
-
