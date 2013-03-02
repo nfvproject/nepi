@@ -2,12 +2,16 @@ import copy
 import logging
 import weakref
 
+def clsinit(cls):
+    cls._clsinit()
+    return cls
+
+# Decorator to invoke class initialization method
+@clsinit
 class Resource(object):
-    # static template for resource filters
-    _filters = dict()
-    
-    # static template for resource attributes
-    _attributes = dict()
+    _rtype = "Resource"
+    _filters = None
+    _attributes = None
 
     @classmethod
     def _register_filter(cls, attr):
@@ -16,10 +20,36 @@ class Resource(object):
         cls._filters[attr.name] = attr
 
     @classmethod
-    def _register_attributes(cls, attr):
+    def _register_attribute(cls, attr):
         """ Resource subclasses will invoke this method to add a 
         resource attribute"""
         cls._attributes[attr.name] = attr
+
+    @classmethod
+    def _register_filters(cls):
+        """ Resource subclasses will invoke this method to add a 
+        filter attribute"""
+        pass
+
+    @classmethod
+    def _register_attributes(cls):
+        """ Resource subclasses will invoke this method to add a 
+        resource attribute"""
+        pass
+
+    @classmethod
+    def _clsinit(cls):
+        # static template for resource filters
+        cls._filters = dict()
+        cls._register_filters()
+
+        # static template for resource attributes
+        cls._attributes = dict()
+        cls._register_attributes()
+
+    @classmethod
+    def rtype(cls):
+        return cls._rtype
 
     @classmethod
     def get_filters(cls):
@@ -89,10 +119,15 @@ class ResourceFactory(object):
     _resource_types = dict()
 
     @classmethod
-    def register_type(cls, rtype, rclass):
-        cls._resource_types[rtype] = rclass
+    def resource_types(cls):
+        return cls._resource_types
+
+    @classmethod
+    def register_type(cls, rclass):
+        cls._resource_types[rclass.rtype()] = rclass
 
     @classmethod
     def create(cls, rtype, ec, guid):
         rclass = cls._resource[rtype]
         return rclass(ec, guid)
+

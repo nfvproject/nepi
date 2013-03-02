@@ -4,7 +4,7 @@ import sys
 import time
 
 from neco.util import guid
-from neco.resources import ResourceFactory
+from neco.execution.resource import ResourceFactory
 
 class ExperimentController(object):
     def __init__(self, root_dir = "/tmp", loglevel = 'error'):
