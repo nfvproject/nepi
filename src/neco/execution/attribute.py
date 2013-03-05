@@ -54,7 +54,6 @@ class Attribute(object):
     def set_value(self, value):
         if self.is_valid_value(value):
             self._value = value
-            self._modified = True
         else:
             raise ValueError("Invalid value %s for attribute %s" %
                     (str(value), self.name))

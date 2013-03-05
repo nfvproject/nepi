@@ -108,6 +108,9 @@ class Resource(object):
     def set_after(self, name, value, time, after_status, guid):
         pass
 
+    def next_step(self):
+        pass
+
     def stop(self):
         pass
 
