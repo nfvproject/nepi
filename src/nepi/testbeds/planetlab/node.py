@@ -562,8 +562,6 @@ class Node(object):
     def destroy(self):
         if self.enable_proc_cleanup:
             self.do_proc_cleanup()
-        if self.enable_home_cleanup:
-            self.do_home_cleanup()
     
     def blacklist(self):
         if self._node_id:

@@ -17,8 +17,6 @@
 from nepi.core.design import ExperimentDescription, FactoriesProvider
 from nepi.core.execute import ExperimentController
 from nepi.util.constants import ApplicationStatus as AS
-import ipaddr
-import math
 from optparse import OptionParser, SUPPRESS_HELP
 import os
 import signal
