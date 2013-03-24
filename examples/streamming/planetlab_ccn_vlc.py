@@ -9,17 +9,6 @@ import tempfile
 import time
 import uuid
 
-"""
-This experiment evaluates the consumption of computer resources when using
-VLC for Internet broasdcasting using PlanetLab nodes as both server and clients. 
-A root node (server) streams a broadcast in a loop, while the clients retrieve
-the same video over and over until experiment run time is elapsed.
-
-While the experiment is running cpu and memory usage, and the amount of bytes 
-transmitted per stream are traced to files.
-
-"""
-
 # Trak SIGTERM, and set global termination flag instead of dying
 import signal
 TERMINATE = []
@@ -31,6 +20,7 @@ signal.signal(signal.SIGINT, _finalize)
 
 class MonitorInfo(object):
     TYPE_ROOT = "root"
+    TYPE_MID  = "middle"
     TYPE_LEAF = "leaf"
 
     def __init__(self, hostname, type):
@@ -68,69 +58,75 @@ def create_node(hostname, pl_inet, slice_desc):
     pl_node.connector("devs").connect(pl_iface.connector("node"))
     return pl_node, pl_iface
 
-def create_vlc_server(movie, pl_node, slice_desc):
-    mv = os.path.basename(movie)
-    pl_app = slice_desc.create("Application")
-    pl_app.set_attribute_value("rpmFusion", True)
-    pl_app.set_attribute_value("depends", "vlc")
-    pl_app.set_attribute_value("build", 
-    #    "echo -e 'new TEST vod enabled\\nsetup TEST input %s' > ${SOURCES}/VOD.vlm" % mv)
-       "echo -e 'new TEST broadcast enabled loop\\n"\
-       "setup TEST input %s\\n"\
-       "setup TEST output #rtp{mux=ts,sdp=rtsp://0.0.0.0:8554/TEST}\\n\\n"\
-       "new test_sched schedule enabled\\n"\
-       "setup test_sched append control TEST play' > ${SOURCES}/VOD.vlm" % mv)
+def create_ccnd(pl_node, slice_desc, pl_ifaces, port):
+    pl_app = slice_desc.create("CCNxDaemon")
+    pl_app.set_attribute_value("ccnxVersion", "ccnx-0.5.1")
+    
+    # We use a wildcard to replace the public IP address of the node during runtime,
+    # once this IP is known
+    routes = "|".join(map(lambda pl_iface: "udp {#[%s].addr[0].[Address]#}" % 
+        pl_iface.get_attribute_value("label"), pl_ifaces))
+    
+    # Add unicast ccn routes 
+    pl_app.set_attribute_value("ccnRoutes", routes)
 
-    pl_app.set_attribute_value("sources", "%s" % movie)
-    pl_app.set_attribute_value("command",
-    #        "sudo -S dbus-uuidgen --ensure ; vlc -vvv -I dummy --vlm-conf VOD.vlm --rtsp-host=0.0.0.0:8554")
-        "sudo -S dbus-uuidgen --ensure ; vlc -vvv -I dummy --vlm-conf VOD.vlm")
+    # Use a specific port to bind the CCNx daemon
+    if port:
+        pl_app.set_attribute_value("ccnLocalPort", port)
+
     pl_app.enable_trace("stdout")
     pl_app.enable_trace("stderr")
-    pl_node.connector("apps").connect(pl_app.connector("node"))
+    pl_app.connector("node").connect(pl_node.connector("apps"))
     return pl_app
 
-def create_vlc_client(root_node, pl_node, slice_desc):
-    label = "%d_app" % pl_node.guid
-    hostname = root_node.get_attribute_value("hostname")
+def create_ccnpush(movie, pl_node, slice_desc, port):
     pl_app = slice_desc.create("Application")
-    pl_app.set_attribute_value("label", label)
-    pl_app.set_attribute_value("rpmFusion", True)
-    pl_app.set_attribute_value("depends", "vlc")
-    pl_app.set_attribute_value("command",
-       "sudo -S dbus-uuidgen --ensure ; sleep 5;" \
-       "vlc -I dummy --repeat rtsp://%s:8554/TEST --sout '#std{access=file,mux=ts,dst=/dev/null}'" % (hostname))
+    pl_app.set_attribute_value("stdin", movie)
+
+    command = "ccnseqwriter ccnx:/VIDEO"
+    if port:
+        command = "CCN_LOCAL_PORT=%d %s " % (port, command)
+
+    pl_app.set_attribute_value("command", command)
+
     pl_app.enable_trace("stdout")
     pl_app.enable_trace("stderr")
-    pl_node.connector("apps").connect(pl_app.connector("node"))
+    pl_app.connector("node").connect(pl_node.connector("apps"))
+    return pl_app
+
+def create_ccnpull(pl_node, slice_desc, port):
+    pl_app = slice_desc.create("Application")
+    pl_app.set_attribute_value("rpmFusion", True)
+    pl_app.set_attribute_value("depends", "vlc")
+
+    command = " sudo -S dbus-uuidgen --ensure ; while true ; do ccncat ccnx:/VIDEO"
+    if port:
+        command = "CCN_LOCAL_PORT=%d %s " % (port, command)
+
+    command += " | vlc -I dummy - vlc://quit > /dev/null ; done"
+    pl_app.set_attribute_value("command", command)
+    
+    pl_app.enable_trace("stdout")
+    pl_app.enable_trace("stderr")
+    pl_app.connector("node").connect(pl_node.connector("apps"))
     return pl_app
 
 def create_cpumem_monitor(pl_node, slice_desc):
-    """ This function creates a monitoring application for the
-    utilization of node resources by the vlc application.
-
-    The format of the stdout trace file is the following:
-    'timestamp cpu(%) mem(%) time'
-    """
     label = "%d_cpumem" % pl_node.guid
     pl_app = slice_desc.create("Application")
     pl_app.set_attribute_value("label", label)
     pl_app.set_attribute_value("command", 
-            "while true ; do echo $(date +%Y%m%d%H%M%S%z) " \
-            " $(top -b -n 1 | grep 'vlc' | head -1 | sed 's/\s\s*/ /g' | cut -d' ' -f9,10,11)" \
-            "; sleep 1 ; done")
+            "while true; do echo $(date +%Y%m%d%H%M%S%z) "\
+            " $(top -b -n 1 |  grep 'bash\|python' | sed 's/\s\s*/ /g' | "\
+            " sed 's/^\s//g' | cut -d' ' -f9,10,11 | awk '{ sum1 +=$1; sum2 += $2; } "\
+            " END {printf \"%2.1f %2.1f 0:00.00\", sum1, sum2;}'); sleep 1 ; done ")
+
     pl_app.enable_trace("stdout")
     pl_app.enable_trace("stderr")
     pl_node.connector("apps").connect(pl_app.connector("node"))
     return pl_app
 
 def create_net_monitor(pl_node, slice_desc, pl_ifaces):
-    """ This function creates a monitoring application for the
-    amount of bytes transmitted/received by the vlc application.
-
-    The format of the stdout trace file is the following:
-    'total-Mbytes total-time'
-    """
     label = "%d_net" % pl_node.guid
     hosts = " or ".join(map(lambda pl_iface: " ( host {#[%s].addr[0].[Address]#} ) " % 
         pl_iface.get_attribute_value("label"), pl_ifaces))
@@ -198,7 +194,8 @@ def get_options():
     exp_label = "%s" % uuid.uuid4()
 
     usage = "usage: %prog -s <pl_slice> -H <pl_host> -k <ssh_key> -u <pl_user> \
-            -p <pl_password> -m <movie> -r <results-dir> -l <experiment-label>"
+-m <movie> -p <pl_password> -r <results-dir> -l <experiment-label> \
+-P <ccnd-port>"
 
     parser = OptionParser(usage=usage)
     parser.add_option("-s", "--slicename", dest="slicename", 
@@ -222,6 +219,8 @@ def get_options():
             help="Label to identify experiment results", type="str")
     parser.add_option("-t", "--time", dest="time_to_run", default = 2, 
             help="Time to run the experiment in hours", type="float")
+    parser.add_option("-P", "--port", dest="port", 
+            help="Port to bind the CCNx daemon", type="int")
 
     (options, args) = parser.parse_args()
 
@@ -230,7 +229,8 @@ def get_options():
 
     return (options.slicename, options.pl_host, options.pl_user, 
             options.pl_pwd, options.pl_ssh_key, options.movie,
-            options.results_dir, options.exp_label, options.time_to_run)
+            options.results_dir, options.exp_label, options.time_to_run,
+            options.port)
 
 if __name__ == '__main__':
     root_dir = tempfile.mkdtemp()
@@ -242,7 +242,8 @@ if __name__ == '__main__':
             movie, 
             results_dir,
             exp_label,
-            time_to_run) = get_options()
+            time_to_run,
+            port) = get_options()
 
     # list to store information on monitoring apps per node
     monitors = []
@@ -257,108 +258,86 @@ if __name__ == '__main__':
     # Create the Internet box object
     pl_inet = slice_desc.create("Internet")
 
-    # Create root node
-    hostname = "ple6.ipv6.lip6.fr"
-    (root_node, root_iface) = create_node(hostname, pl_inet, slice_desc)
+    ### Level 0 - Root node
+    root_hostname = "chimay.infonet.fundp.ac.be"
+    (root_node, root_iface) = create_node(root_hostname, pl_inet, slice_desc)
+
+    ### Level 1 - Intermediate nodes
+    l1_hostnames = dict()
+    l1_hostnames["uk"] = "planetlab4.cs.st-andrews.ac.uk"
+    l1_ifaces = dict()
+    l1_nodes = dict()
+    
+    for country, hostname in l1_hostnames.iteritems():
+        pl_node, pl_iface = create_node(hostname, pl_inet, slice_desc)
+        l1_ifaces[country] = pl_iface
+        l1_nodes[country] = pl_node
+
+    ### Level 0 - CCN & Monitoring
+    
+    # Add CCN Daemon to root node
+    ifaces = l1_ifaces.values()
+    create_ccnd(root_node, slice_desc, ifaces, port)
+
+    # Publish video in root node
+    create_ccnpush(movie, root_node, slice_desc, port)
 
     # Create monitor info object for root node
-    root_mon = MonitorInfo(hostname, MonitorInfo.TYPE_ROOT)
+    root_mon = MonitorInfo(root_hostname, MonitorInfo.TYPE_ROOT)
     monitors.append(root_mon)
-
-    # Add VLC service
-    create_vlc_server(movie, root_node, slice_desc)
-    
+   
     # Add memory and cpu monitoring for root node
     root_mon.cpumem_monitor = create_cpumem_monitor(root_node, slice_desc)
+    root_mon.net_monitor = create_net_monitor(root_node, slice_desc, ifaces)
 
-    # Create leaf nodes
-    cli_apps = []
-    cli_ifaces = []
+    ### Level 2 - Leaf nodes
+    l2_hostnames = dict()
+    l2_hostnames["uk"] = ["planetlab-1.imperial.ac.uk",
+        "planetlab3.xeno.cl.cam.ac.uk",
+        "planetlab1.xeno.cl.cam.ac.uk"
+    ]
+    
+    for country, hostnames in l2_hostnames.iteritems():
+        l2_ifaces = []
+        l1_hostname = l1_hostnames[country]
+        l1_iface = l1_ifaces[country]
+        l1_node = l1_nodes[country]
+        
+        for hostname in hostnames:
+            pl_node, pl_iface = create_node(hostname, pl_inet, slice_desc)
+            l2_ifaces.append(pl_iface)
 
-    """
-    hostnames = ["planetlab1.rd.tut.fi", 
-            "planetlab1.s3.kth.se", 
-            "planetlab1.tlm.unavarra.es", 
-            "planet1.servers.ua.pt", 
-            "onelab3.warsaw.rd.tp.pl", 
-            "gschembra3.diit.unict.it", 
-            "iraplab1.iralab.uni-karlsruhe.de", 
-            "host3-plb.loria.fr", 
-            "kostis.di.uoa.gr", 
-            "planetlab04.cnds.unibe.ch"]
-    """
+            ### Level 2 - CCN & Monitoring
+        
+            # Add CCN Daemon to intermediate nodes
+            create_ccnd(pl_node, slice_desc, [l1_iface], port)
 
-    hostnames = ["planetlab1.rd.tut.fi",
-            "planetlab-2.research.netlab.hut.fi",
-            "planetlab2.willab.fi",
-            "planetlab3.hiit.fi",
-            "planetlab4.hiit.fi",
-            "planetlab1.s3.kth.se", 
-            "itchy.comlab.bth.se",
-            "planetlab-1.ida.liu.se",
-            "scratchy.comlab.bth.se",
-            "planetlab2.s3.kth.se", 
-            "planetlab1.tlm.unavarra.es", 
-            "planetlab2.uc3m.es",
-            "planetlab2.upc.es",
-            "ait21.us.es",
-            "planetlab3.upc.es",
-            "planet1.servers.ua.pt",
-            "planetlab2.fct.ualg.pt",
-            "planetlab-1.tagus.ist.utl.pt",
-            "planetlab1.di.fct.unl.pt",
-            "planetlab1.fct.ualg.pt",
-            "onelab3.warsaw.rd.tp.pl",
-            "onelab1.warsaw.rd.tp.pl",
-            "prata.mimuw.edu.pl",
-            "onelab2.warsaw.rd.tp.pl",
-            "prometeusz.we.po.opole.pl",
-            "gschembra3.diit.unict.it",
-            "onelab6.iet.unipi.it",
-            "planetlab1.science.unitn.it",
-            "planetlab-1.ing.unimo.it",
-            "gschembra4.diit.unict.it",
-            "iraplab1.iralab.uni-karlsruhe.de", 
-            "planetlab-1.fokus.fraunhofer.de",
-            "iraplab2.iralab.uni-karlsruhe.de",
-            "planet2.zib.de",
-            "planet2.inf.tu-dresden.de",
-            "host3-plb.loria.fr",
-            "inriarennes1.irisa.fr",
-            "inriarennes2.irisa.fr",
-            "peeramide.irisa.fr",
-            "pl1.bell-labs.fr", 
-            "kostis.di.uoa.gr",
-            "pl001.ece.upatras.gr",
-            "planetlab1.ionio.gr",
-            "planetlab2.ionio.gr",
-            "planetlab2.cs.uoi.gr", 
-            "planetlab04.cnds.unibe.ch",
-            "lsirextpc01.epfl.ch",
-            "planetlab2.csg.uzh.ch",
-            "lsirextpc02.epfl.ch",
-            "planetlab1.unineuchatel.ch"]
+            # Retrieve video in leaf node
+            create_ccnpull(pl_node, slice_desc, port)
 
-    for hostname in hostnames:
-        pl_node, pl_iface = create_node(hostname, pl_inet, slice_desc)
-        cli_ifaces.append(pl_iface)
+            # Create monitor info object for intermediate nodes
+            mon = MonitorInfo(hostname, MonitorInfo.TYPE_LEAF)
+            monitors.append(mon)
+       
+            # Add memory and cpu monitoring for intermediate nodes
+            mon.cpumem_monitor = create_cpumem_monitor(pl_node, slice_desc)
+            mon.net_monitor = create_net_monitor(pl_node, slice_desc, [l1_iface])
 
-        # Create monitor info object for root node
-        node_mon = MonitorInfo(hostname, MonitorInfo.TYPE_LEAF)
-        monitors.append(node_mon)
-      
-        # Add memory and cpu monitoring for all nodes
-        node_mon.cpumem_monitor = create_cpumem_monitor(pl_node, slice_desc)
+        ### Level 1 - CCN & Monitoring
 
-        # Add network monitoring for all nodes
-        node_mon.net_monitor = create_net_monitor(pl_node, slice_desc, [root_iface])
+        ifaces = [root_iface]
+        ifaces.extend(l2_ifaces)
 
-        # Add VLC clients
-        app = create_vlc_client(root_node, pl_node, slice_desc)
-        cli_apps.append(app)
+        # Add CCN Daemon to intermediate nodes
+        create_ccnd(l1_node, slice_desc, ifaces, port)
 
-    # Add network monitoring for root node
-    root_mon.net_monitor = create_net_monitor(root_node, slice_desc, cli_ifaces)
+        # Create monitor info object for intermediate nodes
+        mon = MonitorInfo(l1_hostname, MonitorInfo.TYPE_MID)
+        monitors.append(mon)
+       
+        # Add memory and cpu monitoring for intermediate nodes
+        mon.cpumem_monitor = create_cpumem_monitor(l1_node, slice_desc)
+        mon.net_monitor = create_net_monitor(l1_node, slice_desc, ifaces)
 
     xml = exp_desc.to_xml()
    
@@ -369,8 +348,8 @@ if __name__ == '__main__':
     duration = time_to_run * 3600 # in seconds
     while not TERMINATE:
         time.sleep(1)
-        if (time.time() - start_time) > duration: # elapsed time
-            TERMINATE.append(None)
+        #if (time.time() - start_time) > duration: # elapsed time
+        #    TERMINATE.append(None)
 
     controller.stop()
  

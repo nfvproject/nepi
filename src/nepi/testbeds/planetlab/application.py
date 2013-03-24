@@ -585,7 +585,8 @@ class Dependency(object):
             except RuntimeError, e:
                 if self.check_bad_host(e.args[0], e.args[1]):
                     self.node.blacklist()
-                raise RuntimeError, "Failed install build sources: %s %s" % (e.args[0], e.args[1],)
+                raise RuntimeError, "Failed install build sources on node %s: %s %s" % (
+                        self.node.hostname, e.args[0], e.args[1],)
 
     def set_master(self, master):
         self._master = master
@@ -753,7 +754,6 @@ class Application(Dependency):
             stdout = 'stdout' if self.stdout else '/dev/null',
             stderr = 'stderr' if self.stderr else '/dev/null',
             sudo = self.sudo,
-            
             host = self.node.hostname,
             port = None,
             user = self.node.slicename,
