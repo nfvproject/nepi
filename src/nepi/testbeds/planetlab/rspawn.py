@@ -81,6 +81,7 @@ def remote_spawn(command, pidfile, stdout='/dev/null', stderr=STDOUT, stdin='/de
             'gohome' : 'cd %s ; ' % (server.shell_escape(home),) if home else '',
             'create' : 'mkdir -p %s ; ' % (server.shell_escape,) if create_home else '',
         }
+
     (out,err),proc = server.popen_ssh_command(
         cmd,
         host = host,
@@ -94,7 +95,7 @@ def remote_spawn(command, pidfile, stdout='/dev/null', stderr=STDOUT, stdin='/de
         )
     
     if proc.wait():
-        raise RuntimeError, "Failed to set up application: %s %s" % (out,err,)
+        raise RuntimeError, "Failed to set up application on host %s: %s %s" % (host, out,err,)
 
     return (out,err),proc
 
