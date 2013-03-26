@@ -68,10 +68,8 @@ class Resource(object):
         self._attrs = copy.deepcopy(self._attributes)
 
         # Logging
-        loglevel = "debug"
         self._logger = logging.getLogger("neco.execution.resource.Resource.%s" % 
             self.guid)
-        self._logger.setLevel(getattr(logging, loglevel.upper()))
 
     @property
     def guid(self):
@@ -84,6 +82,10 @@ class Resource(object):
     def connect(self, guid):
         if (self._validate_connection(guid)):
             self._connections.add(guid)
+
+    @property
+    def connections(self):
+        return self._connections
 
     def discover(self, filters):
         pass
@@ -130,7 +132,7 @@ class ResourceFactory(object):
         cls._resource_types[rclass.rtype()] = rclass
 
     @classmethod
-    def create(cls, rtype, ec, guid):
-        rclass = cls._resource[rtype]
-        return rclass(ec, guid)
+    def create(cls, rtype, ec, guid, creds):
+        rclass = cls._resource_types[rtype]
+        return rclass(ec, guid, creds)
 

@@ -39,12 +39,12 @@ class ExperimentController(object):
         # TODO
         pass
 
-    def register_resource(self, rtype, guid = None):
+    def register_resource(self, rtype, guid = None, creds = None):
         # Get next available guid
         guid = self._guid_generator.next(guid)
         
         # Instantiate RM
-        rm = ResourceFactory.create(rtype, self, guid)
+        rm = ResourceFactory.create(rtype, self, guid,creds)
 
         # Store RM
         self._resources[guid] = rm

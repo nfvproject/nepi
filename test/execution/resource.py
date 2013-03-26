@@ -41,6 +41,9 @@ class ResourceTestCase(unittest.TestCase):
         self.assertEquals(AnotherResource.rtype(), "AnotherResource")
         self.assertEquals(len(AnotherResource._attributes), 0)
 
+        #self.assertEquals(OmfNode.rtype(), "OmfNode")
+        #self.assertEquals(len(OmfNode._attributes), 0)
+
         self.assertEquals(len(ResourceFactory.resource_types()), 2)
 
 if __name__ == '__main__':
