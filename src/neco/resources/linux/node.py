@@ -1,4 +1,4 @@
-from neco.execution.resource import Resource
+from neco.execution.resource import ResourceManager
 from neco.util.sshfuncs import eintr_retry, rexec, rcopy, \
         rspawn, rcheck_pid, rstatus, rkill, make_control_path, RUNNING 
 
@@ -7,7 +7,7 @@ import logging
 import os.path
 import subprocess
 
-class LinuxNode(Resource):
+class LinuxNode(ResourceManager):
     def __init__(self, ec, guid):
         super(LinuxNode, self).__init__(ec, guid)
         self.ip = None

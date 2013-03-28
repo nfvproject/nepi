@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from neco.execution.resource import Resource, ResourceFactory
+from neco.execution.resource import ResourceFactory
 from neco.execution.ec import ExperimentController
 
 from neco.resources.omf.omf_node import OMFNode

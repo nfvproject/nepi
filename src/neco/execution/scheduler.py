@@ -1,6 +1,12 @@
 import itertools
 import heapq
 
+class Task(object):
+    def __init__(self, timestamp, callback):
+        self.id = None 
+        self.timestamp = timestamp
+        self.callback = callback
+
 class HeapScheduler(object):
     """ This class is thread safe.
     All calls to C Extensions are made atomic by the GIL in the CPython implementation.

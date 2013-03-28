@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from neco.execution.resource import Resource, clsinit
+from neco.execution.resource import ResourceManager, clsinit
 from neco.execution.attribute import Attribute
 from neco.resources.omf.omf_api import OMFAPIFactory
 
@@ -7,7 +7,7 @@ import neco
 import logging
 
 @clsinit
-class OMFApplication(Resource):
+class OMFApplication(ResourceManager):
     _rtype = "OMFApplication"
     _authorized_connections = ["OMFNode"]
 

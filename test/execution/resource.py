@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-from neco.execution.resource import Resource, ResourceFactory, clsinit
+from neco.execution.resource import ResourceManager, ResourceFactory, clsinit
 from neco.execution.attribute import Attribute
 
 import unittest
 
 @clsinit
-class MyResource(Resource):
+class MyResource(ResourceManager):
     _rtype = "MyResource"
 
     @classmethod
@@ -17,7 +17,7 @@ class MyResource(Resource):
         super(MyResource, self).__init__(ec, guid)
 
 @clsinit
-class AnotherResource(Resource):
+class AnotherResource(ResourceManager):
     _rtype = "AnotherResource"
 
     def __init__(self, ec, guid):

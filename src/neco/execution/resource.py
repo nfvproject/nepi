@@ -8,7 +8,7 @@ def clsinit(cls):
 
 # Decorator to invoke class initialization method
 @clsinit
-class Resource(object):
+class ResourceManager(object):
     _rtype = "Resource"
     _filters = None
     _attributes = None
@@ -114,6 +114,12 @@ class Resource(object):
         pass
 
     def stop(self):
+        pass
+
+    def deploy(self, group = None):
+        pass
+
+    def release(self):
         pass
 
     def _validate_connection(self, guid):

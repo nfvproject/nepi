@@ -1,10 +1,10 @@
 from neco.execution import tags
-from neco.execution.resource import Resource
+from neco.execution.resource import ResourceManager
 
 import cStringIO
 import logging
 
-class Application(Resource):
+class Application(ResourceManager):
     def __init__(self, box, ec):
         super(Application, self).__init__(box, ec)
         self.command = None
