@@ -1,11 +1,19 @@
 import itertools
 import heapq
 
+class TaskStatus:
+    NEW = 0
+    DONE = 1
+    ERROR = 2
+
+
 class Task(object):
     def __init__(self, timestamp, callback):
         self.id = None 
         self.timestamp = timestamp
         self.callback = callback
+        self.result = None
+        self.status = TaskStatus.NEW
 
 class HeapScheduler(object):
     """ This class is thread safe.
