@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-from neco.util.sshfuncs import *
+from neco.util.sshfuncs import rexec, rcopy, rspawn, rcheckpid, rstatus, rkill,\
+        RUNNING, FINISHED 
 
 import getpass
 import unittest
@@ -211,7 +212,7 @@ class SSHfuncsTestCase(unittest.TestCase):
 
         time.sleep(2)
 
-        (pid, ppid) = rcheck_pid(pidfile,
+        (pid, ppid) = rcheckpid(pidfile,
                 host = host,
                 user = user,
                 port = env.port,
