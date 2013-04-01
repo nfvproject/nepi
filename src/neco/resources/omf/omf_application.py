@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-from neco.execution.resource import ResourceManager, clsinit
+
+from neco.execution.resource import Resource, clsinit
 from neco.execution.attribute import Attribute
 from neco.resources.omf.omf_api import OMFAPIFactory
 
@@ -7,12 +8,30 @@ import neco
 import logging
 
 @clsinit
-class OMFApplication(ResourceManager):
+class OMFApplication(Resource):
+    """
+    .. class:: Class Args :
+      
+        :param ec: The Experiment controller
+        :type ec: ExperimentController
+        :param guid: guid of the RM
+        :type guid: int
+        :param creds: Credentials to communicate with the rm (XmppClient for OMF)
+        :type creds: dict
+
+    .. note::
+
+       This class is used only by the Experiment Controller through the Resource Factory
+
+    """
     _rtype = "OMFApplication"
     _authorized_connections = ["OMFNode"]
 
     @classmethod
     def _register_attributes(cls):
+        """Register the attributes of an OMF application
+        """
+
         appid = Attribute("appid", "Name of the application")
         path = Attribute("path", "Path of the application")
         args = Attribute("args", "Argument of the application")
@@ -32,6 +51,16 @@ class OMFApplication(ResourceManager):
 
 
     def __init__(self, ec, guid, creds):
+        """
+        :param ec: The Experiment controller
+        :type ec: ExperimentController
+        :param guid: guid of the RM
+        :type guid: int
+        :param creds: Credentials to communicate with the rm (XmppClient for OMF)
+        :type creds: dict
+
+        """
+        
         super(OMFApplication, self).__init__(ec, guid)
         self.set('xmppSlice', creds['xmppSlice'])
         self.set('xmppHost', creds['xmppHost'])
@@ -50,7 +79,15 @@ class OMFApplication(ResourceManager):
         self._logger = logging.getLogger("neco.omf.omfApp    ")
         self._logger.setLevel(neco.LOGLEVEL)
 
+
     def _validate_connection(self, guid):
+        """Check if the connection is available.
+
+        :param guid: Guid of the current RM
+        :type guid: int
+        :rtype:  Boolean
+
+        """
         rm = self.ec.resource(guid)
         if rm.rtype() not in self._authorized_connections:
             self._logger.debug("Connection between %s %s and %s %s refused : An Application can be connected only to a Node" % (self.rtype(), self._guid, rm.rtype(), guid))
@@ -63,6 +100,13 @@ class OMFApplication(ResourceManager):
             return True
 
     def _get_nodes(self, conn_set):
+        """Get the RM of the node to which the application is connected
+
+        :param conn_set: Connections of the current Guid
+        :type conn_set: set
+        :rtype: ResourceManager
+        """
+
         for elt in conn_set:
             rm = self.ec.resource(elt)
             if rm.rtype() == "OMFNode":
@@ -70,6 +114,9 @@ class OMFApplication(ResourceManager):
         return None
 
     def start(self):
+        """Send Xmpp Message Using OMF protocol to execute the application
+
+        """
         self._logger.debug(" " + self.rtype() + " ( Guid : " + str(self._guid) +") : " + self.get('appid') + " : " + self.get('path') + " : " + self.get('args') + " : " + self.get('env'))
         #try:
         if self.get('appid') and self.get('path') and self.get('args') and self.get('env'):
@@ -77,6 +124,9 @@ class OMFApplication(ResourceManager):
             self._omf_api.execute(rm_node.get('hostname'),self.get('appid'), self.get('args'), self.get('path'), self.get('env'))
 
     def stop(self):
+        """Send Xmpp Message Using OMF protocol to kill the application
+
+        """
         rm_node = self._get_nodes(self._connections)
         self._omf_api.exit(rm_node.get('hostname'),self.get('appid'))
 

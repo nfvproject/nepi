@@ -7,6 +7,20 @@ import xml.etree.ElementTree as ET
 import neco
 
 class OMFClient(sleekxmpp.ClientXMPP):
+    """
+    .. class:: Class Args :
+      
+        :param jid: Jabber Id (= Xmpp Slice + Date)
+        :type jid: Str
+        :param password: Jabber Password (= Xmpp Password)
+        :type password: Str
+
+    .. note::
+
+       This class is an XMPP Client with customized method
+
+    """
+
     def __init__(self, jid, password):
         sleekxmpp.ClientXMPP.__init__(self, jid, password)
         self._ready = False

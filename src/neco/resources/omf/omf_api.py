@@ -8,6 +8,25 @@ from neco.resources.omf.omf_client import OMFClient
 from neco.resources.omf.omf_messages_5_4 import MessageHandler
 
 class OMFAPI(object):
+    """
+    .. class:: Class Args :
+      
+        :param slice: Xmpp Slice
+        :type slice: Str
+        :param host: Xmpp Server
+        :type host: Str
+        :param port: Xmpp Port
+        :type port: Str
+        :param password: Xmpp password
+        :type password: Str
+        :param xmpp_root: Root of the Xmpp Topic Architecture
+        :type xmpp_root: Str
+
+    .. note::
+
+       This class is the implementation of an OMF 5.4 API. Since the version 5.4.1, the Topic Architecture start with OMF_5.4 instead of OMF used for OMF5.3
+
+    """
     def __init__(self, slice, host, port, password, xmpp_root = None):
         date = datetime.datetime.now().strftime("%Y-%m-%dt%H.%M.%S")
         tz = -time.altzone if time.daylight != 0 else -time.timezone
@@ -42,6 +61,9 @@ class OMFAPI(object):
         self._enroll_logger()
 
     def _init_client(self):
+        """ Initialize XMPP Client
+
+        """
         jid = "%s@%s" % (self._user, self._host)
         xmpp = OMFClient(jid, self._password)
         # PROTOCOL_SSLv3 required for compatibility with OpenFire
@@ -59,6 +81,9 @@ class OMFAPI(object):
             raise RuntimeError(msg)
 
     def _enroll_experiment(self):
+        """ Create and Subscribe to the Session Topic
+
+        """
         xmpp_node = self._exp_session_id
         self._client.create(xmpp_node)
         #print "Create experiment sesion id topics !!" 
@@ -67,6 +92,9 @@ class OMFAPI(object):
 
 
     def _enroll_newexperiment(self):
+        """ Publish New Experiment Message
+
+        """
         address = "/%s/%s/%s/%s" % (self._host, self._xmpp_root, self._slice, self._user)
         print address
         payload = self._message.newexpfunction(self._user, address)
@@ -74,6 +102,9 @@ class OMFAPI(object):
         self._client.publish(payload, slice_sid)
 
     def _enroll_logger(self):
+        """ Create and Subscribe to the Logger Topic
+
+        """
         xmpp_node = self._logger_session_id
         self._client.create(xmpp_node)
         self._client.subscribe(xmpp_node)
@@ -85,20 +116,44 @@ class OMFAPI(object):
         self._client.publish(payload, xmpp_node)
 
     def _host_session_id(self, hostname):
+        """ Return the Topic Name as /xmpp_root/slice/user/hostname
+
+        :param hostname: Full hrn of the node
+        :type hostname: str
+
+        """
         return "/%s/%s/%s/%s" % (self._xmpp_root, self._slice, self._user, hostname)
 
     def _host_resource_id(self, hostname):
+        """ Return the Topic Name as /xmpp_root/slice/resources/hostname
+
+        :param hostname: Full hrn of the node
+        :type hostname: str
+
+        """
         return "/%s/%s/resources/%s" % (self._xmpp_root, self._slice, hostname)
 
     @property
     def _exp_session_id(self):
+        """ Return the Topic Name as /xmpp_root/slice/user
+
+        """
         return "/%s/%s/%s" % (self._xmpp_root, self._slice, self._user)
 
     @property
     def _logger_session_id(self):
+        """ Return the Topic Name as /xmpp_root/slice/LOGGER
+
+        """
         return "/%s/%s/%s/LOGGER" % (self._xmpp_root, self._slice, self._user)
 
     def delete(self, hostname):
+        """ Delete the topic corresponding to the hostname for this session
+
+        :param hostname: Full hrn of the node
+        :type hostname: str
+
+        """
         if not hostname in self._hostnames:
             return
 
@@ -108,6 +163,12 @@ class OMFAPI(object):
         self._client.delete(xmpp_node)
 
     def enroll_host(self, hostname):
+        """ Create and Subscribe to the session topic and the resources corresponding to the hostname
+
+        :param hostname: Full hrn of the node
+        :type hostname: str
+
+        """
         if hostname in self._hostnames:
             return 
 
@@ -123,22 +184,57 @@ class OMFAPI(object):
         payload = self._message.enrollfunction("1", "*", "1", hostname)
         self._client.publish(payload, xmpp_node)
 
-    def configure(self, hostname, attribute, value): 
+    def configure(self, hostname, attribute, value):
+        """ Configure attribute on the node
+
+        :param hostname: Full hrn of the node
+        :type hostname: str
+        :param attribute: Attribute that need to be configured (often written as /net/wX/attribute, with X the interface number)
+        :type attribute: str
+        :param value: Value of the attribute
+        :type value: str
+
+        """
         payload = self._message.configurefunction(hostname, value, attribute)
         xmpp_node =  self._host_session_id(hostname)
         self._client.publish(payload, xmpp_node)
 
     def execute(self, hostname, app_id, arguments, path, env):
+        """ Execute command on the node
+
+        :param hostname: Full hrn of the node
+        :type hostname: str
+        :param app_id: Application Id (Any id that represents in a unique way the application)
+        :type app_id: str
+        :param arguments: Arguments of the application
+        :type arguments: str
+        :param path: Path of the application
+        :type path: str
+        :param env: Environnement values for the application
+        :type env: str
+
+        """
         payload = self._message.executefunction(hostname, app_id, arguments, path, env)
         xmpp_node =  self._host_session_id(hostname)
         self._client.publish(payload, xmpp_node)
 
     def exit(self, hostname, app_id):
+        """ Kill an application started with OMF
+
+        :param hostname: Full hrn of the node
+        :type hostname: str
+        :param app_id: Application Id of the application you want to stop
+        :type app_id: str
+
+        """
         payload = self._message.exitfunction(hostname, app_id)
         xmpp_node =  self._host_session_id(hostname)
         self._client.publish(payload, xmpp_node)
 
     def disconnect(self):
+        """ Delete the sesion and logger topic and disconnect 
+
+        """
         self._client.delete(self._exp_session_id)
         self._client.delete(self._logger_session_id)
 
@@ -150,11 +246,30 @@ class OMFAPI(object):
 
 
 class OMFAPIFactory(object):
+    """ 
+    .. note::
+
+        It allows the different RM to use the same xmpp client if they use the same credentials. For the moment, it is focused on Xmpp.
+
+    """
+
     # XXX: put '_apis' instead of '_Api'
     _Api = dict()
 
     @classmethod 
     def get_api(cls, slice, host, port, password):
+        """ Get an Api
+
+        :param slice: Xmpp Slice Name
+        :type slice: str
+        :param host: Xmpp Server Adress
+        :type host: str
+        :param port: Xmpp Port (Default : 5222)
+        :type port: str
+        :param password: Xmpp Password
+        :type password: str
+
+        """
         if slice and host and port and password:
             key = cls._hash_api(slice, host, port)
             if key in cls._Api:
@@ -165,6 +280,18 @@ class OMFAPIFactory(object):
 
     @classmethod 
     def create_api(cls, slice, host, port, password):
+        """ Create an API if this one doesn't exist yet with this credentials
+
+        :param slice: Xmpp Slice Name
+        :type slice: str
+        :param host: Xmpp Server Adress
+        :type host: str
+        :param port: Xmpp Port (Default : 5222)
+        :type port: str
+        :param password: Xmpp Password
+        :type password: str
+
+        """
         OmfApi = OMFAPI(slice, host, port, password)
         key = cls._hash_api(slice, host, port)      
         cls._Api[key] = OmfApi
@@ -182,6 +309,16 @@ class OMFAPIFactory(object):
     # XXX: change method name for 'make_key'
     @classmethod 
     def _hash_api(cls, slice, host, port):
+        """ Hash the credentials in order to create a key
+
+        :param slice: Xmpp Slice Name
+        :type slice: str
+        :param host: Xmpp Server Adress
+        :type host: str
+        :param port: Xmpp Port (Default : 5222)
+        :type port: str
+
+        """
         res = slice + "_" + host + "_" + port
         return res
 

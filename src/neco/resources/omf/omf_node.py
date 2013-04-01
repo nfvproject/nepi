@@ -9,11 +9,29 @@ import logging
 
 @clsinit
 class OMFNode(ResourceManager):
+    """
+    .. class:: Class Args :
+      
+        :param ec: The Experiment controller
+        :type ec: ExperimentController
+        :param guid: guid of the RM
+        :type guid: int
+        :param creds: Credentials to communicate with the rm (XmppClient for OMF)
+        :type creds: dict
+
+    .. note::
+
+       This class is used only by the Experiment Controller through the Resource Factory
+
+    """
     _rtype = "OMFNode"
     _authorized_connections = ["OMFApplication" , "OMFWifiInterface"]
 
     @classmethod
     def _register_attributes(cls):
+        """Register the attributes of an OMF Node
+
+        """
         hostname = Attribute("hostname", "Hostname of the machine")
         cpu = Attribute("cpu", "CPU of the node")
         ram = Attribute("ram", "RAM of the node")
@@ -35,6 +53,9 @@ class OMFNode(ResourceManager):
 
     @classmethod
     def _register_filters(cls):
+        """Register the filters of an OMF Node
+
+        """
         hostname = Attribute("hostname", "Hostname of the machine")
         gateway = Attribute("gateway", "Gateway")
         granularity = Attribute("granularity", "Granularity of the reservation time")
@@ -49,6 +70,15 @@ class OMFNode(ResourceManager):
     # THE OMF API SHOULD BE CREATED ON THE DEPLOY METHOD, NOT NOW
     # THIS FORCES MORE CONSTRAINES ON THE WAY WE WILL AUTHOMATE DEPLOYMENT!
     def __init__(self, ec, guid, creds):
+        """
+        :param ec: The Experiment controller
+        :type ec: ExperimentController
+        :param guid: guid of the RM
+        :type guid: int
+        :param creds: Credentials to communicate with the rm (XmppClient for OMF)
+        :type creds: dict
+
+        """
         super(OMFNode, self).__init__(ec, guid)
         self.set('xmppSlice', creds['xmppSlice'])
         self.set('xmppHost', creds['xmppHost'])
@@ -64,6 +94,13 @@ class OMFNode(ResourceManager):
         self._logger.setLevel(neco.LOGLEVEL)
 
     def _validate_connection(self, guid):
+        """Check if the connection is available.
+
+        :param guid: Guid of the current RM
+        :type guid: int
+        :rtype:  Boolean
+
+        """
         rm = self.ec.resource(guid)
         if rm.rtype() in self._authorized_connections:
             self._logger.debug("Connection between %s %s and %s %s accepted" % (self.rtype(), self._guid, rm.rtype(), guid))
@@ -72,15 +109,27 @@ class OMFNode(ResourceManager):
         return False
 
     def discover(self):
+        """ Discover the availables nodes
+
+        """
         pass
      
     def provision(self, credential):
+        """ Provision some availables nodes
+
+        """
         pass
 
     def start(self):
+        """Send Xmpp Message Using OMF protocol to enroll the node into the experiment
+
+        """
         self._omf_api.enroll_host(self.get('hostname'))
 
     def stop(self):
+        """Send Xmpp Message Using OMF protocol to disconnect the node
+
+        """
         self._omf_api.disconnect()
 
     def configure(self):
