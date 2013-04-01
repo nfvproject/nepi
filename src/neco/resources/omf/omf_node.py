@@ -17,6 +17,10 @@ class OMFNode(ResourceManager):
         hostname = Attribute("hostname", "Hostname of the machine")
         cpu = Attribute("cpu", "CPU of the node")
         ram = Attribute("ram", "RAM of the node")
+        # XXX: flags = "0x02" is not human readable.
+        # instead:
+        # from neco.execution.attribute import Attribute, Flags 
+        # xmppSlice = Attribute("xmppSlice","Name of the slice", flags = Flags.Credential)
         xmppSlice = Attribute("xmppSlice","Name of the slice", flags = "0x02")
         xmppHost = Attribute("xmppHost", "Xmpp Server",flags = "0x02")
         xmppPort = Attribute("xmppPort", "Xmpp Port",flags = "0x02")
@@ -27,7 +31,7 @@ class OMFNode(ResourceManager):
         cls._register_attribute(xmppSlice)
         cls._register_attribute(xmppHost)
         cls._register_attribute(xmppPort)
-        cls._register_attribute(xmppPassword)
+        ls._register_attribute(xmppPassword)
 
     @classmethod
     def _register_filters(cls):
@@ -40,6 +44,10 @@ class OMFNode(ResourceManager):
         cls._register_filter(granularity)
         cls._register_filter(hardware_type)
 
+    # XXX: We don't necessary need to have the credentials at the 
+    # moment we create the RM
+    # THE OMF API SHOULD BE CREATED ON THE DEPLOY METHOD, NOT NOW
+    # THIS FORCES MORE CONSTRAINES ON THE WAY WE WILL AUTHOMATE DEPLOYMENT!
     def __init__(self, ec, guid, creds):
         super(OMFNode, self).__init__(ec, guid)
         self.set('xmppSlice', creds['xmppSlice'])
@@ -47,9 +55,12 @@ class OMFNode(ResourceManager):
         self.set('xmppPort', creds['xmppPort'])
         self.set('xmppPassword', creds['xmppPassword'])
 
+        # XXX: Lines should not be more than 80 characters!
         self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
 
         self._logger = logging.getLogger("neco.omf.omfNode   ")
+
+        # XXX: TO DISCUSS
         self._logger.setLevel(neco.LOGLEVEL)
 
     def _validate_connection(self, guid):

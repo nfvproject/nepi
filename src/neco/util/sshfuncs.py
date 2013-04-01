@@ -201,7 +201,6 @@ def rexec(command, host, user,
 def rcopy(source, dest,
         port = None, 
         agent = True, 
-        recursive = False,
         identity_file = None):
     """
     Copies file from/to remote sites.
@@ -209,214 +208,57 @@ def rcopy(source, dest,
     Source and destination should have the user and host encoded
     as per scp specs.
     
-    If source is a file object, a special mode will be used to
-    create the remote file with the same contents.
-    
-    If dest is a file object, the remote file (source) will be
-    read and written into dest.
-    
-    In these modes, recursive cannot be True.
-    
     Source can be a list of files to copy to a single destination,
     in which case it is advised that the destination be a folder.
     """
     
-    if isinstance(source, file) and source.tell() == 0:
-        source = source.name
-    elif hasattr(source, 'read'):
-        tmp = tempfile.NamedTemporaryFile()
-        while True:
-            buf = source.read(65536)
-            if buf:
-                tmp.write(buf)
-            else:
-                break
-        tmp.seek(0)
-        source = tmp.name
-    
-    if isinstance(source, file) or isinstance(dest, file) \
-            or hasattr(source, 'read')  or hasattr(dest, 'write'):
-        assert not recursive
-    
-        # Parse source/destination as <user>@<server>:<path>
-        if isinstance(dest, basestring) and ':' in dest:
-            remspec, path = dest.split(':',1)
-        elif isinstance(source, basestring) and ':' in source:
-            remspec, path = source.split(':',1)
-        else:
-            raise ValueError, "Both endpoints cannot be local"
-        user,host = remspec.rsplit('@',1)
-        tmp_known_hosts = None
-        
-        args = ['ssh', '-l', user, '-C',
-                # Don't bother with localhost. Makes test easier
-                '-o', 'NoHostAuthenticationForLocalhost=yes',
-                # XXX: Possible security issue
-                # Avoid interactive requests to accept new host keys
-                '-o', 'StrictHostKeyChecking=no',
-                '-o', 'ConnectTimeout=30',
-                '-o', 'ConnectionAttempts=3',
-                '-o', 'ServerAliveInterval=30',
-                '-o', 'TCPKeepAlive=yes',
-                host ]
-
-        if openssh_has_persist():
-            control_path = make_control_path(user, host, port)
-            args.extend([
-                '-o', 'ControlMaster=auto',
-                '-o', 'ControlPath=%s' % control_path,
-                '-o', 'ControlPersist=60' ])
-        if port:
-            args.append('-P%d' % port)
-        if identity_file:
-            args.extend(('-i', identity_file))
-        
-        if isinstance(source, file) or hasattr(source, 'read'):
-            args.append('cat > %s' % (shell_escape(path),))
-        elif isinstance(dest, file) or hasattr(dest, 'write'):
-            args.append('cat %s' % (shell_escape(path),))
-        else:
-            raise AssertionError, "Unreachable code reached! :-Q"
-
-        # connects to the remote host and starts a remote connection
-        if isinstance(source, file):
-            proc = subprocess.Popen(args, 
-                    stdout = open('/dev/null','w'),
-                    stderr = subprocess.PIPE,
-                    stdin = source)
-            err = proc.stderr.read()
-            eintr_retry(proc.wait)()
-            return ((None,err), proc)
-        elif isinstance(dest, file):
-            proc = subprocess.Popen(args, 
-                    stdout = open('/dev/null','w'),
-                    stderr = subprocess.PIPE,
-                    stdin = source)
-            err = proc.stderr.read()
-            eintr_retry(proc.wait)()
-            return ((None,err), proc)
-        elif hasattr(source, 'read'):
-            # file-like (but not file) source
-            proc = subprocess.Popen(args, 
-                    stdout = open('/dev/null','w'),
-                    stderr = subprocess.PIPE,
-                    stdin = subprocess.PIPE)
-            
-            buf = None
-            err = []
-            while True:
-                if not buf:
-                    buf = source.read(4096)
-                if not buf:
-                    #EOF
-                    break
-                
-                rdrdy, wrdy, broken = select.select(
-                    [proc.stderr],
-                    [proc.stdin],
-                    [proc.stderr,proc.stdin])
-                
-                if proc.stderr in rdrdy:
-                    # use os.read for fully unbuffered behavior
-                    err.append(os.read(proc.stderr.fileno(), 4096))
-                
-                if proc.stdin in wrdy:
-                    proc.stdin.write(buf)
-                    buf = None
-                
-                if broken:
-                    break
-            proc.stdin.close()
-            err.append(proc.stderr.read())
-                
-            eintr_retry(proc.wait)()
-            return ((None,''.join(err)), proc)
-        elif hasattr(dest, 'write'):
-            # file-like (but not file) dest
-            proc = subprocess.Popen(args, 
-                    stdout = subprocess.PIPE,
-                    stderr = subprocess.PIPE,
-                    stdin = open('/dev/null','w'))
-            
-            buf = None
-            err = []
-            while True:
-                rdrdy, wrdy, broken = select.select(
-                    [proc.stderr, proc.stdout],
-                    [],
-                    [proc.stderr, proc.stdout])
-                
-                if proc.stderr in rdrdy:
-                    # use os.read for fully unbuffered behavior
-                    err.append(os.read(proc.stderr.fileno(), 4096))
-                
-                if proc.stdout in rdrdy:
-                    # use os.read for fully unbuffered behavior
-                    buf = os.read(proc.stdout.fileno(), 4096)
-                    dest.write(buf)
-                    
-                    if not buf:
-                        #EOF
-                        break
-                
-                if broken:
-                    break
-            err.append(proc.stderr.read())
-                
-            eintr_retry(proc.wait)()
-            return ((None,''.join(err)), proc)
-        else:
-            raise AssertionError, "Unreachable code reached! :-Q"
+    # Parse destination as <user>@<server>:<path>
+    if isinstance(dest, basestring) and ':' in dest:
+        remspec, path = dest.split(':',1)
+    elif isinstance(source, basestring) and ':' in source:
+        remspec, path = source.split(':',1)
     else:
-        # Parse destination as <user>@<server>:<path>
-        if isinstance(dest, basestring) and ':' in dest:
-            remspec, path = dest.split(':',1)
-        elif isinstance(source, basestring) and ':' in source:
-            remspec, path = source.split(':',1)
-        else:
-            raise ValueError, "Both endpoints cannot be local"
-        user,host = remspec.rsplit('@',1)
+        raise ValueError, "Both endpoints cannot be local"
+    user, host = remspec.rsplit('@',1)
 
-        # plain scp
-        args = ['scp', '-q', '-p', '-C',
-                # Don't bother with localhost. Makes test easier
-                '-o', 'NoHostAuthenticationForLocalhost=yes',
-                # XXX: Possible security issue
-                # Avoid interactive requests to accept new host keys
-                '-o', 'StrictHostKeyChecking=no',
-                '-o', 'ConnectTimeout=30',
-                '-o', 'ConnectionAttempts=3',
-                '-o', 'ServerAliveInterval=30',
-                '-o', 'TCPKeepAlive=yes' ]
-                
-        if port:
-            args.append('-P%d' % port)
-        if recursive:
-            args.append('-r')
-        if identity_file:
-            args.extend(('-i', identity_file))
+    raw_string = r'''rsync -rlpcSz --timeout=900 '''
+    raw_string += r''' -e 'ssh -o BatchMode=yes '''
+    raw_string += r''' -o NoHostAuthenticationForLocalhost=yes '''
+    raw_string += r''' -o StrictHostKeyChecking=no '''
+    raw_string += r''' -o ConnectionAttempts=3 '''
+ 
+    if openssh_has_persist():
+        control_path = make_control_path(user, host, port)
+        raw_string += r''' -o ControlMaster=auto '''
+        raw_string += r''' -o ControlPath=%s ''' % control_path
+  
+    if port:
+        raw_string += r''' -p %d ''' % port
+    
+    if identity_file:
+        raw_string += r''' -i "%s" ''' % identity_file
+    
+    # closing -e 'ssh...'
+    raw_string += r''' ' '''
 
-        if isinstance(source,list):
-            args.extend(source)
-        else:
-            if openssh_has_persist():
-                control_path = make_control_path(user, host, port)
-                args.extend([
-                    '-o', 'ControlMaster=no',
-                    '-o', 'ControlPath=%s' % control_path ])
-            args.append(source)
+    if isinstance(source,list):
+        source = ' '.join(source)
+    else:
+        source = '"%s"' % source
 
-        args.append(dest)
+    raw_string += r''' %s ''' % source
+    raw_string += r''' %s ''' % dest
 
-        # connects to the remote host and starts a remote connection
-        proc = subprocess.Popen(args, 
-                stdout = subprocess.PIPE,
-                stdin = subprocess.PIPE, 
-                stderr = subprocess.PIPE)
-        
-        comm = proc.communicate()
-        eintr_retry(proc.wait)()
-        return (comm, proc)
+    # connects to the remote host and starts a remote connection
+    proc = subprocess.Popen(raw_string,
+            shell=True,
+            stdout = subprocess.PIPE,
+            stdin = subprocess.PIPE, 
+            stderr = subprocess.PIPE)
+  
+    comm = proc.communicate()
+    eintr_retry(proc.wait)()
+    return (comm, proc)
 
 def rspawn(command, pidfile, 
         stdout = '/dev/null', 
@@ -465,7 +307,8 @@ def rspawn(command, pidfile,
         stderr = '&1'
     else:
         stderr = ' ' + stderr
-    
+   
+    #XXX: ppid is always 1!!!
     daemon_command = '{ { %(command)s  > %(stdout)s 2>%(stderr)s < %(stdin)s & } ; echo $! 1 > %(pidfile)s ; }' % {
         'command' : command,
         'pidfile' : pidfile,
@@ -562,6 +405,7 @@ def rstatus(pid, ppid,
         One of NOT_STARTED, RUNNING, FINISHED
     """
 
+    # XXX: ppid unused
     (out,err),proc = rexec(
         "ps --pid %(pid)d -o pid | grep -c %(pid)d ; true" % {
             'ppid' : ppid,
@@ -590,7 +434,7 @@ def rstatus(pid, ppid,
     
 
 @eintr_retry
-def rkill(pid, ppid, 
+def rkill(pid, ppid,
         host = None, 
         port = None, 
         user = None, 

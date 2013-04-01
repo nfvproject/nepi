@@ -178,7 +178,8 @@ class ExperimentController(object):
            self._thread.join()
 
     def schedule(self, date, callback, track = False):
-        """
+        """ Schedule a callback to be executed at time date.
+
             date    string containing execution time for the task.
                     It can be expressed as an absolute time, using
                     timestamp format, or as a relative time matching

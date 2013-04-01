@@ -150,6 +150,7 @@ class OMFAPI(object):
 
 
 class OMFAPIFactory(object):
+    # XXX: put '_apis' instead of '_Api'
     _Api = dict()
 
     @classmethod 
@@ -169,6 +170,16 @@ class OMFAPIFactory(object):
         cls._Api[key] = OmfApi
         return OmfApi
 
+    # XXX: this is not a hash :)
+    # From wikipedia: "A hash function is any algorithm or subroutine that maps large data 
+    # sets of variable length to smaller data sets of a fixed length."
+    # The idea is to apply a function to get a smaller string. Use hashlib instead.
+    # e.g:
+    # import hashlib
+    # res = slice + "_" + host + "_" + port
+    # hashlib.md5(res).hexdigest()
+    #
+    # XXX: change method name for 'make_key'
     @classmethod 
     def _hash_api(cls, slice, host, port):
         res = slice + "_" + host + "_" + port

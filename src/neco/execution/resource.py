@@ -110,7 +110,7 @@ class ResourceManager(object):
     def set_after(self, name, value, time, after_status, guid):
         pass
 
-    def next_step(self):
+    def start(self):
         pass
 
     def stop(self):
@@ -138,7 +138,7 @@ class ResourceFactory(object):
         cls._resource_types[rclass.rtype()] = rclass
 
     @classmethod
-    def create(cls, rtype, ec, guid, creds):
+    def create(cls, rtype, ec, guid):
         rclass = cls._resource_types[rtype]
-        return rclass(ec, guid, creds)
+        return rclass(ec, guid)
 
