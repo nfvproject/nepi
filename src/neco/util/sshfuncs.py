@@ -105,14 +105,23 @@ def eintr_retry(func):
             return func(*p, **kw)
     return rv
 
-def make_connkey(user, host, port):
-    connkey = repr((user,host,port)).encode("base64").strip().replace('/','.')
+def make_connkey(user, host, port, x11, agent):
+    # It is important to consider the x11 and agent forwarding
+    # parameters when creating the connection key since the parameters
+    # used for the first ssh connection will determine the
+    # parameters of all subsequent connections using the same key
+    x11 = 1 if x11 else 0
+    agent = 1 if agent else 0
+
+    connkey = repr((user, host, port, x11, agent)
+            ).encode("base64").strip().replace('/','.')
+
     if len(connkey) > 60:
         connkey = hashlib.sha1(connkey).hexdigest()
     return connkey
 
-def make_control_path(user, host, port):
-    connkey = make_connkey(user, host, port)
+def make_control_path(user, host, port, x11, agent):
+    connkey = make_connkey(user, host, port, x11, agent)
     return '/tmp/%s_%s' % ( CONTROL_PATH, connkey, )
 
 def rexec(command, host, user, 
@@ -120,7 +129,7 @@ def rexec(command, host, user,
         agent = True,
         sudo = False,
         stdin = None,
-        identity_file = None,
+        identity = None,
         env = None,
         tty = False,
         x11 = False,
@@ -145,7 +154,7 @@ def rexec(command, host, user,
             '-l', user, host]
 
     if persistent and openssh_has_persist():
-        control_path = make_control_path(user, host, port)
+        control_path = make_control_path(user, host, port, x11, agent)
         args.extend([
             '-o', 'ControlMaster=auto',
             '-o', 'ControlPath=%s' % control_path,
@@ -154,8 +163,8 @@ def rexec(command, host, user,
         args.append('-A')
     if port:
         args.append('-p%d' % port)
-    if identity_file:
-        args.extend(('-i', identity_file))
+    if identity:
+        args.extend(('-i', identity))
     if tty:
         args.append('-t')
         if sudo:
@@ -201,7 +210,7 @@ def rexec(command, host, user,
 def rcopy(source, dest,
         port = None, 
         agent = True, 
-        identity_file = None):
+        identity = None):
     """
     Copies file from/to remote sites.
     
@@ -228,15 +237,18 @@ def rcopy(source, dest,
     raw_string += r''' -o ConnectionAttempts=3 '''
  
     if openssh_has_persist():
-        control_path = make_control_path(user, host, port)
+        control_path = make_control_path(user, host, port, False, agent)
         raw_string += r''' -o ControlMaster=auto '''
         raw_string += r''' -o ControlPath=%s ''' % control_path
-  
+ 
+    if agent:
+        raw_string += r''' -A '''
+
     if port:
         raw_string += r''' -p %d ''' % port
     
-    if identity_file:
-        raw_string += r''' -i "%s" ''' % identity_file
+    if identity:
+        raw_string += r''' -i "%s" ''' % identity
     
     # closing -e 'ssh...'
     raw_string += r''' ' '''
@@ -271,7 +283,7 @@ def rspawn(command, pidfile,
         user = None, 
         agent = None, 
         sudo = False,
-        identity_file = None, 
+        identity = None, 
         tty = False):
     """
     Spawn a remote command such that it will continue working asynchronously.
@@ -293,7 +305,7 @@ def rspawn(command, pidfile,
         
         sudo: whether the command needs to be executed as root
         
-        host/port/user/agent/identity_file: see rexec
+        host/port/user/agent/identity: see rexec
     
     Returns:
         (stdout, stderr), process
@@ -334,7 +346,7 @@ def rspawn(command, pidfile,
         port = port,
         user = user,
         agent = agent,
-        identity_file = identity_file,
+        identity = identity,
         tty = tty
         )
     
@@ -344,19 +356,19 @@ def rspawn(command, pidfile,
     return (out,err),proc
 
 @eintr_retry
-def rcheck_pid(pidfile,
+def rcheckpid(pidfile,
         host = None, 
         port = None, 
         user = None, 
         agent = None, 
-        identity_file = None):
+        identity = None):
     """
     Check the pidfile of a process spawned with remote_spawn.
     
     Parameters:
         pidfile: the pidfile passed to remote_span
         
-        host/port/user/agent/identity_file: see rexec
+        host/port/user/agent/identity: see rexec
     
     Returns:
         
@@ -372,7 +384,7 @@ def rcheck_pid(pidfile,
         port = port,
         user = user,
         agent = agent,
-        identity_file = identity_file
+        identity = identity
         )
         
     if proc.wait():
@@ -391,14 +403,14 @@ def rstatus(pid, ppid,
         port = None, 
         user = None, 
         agent = None, 
-        identity_file = None):
+        identity = None):
     """
     Check the status of a process spawned with remote_spawn.
     
     Parameters:
         pid/ppid: pid and parent-pid of the spawned process. See remote_check_pid
         
-        host/port/user/agent/identity_file: see rexec
+        host/port/user/agent/identity: see rexec
     
     Returns:
         
@@ -415,7 +427,7 @@ def rstatus(pid, ppid,
         port = port,
         user = user,
         agent = agent,
-        identity_file = identity_file
+        identity = identity
         )
     
     if proc.wait():
@@ -440,7 +452,7 @@ def rkill(pid, ppid,
         user = None, 
         agent = None, 
         sudo = False,
-        identity_file = None, 
+        identity = None, 
         nowait = False):
     """
     Kill a process spawned with remote_spawn.
@@ -453,7 +465,7 @@ def rkill(pid, ppid,
         
         sudo: whether the command was run with sudo - careful killing like this.
         
-        host/port/user/agent/identity_file: see rexec
+        host/port/user/agent/identity: see rexec
     
     Returns:
         
@@ -494,7 +506,7 @@ fi
         port = port,
         user = user,
         agent = agent,
-        identity_file = identity_file
+        identity = identity
         )
     
     # wait, don't leave zombies around
