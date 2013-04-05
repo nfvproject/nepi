@@ -1,6 +1,24 @@
+
+from neco.util.timefuncs import strfnow, strfdiff, strfvalid 
+
 import copy
+import functools
 import logging
 import weakref
+
+_reschedule_delay = "1s"
+
+class ResourceAction:
+    START = 0
+    STOP = 1
+
+class ResourceState:
+    NEW = 0
+    DEPLOYED = 1
+    STARTED = 2
+    STOPPED = 3
+    FAILED = 4
+    RELEASED = 5
 
 def clsinit(cls):
     cls._clsinit()
@@ -63,13 +81,24 @@ class ResourceManager(object):
         self._guid = guid
         self._ec = weakref.ref(ec)
         self._connections = set()
+        self._conditions = dict() 
+
         # the resource instance gets a copy of all attributes
         # that can modify
         self._attrs = copy.deepcopy(self._attributes)
 
+        self._state = ResourceState.NEW
+
+        self._start_time = None
+        self._stop_time = None
+
         # Logging
         self._logger = logging.getLogger("neco.execution.resource.Resource.%s" % 
             self.guid)
+
+    @property
+    def logger(self):
+        return self._logger
 
     @property
     def guid(self):
@@ -79,19 +108,50 @@ class ResourceManager(object):
     def ec(self):
         return self._ec()
 
-    def connect(self, guid):
-        if (self._validate_connection(guid)):
-            self._connections.add(guid)
-
     @property
     def connections(self):
         return self._connections
 
-    def discover(self, filters):
+    @property
+    def conditons(self):
+        return self._conditions
+
+    @property
+    def start_time(self):
+        """ timestamp with  """
+        return self._start_time
+
+    @property
+    def stop_time(self):
+        return self._stop_time
+
+    @property
+    def state(self):
+        return self._state
+
+    def connect(self, guid):
+        if (self._validate_connection(guid)):
+            self._connections.add(guid)
+
+    def discover(self, filters = None):
         pass
 
-    def provision(self, filters):
+    def provision(self, filters = None):
         pass
+
+    def start(self):
+        if not self._state in [ResourceState.DEPLOYED, ResourceState.STOPPED]:
+            self.logger.error("Wrong state %s for start" % self.state)
+
+        self._start_time = strfnow()
+        self._state = ResourceState.STARTED
+
+    def stop(self):
+        if not self._state in [ResourceState.STARTED]:
+            self.logger.error("Wrong state %s for stop" % self.state)
+
+        self._stop_time = strfnow()
+        self._state = ResourceState.STOPPED
 
     def set(self, name, value):
         attr = self._attrs[name]
@@ -101,26 +161,114 @@ class ResourceManager(object):
         attr = self._attrs[name]
         return attr.value
 
-    def start_after(self, time, after_status, guid):
-        pass
+    def register_condition(self, action, group, state, 
+            time = None):
+        if action not in self.conditions:
+            self._conditions[action] = set()
 
-    def stop_after(self, time, after_status, guid):
-        pass
+        self.conditions.get(action).add((group, state, time))
 
-    def set_after(self, name, value, time, after_status, guid):
-        pass
+    def _needs_reschedule(self, group, state, time):
+        reschedule = False
+        delay = _reschedule_delay 
 
-    def start(self):
-        pass
+        # check state and time elapsed on all RMs
+        for guid in group:
+            rm = self.ec.get_resource(guid)
+            # If the RMs is lower than the requested state we must
+            # reschedule (e.g. if RM is DEPLOYED but we required STARTED)
+            if rm.state < state:
+                reschedule = True
+                break
 
-    def stop(self):
-        pass
+            if time:
+                if state == ResourceAction.START:
+                    t = rm.start_time
+                elif state == ResourceAction.STOP:
+                    t = rm.stop_time
+                else:
+                    # Only keep time information for START and STOP
+                    break
 
-    def deploy(self, group = None):
-        pass
+                delay = strfdiff(t, strnow()) 
+                if delay < time:
+                    reschedule = True
+                    break
+
+        return reschedule, delay
+
+    def set_with_conditions(self, name, value, group, state, time):
+        reschedule = False
+        delay = _reschedule_delay 
+
+        ## evaluate if set conditions are met
+
+        # only can set with conditions after the RM is started
+        if self.status != ResourceStatus.STARTED:
+            reschedule = True
+        else:
+            reschedule, delay = self._needs_reschedule(group, state, time)
+
+        if reschedule:
+            callback = functools.partial(self.set_with_conditions, 
+                    name, value, group, state, time)
+            self.ec.schedule(delay, callback)
+        else:
+            self.set(name, value)
+
+    def start_with_conditions(self):
+        reschedule = False
+        delay = _reschedule_delay 
+
+        ## evaluate if set conditions are met
+
+        # only can start when RM is either STOPPED or DEPLOYED
+        if self.status not in [ResourceStatus.STOPPED, ResourceStatus.DEPLOYED]:
+            reschedule = True
+        else:
+            for action, (group, state, time) in self.conditions.iteritems():
+                if action == ResourceAction.START:
+                    reschedule, delay = self._needs_reschedule(group, state, time)   
+                    if reschedule:
+                        break
+
+        if reschedule:
+            callback = functools.partial(self.start_with_conditions, 
+                    group, state, time)
+            self.ec.schedule(delay, callback)
+        else:
+            self.start()
+
+    def stop_with_conditions(self):
+        reschedule = False
+        delay = _reschedule_delay 
+
+        ## evaluate if set conditions are met
+
+        # only can start when RM is either STOPPED or DEPLOYED
+        if self.status != ResourceStatus.STARTED:
+            reschedule = True
+        else:
+            for action, (group, state, time) in self.conditions.iteritems():
+                if action == ResourceAction.STOP:
+                    reschedule, delay = self._needs_reschedule(group, state, time)   
+                    if reschedule:
+                        break
+
+        if reschedule:
+            callback = functools.partial(self.stop_with_conditions, 
+                    group, state, time)
+            self.ec.schedule(delay, callback)
+        else:
+            self.stop()
+
+    def deploy(self):
+        self.discover()
+        self.provision()
+        self._state = ResourceState.DEPLOYED
 
     def release(self):
-        pass
+        self._state = ResourceState.RELEASED
 
     def _validate_connection(self, guid):
         # TODO: Validate!

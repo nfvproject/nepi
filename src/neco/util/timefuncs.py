@@ -5,7 +5,7 @@ _strf = "%Y%m%d%H%M%S%f"
 _reabs = re.compile("^\d{20}$")
 _rerel = re.compile("^(?P<time>\d+(.\d+)?)(?P<units>h|m|s|ms|us)$")
 
-# Work around to fix "ImportError: Failed to import _strptime because the import lockis held by another thread."
+# Work around to fix "ImportError: Failed to import _strptime because the import lock is held by another thread."
 datetime.datetime.strptime("20120807124732894211", _strf)
 
 def strfnow():

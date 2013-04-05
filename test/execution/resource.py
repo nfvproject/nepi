@@ -26,8 +26,7 @@ class AnotherResource(ResourceManager):
 class EC(object):
     pass
 
-
-class ResourceTestCase(unittest.TestCase):
+class ResourceFactoryTestCase(unittest.TestCase):
     def test_add_resource_factory(self):
         ResourceFactory.register_type(MyResource)
         ResourceFactory.register_type(AnotherResource)
@@ -41,10 +40,19 @@ class ResourceTestCase(unittest.TestCase):
         self.assertEquals(AnotherResource.rtype(), "AnotherResource")
         self.assertEquals(len(AnotherResource._attributes), 0)
 
-        #self.assertEquals(OmfNode.rtype(), "OmfNode")
-        #self.assertEquals(len(OmfNode._attributes), 0)
-
         self.assertEquals(len(ResourceFactory.resource_types()), 2)
+
+# TODO:!!!
+class ResourceManagerTestCase(unittest.TestCase):
+    def test_start_with_condition(self):
+        pass
+    
+    def test_stop_with_condition(self):
+        pass
+
+    def test_set_with_condition(self):
+        pass
+
 
 if __name__ == '__main__':
     unittest.main()
