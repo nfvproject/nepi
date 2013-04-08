@@ -344,7 +344,7 @@ class Dependency(object):
             'home' : server.shell_escape(self.home_path),
             'token' : server.shell_escape(self._master_token),
         }
-        
+       
         return cStringIO.StringIO(slavescript)
          
     def _do_launch_build(self):
@@ -523,8 +523,24 @@ class Dependency(object):
             
         if self.sources:
             sources = self.sources.split(' ')
-            
-            # Copy all sources
+
+            http_sources = list()
+            for source in list(sources):
+                if source.startswith("http") or source.startswith("https"):
+                    http_sources.append(source)
+                    sources.remove(source)
+
+            # Download http sources
+            try:
+                for source in http_sources:
+                    path = os.path.join(self.home_path, source.split("/")[-1])
+                    command = "wget -o %s %s" % (path, source)
+                    self._popen_ssh(command)
+            except RuntimeError, e:
+                raise RuntimeError, "Failed wget source file %r: %s %s" \
+                        % (sources, e.args[0], e.args[1],)
+
+            # Copy all other sources
             try:
                 self._popen_scp(
                     sources,
@@ -1119,7 +1135,8 @@ class CCNxDaemon(Application):
         self.ccnx_0_5_1_sources = "http://yans.pl.sophia.inria.fr/libs/ccnx-0.5.1.tar.gz"
         #self.ccnx_0_6_0_sources = "http://www.ccnx.org/releases/ccnx-0.6.0.tar.gz"
         self.ccnx_0_6_0_sources = "http://yans.pl.sophia.inria.fr/libs/ccnx-0.6.0.tar.gz"
-        self.buildDepends = 'make gcc development-tools openssl-devel expat-devel libpcap-devel libxml2-devel'
+        #self.buildDepends = 'make gcc development-tools openssl-devel expat-devel libpcap-devel libxml2-devel'
+        self.buildDepends = 'make gcc openssl-devel expat-devel libpcap-devel libxml2-devel'
 
         self.ccnx_0_5_1_build = (
             " ( "

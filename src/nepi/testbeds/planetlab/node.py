@@ -612,7 +612,7 @@ class Node(object):
         self._logger.info("Cleaning up home on %s", self.hostname)
         
         cmds = [
-            "find . -maxdepth 1 ! -name '.bash*' ! -name '.' -execdir rm -rf {} + "
+            "find . -maxdepth 1 -name 'nepi-*' -execdir rm -rf {} + "
         ]
 
         for cmd in cmds:

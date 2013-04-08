@@ -28,6 +28,9 @@ class MonitorInfo(object):
         self.type = type
         self.cpumem_monitor = None
         self.net_monitor = None
+        self.ccnd = None
+        self.ccncat = None
+        self.ccnseqwriter = None
 
 def create_slice(exp_desc, slicename, plc_host, pl_user, pl_pwd, 
         pl_ssh_key, root_dir):
@@ -170,11 +173,27 @@ def store_results(controller, monitors, results_dir, exp_label):
         # store monitoring results
         cpumem_stdout = controller.trace(mon.cpumem_monitor.guid, "stdout")
         net_stdout = controller.trace(mon.net_monitor.guid, "stdout")
-        results = dict({"cpumem": cpumem_stdout, "net": net_stdout})
-        for name, stdout in results.iteritems():
+        ccnd_error = controller.trace(mon.ccnd.guid, "stderr")
+
+        ccncat_error = None
+        if mon.ccncat:
+            ccncat_error = controller.trace(mon.ccncat.guid, "stderr")
+
+        ccnseqwriter_error = None
+        if mon.ccnseqwriter:
+            ccnseqwriter_error = controller.trace(mon.ccnseqwriter.guid, "stderr")
+        
+        results = dict({"cpumem": cpumem_stdout, "net": net_stdout, 
+            "ccnd_stderr": ccnd_error, "ccncat_stderr": ccncat_error,
+            "ccnseqwriter_stderr": ccnseqwriter_error })
+
+        for name, result in results.iteritems():
+            if not result:
+                continue
+
             fpath = os.path.join(node_path, name)
             f = open(fpath, "w")
-            f.write(stdout)
+            f.write(result)
             f.close()
 
     # store node info file
@@ -217,7 +236,7 @@ def get_options():
             help="Path to directory to store results", type="str")
     parser.add_option("-l", "--label", dest="exp_label", default = exp_label, 
             help="Label to identify experiment results", type="str")
-    parser.add_option("-t", "--time", dest="time_to_run", default = 2, 
+    parser.add_option("-t", "--time", dest="time_to_run", default = 1, 
             help="Time to run the experiment in hours", type="float")
     parser.add_option("-P", "--port", dest="port", 
             help="Port to bind the CCNx daemon", type="int")
@@ -259,12 +278,21 @@ if __name__ == '__main__':
     pl_inet = slice_desc.create("Internet")
 
     ### Level 0 - Root node
-    root_hostname = "chimay.infonet.fundp.ac.be"
+    root_hostname = "ple6.ipv6.lip6.fr"
     (root_node, root_iface) = create_node(root_hostname, pl_inet, slice_desc)
 
     ### Level 1 - Intermediate nodes
     l1_hostnames = dict()
-    l1_hostnames["uk"] = "planetlab4.cs.st-andrews.ac.uk"
+    l1_hostnames["fi"] = "planetlab-1.research.netlab.hut.fi"
+    l1_hostnames["se"] = "planetlab2.sics.se"
+    l1_hostnames["es"] = "planetlab1.um.es"
+    l1_hostnames["pt"] = "planetlab-um10.di.uminho.pt"
+    l1_hostnames["pl"] = "pandora.we.po.opole.pl"
+    l1_hostnames["it"] = "gschembra4.diit.unict.it"
+    l1_hostnames["de"] = "planetlab2.wiwi.hu-berlin.de"
+    l1_hostnames["fr"] = "planetlab1.u-strasbg.fr"
+    l1_hostnames["gr"] = "planetlab1.ics.forth.gr"
+    l1_hostnames["ch"] = "planetlab2.unineuchatel.ch"
     l1_ifaces = dict()
     l1_nodes = dict()
     
@@ -277,10 +305,10 @@ if __name__ == '__main__':
     
     # Add CCN Daemon to root node
     ifaces = l1_ifaces.values()
-    create_ccnd(root_node, slice_desc, ifaces, port)
+    root_ccnd = create_ccnd(root_node, slice_desc, ifaces, port)
 
     # Publish video in root node
-    create_ccnpush(movie, root_node, slice_desc, port)
+    root_ccnseqwriter = create_ccnpush(movie, root_node, slice_desc, port)
 
     # Create monitor info object for root node
     root_mon = MonitorInfo(root_hostname, MonitorInfo.TYPE_ROOT)
@@ -289,14 +317,22 @@ if __name__ == '__main__':
     # Add memory and cpu monitoring for root node
     root_mon.cpumem_monitor = create_cpumem_monitor(root_node, slice_desc)
     root_mon.net_monitor = create_net_monitor(root_node, slice_desc, ifaces)
+    root_mon.ccnd = root_ccnd
+    root_mon.ccnseqwriter = root_ccnseqwriter
 
     ### Level 2 - Leaf nodes
     l2_hostnames = dict()
-    l2_hostnames["uk"] = ["planetlab-1.imperial.ac.uk",
-        "planetlab3.xeno.cl.cam.ac.uk",
-        "planetlab1.xeno.cl.cam.ac.uk"
-    ]
-    
+    l2_hostnames["fi"] = ["planetlab1.rd.tut.fi",]
+    l2_hostnames["se"] = ["planetlab1.s3.kth.se",]
+    l2_hostnames["es"] = ["planetlab1.tlm.unavarra.es",]
+    l2_hostnames["pt"] = ["planet1.servers.ua.pt",]
+    l2_hostnames["pl"] = ["onelab3.warsaw.rd.tp.pl",]
+    l2_hostnames["it"] = ["gschembra3.diit.unict.it",]
+    l2_hostnames["de"] = ["iraplab1.iralab.uni-karlsruhe.de",]
+    l2_hostnames["fr"] = ["host3-plb.loria.fr",]
+    l2_hostnames["gr"] = ["kostis.di.uoa.gr",]
+    l2_hostnames["ch"] = ["planetlab04.cnds.unibe.ch",]
+
     for country, hostnames in l2_hostnames.iteritems():
         l2_ifaces = []
         l1_hostname = l1_hostnames[country]
@@ -310,10 +346,10 @@ if __name__ == '__main__':
             ### Level 2 - CCN & Monitoring
         
             # Add CCN Daemon to intermediate nodes
-            create_ccnd(pl_node, slice_desc, [l1_iface], port)
+            ccnd = create_ccnd(pl_node, slice_desc, [l1_iface], port)
 
             # Retrieve video in leaf node
-            create_ccnpull(pl_node, slice_desc, port)
+            ccncat = create_ccnpull(pl_node, slice_desc, port)
 
             # Create monitor info object for intermediate nodes
             mon = MonitorInfo(hostname, MonitorInfo.TYPE_LEAF)
@@ -322,6 +358,8 @@ if __name__ == '__main__':
             # Add memory and cpu monitoring for intermediate nodes
             mon.cpumem_monitor = create_cpumem_monitor(pl_node, slice_desc)
             mon.net_monitor = create_net_monitor(pl_node, slice_desc, [l1_iface])
+            mon.ccnd = ccnd
+            mon.ccncat = ccncat
 
         ### Level 1 - CCN & Monitoring
 
@@ -329,7 +367,7 @@ if __name__ == '__main__':
         ifaces.extend(l2_ifaces)
 
         # Add CCN Daemon to intermediate nodes
-        create_ccnd(l1_node, slice_desc, ifaces, port)
+        ccnd = create_ccnd(l1_node, slice_desc, ifaces, port)
 
         # Create monitor info object for intermediate nodes
         mon = MonitorInfo(l1_hostname, MonitorInfo.TYPE_MID)
@@ -338,6 +376,7 @@ if __name__ == '__main__':
         # Add memory and cpu monitoring for intermediate nodes
         mon.cpumem_monitor = create_cpumem_monitor(l1_node, slice_desc)
         mon.net_monitor = create_net_monitor(l1_node, slice_desc, ifaces)
+        mon.ccnd = ccnd
 
     xml = exp_desc.to_xml()
    
@@ -348,8 +387,8 @@ if __name__ == '__main__':
     duration = time_to_run * 3600 # in seconds
     while not TERMINATE:
         time.sleep(1)
-        #if (time.time() - start_time) > duration: # elapsed time
-        #    TERMINATE.append(None)
+        if (time.time() - start_time) > duration: # elapsed time
+            TERMINATE.append(None)
 
     controller.stop()
  

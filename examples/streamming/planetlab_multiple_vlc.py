@@ -38,6 +38,7 @@ class MonitorInfo(object):
         self.type = type
         self.cpumem_monitor = None
         self.net_monitor = None
+        self.vlc = None
 
 def create_slice(exp_desc, slicename, plc_host, pl_user, pl_pwd, 
         pl_ssh_key, root_dir):
@@ -83,7 +84,6 @@ def create_vlc_server(movie, pl_node, slice_desc):
 
     pl_app.set_attribute_value("sources", "%s" % movie)
     pl_app.set_attribute_value("command",
-    #        "sudo -S dbus-uuidgen --ensure ; vlc -vvv -I dummy --vlm-conf VOD.vlm --rtsp-host=0.0.0.0:8554")
         "sudo -S dbus-uuidgen --ensure ; vlc -vvv -I dummy --vlm-conf VOD.vlm")
     pl_app.enable_trace("stdout")
     pl_app.enable_trace("stderr")
@@ -117,7 +117,7 @@ def create_cpumem_monitor(pl_node, slice_desc):
     pl_app.set_attribute_value("label", label)
     pl_app.set_attribute_value("command", 
             "while true ; do echo $(date +%Y%m%d%H%M%S%z) " \
-            " $(top -b -n 1 | grep 'vlc' | head -1 | sed 's/\s\s*/ /g' | cut -d' ' -f9,10,11)" \
+            " $(top -b -n 1 | grep 'vlc' | head -1 | sed 's/\s\s*/ /g' | sed 's/^\s//g' | cut -d' ' -f9,10,11)" \
             "; sleep 1 ; done")
     pl_app.enable_trace("stdout")
     pl_app.enable_trace("stderr")
@@ -174,7 +174,11 @@ def store_results(controller, monitors, results_dir, exp_label):
         # store monitoring results
         cpumem_stdout = controller.trace(mon.cpumem_monitor.guid, "stdout")
         net_stdout = controller.trace(mon.net_monitor.guid, "stdout")
-        results = dict({"cpumem": cpumem_stdout, "net": net_stdout})
+        vlc_stderr = controller.trace(mon.vlc.guid, "stderr")
+
+        results = dict({"cpumem": cpumem_stdout, "net": net_stdout, 
+            "vlc_error": vlc_stderr})
+
         for name, stdout in results.iteritems():
             fpath = os.path.join(node_path, name)
             f = open(fpath, "w")
@@ -220,7 +224,7 @@ def get_options():
             help="Path to directory to store results", type="str")
     parser.add_option("-l", "--label", dest="exp_label", default = exp_label, 
             help="Label to identify experiment results", type="str")
-    parser.add_option("-t", "--time", dest="time_to_run", default = 2, 
+    parser.add_option("-t", "--time", dest="time_to_run", default = 1, 
             help="Time to run the experiment in hours", type="float")
 
     (options, args) = parser.parse_args()
@@ -266,16 +270,18 @@ if __name__ == '__main__':
     monitors.append(root_mon)
 
     # Add VLC service
-    create_vlc_server(movie, root_node, slice_desc)
+    root_vlc = create_vlc_server(movie, root_node, slice_desc)
     
     # Add memory and cpu monitoring for root node
     root_mon.cpumem_monitor = create_cpumem_monitor(root_node, slice_desc)
+
+    # Add reference to vlc app 
+    root_mon.vlc = root_vlc
 
     # Create leaf nodes
     cli_apps = []
     cli_ifaces = []
 
-    """
     hostnames = ["planetlab1.rd.tut.fi", 
             "planetlab1.s3.kth.se", 
             "planetlab1.tlm.unavarra.es", 
@@ -286,58 +292,6 @@ if __name__ == '__main__':
             "host3-plb.loria.fr", 
             "kostis.di.uoa.gr", 
             "planetlab04.cnds.unibe.ch"]
-    """
-
-    hostnames = ["planetlab1.rd.tut.fi",
-            "planetlab-2.research.netlab.hut.fi",
-            "planetlab2.willab.fi",
-            "planetlab3.hiit.fi",
-            "planetlab4.hiit.fi",
-            "planetlab1.s3.kth.se", 
-            "itchy.comlab.bth.se",
-            "planetlab-1.ida.liu.se",
-            "scratchy.comlab.bth.se",
-            "planetlab2.s3.kth.se", 
-            "planetlab1.tlm.unavarra.es", 
-            "planetlab2.uc3m.es",
-            "planetlab2.upc.es",
-            "ait21.us.es",
-            "planetlab3.upc.es",
-            "planet1.servers.ua.pt",
-            "planetlab2.fct.ualg.pt",
-            "planetlab-1.tagus.ist.utl.pt",
-            "planetlab1.di.fct.unl.pt",
-            "planetlab1.fct.ualg.pt",
-            "onelab3.warsaw.rd.tp.pl",
-            "onelab1.warsaw.rd.tp.pl",
-            "prata.mimuw.edu.pl",
-            "onelab2.warsaw.rd.tp.pl",
-            "prometeusz.we.po.opole.pl",
-            "gschembra3.diit.unict.it",
-            "onelab6.iet.unipi.it",
-            "planetlab1.science.unitn.it",
-            "planetlab-1.ing.unimo.it",
-            "gschembra4.diit.unict.it",
-            "iraplab1.iralab.uni-karlsruhe.de", 
-            "planetlab-1.fokus.fraunhofer.de",
-            "iraplab2.iralab.uni-karlsruhe.de",
-            "planet2.zib.de",
-            "planet2.inf.tu-dresden.de",
-            "host3-plb.loria.fr",
-            "inriarennes1.irisa.fr",
-            "inriarennes2.irisa.fr",
-            "peeramide.irisa.fr",
-            "pl1.bell-labs.fr", 
-            "kostis.di.uoa.gr",
-            "pl001.ece.upatras.gr",
-            "planetlab1.ionio.gr",
-            "planetlab2.ionio.gr",
-            "planetlab2.cs.uoi.gr", 
-            "planetlab04.cnds.unibe.ch",
-            "lsirextpc01.epfl.ch",
-            "planetlab2.csg.uzh.ch",
-            "lsirextpc02.epfl.ch",
-            "planetlab1.unineuchatel.ch"]
 
     for hostname in hostnames:
         pl_node, pl_iface = create_node(hostname, pl_inet, slice_desc)
@@ -354,8 +308,11 @@ if __name__ == '__main__':
         node_mon.net_monitor = create_net_monitor(pl_node, slice_desc, [root_iface])
 
         # Add VLC clients
-        app = create_vlc_client(root_node, pl_node, slice_desc)
-        cli_apps.append(app)
+        vlc = create_vlc_client(root_node, pl_node, slice_desc)
+        cli_apps.append(vlc)
+
+        # Add reference to vlc app 
+        node_mon.vlc = vlc
 
     # Add network monitoring for root node
     root_mon.net_monitor = create_net_monitor(root_node, slice_desc, cli_ifaces)
