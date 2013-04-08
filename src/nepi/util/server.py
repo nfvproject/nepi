@@ -608,7 +608,7 @@ def popen_ssh_command(command, host, port, user, agent,
         timeout = None,
         retry = 0,
         err_on_timeout = True,
-        connect_timeout = 90,
+        connect_timeout = 1200,
         persistent = True,
         hostip = None):
     """
@@ -624,7 +624,7 @@ def popen_ssh_command(command, host, port, user, agent,
             '-o', 'NoHostAuthenticationForLocalhost=yes',
             '-o', 'ConnectTimeout=%d' % (int(connect_timeout),),
             '-o', 'ConnectionAttempts=3',
-            '-o', 'ServerAliveInterval=60',
+            '-o', 'ServerAliveInterval=30',
             '-o', 'TCPKeepAlive=yes',
             '-l', user, hostip or host]
     if persistent and openssh_has_persist():
@@ -737,9 +737,9 @@ def popen_scp(source, dest,
         args = ['ssh', '-l', user, '-C',
                 # Don't bother with localhost. Makes test easier
                 '-o', 'NoHostAuthenticationForLocalhost=yes',
-                '-o', 'ConnectTimeout=90',
+                '-o', 'ConnectTimeout=1200',
                 '-o', 'ConnectionAttempts=3',
-                '-o', 'ServerAliveInterval=60',
+                '-o', 'ServerAliveInterval=30',
                 '-o', 'TCPKeepAlive=yes',
                 host ]
         if openssh_has_persist():
@@ -871,9 +871,9 @@ def popen_scp(source, dest,
         args = ['scp', '-q', '-p', '-C',
                 # Don't bother with localhost. Makes test easier
                 '-o', 'NoHostAuthenticationForLocalhost=yes',
-                '-o', 'ConnectTimeout=90',
+                '-o', 'ConnectTimeout=1200',
                 '-o', 'ConnectionAttempts=3',
-                '-o', 'ServerAliveInterval=60',
+                '-o', 'ServerAliveInterval=30',
                 '-o', 'TCPKeepAlive=yes' ]
                 
         if port:
@@ -974,7 +974,7 @@ def popen_python(python_code,
                 # Don't bother with localhost. Makes test easier
                 '-o', 'NoHostAuthenticationForLocalhost=yes',
                 '-o', 'ConnectionAttempts=3',
-                '-o', 'ServerAliveInterval=60',
+                '-o', 'ServerAliveInterval=30',
                 '-o', 'TCPKeepAlive=yes',
                 '-l', user, host]
         if agent:
