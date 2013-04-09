@@ -7,6 +7,7 @@ from nepi.util.constants import TIME_NOW
 from nepi.util.graphtools import mst
 from nepi.util import ipaddr2
 from nepi.util import environ
+from nepi.util import server
 from nepi.util.parallel import ParallelRun
 import sys
 import os
@@ -108,7 +109,7 @@ def getSpanningTree(nodes, root = None, maxbranching = 2, hostgetter = operator.
     # Obtain all IPs in numeric format
     # (which means faster distance computations)
     for node in nodes:
-        node._ip = socket.gethostbyname(hostgetter(node))
+        node._ip = server.gethostbyname(hostgetter(node))
         node._ip_n = struct.unpack('!L', socket.inet_aton(node._ip))[0]
     
     # Compute plan

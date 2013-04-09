@@ -7,6 +7,7 @@ from nepi.util.constants import TIME_NOW
 from nepi.util.graphtools import mst
 from nepi.util import ipaddr2
 from nepi.util import environ
+from nepi.util import server
 from nepi.util.parallel import ParallelRun
 import threading
 import sys
@@ -421,7 +422,7 @@ class TestbedController(testbed_impl.TestbedController):
                 # Obtain all IPs in numeric format
                 # (which means faster distance computations)
                 for dep in group:
-                    dep._ip = socket.gethostbyname(dep.node.hostname)
+                    dep._ip = server.gethostbyname(dep.node.hostname)
                     dep._ip_n = struct.unpack('!L', socket.inet_aton(dep._ip))[0]
                 
                 # Compute plan
