@@ -296,7 +296,7 @@ class Node(object):
 
             def resolvable(node_id):
                 try:
-                    addr = socket.gethostbyname(hostnames[node_id])
+                    addr = server.gethostbyname(hostnames[node_id])
                     return addr is not None
                 except:
                     return False
@@ -436,7 +436,7 @@ class Node(object):
             orig_attrs['server_key'] = self.server_key
             self.server_key = info['ssh_rsa_key']
         
-        self.hostip = socket.gethostbyname(self.hostname)
+        self.hostip = server.gethostbyname(self.hostname)
         
         try:
             self.__orig_attrs
@@ -483,7 +483,7 @@ class Node(object):
                 }
             else:
                 rpmFusion = ''
-            
+           
             if rpmFusion:
                 (out,err),proc = server.popen_ssh_command(
                     rpmFusion,
@@ -499,7 +499,7 @@ class Node(object):
                 if proc.wait():
                     if self.check_bad_host(out,err):
                         self.blacklist()
-                    raise RuntimeError, "Failed to set up application: %s %s" % (out,err,)
+                    raise RuntimeError, "Failed to set up application on host %s: %s %s" % (self.hostname, out,err,)
             
             # Launch p2p yum dependency installer
             self._yum_dependencies.async_setup()
@@ -612,7 +612,7 @@ class Node(object):
         self._logger.info("Cleaning up home on %s", self.hostname)
         
         cmds = [
-            "find . -maxdepth 1 -name 'nepi-*' -execdir rm -rf {} + "
+            "find . -maxdepth 1  \( -name '.cache' -o -name '.local' -o -name '.config' -o -name 'nepi-*' \) -execdir rm -rf {} + "
         ]
 
         for cmd in cmds:

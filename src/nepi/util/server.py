@@ -43,6 +43,13 @@ SHELL_SAFE = re.compile('^[-a-zA-Z0-9_=+:.,/]*$')
 
 hostbyname_cache = dict()
 
+def gethostbyname(host):
+    hostbyname = hostbyname_cache.get(host)
+    if not hostbyname:
+        hostbyname = socket.gethostbyname(host)
+        hostbyname_cache[host] = hostbyname
+    return hostbyname
+
 def openssh_has_persist():
     global OPENSSH_HAS_PERSIST
     if OPENSSH_HAS_PERSIST is None:
@@ -572,10 +579,7 @@ def _make_server_key_args(server_key, host, port, args):
     # Create a temporary server key file
     tmp_known_hosts = tempfile.NamedTemporaryFile()
    
-    hostbyname = hostbyname_cache.get(host)
-    if not hostbyname:
-        hostbyname = socket.gethostbyname(host)
-        hostbyname_cache[host] = hostbyname
+    hostbyname = gethostbyname(host) 
 
     # Add the intended host key
     tmp_known_hosts.write('%s,%s %s\n' % (host, hostbyname, server_key))
@@ -594,12 +598,6 @@ def _make_server_key_args(server_key, host, port, args):
     
     return tmp_known_hosts
 
-def make_connkey(user, host, port):
-    connkey = repr((user,host,port)).encode("base64").strip().replace('/','.')
-    if len(connkey) > 60:
-        connkey = hashlib.sha1(connkey).hexdigest()
-    return connkey
-
 def popen_ssh_command(command, host, port, user, agent, 
         stdin="", 
         ident_key = None,
@@ -608,7 +606,7 @@ def popen_ssh_command(command, host, port, user, agent,
         timeout = None,
         retry = 0,
         err_on_timeout = True,
-        connect_timeout = 1200,
+        connect_timeout = 900,
         persistent = True,
         hostip = None):
     """
@@ -618,10 +616,11 @@ def popen_ssh_command(command, host, port, user, agent,
         print "ssh", host, command
     
     tmp_known_hosts = None
-    connkey = make_connkey(user,host,port)
     args = ['ssh', '-C',
             # Don't bother with localhost. Makes test easier
             '-o', 'NoHostAuthenticationForLocalhost=yes',
+            # XXX: Security vulnerability
+            #'-o', 'StrictHostKeyChecking=no',
             '-o', 'ConnectTimeout=%d' % (int(connect_timeout),),
             '-o', 'ConnectionAttempts=3',
             '-o', 'ServerAliveInterval=30',
@@ -630,7 +629,7 @@ def popen_ssh_command(command, host, port, user, agent,
     if persistent and openssh_has_persist():
         args.extend([
             '-o', 'ControlMaster=auto',
-            '-o', 'ControlPath=/tmp/nepi_ssh_pl_%s' % ( connkey, ),
+            '-o', 'ControlPath=/tmp/nepi_ssh-%r@%h:%p',
             '-o', 'ControlPersist=60' ])
     if agent:
         args.append('-A')
@@ -656,7 +655,7 @@ def popen_ssh_command(command, host, port, user, agent,
         # attach tempfile object to the process, to make sure the file stays
         # alive until the process is finished with it
         proc._known_hosts = tmp_known_hosts
-        
+    
         try:
             out, err = _communicate(proc, stdin, timeout, err_on_timeout)
             if proc.poll():
@@ -733,11 +732,12 @@ def popen_scp(source, dest,
         user,host = remspec.rsplit('@',1)
         tmp_known_hosts = None
         
-        connkey = make_connkey(user,host,port)
         args = ['ssh', '-l', user, '-C',
                 # Don't bother with localhost. Makes test easier
                 '-o', 'NoHostAuthenticationForLocalhost=yes',
-                '-o', 'ConnectTimeout=1200',
+                # XXX: Security vulnerability
+                #'-o', 'StrictHostKeyChecking=no',
+                '-o', 'ConnectTimeout=900',
                 '-o', 'ConnectionAttempts=3',
                 '-o', 'ServerAliveInterval=30',
                 '-o', 'TCPKeepAlive=yes',
@@ -745,7 +745,7 @@ def popen_scp(source, dest,
         if openssh_has_persist():
             args.extend([
                 '-o', 'ControlMaster=auto',
-                '-o', 'ControlPath=/tmp/nepi_ssh_pl_%s' % ( connkey, ),
+                '-o', 'ControlPath=/tmp/nepi_ssh-%r@%h:%p',
                 '-o', 'ControlPersist=60' ])
         if port:
             args.append('-P%d' % port)
@@ -871,7 +871,9 @@ def popen_scp(source, dest,
         args = ['scp', '-q', '-p', '-C',
                 # Don't bother with localhost. Makes test easier
                 '-o', 'NoHostAuthenticationForLocalhost=yes',
-                '-o', 'ConnectTimeout=1200',
+                # XXX: Security vulnerability
+                #'-o', 'StrictHostKeyChecking=no',
+                '-o', 'ConnectTimeout=900',
                 '-o', 'ConnectionAttempts=3',
                 '-o', 'ServerAliveInterval=30',
                 '-o', 'TCPKeepAlive=yes' ]
@@ -890,10 +892,9 @@ def popen_scp(source, dest,
             args.extend(source)
         else:
             if openssh_has_persist():
-                connkey = make_connkey(user,host,port)
                 args.extend([
-                    '-o', 'ControlMaster=no',
-                    '-o', 'ControlPath=/tmp/nepi_ssh_pl_%s' % ( connkey, ) ])
+                    '-o', 'ControlMaster=auto',
+                    '-o', 'ControlPath=/tmp/nepi_ssh-%r@%h:%p'])
             args.append(source)
         args.append(dest)
 
@@ -973,6 +974,8 @@ def popen_python(python_code,
         args = ['ssh', '-C',
                 # Don't bother with localhost. Makes test easier
                 '-o', 'NoHostAuthenticationForLocalhost=yes',
+                # XXX: Security vulnerability
+                #'-o', 'StrictHostKeyChecking=no',
                 '-o', 'ConnectionAttempts=3',
                 '-o', 'ServerAliveInterval=30',
                 '-o', 'TCPKeepAlive=yes',
