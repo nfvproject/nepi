@@ -645,6 +645,7 @@ def popen_ssh_command(command, host, port, user, agent,
             server_key, host, port, args)
     args.append(command)
 
+
     for x in xrange(retry or 3):
         # connects to the remote host and starts a remote connection
         proc = subprocess.Popen(args, 
