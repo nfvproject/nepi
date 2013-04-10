@@ -76,6 +76,7 @@ class Node(object):
     
     DEPENDS_PIDFILE = '/tmp/nepi-depends.pid'
     DEPENDS_LOGFILE = '/tmp/nepi-depends.log'
+
     RPM_FUSION_URL = 'http://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-stable.noarch.rpm'
     RPM_FUSION_URL_F12 = 'http://download1.rpmfusion.org/free/fedora/releases/12/Everything/x86_64/os/rpmfusion-free-release-12-1.noarch.rpm'
     
@@ -487,7 +488,7 @@ class Node(object):
             if rpmFusion:
                 (out,err),proc = server.popen_ssh_command(
                     rpmFusion,
-                    host = self.hostname,
+                    host = self.hostip,
                     port = None,
                     user = self.slicename,
                     agent = None,
@@ -537,7 +538,7 @@ class Node(object):
         # they have to be created for deployment
         (out,err),proc = server.eintr_retry(server.popen_ssh_command)(
             "echo 'ALIVE'",
-            host = self.hostname,
+            host = self.hostip,
             port = None,
             user = self.slicename,
             agent = None,
@@ -592,7 +593,7 @@ class Node(object):
                 cmd % {
                     'slicename' : self.slicename ,
                 },
-                host = self.hostname,
+                host = self.hostip,
                 port = None,
                 user = self.slicename,
                 agent = None,
@@ -621,7 +622,7 @@ class Node(object):
                 cmd % {
                     'slicename' : self.slicename ,
                 },
-                host = self.hostname,
+                host = self.hostip,
                 port = None,
                 user = self.slicename,
                 agent = None,
@@ -802,7 +803,7 @@ class Node(object):
             "( sudo -S bash -c 'cat /vsys/%(method)s.out >&2' & ) ; sudo -S bash -c 'cat > /vsys/%(method)s.in' ; sleep 0.5" % dict(
                 home = server.shell_escape(self.home_path),
                 method = method),
-            host = self.hostname,
+            host = self.hostip,
             port = None,
             user = self.slicename,
             agent = None,
