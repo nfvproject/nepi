@@ -606,7 +606,7 @@ def popen_ssh_command(command, host, port, user, agent,
         timeout = None,
         retry = 0,
         err_on_timeout = True,
-        connect_timeout = 900,
+        connect_timeout = 60,
         persistent = True,
         hostip = None):
     """
@@ -639,6 +639,7 @@ def popen_ssh_command(command, host, port, user, agent,
         args.extend(('-i', ident_key))
     if tty:
         args.append('-t')
+        args.append('-t')
     if server_key:
         # Create a temporary server key file
         tmp_known_hosts = _make_server_key_args(
@@ -660,6 +661,8 @@ def popen_ssh_command(command, host, port, user, agent,
         try:
             out, err = _communicate(proc, stdin, timeout, err_on_timeout)
             if proc.poll():
+                if TRACE:
+                    print "COMMAND host %s, command %s, error %s" % (host, " ".join(args), err)
                 if err.strip().startswith('ssh: ') or err.strip().startswith('mux_client_hello_exchange: '):
                     # SSH error, can safely retry
                     continue
@@ -668,10 +671,11 @@ def popen_ssh_command(command, host, port, user, agent,
                     continue
             break
         except RuntimeError,e:
+            if TRACE:
+                print "COMMAND host %s, command %s, error %s" % (host, " ".join(args), err)
+                print " timedout -> ", e.args
             if retry <= 0:
                 raise
-            if TRACE:
-                print " timedout -> ", e.args
             retry -= 1
         
     if TRACE:
@@ -738,7 +742,7 @@ def popen_scp(source, dest,
                 '-o', 'NoHostAuthenticationForLocalhost=yes',
                 # XXX: Security vulnerability
                 #'-o', 'StrictHostKeyChecking=no',
-                '-o', 'ConnectTimeout=900',
+                '-o', 'ConnectTimeout=60',
                 '-o', 'ConnectionAttempts=3',
                 '-o', 'ServerAliveInterval=30',
                 '-o', 'TCPKeepAlive=yes',
@@ -874,7 +878,7 @@ def popen_scp(source, dest,
                 '-o', 'NoHostAuthenticationForLocalhost=yes',
                 # XXX: Security vulnerability
                 #'-o', 'StrictHostKeyChecking=no',
-                '-o', 'ConnectTimeout=900',
+                '-o', 'ConnectTimeout=60',
                 '-o', 'ConnectionAttempts=3',
                 '-o', 'ServerAliveInterval=30',
                 '-o', 'TCPKeepAlive=yes' ]
