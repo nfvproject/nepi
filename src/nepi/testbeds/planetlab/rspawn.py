@@ -159,7 +159,8 @@ def remote_status(pid, ppid,
     """
 
     (out,err),proc = server.popen_ssh_command(
-        "ps --pid %(pid)d -o pid | grep -c %(pid)d ; true" % {
+        # Check only by pid. pid+ppid does not always work (especially with sudo) 
+        " (( ps --pid %(pid)d -o pid | grep -c %(pid)d && echo 'wait')  || echo 'done' ) | tail -n 1" % {
             'ppid' : ppid,
             'pid' : pid,
         },
@@ -176,14 +177,13 @@ def remote_status(pid, ppid,
         return NOT_STARTED
     
     status = False
-    if out:
-        try:
-            status = bool(int(out.strip()))
-        except:
-            if out or err:
-                logging.warn("Error checking remote status:\n%s%s\n", out, err)
-            # Ignore, many ways to fail that don't matter that much
-            return NOT_STARTED
+    if err:
+        if err.strip().find("Error, do this: mount -t proc none /proc") >= 0:
+            status = True
+    elif out:
+        status = (out.strip() == 'wait')
+    else:
+        return NOT_STARTED
     return RUNNING if status else FINISHED
     
 

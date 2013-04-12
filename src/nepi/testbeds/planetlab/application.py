@@ -382,7 +382,7 @@ class Dependency(object):
         for i in xrange(5):
             pidtuple = rspawn.remote_check_pid(
                 os.path.join(self.home_path,'build-pid'),
-                host = self.node.hostname,
+                host = self.node.hostip,
                 port = None,
                 user = self.node.slicename,
                 agent = None,
@@ -443,7 +443,7 @@ class Dependency(object):
                     time.sleep(delay*(0.5+random.random()))
                     delay = min(30,delay*1.2)
                     bustspin = 0
-            
+        
             # check build token
             slave_token = ""
             for i in xrange(3):
@@ -588,21 +588,20 @@ class Dependency(object):
     def _do_install(self):
         if self.install:
             self._logger.info("Installing %s at %s", self, self.node.hostname)
-           
+ 
             # Install application
             try:
-                self._popen_ssh_command(
-                    "cd %(home)s && cd build && ( %(command)s ) > ${HOME}/%(home)s/installlog 2>&1 || ( tail ${HOME}/%(home)s/{install,build}log >&2 && false )" % \
-                        {
-                        'command' : self._replace_paths(self.install),
-                        'home' : server.shell_escape(self.home_path),
-                        },
-                    )
+                command = "cd %(home)s && cd build && ( %(command)s ) > ${HOME}/%(home)s/installlog 2>&1 || ( tail ${HOME}/%(home)s/{install,build}log >&2 && false )" % \
+                    {
+                    'command' : self._replace_paths(self.install),
+                    'home' : server.shell_escape(self.home_path),
+                    }
+                self._popen_ssh_command(command)
             except RuntimeError, e:
                 if self.check_bad_host(e.args[0], e.args[1]):
                     self.node.blacklist()
-                raise RuntimeError, "Failed install build sources on node %s: %s %s" % (
-                        self.node.hostname, e.args[0], e.args[1],)
+                raise RuntimeError, "Failed install build sources on node %s: %s %s. command %s" % (
+                        self.node.hostname, e.args[0], e.args[1], command)
 
     def set_master(self, master):
         self._master = master
