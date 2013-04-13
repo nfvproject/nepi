@@ -63,7 +63,7 @@ def create_node(hostname, pl_inet, slice_desc):
 
 def create_ccnd(pl_node, slice_desc, pl_ifaces, port):
     pl_app = slice_desc.create("CCNxDaemon")
-    pl_app.set_attribute_value("ccnxVersion", "ccnx-0.5.1")
+    pl_app.set_attribute_value("ccnxVersion", "0.7.1")
     
     # We use a wildcard to replace the public IP address of the node during runtime,
     # once this IP is known
