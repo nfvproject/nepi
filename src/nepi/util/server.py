@@ -606,21 +606,17 @@ def popen_ssh_command(command, host, port, user, agent,
         timeout = None,
         retry = 0,
         err_on_timeout = True,
-        connect_timeout = 60,
+        connect_timeout = 90,
         persistent = True,
         hostip = None):
     """
     Executes a remote commands, returns ((stdout,stderr),process)
     """
-    if TRACE:
-        print "ssh", host, command
-    
+   
     tmp_known_hosts = None
     args = ['ssh', '-C',
             # Don't bother with localhost. Makes test easier
             '-o', 'NoHostAuthenticationForLocalhost=yes',
-            # XXX: Security vulnerability
-            #'-o', 'StrictHostKeyChecking=no',
             '-o', 'ConnectTimeout=%d' % (int(connect_timeout),),
             '-o', 'ConnectionAttempts=3',
             '-o', 'ServerAliveInterval=30',
@@ -630,7 +626,7 @@ def popen_ssh_command(command, host, port, user, agent,
         args.extend([
             '-o', 'ControlMaster=auto',
             '-o', 'ControlPath=/tmp/nepi_ssh-%r@%h:%p',
-            '-o', 'ControlPersist=60' ])
+            '-o', 'ControlPersist=90' ])
     if agent:
         args.append('-A')
     if port:
@@ -646,7 +642,6 @@ def popen_ssh_command(command, host, port, user, agent,
             server_key, host, port, args)
     args.append(command)
 
-
     for x in xrange(retry or 3):
         # connects to the remote host and starts a remote connection
         proc = subprocess.Popen(args, 
@@ -660,9 +655,10 @@ def popen_ssh_command(command, host, port, user, agent,
     
         try:
             out, err = _communicate(proc, stdin, timeout, err_on_timeout)
+            if TRACE:
+                print "COMMAND host %s, command %s, out %s, error %s" % (host, " ".join(args), out, err)
+
             if proc.poll():
-                if TRACE:
-                    print "COMMAND host %s, command %s, error %s" % (host, " ".join(args), err)
                 if err.strip().startswith('ssh: ') or err.strip().startswith('mux_client_hello_exchange: '):
                     # SSH error, can safely retry
                     continue
@@ -672,15 +668,13 @@ def popen_ssh_command(command, host, port, user, agent,
             break
         except RuntimeError,e:
             if TRACE:
-                print "COMMAND host %s, command %s, error %s" % (host, " ".join(args), err)
-                print " timedout -> ", e.args
+                print "EXCEPTION host %s, command %s, out %s, error %s, exception TIMEOUT ->  %s" % (
+                        host, " ".join(args), out, err, e.args)
+
             if retry <= 0:
                 raise
             retry -= 1
         
-    if TRACE:
-        print " -> ", out, err
-
     return ((out, err), proc)
 
 def popen_scp(source, dest, 
@@ -740,9 +734,7 @@ def popen_scp(source, dest,
         args = ['ssh', '-l', user, '-C',
                 # Don't bother with localhost. Makes test easier
                 '-o', 'NoHostAuthenticationForLocalhost=yes',
-                # XXX: Security vulnerability
-                #'-o', 'StrictHostKeyChecking=no',
-                '-o', 'ConnectTimeout=60',
+                '-o', 'ConnectTimeout=90',
                 '-o', 'ConnectionAttempts=3',
                 '-o', 'ServerAliveInterval=30',
                 '-o', 'TCPKeepAlive=yes',
@@ -876,9 +868,7 @@ def popen_scp(source, dest,
         args = ['scp', '-q', '-p', '-C',
                 # Don't bother with localhost. Makes test easier
                 '-o', 'NoHostAuthenticationForLocalhost=yes',
-                # XXX: Security vulnerability
-                #'-o', 'StrictHostKeyChecking=no',
-                '-o', 'ConnectTimeout=60',
+                '-o', 'ConnectTimeout=90',
                 '-o', 'ConnectionAttempts=3',
                 '-o', 'ServerAliveInterval=30',
                 '-o', 'TCPKeepAlive=yes' ]

@@ -1211,10 +1211,10 @@ attributes = dict({
                 "name": "ccnxVersion",
                 "help": "Version of ccnx source code to install in the node.",
                 "type": Attribute.ENUM, 
-                "value": "ccnx-0.6.0",
+                "value": "0.6.0",
                 "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
-                "allowed": ["ccnx-0.6.0",
-                            "ccnx-0.5.1"],
+                "allowed": ["0.6.0",
+                            "0.7.1"],
                 "validation_function": validation.is_enum,
             }),
      "ccnlocalport" : dict({

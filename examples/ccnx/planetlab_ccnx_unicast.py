@@ -68,8 +68,7 @@ def create_node(hostname, pl_inet, slice_desc):
 def create_ccnd(pl_node, port, routes, slice_desc):
     pl_app = slice_desc.create("CCNxDaemon")
     
-    # We can specify a default ccnx version to be either ccnx-0.5.1 or ccnx-0.6.0
-    #pl_app.set_attribute_value("ccnxVersion", "ccnx-0.5.1")
+    # We can specify a default ccnx version to be either 0.6.0 or 0.7.1
     # We can also specify a custom local source and build and install directives
     path_to_source = os.path.join(os.path.dirname(os.path.abspath(__file__)),
         "ccnx-0.6.0rc3.tar.gz")
