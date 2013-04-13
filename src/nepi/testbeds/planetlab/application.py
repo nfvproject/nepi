@@ -1129,6 +1129,7 @@ class CCNxDaemon(Application):
         self.ccnLocalPort = None
         self.ccnRoutes = None
         self.ccnxVersion = "0.7.1"
+        self.repository = False
         
         #self.ccnx_0_6_0_sources = "http://yans.pl.sophia.inria.fr/libs/ccnx-0.6.0.tar.gz"
         self.ccnx_sources = "http://www.ccnx.org/releases/ccnx-%s.tar.gz"
@@ -1185,12 +1186,16 @@ class CCNxDaemon(Application):
                     self.ccnLocalPort) if _ccnre.match(route) else route, 
                         routes)
 
-            routes = map(lambda route: "ccndc add ccnx:/ %s" % route, 
+            routes = map(lambda route: "ccndc add %s" % route, 
                 routes)
 
             routescmd = " ; ".join(routes)
             self.command += " ; "
             self.command += routescmd
+
+            if self.repository:
+                self.command += " ; ccnr "
+
 
         # Start will be invoked in prestart step
         super(CCNxDaemon, self).start()
