@@ -1217,6 +1217,14 @@ attributes = dict({
                             "0.7.1"],
                 "validation_function": validation.is_enum,
             }),
+    "repository": dict({      
+                "name": "repository",
+                "help": "If True the ccnr command will be issued on start, and a repository will be created.",
+                "type": Attribute.BOOL, 
+                "value": False,
+                "flags": Attribute.ExecReadOnly | Attribute.ExecImmutable,
+                "validation_function": validation.is_bool,
+            }),
      "ccnlocalport" : dict({
             "name" : "ccnLocalPort", 
             "help" : "Local port to bind the ccn daemon. (i.e. CCN_LOCAL_PORT=)",
@@ -1635,7 +1643,7 @@ factories_info = dict({
             "stop_function": stop_application,
             "configure_function": configure_application,
             "box_attributes": ["ccnroutes", "build", "ccnlocalport",
-                "install", "ccnxversion", "sources"],
+                "install", "ccnxversion", "sources", "repository"],
             "connector_types": ["node"],
             "traces": ["stdout", "stderr", "buildlog", "output"],
             "tags": [tags.APPLICATION],
