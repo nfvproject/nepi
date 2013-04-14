@@ -606,7 +606,7 @@ def popen_ssh_command(command, host, port, user, agent,
         timeout = None,
         retry = 0,
         err_on_timeout = True,
-        connect_timeout = 90,
+        connect_timeout = 60,
         persistent = True,
         hostip = None):
     """
@@ -626,7 +626,7 @@ def popen_ssh_command(command, host, port, user, agent,
         args.extend([
             '-o', 'ControlMaster=auto',
             '-o', 'ControlPath=/tmp/nepi_ssh-%r@%h:%p',
-            '-o', 'ControlPersist=90' ])
+            '-o', 'ControlPersist=60' ])
     if agent:
         args.append('-A')
     if port:
@@ -661,6 +661,11 @@ def popen_ssh_command(command, host, port, user, agent,
             if proc.poll():
                 if err.strip().startswith('ssh: ') or err.strip().startswith('mux_client_hello_exchange: '):
                     # SSH error, can safely retry
+                    continue
+                elif :
+                    ControlSocket /tmp/nepi_ssh-inria_alina@planetlab04.cnds.unibe.ch:22 already exists, disabling multiplexing
+                    # SSH error, can safely retry (but need to delete controlpath file)
+                    # TODO: delete file
                     continue
                 elif retry:
                     # Probably timed out or plain failed but can retry
@@ -734,7 +739,7 @@ def popen_scp(source, dest,
         args = ['ssh', '-l', user, '-C',
                 # Don't bother with localhost. Makes test easier
                 '-o', 'NoHostAuthenticationForLocalhost=yes',
-                '-o', 'ConnectTimeout=90',
+                '-o', 'ConnectTimeout=60',
                 '-o', 'ConnectionAttempts=3',
                 '-o', 'ServerAliveInterval=30',
                 '-o', 'TCPKeepAlive=yes',
@@ -868,7 +873,7 @@ def popen_scp(source, dest,
         args = ['scp', '-q', '-p', '-C',
                 # Don't bother with localhost. Makes test easier
                 '-o', 'NoHostAuthenticationForLocalhost=yes',
-                '-o', 'ConnectTimeout=90',
+                '-o', 'ConnectTimeout=60',
                 '-o', 'ConnectionAttempts=3',
                 '-o', 'ServerAliveInterval=30',
                 '-o', 'TCPKeepAlive=yes' ]
@@ -969,8 +974,6 @@ def popen_python(python_code,
         args = ['ssh', '-C',
                 # Don't bother with localhost. Makes test easier
                 '-o', 'NoHostAuthenticationForLocalhost=yes',
-                # XXX: Security vulnerability
-                #'-o', 'StrictHostKeyChecking=no',
                 '-o', 'ConnectionAttempts=3',
                 '-o', 'ServerAliveInterval=30',
                 '-o', 'TCPKeepAlive=yes',

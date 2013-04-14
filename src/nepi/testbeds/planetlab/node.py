@@ -478,7 +478,7 @@ class Node(object):
                     RPM_FUSION_URL = self.RPM_FUSION_URL
                     
                 rpmFusion = (
-                  'rpm -q $(rpm -q -p %(RPM_FUSION_URL)s) || sudo -S rpm -i %(RPM_FUSION_URL)s'
+                  'rpm -q rpmfusion-free-release || sudo -S rpm -i %(RPM_FUSION_URL)s'
                 ) % {
                     'RPM_FUSION_URL' : RPM_FUSION_URL
                 }

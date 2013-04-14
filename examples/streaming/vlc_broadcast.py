@@ -37,7 +37,8 @@ class MonitorInfo(object):
         self.hostname = hostname
         self.type = type
         self.cpumem_monitor = None
-        self.net_monitor = None
+        self.net_in_monitor = None
+        self.net_out_monitor = None
         self.vlc = None
 
 def create_slice(exp_desc, slicename, plc_host, pl_user, pl_pwd, 
@@ -99,7 +100,7 @@ def create_vlc_client(root_node, pl_node, slice_desc):
     pl_app.set_attribute_value("depends", "vlc")
     pl_app.set_attribute_value("command",
        "sudo -S dbus-uuidgen --ensure ; sleep 5;" \
-       "vlc -I dummy --repeat rtsp://%s:8554/TEST --sout '#std{access=file,mux=ts,dst=/dev/null}'" % (hostname))
+       "vlc -I dummy rtsp://%s:8554/TEST --sout '#std{access=file,mux=ts,dst=/dev/null}'" % (hostname))
     pl_app.enable_trace("stdout")
     pl_app.enable_trace("stderr")
     pl_node.connector("apps").connect(pl_app.connector("node"))
@@ -124,7 +125,7 @@ def create_cpumem_monitor(pl_node, slice_desc):
     pl_node.connector("apps").connect(pl_app.connector("node"))
     return pl_app
 
-def create_net_monitor(pl_node, slice_desc, pl_ifaces):
+def create_net_monitor(pl_node, slice_desc, pl_ifaces, pcap=False):
     """ This function creates a monitoring application for the
     amount of bytes transmitted/received by the vlc application.
 
@@ -139,9 +140,18 @@ def create_net_monitor(pl_node, slice_desc, pl_ifaces):
     pl_app.set_attribute_value("rpmFusion", True)
     pl_app.set_attribute_value("sudo", True)
     pl_app.set_attribute_value("depends", "tcpdump pv")
+
+    output = "/dev/null"
+    if pcap:
+        output = "{#[%s].trace[output].[name]#}" % label
+
     pl_app.set_attribute_value("command", 
-            "tcpdump -l -i eth0 -nNqttf '(%s)' -w - | pv -fbt >/dev/null 2>>{#[%s].trace[stdout].[name]#}" %
-            (hosts, label))
+            "tcpdump -l -i eth0 -s 0 -f '(%s)' -w - | pv -fbt >%s 2>>{#[%s].trace[stdout].[name]#}" %
+            (hosts, output, label))
+
+    if pcap:
+        pl_app.enable_trace("output")
+    
     pl_app.enable_trace("stdout")
     pl_app.enable_trace("stderr")
     pl_node.connector("apps").connect(pl_app.connector("node"))
@@ -172,17 +182,34 @@ def store_results(controller, monitors, results_dir, exp_label):
             pass
 
         # store monitoring results
-        cpumem_stdout = controller.trace(mon.cpumem_monitor.guid, "stdout")
-        net_stdout = controller.trace(mon.net_monitor.guid, "stdout")
-        vlc_stderr = controller.trace(mon.vlc.guid, "stderr")
+   
+        cpumem_out = controller.trace(mon.cpumem_monitor.guid, "stdout")
 
-        results = dict({"cpumem": cpumem_stdout, "net": net_stdout, 
-            "vlc_error": vlc_stderr})
+        net_in = None
+        if mon.net_in_monitor:
+            net_in = controller.trace(mon.net_in_monitor.guid, "stdout")
+        
+        net_out = None
+        if mon.net_out_monitor:
+            net_out = controller.trace(mon.net_out_monitor.guid, "stdout")
 
-        for name, stdout in results.iteritems():
+        vlc_err = controller.trace(mon.vlc.guid, "stderr")
+        vlc_out = controller.trace(mon.vlc.guid, "stdout")
+
+        results = dict({
+            "cpumem": cpumem_out, 
+            "net_in": net_in, 
+            "net_out": net_out, 
+            "vlc_out": vlc_out,
+            "vlc_err": vlc_err })
+
+        for name, result in results.iteritems():
+            if not result:
+                continue
+
             fpath = os.path.join(node_path, name)
             f = open(fpath, "w")
-            f.write(stdout)
+            f.write(result)
             f.close()
 
     # store node info file
@@ -224,8 +251,8 @@ def get_options():
             help="Path to directory to store results", type="str")
     parser.add_option("-l", "--label", dest="exp_label", default = exp_label, 
             help="Label to identify experiment results", type="str")
-    parser.add_option("-t", "--time", dest="time_to_run", default = 1, 
-            help="Time to run the experiment in hours", type="float")
+    parser.add_option("-t", "--time", dest="time_to_run", default = 20, 
+            help="Time to run the experiment in minutes", type="float")
 
     (options, args) = parser.parse_args()
 
@@ -282,16 +309,108 @@ if __name__ == '__main__':
     cli_apps = []
     cli_ifaces = []
 
-    hostnames = ["planetlab1.rd.tut.fi", 
-            "planetlab1.s3.kth.se", 
-            "planetlab1.tlm.unavarra.es", 
-            "planet1.servers.ua.pt", 
-            "onelab3.warsaw.rd.tp.pl", 
-            "gschembra3.diit.unict.it", 
-            "iraplab1.iralab.uni-karlsruhe.de", 
-            "host3-plb.loria.fr", 
-            "kostis.di.uoa.gr", 
-            "planetlab04.cnds.unibe.ch"]
+    hostnames = ["planetlab1.rd.tut.fi",
+             "planetlab-2.research.netlab.hut.fi",
+             "planetlab2.willab.fi",
+             "planetlab3.hiit.fi",
+             "planetlab4.hiit.fi",
+             "planetlab1.willab.fi",
+             "planetlab1.s3.kth.se",
+             "itchy.comlab.bth.se",
+             "planetlab-1.ida.liu.se",
+             "scratchy.comlab.bth.se",
+             "planetlab2.s3.kth.se",
+             "planetlab1.sics.se",
+             "planetlab1.tlm.unavarra.es",
+             "planetlab2.uc3m.es",
+             "planetlab2.upc.es",
+             "ait21.us.es",
+             "planetlab3.upc.es",
+             "planetlab1.uc3m.es",
+             "planetlab2.dit.upm.es",
+             "planetlab1.upc.es",
+             "planetlab2.um.es",
+             "planet1.servers.ua.pt",
+             "planetlab2.fct.ualg.pt",
+             "planetlab-1.tagus.ist.utl.pt",
+             "planetlab-2.tagus.ist.utl.pt",
+             "planetlab-um00.di.uminho.pt",
+             "planet2.servers.ua.pt",
+             "planetlab1.mini.pw.edu.pl",
+             "roti.mimuw.edu.pl",
+             "planetlab1.ci.pwr.wroc.pl",
+             "planetlab1.pjwstk.edu.pl",
+             "ple2.tu.koszalin.pl",
+             "planetlab2.ci.pwr.wroc.pl",
+             "planetlab2.cyfronet.pl",
+             "plab2.ple.silweb.pl",
+             "planetlab1.cyfronet.pl",
+             "plab4.ple.silweb.pl",
+             "ple2.dmcs.p.lodz.pl",
+             "planetlab2.pjwstk.edu.pl",
+             "ple1.dmcs.p.lodz.pl",
+             "pandora.we.po.opole.pl",
+             "gschembra3.diit.unict.it",
+             "onelab6.iet.unipi.it",
+             "planetlab1.science.unitn.it",
+             "planetlab-1.ing.unimo.it",
+             "gschembra4.diit.unict.it",
+             "iraplab1.iralab.uni-karlsruhe.de",
+             "planetlab-1.fokus.fraunhofer.de",
+             "iraplab2.iralab.uni-karlsruhe.de",
+             "planet2.zib.de",
+             "pl2.uni-rostock.de",
+             "onelab-1.fhi-fokus.de",
+             "planet2.l3s.uni-hannover.de",
+             "planetlab1.exp-math.uni-essen.de",
+             "planetlab-2.fokus.fraunhofer.de",
+             "planetlab02.tkn.tu-berlin.de",
+             "planetlab1.informatik.uni-goettingen.de",
+             "planetlab1.informatik.uni-erlangen.de",
+             "planetlab2.exp-math.uni-essen.de",
+             "planetlab2.lkn.ei.tum.de",
+             "planetlab1.wiwi.hu-berlin.de",
+             "planet1.l3s.uni-hannover.de",
+             "planetlab1.informatik.uni-wuerzburg.de",
+             "host3-plb.loria.fr",
+             "inriarennes1.irisa.fr",
+             "inriarennes2.irisa.fr",
+             "peeramide.irisa.fr",
+             "pl1.bell-labs.fr",
+             "pl2.bell-labs.fr",
+             "host4-plb.loria.fr",
+             "planetlab-1.imag.fr",
+             "planetlab-2.imag.fr",
+             "ple2.ipv6.lip6.fr",
+             "planetlab1.u-strasbg.fr",
+             "kostis.di.uoa.gr",
+             "planetlab1.ionio.gr",
+             "planetlab2.ionio.gr",
+             "planetlab2.cs.uoi.gr",
+             "stella.planetlab.ntua.gr",
+             "vicky.planetlab.ntua.gr",
+             "planetlab1.cs.uoi.gr",
+             "pl002.ece.upatras.gr",
+             "planetlab04.cnds.unibe.ch",
+             "lsirextpc01.epfl.ch",
+             "planetlab2.csg.uzh.ch",
+             "planetlab1.csg.uzh.ch",
+             "planetlab-2.cs.unibas.ch",
+             "planetlab-1.cs.unibas.ch",
+             "planetlab4.cs.st-andrews.ac.uk",
+             "planetlab-1.imperial.ac.uk",
+             "planetlab3.xeno.cl.cam.ac.uk",
+             "planetlab1.xeno.cl.cam.ac.uk",
+             "planetlab2.xeno.cl.cam.ac.uk",
+             "planetlab3.cs.st-andrews.ac.uk",
+             "planetlab1.aston.ac.uk",
+             "planetlab1.nrl.eecs.qmul.ac.uk",
+             "chimay.infonet.fundp.ac.be",
+             "orval.infonet.fundp.ac.be",
+             "rochefort.infonet.fundp.ac.be",
+             "planck227ple.test.ibbt.be",
+            ]
+
 
     for hostname in hostnames:
         pl_node, pl_iface = create_node(hostname, pl_inet, slice_desc)
@@ -305,7 +424,7 @@ if __name__ == '__main__':
         node_mon.cpumem_monitor = create_cpumem_monitor(pl_node, slice_desc)
 
         # Add network monitoring for all nodes
-        node_mon.net_monitor = create_net_monitor(pl_node, slice_desc, [root_iface])
+        node_mon.net_out_monitor = create_net_monitor(pl_node, slice_desc, [root_iface])
 
         # Add VLC clients
         vlc = create_vlc_client(root_node, pl_node, slice_desc)
@@ -315,7 +434,8 @@ if __name__ == '__main__':
         node_mon.vlc = vlc
 
     # Add network monitoring for root node
-    root_mon.net_monitor = create_net_monitor(root_node, slice_desc, cli_ifaces)
+    #root_mon.net_monitor = create_net_monitor(root_node, slice_desc, cli_ifaces, pcap=True)
+    root_mon.net_out_monitor = create_net_monitor(root_node, slice_desc, cli_ifaces)
 
     xml = exp_desc.to_xml()
    
@@ -323,7 +443,7 @@ if __name__ == '__main__':
     controller.start()
 
     start_time = time.time()
-    duration = time_to_run * 3600 # in seconds
+    duration = time_to_run * 60 # in seconds
     while not TERMINATE:
         time.sleep(1)
         if (time.time() - start_time) > duration: # elapsed time
