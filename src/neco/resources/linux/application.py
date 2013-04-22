@@ -147,7 +147,7 @@ class LinuxApplication(ResourceManager):
         return True
         # XXX: What if it is connected to more than one node?
         resources = self.find_resources(exact_tags = [tags.NODE])
-        self._node = resources[0] is len(resources) == 1 else None
+        self._node = resources[0] if len(resources) == 1 else None
         return self._node
 
 

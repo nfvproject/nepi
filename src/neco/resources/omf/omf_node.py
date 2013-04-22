@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from neco.execution.resource import ResourceManager, clsinit
-from neco.execution.attribute import Attribute
+from neco.execution.attribute import Attribute, Flags 
 
 from neco.resources.omf.omf_api import OMFAPIFactory
 
@@ -35,21 +35,17 @@ class OMFNode(ResourceManager):
         hostname = Attribute("hostname", "Hostname of the machine")
         cpu = Attribute("cpu", "CPU of the node")
         ram = Attribute("ram", "RAM of the node")
-        # XXX: flags = "0x02" is not human readable.
-        # instead:
-        # from neco.execution.attribute import Attribute, Flags 
-        # xmppSlice = Attribute("xmppSlice","Name of the slice", flags = Flags.Credential)
-        xmppSlice = Attribute("xmppSlice","Name of the slice", flags = "0x02")
-        xmppHost = Attribute("xmppHost", "Xmpp Server",flags = "0x02")
-        xmppPort = Attribute("xmppPort", "Xmpp Port",flags = "0x02")
-        xmppPassword = Attribute("xmppPassword", "Xmpp Port",flags = "0x02")
+        xmppSlice = Attribute("xmppSlice","Name of the slice", flags = Flags.Credential)
+        xmppHost = Attribute("xmppHost", "Xmpp Server",flags = Flags.Credential)
+        xmppPort = Attribute("xmppPort", "Xmpp Port",flags = Flags.Credential)
+        xmppPassword = Attribute("xmppPassword", "Xmpp Port",flags = Flags.Credential)
         cls._register_attribute(hostname)
         cls._register_attribute(ram)
         cls._register_attribute(cpu)
         cls._register_attribute(xmppSlice)
         cls._register_attribute(xmppHost)
         cls._register_attribute(xmppPort)
-        ls._register_attribute(xmppPassword)
+        cls._register_attribute(xmppPassword)
 
     @classmethod
     def _register_filters(cls):
@@ -67,9 +63,7 @@ class OMFNode(ResourceManager):
 
     # XXX: We don't necessary need to have the credentials at the 
     # moment we create the RM
-    # THE OMF API SHOULD BE CREATED ON THE DEPLOY METHOD, NOT NOW
-    # THIS FORCES MORE CONSTRAINES ON THE WAY WE WILL AUTHOMATE DEPLOYMENT!
-    def __init__(self, ec, guid, creds):
+    def __init__(self, ec, guid):
         """
         :param ec: The Experiment controller
         :type ec: ExperimentController
@@ -80,13 +74,8 @@ class OMFNode(ResourceManager):
 
         """
         super(OMFNode, self).__init__(ec, guid)
-        self.set('xmppSlice', creds['xmppSlice'])
-        self.set('xmppHost', creds['xmppHost'])
-        self.set('xmppPort', creds['xmppPort'])
-        self.set('xmppPassword', creds['xmppPassword'])
 
-        # XXX: Lines should not be more than 80 characters!
-        self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
+        self._omf_api = None 
 
         self._logger = logging.getLogger("neco.omf.omfNode   ")
 
@@ -101,12 +90,22 @@ class OMFNode(ResourceManager):
         :rtype:  Boolean
 
         """
-        rm = self.ec.resource(guid)
+        rm = self.ec.get_resource(guid)
         if rm.rtype() in self._authorized_connections:
-            self._logger.debug("Connection between %s %s and %s %s accepted" % (self.rtype(), self._guid, rm.rtype(), guid))
+            self._logger.debug("Connection between %s %s and %s %s accepted" %
+                (self.rtype(), self._guid, rm.rtype(), guid))
             return True
-        self._logger.debug("Connection between %s %s and %s %s refused" % (self.rtype(), self._guid, rm.rtype(), guid))
+        self._logger.debug("Connection between %s %s and %s %s refused" %
+            (self.rtype(), self._guid, rm.rtype(), guid))
         return False
+
+    def deploy(self):
+        """Deploy the RM
+
+        """ 
+        self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
+            self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
+        super(OMFNode, self).deploy()
 
     def discover(self):
         """ Discover the availables nodes
@@ -114,7 +113,7 @@ class OMFNode(ResourceManager):
         """
         pass
      
-    def provision(self, credential):
+    def provision(self):
         """ Provision some availables nodes
 
         """
@@ -124,13 +123,23 @@ class OMFNode(ResourceManager):
         """Send Xmpp Message Using OMF protocol to enroll the node into the experiment
 
         """
+        super(OMFNode, self).start()
         self._omf_api.enroll_host(self.get('hostname'))
 
     def stop(self):
         """Send Xmpp Message Using OMF protocol to disconnect the node
 
         """
-        self._omf_api.disconnect()
+        super(OMFNode, self).stop()
+
+    def release(self):
+        """Clean the RM at the end of the experiment
+
+        """
+        self._omf_api.release(self.get('hostname'))
+        OMFAPIFactory.release_api(self.get('xmppSlice'), 
+            self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
+
 
     def configure(self):
         #routes = self.tc._add_route.get(self.guid, [])

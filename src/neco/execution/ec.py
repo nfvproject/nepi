@@ -25,6 +25,9 @@ class ExperimentController(object):
         # Resource managers
         self._resources = dict()
 
+        # Resource managers
+        self._group = dict()
+
         # Scheduler
         self._scheduler = HeapScheduler()
 
@@ -51,17 +54,27 @@ class ExperimentController(object):
     def resources(self):
         return self._resources.keys()
 
-    def register_resource(self, rtype, guid = None, creds = None):
+    def register_resource(self, rtype, guid = None):
         # Get next available guid
         guid = self._guid_generator.next(guid)
         
         # Instantiate RM
-        rm = ResourceFactory.create(rtype, self, guid, creds)
+        rm = ResourceFactory.create(rtype, self, guid)
 
         # Store RM
         self._resources[guid] = rm
 
         return guid
+
+    def create_group(self, *args):
+        guid = self._guid_generator.next(guid)
+
+        grp = [arg for arg in args]
+
+        self._resources[guid] = grp
+
+        return guid
+ 
 
     def get_attributes(self, guid):
         rm = self.get_resource(guid)
@@ -100,12 +113,12 @@ class ExperimentController(object):
 
         """
         if isinstance(group1, int):
-            group1 = list[group1]
+            group1 = [group1]
         if isinstance(group2, int):
-            group2 = list[group2]
+            group2 = [group2]
 
         for guid1 in group1:
-            rm = self.get_resource(guid)
+            rm = self.get_resource(guid1)
             rm.register_condition(action, group2, state, time)
 
     def discover(self, guid, filters):
@@ -165,9 +178,9 @@ class ExperimentController(object):
 
         """
         if isinstance(group1, int):
-            group1 = list[group1]
+            group1 = [group1]
         if isinstance(group2, int):
-            group2 = list[group2]
+            group2 = [group2]
 
         for guid1 in group1:
             rm = self.get_resource(guid)
@@ -181,13 +194,13 @@ class ExperimentController(object):
         rm = self.get_resource(guid)
         return rm.start_with_condition()
 
-    def deploy(self, group = None, wait_all_ready = True):
+    def deploy(self, group = None, wait_all_deployed = True):
         """ Deploy all resource manager in group
 
         :param group: List of guids of RMs to deploy
         :type group: list
 
-        :param wait_all_ready: Wait until all RMs are deployed in
+        :param wait_all_deployed: Wait until all RMs are deployed in
             order to start the RMs
         :type guid: int
 
@@ -208,13 +221,13 @@ class ExperimentController(object):
         for guid in group:
             rm = self.get_resource(guid)
 
-            if wait_all_ready:
+            if wait_all_deployed:
                 towait = list(group)
                 towait.remove(guid)
                 self.register_condition(guid, ResourceAction.START, 
                         towait, ResourceState.DEPLOYED)
 
-            thread = threading.Thread(target = steps, args = (rm))
+            thread = threading.Thread(target = steps, args = (rm,))
             threads.append(thread)
             thread.start()
 
