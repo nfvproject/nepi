@@ -318,11 +318,11 @@ class ResourceManager(object):
             print TIME.strftime("%H:%M:%S", TIME.localtime()) + " RM : " + self._rtype + " (Guid : "+ str(self.guid) +") -----  start condition : " + str(self.conditions.items())
             # Need to separate because it could have more that tuple of condition 
             # for the same action.
-            if self.conditions.get(ResourceAction.START): 
-                for (group, state, time) in self.conditions.get(ResourceAction.START):
-                    reschedule, delay = self._needs_reschedule(group, state, time)
-                    if reschedule:
-                        break
+            conditions_start = self.conditions.get(ResourceAction.START, []): 
+            for (group, state, time) in conditions_start:
+                reschedule, delay = self._needs_reschedule(group, state, time)
+                if reschedule:
+                    break
 
         if reschedule:
             callback = functools.partial(self.start_with_conditions)
@@ -334,7 +334,7 @@ class ResourceManager(object):
             self.start()
 
     def stop_with_conditions(self):
-        """ Starts when all the conditions are reached
+        """ Stop when all the conditions are reached
 
         """
         reschedule = False
@@ -346,22 +346,13 @@ class ResourceManager(object):
         if self.state != ResourceState.STARTED:
             reschedule = True
         else:
-            print TIME.strftime("%H:%M:%S", TIME.localtime()) + " RM : " + self._rtype + " (Guid : "+ str(self.guid) +")  ----  stop condition : " + str(self.conditions.items())
-            # Need to separate because it could have more that tuple of condition 
-            # for the same action.
-            conditions =  self.conditions.get(ResourceAction.STOP, []) 
-            for (group, state, time) in conditions:
+            #print TIME.strftime("%H:%M:%S", TIME.localtime()) + " RM : " + self._rtype + "\
+ (Guid : "+ str(self.guid) +")  ----  stop condition : " + str(self.conditions.items())
+            conditions_stop = self.conditions.get(ResourceAction.STOP, []) 
+            for (group, state, time) in conditions_stop:
                 reschedule, delay = self._needs_reschedule(group, state, time)
                 if reschedule:
                     break
-
-        #else:
-        #    for action, (group, state, time) in self.conditions.iteritems():
-        #        if action == ResourceAction.STOP:
-        #            reschedule, delay = self._needs_reschedule(group, state, time)   
-        #            if reschedule:
-        #                break
-
         if reschedule:
             callback = functools.partial(self.stop_with_conditions)
             self.ec.schedule(delay, callback)
