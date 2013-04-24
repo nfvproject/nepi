@@ -9,6 +9,7 @@ from neco.resources.omf.omf_channel import OMFChannel
 from neco.resources.omf.omf_api import OMFAPIFactory
 
 from neco.util import guid
+from neco.util.timefuncs import *
 
 import time
 import unittest
@@ -165,26 +166,93 @@ class OMFVLCTestCase(unittest.TestCase):
         self.ec.register_connection(node1, iface1)
         self.ec.register_connection(iface1, channel)
 
-        # For the moment
-        self.ec.register_condition([iface1, channel], ResourceAction.START, node1, ResourceState.STARTED , 2)
-        self.ec.register_condition(channel, ResourceAction.START, iface1, ResourceState.STARTED , 1)
-        self.ec.register_condition(app1, ResourceAction.START, channel, ResourceState.STARTED , 1)
+        self.ec.register_condition(app2, ResourceAction.START, app1, ResourceState.STARTED , "4s")
 
-        # Real test
-        self.ec.register_condition(app2, ResourceAction.START, app1, ResourceState.STARTED , 4)
+        self.assertEquals(len(self.ec.get_resource(app2).conditions), 1)
 
-        self.assertEquals(len(self.ec.get_resource(node1).conditions), 0)
-        self.assertEquals(len(self.ec.get_resource(iface1).conditions), 1)
-        self.assertEquals(len(self.ec.get_resource(channel).conditions), 1)
-        self.assertEquals(len(self.ec.get_resource(app1).conditions), 1)
+    def test_deploy(self):
+        node1 = self.ec.register_resource("OMFNode")
+        self.ec.set(node1, 'hostname', 'omf.plexus.wlab17')
+        self.ec.set(node1, 'xmppSlice', "nepi")
+        self.ec.set(node1, 'xmppHost', "xmpp-plexus.onelab.eu")
+        self.ec.set(node1, 'xmppPort', "5222")
+        self.ec.set(node1, 'xmppPassword', "1234")
+        
+        iface1 = self.ec.register_resource("OMFWifiInterface")
+        self.ec.set(iface1, 'alias', "w0")
+        self.ec.set(iface1, 'mode', "adhoc")
+        self.ec.set(iface1, 'type', "g")
+        self.ec.set(iface1, 'essid', "vlcexp")
+        self.ec.set(iface1, 'ip', "10.0.0.17")
+        self.ec.set(iface1, 'xmppSlice', "nepi")
+        self.ec.set(iface1, 'xmppHost', "xmpp-plexus.onelab.eu")
+        self.ec.set(iface1, 'xmppPort', "5222")
+        self.ec.set(iface1, 'xmppPassword', "1234")
+        
+        channel = self.ec.register_resource("OMFChannel")
+        self.ec.set(channel, 'channel', "6")
+        self.ec.set(channel, 'xmppSlice', "nepi")
+        self.ec.set(channel, 'xmppHost', "xmpp-plexus.onelab.eu")
+        self.ec.set(channel, 'xmppPort', "5222")
+        self.ec.set(channel, 'xmppPassword', "1234")
+        
+        app1 = self.ec.register_resource("OMFApplication")
+        self.ec.set(app1, 'xmppSlice', "nepi")
+        self.ec.set(app1, 'xmppHost', "xmpp-plexus.onelab.eu")
+        self.ec.set(app1, 'xmppPort', "5222")
+        self.ec.set(app1, 'xmppPassword', "1234")
 
+        app2 = self.ec.register_resource("OMFApplication")
+        self.ec.set(app2, 'xmppSlice', "nepi")
+        self.ec.set(app2, 'xmppHost', "xmpp-plexus.onelab.eu")
+        self.ec.set(app2, 'xmppPort', "5222")
+        self.ec.set(app2, 'xmppPassword', "1234")
 
-    def xtest_deploy(self):
-        ec.deploy()
+        app3 = self.ec.register_resource("OMFApplication")
+        self.ec.set(app3, 'xmppSlice', "nepi")
+        self.ec.set(app3, 'xmppHost', "xmpp-plexus.onelab.eu")
+        self.ec.set(app3, 'xmppPort', "5222")
+        self.ec.set(app3, 'xmppPassword', "1234")
 
+        app4 = self.ec.register_resource("OMFApplication")
+        self.ec.set(app4, 'xmppSlice', "nepi")
+        self.ec.set(app4, 'xmppHost', "xmpp-plexus.onelab.eu")
+        self.ec.set(app4, 'xmppPort', "5222")
+        self.ec.set(app4, 'xmppPassword', "1234")
+
+        app5 = self.ec.register_resource("OMFApplication")
+        self.ec.set(app5, 'xmppSlice', "nepi")
+        self.ec.set(app5, 'xmppHost', "xmpp-plexus.onelab.eu")
+        self.ec.set(app5, 'xmppPort', "5222")
+        self.ec.set(app5, 'xmppPassword', "1234")
+
+        self.ec.register_connection(app1, node1)
+        self.ec.register_connection(app2, node1)
+        self.ec.register_connection(app3, node1)
+        self.ec.register_connection(app4, node1)
+        self.ec.register_connection(app5, node1)
+        self.ec.register_connection(node1, iface1)
+        self.ec.register_connection(iface1, channel)
+
+        self.ec.register_condition(app2, ResourceAction.START, app1, ResourceState.STARTED , "3s")
+        self.ec.register_condition(app3, ResourceAction.START, app2, ResourceState.STARTED , "2s")
+        self.ec.register_condition(app4, ResourceAction.START, app3, ResourceState.STARTED , "3s")
+        self.ec.register_condition(app5, ResourceAction.START, [app3, app2], ResourceState.STARTED , "2s")
+        self.ec.register_condition(app5, ResourceAction.START, app1, ResourceState.STARTED , "1m20s")
+
+        self.ec.deploy()
+        time.sleep(150)
+
+        self.assertEquals(round(strfdiff(self.ec.get_resource(app2).start_time, self.ec.get_resource(app1).start_time),1), 3.0)
+        self.assertEquals(round(strfdiff(self.ec.get_resource(app3).start_time, self.ec.get_resource(app2).start_time),1), 2.0)
+        self.assertEquals(round(strfdiff(self.ec.get_resource(app4).start_time, self.ec.get_resource(app3).start_time),1), 3.0)
+        self.assertEquals(round(strfdiff(self.ec.get_resource(app5).start_time, self.ec.get_resource(app3).start_time),1), 2.0)
+        self.assertEquals(round(strfdiff(self.ec.get_resource(app5).start_time, self.ec.get_resource(app1).start_time),1), 7.0)
+
+        # Precision is at 1/10. So this one returns an error 7.03 != 7.0
+        #self.assertEquals(strfdiff(self.ec.get_resource(app5).start_time, self.ec.get_resource(app1).start_time), 7)
     #In order to release everythings
-        time.sleep(45)
-        ec.shutdown()
+        time.sleep(5)
 
 
 if __name__ == '__main__':

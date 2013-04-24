@@ -111,18 +111,18 @@ ec.register_connection(app2, node2)
 
 # Condition
 #      Topology behaviour : It should not be done by the user, but ....
-ec.register_condition([iface1, iface2, channel], ResourceAction.START, [node1, node2], ResourceState.STARTED , 2)
-ec.register_condition(channel, ResourceAction.START, [iface1, iface2], ResourceState.STARTED , 1)
-ec.register_condition(app1, ResourceAction.START, channel, ResourceState.STARTED , 1)
+#ec.register_condition([iface1, iface2, channel], ResourceAction.START, [node1, node2], ResourceState.STARTED , 2)
+#ec.register_condition(channel, ResourceAction.START, [iface1, iface2], ResourceState.STARTED , 1)
+#ec.register_condition(app1, ResourceAction.START, channel, ResourceState.STARTED , 1)
 
 #      User Behaviour
-ec.register_condition(app2, ResourceAction.START, app1, ResourceState.STARTED , 4)
-ec.register_condition([app1, app2], ResourceAction.STOP, app2, ResourceState.STARTED , 20)
-ec.register_condition(app3, ResourceAction.START, app2, ResourceState.STARTED , 25)
+ec.register_condition(app2, ResourceAction.START, app1, ResourceState.STARTED , "4s")
+ec.register_condition([app1, app2], ResourceAction.STOP, app2, ResourceState.STARTED , "20s")
+ec.register_condition(app3, ResourceAction.START, app2, ResourceState.STARTED , "25s")
 
 # Deploy
 ec.deploy()
 
 # Stop Experiment
-time.sleep(45)
+time.sleep(50)
 ec.shutdown()

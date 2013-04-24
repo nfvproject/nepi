@@ -24,7 +24,12 @@ def strfdiff(str1, str2):
     return (ret or 0.001)
 
 def strfvalid(date):
-    """ User defined date to scheduler date """
+    """ User defined date to scheduler date 
+    
+    :param date : user define date matchin the pattern _strf 
+    :type date : date 
+
+    """
     if not date:
         return strfnow()
     if _reabs.match(date):

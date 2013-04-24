@@ -26,6 +26,7 @@ class OMFApplication(ResourceManager):
     """
     _rtype = "OMFApplication"
     _authorized_connections = ["OMFNode"]
+    _waiters = ["OMFNode", "OMFChannel", "OMFWifiInterface"]
 
     @classmethod
     def _register_attributes(cls):
@@ -109,13 +110,13 @@ class OMFApplication(ResourceManager):
                 return rm
         return None
 
-    def deploy(self):
+    def deploy_action(self):
         """Deploy the RM
 
         """
-        super(OMFApplication, self).deploy()
         self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
             self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
+        super(OMFApplication, self).deploy_action()
 
     def start(self):
         """Send Xmpp Message Using OMF protocol to execute the application

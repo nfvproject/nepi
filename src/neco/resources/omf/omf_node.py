@@ -6,6 +6,7 @@ from neco.resources.omf.omf_api import OMFAPIFactory
 
 import neco
 import logging
+import time
 
 @clsinit
 class OMFNode(ResourceManager):
@@ -26,6 +27,7 @@ class OMFNode(ResourceManager):
     """
     _rtype = "OMFNode"
     _authorized_connections = ["OMFApplication" , "OMFWifiInterface"]
+    _waiters = []
 
     @classmethod
     def _register_attributes(cls):
@@ -99,13 +101,15 @@ class OMFNode(ResourceManager):
             (self.rtype(), self._guid, rm.rtype(), guid))
         return False
 
-    def deploy(self):
+    def deploy_action(self):
         """Deploy the RM
 
         """ 
         self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
             self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
-        super(OMFNode, self).deploy()
+        self._omf_api.enroll_host(self.get('hostname'))
+
+        super(OMFNode, self).deploy_action()
 
     def discover(self):
         """ Discover the availables nodes
@@ -124,7 +128,7 @@ class OMFNode(ResourceManager):
 
         """
         super(OMFNode, self).start()
-        self._omf_api.enroll_host(self.get('hostname'))
+
 
     def stop(self):
         """Send Xmpp Message Using OMF protocol to disconnect the node
