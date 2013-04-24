@@ -123,6 +123,7 @@ class LinuxApplication(ResourceManager):
         self._pid, self._ppid = self.api.checkpid(self.app_home)
 
     def stop(self):
+        # Kill
         self._state = ResourceState.STOPPED
 
     def release(self):

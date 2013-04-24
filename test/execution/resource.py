@@ -34,8 +34,8 @@ class ResourceFactoryTestCase(unittest.TestCase):
         self.assertEquals(MyResource.rtype(), "MyResource")
         self.assertEquals(len(MyResource._attributes), 1)
 
-        self.assertEquals(Resource.rtype(), "Resource")
-        self.assertEquals(len(Resource._attributes), 0)
+        self.assertEquals(ResourceManager.rtype(), "Resource")
+        self.assertEquals(len(ResourceManager._attributes), 0)
 
         self.assertEquals(AnotherResource.rtype(), "AnotherResource")
         self.assertEquals(len(AnotherResource._attributes), 0)
