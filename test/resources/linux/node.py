@@ -2,11 +2,36 @@
 from neco.resources.linux.node import LinuxNode
 from neco.util.sshfuncs import RUNNING, FINISHED
 
-import os.path
+import os
 import time
 import tempfile
 import unittest
 
+def skipIfNotAlive(func):
+    name = func.__name__
+    def wrapped(*args, **kwargs):
+        node = args[1]
+
+        if not node.is_alive():
+            print "*** WARNING: Skipping test %s: Node %s is not alive\n" % (
+                name, node.get("hostname"))
+            return
+
+        return func(*args, **kwargs)
+    
+    return wrapped
+
+def skipInteractive(func):
+    name = func.__name__
+    def wrapped(*args, **kwargs):
+        mode = os.environ.get("NEPI_INTERACTIVE", False) in ['True', 'true', 'yes', 'YES']
+        if not mode:
+            print "*** WARNING: Skipping test %s: Interactive mode off \n" % name
+            return
+
+        return func(*args, **kwargs)
+    
+    return wrapped
 
 class DummyEC(object):
     pass
@@ -22,52 +47,44 @@ class LinuxNodeTestCase(unittest.TestCase):
         self.node_ubuntu = self.create_node(host, user)
         
         self.target = 'nepi5.pl.sophia.inria.fr'
-        self.home = '${HOME}/test-app'
+        self.home = '/tmp/nepi-home/test-app'
 
     def create_node(self, host, user):
         ec = DummyEC()
 
         node = LinuxNode(ec, 1)
-        node.host = host
-        node.user = user
+        node.set("hostname", host)
+        node.set("username", user)
 
         return node
 
+    @skipIfNotAlive
     def t_xterm(self, node):
-        if not node.is_alive():
-            print "*** WARNING: Skipping test: Node %s is not alive\n" % (node.host)
-            return 
+        node.install_packages('xterm')
 
-        node.enable_x11 = True
-
-        node.install('xterm')
-
-        out = node.execute('xterm')
-
-        node.uninstall('xterm')
-
+        (out, err), proc = node.execute('xterm', forward_x11 = True)
+        
         self.assertEquals(out, "")
 
-    def t_execute(self, node, target):
-        if not node.is_alive():
-            print "*** WARNING: Skipping test: Node %s is not alive\n" % (node.host)
-            return 
+        (out, err), proc = node.remove_packages('xterm')
+        
+        self.assertEquals(out, "")
 
-        command = "ping -qc3 %s" % target
-        out = node.execute(command)
+    @skipIfNotAlive
+    def t_execute(self, node):
+        command = "ping -qc3 %s" % self.target
+        
+        (out, err), proc = node.execute(command)
 
         expected = """3 packets transmitted, 3 received, 0% packet loss"""
 
         self.assertTrue(out.find(expected) > 0)
 
-    def t_run(self, node, target):
-        if not node.is_alive():
-            print "*** WARNING: Skipping test: Node %s is not alive\n" % (node.host)
-            return
-
+    @skipIfNotAlive
+    def t_run(self, node):
         node.mkdir(self.home, clean = True)
         
-        command = "ping %s" % target
+        command = "ping %s" % self.target
         dst = os.path.join(self.home, "app.sh")
         node.upload(command, dst)
         
@@ -81,14 +98,17 @@ class LinuxNodeTestCase(unittest.TestCase):
         node.kill(pid, ppid)
         status = node.status(pid, ppid)
         self.assertTrue(status, FINISHED)
+        
+        (out, err), proc = node.check_run_output(self.home)
+
+        expected = """64 bytes from"""
+
+        self.assertTrue(out.find(expected) > 0)
 
         node.rmdir(self.home)
 
+    @skipIfNotAlive
     def t_install(self, node):
-        if not node.is_alive():
-            print "*** WARNING: Skipping test: Node %s is not alive\n" % (node.host)
-            return
-
         node.mkdir(self.home, clean = True)
 
         prog = """#include <stdio.h>
@@ -105,19 +125,21 @@ main (void)
         node.upload(prog, dst)
 
         # install gcc
-        node.install('gcc')
+        node.install_packages('gcc')
 
         # compile the program using gcc
         command = "cd %s; gcc -Wall hello.c -o hello" % self.home
-        out = node.execute(command)
+        (out, err), proc = node.execute(command)
 
-        # execute the program and get the output from stout
+        # execute the program and get the output from stdout
         command = "%s/hello" % self.home
-        out = node.execute(command)
+        (out, err), proc = node.execute(command)
+
+        self.assertEquals(out, "Hello, world!\n")
 
         # execute the program and get the output from a file
-        command = "%s/hello > %s/hello.out" % (self.home, self.home)
-        node.execute(command)
+        command = "%(home)s/hello > %(home)s/hello.out" % {'home':self.home}
+        (out, err), proc = node.execute(command)
 
         # retrieve the output file 
         src = os.path.join(self.home, "hello.out")
@@ -126,10 +148,8 @@ main (void)
         node.download(src, dst)
         f.close()
 
-        node.uninstall('gcc')
+        node.remove_packages('gcc')
         node.rmdir(self.home)
-
-        self.assertEquals(out, "Hello, world!\n")
 
         f = open(dst, "r")
         out = f.read()
@@ -138,29 +158,25 @@ main (void)
         self.assertEquals(out, "Hello, world!\n")
 
     def test_execute_fedora(self):
-        self.t_execute(self.node_fedora, self.target)
+        self.t_execute(self.node_fedora)
 
     def test_execute_ubuntu(self):
-        self.t_execute(self.node_ubuntu, self.target)
+        self.t_execute(self.node_ubuntu)
 
     def test_run_fedora(self):
-        self.t_run(self.node_fedora, self.target)
+        self.t_run(self.node_fedora)
 
     def test_run_ubuntu(self):
-        self.t_run(self.node_ubuntu, self.target)
+        self.t_run(self.node_ubuntu)
 
     def test_intall_fedora(self):
         self.t_install(self.node_fedora)
 
     def test_install_ubuntu(self):
         self.t_install(self.node_ubuntu)
-
-    def xtest_xterm_fedora(self):
-        """ PlanetLab doesn't currently support X11 forwarding.
-        Interactive test. Should not run automatically """
-        self.t_xterm(self.node_fedora)
-
-    def xtest_xterm_ubuntu(self):
+    
+    @skipInteractive
+    def test_xterm_ubuntu(self):
         """ Interactive test. Should not run automatically """
         self.t_xterm(self.node_ubuntu)
 

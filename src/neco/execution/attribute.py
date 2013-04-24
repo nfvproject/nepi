@@ -18,12 +18,12 @@ class Flags:
 
 class Attribute(object):
     def __init__(self, name, help, type = Types.String,
-            flags = Flags.NoFlags, default_value = None):
+            flags = Flags.NoFlags, default = None):
         self._name = name
         self._help = help
         self._type = type
         self._flags = flags
-        self._default = self._value = default_value
+        self._default = self._value = default
 
     @property
     def name(self):
@@ -31,7 +31,7 @@ class Attribute(object):
 
     @property
     def default(self):
-        return self._default_value
+        return self._default
 
     @property
     def type(self):
