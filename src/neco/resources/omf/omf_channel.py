@@ -25,7 +25,9 @@ class OMFChannel(ResourceManager):
 
     """
     _rtype = "OMFChannel"
-    _authorized_connections = ["OMFWifiInterface"]
+    _authorized_connections = ["OMFWifiInterface", "OMFNode"]
+    _waiters = ["OMFNode", "OMFWifiInterface"]
+
 
     @classmethod
     def _register_attributes(cls):
@@ -89,7 +91,7 @@ class OMFChannel(ResourceManager):
         """
         for elt in conn_set:
             rm_iface = self.ec.get_resource(elt)
-            for conn in rm_iface._connections:
+            for conn in rm_iface.connections:
                 rm_node = self.ec.get_resource(conn)
                 if rm_node.rtype() == "OMFNode":
                     couple = [rm_node.get('hostname'), rm_iface.get('alias')]
@@ -97,13 +99,24 @@ class OMFChannel(ResourceManager):
                     self._nodes_guid.append(couple)
         return self._nodes_guid
 
-    def deploy(self):
+    def deploy_action(self):
         """Deploy the RM
 
         """
-        super(OMFChannel, self).deploy()
         self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
             self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
+
+        if self.get('channel'):
+            set_nodes = self._get_target(self._connections) 
+            print set_nodes
+            for couple in set_nodes:
+                #print "Couple node/alias : " + couple[0] + "  ,  " + couple[1]
+                attrval = self.get('channel')
+                attrname = "net/%s/%s" % (couple[1], 'channel')
+                #print "Send the configure message"
+                self._omf_api.configure(couple[0], attrname, attrval)
+
+        super(OMFChannel, self).deploy_action()
 
     def discover(self):
         """ Discover the availables channels
@@ -121,15 +134,7 @@ class OMFChannel(ResourceManager):
         """Send Xmpp Message Using OMF protocol to configure Channel
 
         """
-        if self.get('channel'):
-            set_nodes = self._get_target(self._connections) 
-            print set_nodes
-            for couple in set_nodes:
-                #print "Couple node/alias : " + couple[0] + "  ,  " + couple[1]
-                attrval = self.get('channel')
-                attrname = "net/%s/%s" % (couple[1], 'channel')
-                #print "Send the configure message"
-                self._omf_api.configure(couple[0], attrname, attrval)
+
         super(OMFChannel, self).start()
 
     def stop(self):

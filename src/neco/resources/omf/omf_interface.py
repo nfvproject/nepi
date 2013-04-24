@@ -26,6 +26,7 @@ class OMFWifiInterface(ResourceManager):
     """
     _rtype = "OMFWifiInterface"
     _authorized_connections = ["OMFNode" , "OMFChannel"]
+    _waiters = ["OMFNode"]
 
     #alias2name = dict({'w0':'wlan0', 'w1':'wlan1'})
 
@@ -102,19 +103,13 @@ class OMFWifiInterface(ResourceManager):
                 return rm
         return None
 
-    def deploy(self):
+    def deploy_action(self):
         """Deploy the RM
 
         """
-        super(OMFWifiInterface, self).deploy()
         self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
             self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
 
-
-    def start(self):
-        """Send Xmpp Messages Using OMF protocol to configure Interface
-
-        """
         self._logger.debug(" " + self.rtype() + " ( Guid : " + str(self._guid) +") : " +
             self.get('mode') + " : " + self.get('type') + " : " +
             self.get('essid') + " : " + self.get('ip'))
@@ -126,6 +121,15 @@ class OMFWifiInterface(ResourceManager):
                 attrname = "net/%s/%s" % (self._alias, attrname)
                 #print "Send the configure message"
                 self._omf_api.configure(rm_node.get('hostname'), attrname, attrval)
+
+        super(OMFWifiInterface, self).deploy_action()
+
+
+    def start(self):
+        """Send Xmpp Messages Using OMF protocol to configure Interface
+
+        """
+
         super(OMFWifiInterface, self).start()
 
     def stop(self):

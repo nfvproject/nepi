@@ -1,5 +1,5 @@
 
-from neco.util.timefuncs import strfnow, strfdiff, strfvalid 
+from neco.util.timefuncs import strfnow, strfdiff, strfvalid
 
 import copy
 import functools
@@ -10,8 +10,9 @@ import time as TIME
 _reschedule_delay = "1s"
 
 class ResourceAction:
-    START = 0
-    STOP = 1
+    DEPLOYED = 0
+    START = 1
+    STOP = 2
 
 class ResourceState:
     NEW = 0
@@ -31,6 +32,7 @@ class ResourceManager(object):
     _rtype = "Resource"
     _filters = None
     _attributes = None
+    _waiters = []
 
     @classmethod
     def _register_filter(cls, attr):
@@ -83,6 +85,10 @@ class ResourceManager(object):
     @classmethod
     def rtype(cls):
         return cls._rtype
+
+    @classmethod
+    def waiters(cls):
+        return cls._waiters
 
     @classmethod
     def get_filters(cls):
@@ -145,6 +151,10 @@ class ResourceManager(object):
     @property
     def stop_time(self):
         return self._stop_time
+
+    @property
+    def deploy_time(self):
+        return self._deploy_time
 
     @property
     def state(self):
@@ -236,6 +246,9 @@ class ResourceManager(object):
         :param time: time to wait after the state
         :type time: str
 
+        .. note : time should be written like "2s" or "3m" with s for seconds, m for minutes, h for hours, ...
+        If for example, you need to wait 2min 30sec, time could be "150s" or "2.5m".
+        For the moment, 2m30s is not a correct syntax.
 
         """
         reschedule = False
@@ -251,7 +264,9 @@ class ResourceManager(object):
                 break
 
             if time:
-                if state == ResourceState.STARTED:
+                if state == ResourceState.DEPLOYED:
+                    t = rm.deploy_time
+                elif state == ResourceState.STARTED:
                     t = rm.start_time
                 elif state == ResourceState.STOPPED:
                     t = rm.stop_time
@@ -259,10 +274,12 @@ class ResourceManager(object):
                     # Only keep time information for START and STOP
                     break
 
-                d = strfdiff(strfnow(), t) 
-                if d < time:
+                d = strfdiff(strfnow(), t)
+                #print "This is the value of d : " + str(d) + " // With the value of t : " + str(t) + " // With the value of time : " + str(time)
+                wait = strfdiff(strfvalid(time),strfvalid(str(d)+"s"))
+                if wait > 0.001:
                     reschedule = True
-                    delay = "%ds" % (int(time - d) +1)
+                    delay = "%fs" % wait
                     break
         return reschedule, delay
 
@@ -318,7 +335,7 @@ class ResourceManager(object):
             print TIME.strftime("%H:%M:%S", TIME.localtime()) + " RM : " + self._rtype + " (Guid : "+ str(self.guid) +") -----  start condition : " + str(self.conditions.items())
             # Need to separate because it could have more that tuple of condition 
             # for the same action.
-            conditions_start = self.conditions.get(ResourceAction.START, []): 
+            conditions_start = self.conditions.get(ResourceAction.START, [])
             for (group, state, time) in conditions_start:
                 reschedule, delay = self._needs_reschedule(group, state, time)
                 if reschedule:
@@ -346,7 +363,7 @@ class ResourceManager(object):
         if self.state != ResourceState.STARTED:
             reschedule = True
         else:
-            #print TIME.strftime("%H:%M:%S", TIME.localtime()) + " RM : " + self._rtype + "\
+            print TIME.strftime("%H:%M:%S", TIME.localtime()) + " RM : " + self._rtype + "\
  (Guid : "+ str(self.guid) +")  ----  stop condition : " + str(self.conditions.items())
             conditions_stop = self.conditions.get(ResourceAction.STOP, []) 
             for (group, state, time) in conditions_stop:
@@ -357,15 +374,65 @@ class ResourceManager(object):
             callback = functools.partial(self.stop_with_conditions)
             self.ec.schedule(delay, callback)
         else:
+            print TIME.strftime("%H:%M:%S", TIME.localtime()) + " RM : " + self._rtype + " (Guid : "+ str(self.guid) +") ----\
+------------------------------------------------------------------------------\
+----------------------------------------------------------------  STOPPING -- "
             self.stop()
 
     def deploy(self):
         """Execute all the differents steps required to reach the state DEPLOYED
 
         """
+        self.deploy_restriction()
         self.discover()
         self.provision()
+        self.deploy_with_conditions()
+
+    def deploy_restriction(self):
+        dep = set()
+        for guid in self.connections:
+            if self.ec.get_resource(guid).rtype() in self.__class__._waiters:
+                dep.add(guid)
+        self.register_condition(ResourceAction.DEPLOYED, dep, ResourceState.DEPLOYED)
+
+
+    def deploy_with_conditions(self):
+        """ Starts when all the conditions are reached
+
+        """
+        reschedule = False
+        delay = _reschedule_delay 
+
+        ## evaluate if set conditions are met
+
+        # only can deploy when RM is NEW
+        if not self._state in [ResourceState.NEW]:
+            self.logger.error("Wrong state %s for stop" % self.state)
+            return
+        else:
+            print TIME.strftime("%H:%M:%S", TIME.localtime()) + " RM : " + self._rtype + " (Guid : "+ str(self.guid) +") -----  deploy condition : " + str(self.conditions.items())
+            # Need to separate because it could have more that tuple of condition 
+            # for the same action.
+            conditions_deployed = self.conditions.get(ResourceAction.DEPLOYED, [])
+            for (group, state, time) in conditions_deployed:
+                reschedule, delay = self._needs_reschedule(group, state, time)
+                if reschedule:
+                    break
+
+        if reschedule:
+            callback = functools.partial(self.deploy_with_conditions)
+            self.ec.schedule(delay, callback)
+        else:
+            print TIME.strftime("%H:%M:%S", TIME.localtime()) + " RM : " + self._rtype + " (Guid : "+ str(self.guid) +") ----\
+------------------------------------------------------------------------------\
+----------------------------------------------------------------  DEPLOY -- "
+            self.deploy_action()
+
+    def deploy_action(self):
+
+        self._deploy_time = strfnow()
         self._state = ResourceState.DEPLOYED
+
 
     def release(self):
         """Clean the resource at the end of the Experiment and change the status
