@@ -14,7 +14,7 @@ from neco.util.parallel import ParallelRun
 # TODO: use multiprocessing instead of threading
 
 class ExperimentController(object):
-    def __init__(self, root_dir = "/tmp", loglevel = 'error'): 
+    def __init__(self, root_dir = "/tmp"): 
         super(ExperimentController, self).__init__()
         # root directory to store files
         self._root_dir = root_dir
@@ -42,7 +42,11 @@ class ExperimentController(object):
 
         # Logging
         self._logger = logging.getLogger("neco.execution.ec")
-        self._logger.setLevel(getattr(logging, loglevel.upper()))
+
+    @property
+    def logger(self):
+        return self._logger
+
 
     def get_task(self, tid):
         return self._tasks.get(tid)
@@ -66,15 +70,15 @@ class ExperimentController(object):
 
         return guid
 
-    def create_group(self, *args):
-        guid = self._guid_generator.next(guid)
+    def register_group(self, group):
+        guid = self._guid_generator.next()
 
-        grp = [arg for arg in args]
+        if not isinstance(group, list):
+            group = [group] 
 
-        self._resources[guid] = grp
+        self._groups[guid] = group
 
         return guid
- 
 
     def get_attributes(self, guid):
         rm = self.get_resource(guid)
@@ -205,6 +209,8 @@ class ExperimentController(object):
         :type guid: int
 
         """
+        self.logger.debug(" ------- DEPLOY START ------ ")
+
         def steps(rm):
             rm.deploy()
             rm.start_with_conditions()
@@ -225,7 +231,7 @@ class ExperimentController(object):
                 towait = list(group)
                 towait.remove(guid)
                 self.register_condition(guid, ResourceAction.START, 
-                        towait, ResourceState.DEPLOYED)
+                        towait, ResourceState.READY)
 
             thread = threading.Thread(target = steps, args = (rm,))
             threads.append(thread)

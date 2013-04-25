@@ -12,6 +12,8 @@ class LinuxApplication(ResourceManager):
     def _register_attributes(cls):
         command = Attribute("command", "Command to execute", 
                 flags = Flags.ReadOnly)
+        forward_x11 = Attribute("forwardX11", " Enables X11 forwarding for SSH connections", 
+                flags = Flags.ReadOnly)
         env = Attribute("env", "Environment variables string for command execution",
                 flags = Flags.ReadOnly)
         sudo = Attribute("sudo", "Run with root privileges", 
@@ -54,6 +56,7 @@ class LinuxApplication(ResourceManager):
                 releasing the resource", flags = Flags.ReadOnly)
 
         cls._register_attribute(command)
+        cls._register_attribute(forward_x11)
         cls._register_attribute(env)
         cls._register_attribute(sudo)
         cls._register_attribute(depends)
@@ -69,14 +72,10 @@ class LinuxApplication(ResourceManager):
         super(LinuxApplication, self).__init__(ec, guid)
         self._pid = None
         self._ppid = None
-        self._home = "${HOME}/app-%s" % self.box.guid
+        self._home = "app-%s" % self.box.guid
         self._node = None
 
         self._logger = logging.getLogger("neco.linux.Application.%d" % guid)
-
-    @property
-    def api(self):
-        return self.node.api
 
     @property
     def node(self):
@@ -84,7 +83,7 @@ class LinuxApplication(ResourceManager):
 
     @property
     def home(self):
-        return self._home
+        return self._home # + node home
 
     @property
     def pid(self):
@@ -95,10 +94,16 @@ class LinuxApplication(ResourceManager):
         return self._ppid
 
     def provision(self, filters = None):
-        # clean home
-        # upload
+        # verify home hash or clean home
+        # upload sources
         # build  
         # Install stuff!!
+        # upload app command
+        pass
+
+    def deploy(self):
+        # Wait until node is associated and deployed
+        self.provision()
         pass
 
     def start(self):
@@ -150,6 +155,4 @@ class LinuxApplication(ResourceManager):
         resources = self.find_resources(exact_tags = [tags.NODE])
         self._node = resources[0] if len(resources) == 1 else None
         return self._node
-
-
 

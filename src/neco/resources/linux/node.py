@@ -354,6 +354,7 @@ class LinuxNode(ResourceManager):
                 os.path.join(home, stdout))
         return (out, err), proc
 
+
     def is_alive(self):
         if self.localhost:
             return True
