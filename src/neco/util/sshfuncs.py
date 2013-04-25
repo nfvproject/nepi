@@ -1,18 +1,18 @@
 import base64
 import errno
+import hashlib
+import logging
 import os
 import os.path
+import re
 import select
 import signal
 import socket
 import subprocess
 import time
-import traceback
-import re
 import tempfile
-import hashlib
 
-TRACE = os.environ.get("NEPI_TRACE", "false").lower() in ("true", "1", "on")
+logger = logging.getLogger("neco.execution.utils.sshfuncs")
 
 if hasattr(os, "devnull"):
     DEV_NULL = os.devnull
@@ -239,8 +239,8 @@ def rexec(command, host, user,
     
         try:
             out, err = _communicate(proc, stdin, timeout, err_on_timeout)
-            if TRACE:
-                print "COMMAND host %s, command %s, out %s, error %s" % (host, " ".join(args), out, err)
+            logger.debug("COMMAND host %s, command %s, out %s, error %s" % (
+                host, " ".join(args), out, err))
 
             if proc.poll():
                 if err.strip().startswith('ssh: ') or err.strip().startswith('mux_client_hello_exchange: '):
@@ -251,9 +251,8 @@ def rexec(command, host, user,
                     continue
             break
         except RuntimeError, e:
-            if TRACE:
-                print "EXCEPTION host %s, command %s, out %s, error %s, exception TIMEOUT ->  %s" % (
-                        host, " ".join(args), out, err, e.args)
+            logger.debug("EXCEPTION host %s, command %s, out %s, error %s, exception TIMEOUT ->  %s" % (
+                        host, " ".join(args), out, err, e.args))
 
             if retry <= 0:
                 raise
@@ -285,8 +284,7 @@ def rcopy(source, dest,
     in which case it is advised that the destination be a folder.
     """
     
-    if TRACE:
-        print "scp", source, dest
+    logger.debug("SCP %s %s" % (source, dest))
     
     if isinstance(source, file) and source.tell() == 0:
         source = source.name
