@@ -241,7 +241,7 @@ class SFAApiFactory(object):
     def get_api(slice_id = None, sfi_auth = None, sfi_user = None,
             sfi_registry = None, sfi_sm = None, timeout = None, private_key = None):
 
-        key = cls.make_key(slice_id, sfi_auth, sfi_user, sfi_registry, sfi_sm,
+        key = cls.make_key(aggregate = 'ple', slice_id, sfi_auth, sfi_user, sfi_registry, sfi_sm,
             timeout, private_key)
         api = cls._apis.get(key)
         cls.lock.acquire()
