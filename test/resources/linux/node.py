@@ -2,64 +2,27 @@
 from neco.resources.linux.node import LinuxNode
 from neco.util.sshfuncs import RUNNING, FINISHED
 
+from test_utils import skipIfNotAlive, skipInteractive, create_node
+
 import os
 import time
 import tempfile
 import unittest
 
-def skipIfNotAlive(func):
-    name = func.__name__
-    def wrapped(*args, **kwargs):
-        node = args[1]
-
-        if not node.is_alive():
-            print "*** WARNING: Skipping test %s: Node %s is not alive\n" % (
-                name, node.get("hostname"))
-            return
-
-        return func(*args, **kwargs)
-    
-    return wrapped
-
-def skipInteractive(func):
-    name = func.__name__
-    def wrapped(*args, **kwargs):
-        mode = os.environ.get("NEPI_INTERACTIVE", False) in ['True', 'true', 'yes', 'YES']
-        if not mode:
-            print "*** WARNING: Skipping test %s: Interactive mode off \n" % name
-            return
-
-        return func(*args, **kwargs)
-    
-    return wrapped
-
-class DummyEC(object):
-    pass
-
 class LinuxNodeTestCase(unittest.TestCase):
     def setUp(self):
-        host = 'nepi2.pl.sophia.inria.fr'
-        user = 'inria_nepi'
-        self.node_fedora = self.create_node(host, user)
+        self.fedora_host = 'nepi2.pl.sophia.inria.fr'
+        self.fedora_user = 'inria_nepi'
 
-        host = 'roseval.pl.sophia.inria.fr'
-        user = 'alina'
-        self.node_ubuntu = self.create_node(host, user)
+        self.ubuntu_host = 'roseval.pl.sophia.inria.fr'
+        self.ubuntu_user = 'alina'
         
         self.target = 'nepi5.pl.sophia.inria.fr'
-        self.home = '/tmp/nepi-home/test-app'
-
-    def create_node(self, host, user):
-        ec = DummyEC()
-
-        node = LinuxNode(ec, 1)
-        node.set("hostname", host)
-        node.set("username", user)
-
-        return node
 
     @skipIfNotAlive
-    def t_xterm(self, node):
+    def t_xterm(self, host, user):
+        node, ec = create_node(host, user)
+
         node.install_packages('xterm')
 
         (out, err), proc = node.execute('xterm', forward_x11 = True)
@@ -71,7 +34,9 @@ class LinuxNodeTestCase(unittest.TestCase):
         self.assertEquals(out, "")
 
     @skipIfNotAlive
-    def t_execute(self, node):
+    def t_execute(self, host, user):
+        node, ec = create_node(host, user)
+
         command = "ping -qc3 %s" % self.target
         
         (out, err), proc = node.execute(command)
@@ -81,16 +46,15 @@ class LinuxNodeTestCase(unittest.TestCase):
         self.assertTrue(out.find(expected) > 0)
 
     @skipIfNotAlive
-    def t_run(self, node):
-        node.mkdir(self.home, clean = True)
+    def t_run(self, host, user):
+        node, ec = create_node(host, user)
+        
+        app_home = os.path.join(node.exp_dir, "my-app")
+        node.mkdir(app_home, clean = True)
         
         command = "ping %s" % self.target
-        dst = os.path.join(self.home, "app.sh")
-        node.upload(command, dst)
-        
-        cmd = "bash ./app.sh"
-        node.run(cmd, self.home)
-        pid, ppid = node.checkpid(self.home)
+        node.run(command, app_home)
+        pid, ppid = node.checkpid(app_home)
 
         status = node.status(pid, ppid)
         self.assertTrue(status, RUNNING)
@@ -99,17 +63,20 @@ class LinuxNodeTestCase(unittest.TestCase):
         status = node.status(pid, ppid)
         self.assertTrue(status, FINISHED)
         
-        (out, err), proc = node.check_run_output(self.home)
+        (out, err), proc = node.check_output(app_home, "stdout")
 
         expected = """64 bytes from"""
 
         self.assertTrue(out.find(expected) > 0)
 
-        node.rmdir(self.home)
+        node.rmdir(app_home)
 
     @skipIfNotAlive
-    def t_install(self, node):
-        node.mkdir(self.home, clean = True)
+    def t_install(self, host, user):
+        node, ec = create_node(host, user)
+
+        app_home = os.path.join(node.exp_dir, "my-app")
+        node.mkdir(app_home, clean = True)
 
         prog = """#include <stdio.h>
 
@@ -121,35 +88,36 @@ main (void)
 }
 """
         # upload the test program
-        dst = os.path.join(self.home, "hello.c")
-        node.upload(prog, dst)
+        dst = os.path.join(app_home, "hello.c")
+        node.upload(prog, dst, text = True)
 
         # install gcc
         node.install_packages('gcc')
 
         # compile the program using gcc
-        command = "cd %s; gcc -Wall hello.c -o hello" % self.home
+        command = "cd %s; gcc -Wall hello.c -o hello" % app_home
         (out, err), proc = node.execute(command)
 
         # execute the program and get the output from stdout
-        command = "%s/hello" % self.home
+        command = "%s/hello" % app_home 
         (out, err), proc = node.execute(command)
 
         self.assertEquals(out, "Hello, world!\n")
 
         # execute the program and get the output from a file
-        command = "%(home)s/hello > %(home)s/hello.out" % {'home':self.home}
+        command = "%(home)s/hello > %(home)s/hello.out" % {
+                'home': app_home}
         (out, err), proc = node.execute(command)
 
         # retrieve the output file 
-        src = os.path.join(self.home, "hello.out")
+        src = os.path.join(app_home, "hello.out")
         f = tempfile.NamedTemporaryFile(delete=False)
         dst = f.name
         node.download(src, dst)
         f.close()
 
         node.remove_packages('gcc')
-        node.rmdir(self.home)
+        node.rmdir(app_home)
 
         f = open(dst, "r")
         out = f.read()
@@ -158,27 +126,27 @@ main (void)
         self.assertEquals(out, "Hello, world!\n")
 
     def test_execute_fedora(self):
-        self.t_execute(self.node_fedora)
+        self.t_execute(self.fedora_host, self.fedora_user)
 
     def test_execute_ubuntu(self):
-        self.t_execute(self.node_ubuntu)
+        self.t_execute(self.ubuntu_host, self.ubuntu_user)
 
     def test_run_fedora(self):
-        self.t_run(self.node_fedora)
+        self.t_run(self.fedora_host, self.fedora_user)
 
     def test_run_ubuntu(self):
-        self.t_run(self.node_ubuntu)
+        self.t_run(self.ubuntu_host, self.ubuntu_user)
 
     def test_intall_fedora(self):
-        self.t_install(self.node_fedora)
+        self.t_install(self.fedora_host, self.fedora_user)
 
     def test_install_ubuntu(self):
-        self.t_install(self.node_ubuntu)
+        self.t_install(self.ubuntu_host, self.ubuntu_user)
     
     @skipInteractive
     def test_xterm_ubuntu(self):
         """ Interactive test. Should not run automatically """
-        self.t_xterm(self.node_ubuntu)
+        self.t_xterm(self.ubuntu_host, self.ubuntu_user)
 
 
 if __name__ == '__main__':

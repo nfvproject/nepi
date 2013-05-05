@@ -43,14 +43,6 @@ class ResourceFactoryTestCase(unittest.TestCase):
 
         self.assertEquals(len(ResourceFactory.resource_types()), 2)
 
-def get_connected(connections, rtype, ec):
-    connected = []
-    for guid in connections:
-        rm = ec.get_resource(guid)
-        if rm.rtype() == rtype:
-            connected.append(rm)
-    return connected
-
 class Channel(ResourceManager):
     _rtype = "Channel"
 
@@ -69,8 +61,8 @@ class Interface(ResourceManager):
         super(Interface, self).__init__(ec, guid)
 
     def deploy(self):
-        node = get_connected(self.connections, Node.rtype(), self.ec)[0]
-        chan = get_connected(self.connections, Channel.rtype(), self.ec)[0]
+        node = self.get_connected(Node.rtype())[0]
+        chan = self.get_connected(Channel.rtype())[0]
 
         if node.state < ResourceState.PROVISIONED:
             self.ec.schedule("0.5s", self.deploy)
@@ -94,7 +86,7 @@ class Node(ResourceManager):
             self.logger.debug(" -------- PROVISIONED ------- ")
             self.ec.schedule("3s", self.deploy)
         elif self.state == ResourceState.PROVISIONED:
-            ifaces = get_connected(self.connections, Interface.rtype(), self.ec)
+            ifaces = self.get_connected(Interface.rtype())
             for rm in ifaces:
                 if rm.state < ResourceState.READY:
                     self.ec.schedule("0.5s", self.deploy)
@@ -110,7 +102,7 @@ class Application(ResourceManager):
         super(Application, self).__init__(ec, guid)
 
     def deploy(self):
-        node = get_connected(self.connections, Node.rtype(), self.ec)[0]
+        node = self.get_connected(Node.rtype())[0]
         if node.state < ResourceState.READY:
             self.ec.schedule("0.5s", self.deploy)
         else:
