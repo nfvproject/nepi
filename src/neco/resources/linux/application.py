@@ -103,7 +103,11 @@ class LinuxApplication(ResourceManager):
         self._ppid = None
         self._home = "app-%s" % self.guid
 
-        self._logger = logging.getLogger("neco.linux.Application.%d" % guid)
+        self._logger = logging.getLogger("LinuxApplication")
+    
+    def log_message(self, msg):
+        return " guid %d - host %s - %s " % (self.guid, 
+                self.node.get("hostname"), msg)
 
     @property
     def node(self):
@@ -138,9 +142,8 @@ class LinuxApplication(ResourceManager):
         (out, err), proc = self.node.execute(cmd)
 
         if (err and proc.poll()) or out.find("error") != -1:
-            err_msg = " Couldn't find trace %s on host %s. Error: %s" % (
-                    name, self.node.get("hostname"), err)
-            self.logger.error(err_msg)
+            msg = " Couldn't find trace %s " % name
+            self.error(msg, out, err)
             return None
     
         if attr == TraceAttr.PATH:
@@ -150,9 +153,8 @@ class LinuxApplication(ResourceManager):
             (out, err), proc = self.node.check_output(self.home, name)
             
             if err and proc.poll():
-                err_msg = " Couldn't read trace %s on host %s. Error: %s" % (
-                            name, self.node.get("hostname"), err)
-                self.logger.error(err_msg)
+                msg = " Couldn't read trace %s " % name
+                self.error(msg, out, err)
                 return None
 
             return out
@@ -165,9 +167,8 @@ class LinuxApplication(ResourceManager):
         (out, err), proc = self.node.execute(cmd)
 
         if err and proc.poll():
-            err_msg = " Couldn't find trace %s on host %s. Error: %s" % (
-                    name, self.node.get("hostname"), err)
-            self.logger.error(err_msg)
+            msg = " Couldn't find trace %s " % name
+            self.error(msg, out, err)
             return None
         
         if attr == TraceAttr.SIZE:
@@ -202,7 +203,7 @@ class LinuxApplication(ResourceManager):
         # check if sources need to be uploaded and upload them
         sources = self.get("sources")
         if sources:
-            self.logger.debug(" Uploading sources %s" % sources)
+            self.info(" Uploading sources ")
 
             # create dir for sources
             self.node.mkdir(self.src_dir)
@@ -229,7 +230,7 @@ class LinuxApplication(ResourceManager):
             # create dir for sources
             self.node.mkdir(self.src_dir)
 
-            self.logger.debug(" Uploading code '%s'" % code)
+            self.info(" Uploading code ")
 
             dst = os.path.join(self.src_dir, "code")
             self.node.upload(sources, dst, text = True)
@@ -237,13 +238,13 @@ class LinuxApplication(ResourceManager):
     def install_dependencies(self):
         depends = self.get("depends")
         if depends:
-            self.logger.debug(" Installing dependencies %s" % depends)
+            self.info(" Installing dependencies %s" % depends)
             self.node.install_packages(depends, home = self.home)
 
     def build(self):
         build = self.get("build")
         if build:
-            self.logger.debug(" Building sources '%s'" % build)
+            self.info(" Building sources ")
             
             # create dir for build
             self.node.mkdir(self.build_dir)
@@ -259,7 +260,7 @@ class LinuxApplication(ResourceManager):
     def install(self):
         install = self.get("install")
         if install:
-            self.logger.debug(" Installing sources '%s'" % install)
+            self.info(" Installing sources ")
 
             cmd = self.replace_paths(install)
 
@@ -273,10 +274,15 @@ class LinuxApplication(ResourceManager):
         # Wait until node is associated and deployed
         node = self.node
         if not node or node.state < ResourceState.READY:
+            self.debug("---- RESCHEDULING DEPLOY ---- node state %s " % self.node.state )
             self.ec.schedule(DELAY, self.deploy)
         else:
-            self.discover()
-            self.provision()
+            try:
+                self.discover()
+                self.provision()
+            except:
+                self._state = ResourceState.FAILED
+                raise
 
             super(LinuxApplication, self).deploy()
 
@@ -286,11 +292,11 @@ class LinuxApplication(ResourceManager):
         stdin = 'stdin' if self.get("stdin") else None
         sudo = self.get('sudo') or False
         x11 = self.get("forwardX11") or False
-        err_msg = "Failed to run command %s on host %s" % (
-                     command, self.node.get("hostname"))
         failed = False
 
         super(LinuxApplication, self).start()
+
+        self.info("Starting command %s" % command)
 
         if x11:
             (out, err), proc = self.node.execute(command,
@@ -323,33 +329,40 @@ class LinuxApplication(ResourceManager):
 
         if failed or out or chkerr:
             # check if execution errors occurred
+            msg = " Failed to start command '%s' " % command
+            out = out
             if err:
-                err_msg = "%s. Proc error: %s" % (err_msg, err)
+                err = err
+            elif chkerr:
+                err = chkerr
 
-            err_msg = "%s. Run error: %s " % (err_msg, out)
+            self.error(msg, out, err)
 
-            if chkerr:
-                err_msg = "%s. Failed to check error: %s" % (err_msg, chkerr)
+            msg2 = " Setting state to Failed"
+            self.debug(msg2)
+            self._state = ResourceState.FAILED
 
-            self.logger.error(err_msg)
-            self.state = ResourceState.FAILED
+            raise RuntimeError, msg
 
     def stop(self):
         state = self.state
         if state == ResourceState.STARTED:
+            self.info("Stopping command %s" % command)
+
             (out, err), proc = self.node.kill(self.pid, self.ppid)
 
             if out or err:
                 # check if execution errors occurred
-                err_msg = " Failed to STOP command '%s' on host %s. Check error: %s. Run error: %s" % (
-                     self.get("command"), self.node.get("hostname"), err, out)
-                self.logger.error(err_msg)
+                msg = " Failed to STOP command '%s' " % self.get("command")
+                self.error(msg, out, err)
                 self._state = ResourceState.FAILED
                 stopped = False
             else:
                 super(LinuxApplication, self).stop()
 
     def release(self):
+        self.info("Releasing resource")
+
         tear_down = self.get("tearDown")
         if tear_down:
             self.node.execute(tear_down)
@@ -364,10 +377,14 @@ class LinuxApplication(ResourceManager):
             (out, err), proc = self.node.check_output(self.home, 'stderr')
 
             if out or err:
+                if err.find("No such file or directory") >= 0 :
+                    # The resource is marked as started, but the
+                    # command was not yet executed
+                    return ResourceState.READY
+
                 # check if execution errors occurred
-                err_msg = " Failed to execute command '%s' on host %s. Check error: %s. Run error: %s" % (
-                        self.get("command"), self.node.get("hostname"), err, out)
-                self.logger.error(err_msg)
+                msg = " Failed to execute command '%s'" % self.get("command")
+                self.error(msg, out, err)
                 self._state = ResourceState.FAILED
 
             elif self.pid and self.ppid:

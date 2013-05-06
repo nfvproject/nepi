@@ -45,7 +45,7 @@ class ExperimentController(object):
         self._thread.start()
 
         # Logging
-        self._logger = logging.getLogger("neco.execution.ec")
+        self._logger = logging.getLogger("ExperimentController")
 
     @property
     def logger(self):

@@ -152,7 +152,33 @@ class ResourceManager(object):
         self._release_time = None
 
         # Logging
-        self._logger = logging.getLogger("neco.execution.resource.Resource %s.%d " %  (self._rtype, self.guid))
+        self._logger = logging.getLogger("Resource")
+
+    def debug(self, msg, out = None, err = None):
+        self.log(msg, logging.DEBUG, out, err)
+
+    def error(self, msg, out = None, err = None):
+        self.log(msg, logging.ERROR, out, err)
+
+    def warn(self, msg, out = None, err = None):
+        self.log(msg, logging.WARNING, out, err)
+
+    def info(self, msg, out = None, err = None):
+        self.log(msg, logging.INFO, out, err)
+
+    def log(self, msg, level, out = None, err = None):
+        if out:
+            msg += " - OUT: %s " % out
+
+        if err:
+            msg += " - ERROR: %s " % err
+
+        msg = self.log_message(msg)
+
+        self.logger.log(level, msg)
+
+    def log_message(self, msg):
+        return " %s guid: %d - %s " % (self._rtype, self.guid, msg)
 
     @property
     def logger(self):
@@ -225,7 +251,7 @@ class ResourceManager(object):
 
         """
         if not self._state in [ResourceState.READY, ResourceState.STOPPED]:
-            self.logger.error("Wrong state %s for start" % self.state)
+            self.error("Wrong state %s for start" % self.state)
             return
 
         self._start_time = strfnow()
@@ -236,7 +262,7 @@ class ResourceManager(object):
 
         """
         if not self._state in [ResourceState.STARTED]:
-            self.logger.error("Wrong state %s for stop" % self.state)
+            self.error("Wrong state %s for stop" % self.state)
             return
 
         self._stop_time = strfnow()
@@ -433,9 +459,9 @@ class ResourceManager(object):
         # only can start when RM is either STOPPED or READY
         if self.state not in [ResourceState.STOPPED, ResourceState.READY]:
             reschedule = True
-            self.logger.debug("---- RESCHEDULING START ---- state %s " % self.state )
+            self.debug("---- RESCHEDULING START ---- state %s " % self.state )
         else:
-            self.logger.debug("---- START CONDITIONS ---- %s" % 
+            self.debug("---- START CONDITIONS ---- %s" % 
                     self.conditions.get(ResourceAction.START))
             
             # Verify all start conditions are met
@@ -448,7 +474,7 @@ class ResourceManager(object):
         if reschedule:
             self.ec.schedule(delay, self.start_with_conditions)
         else:
-            self.logger.debug("----- STARTING ---- ")
+            self.debug("----- STARTING ---- ")
             self.start()
 
     def stop_with_conditions(self):
@@ -465,7 +491,7 @@ class ResourceManager(object):
         if self.state != ResourceState.STARTED:
             reschedule = True
         else:
-            self.logger.debug(" ---- STOP CONDITIONS ---- %s" % 
+            self.debug(" ---- STOP CONDITIONS ---- %s" % 
                     self.conditions.get(ResourceAction.STOP))
 
             stop_conditions = self.conditions.get(ResourceAction.STOP, []) 
@@ -486,9 +512,10 @@ class ResourceManager(object):
 
         """
         if self._state > ResourceState.READY:
-            self.logger.error("Wrong state %s for deploy" % self.state)
+            self.error("Wrong state %s for deploy" % self.state)
             return
 
+        self.debug("----- DEPLOYING ---- ")
         self._ready_time = strfnow()
         self._state = ResourceState.READY
 
