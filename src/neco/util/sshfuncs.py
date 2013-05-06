@@ -12,7 +12,18 @@ import subprocess
 import time
 import tempfile
 
-logger = logging.getLogger("neco.execution.utils.sshfuncs")
+
+logger = logging.getLogger("sshfuncs")
+
+def log(msg, level, out = None, err = None):
+    if out:
+        msg += " - OUT: %s " % out
+
+    if err:
+        msg += " - ERROR: %s " % err
+
+    logger.log(level, msg)
+
 
 if hasattr(os, "devnull"):
     DEV_NULL = os.devnull
@@ -176,7 +187,7 @@ def rexec(command, host, user,
         env = None,
         tty = False,
         timeout = None,
-        retry = 0,
+        retry = 3,
         err_on_timeout = True,
         connect_timeout = 30,
         persistent = True,
@@ -226,7 +237,7 @@ def rexec(command, host, user,
 
     args.append(command)
 
-    for x in xrange(retry or 3):
+    for x in xrange(retry):
         # connects to the remote host and starts a remote connection
         proc = subprocess.Popen(args, 
                 stdout = subprocess.PIPE,
@@ -239,20 +250,31 @@ def rexec(command, host, user,
     
         try:
             out, err = _communicate(proc, stdin, timeout, err_on_timeout)
-            logger.debug("COMMAND host %s, command %s, out %s, error %s" % (
-                host, " ".join(args), out, err))
+            msg = " rexec - host %s - command %s " % (host, " ".join(args))
+            log(msg, logging.DEBUG, out, err)
 
             if proc.poll():
+                skip = False
+
                 if err.strip().startswith('ssh: ') or err.strip().startswith('mux_client_hello_exchange: '):
                     # SSH error, can safely retry
-                    continue
+                    skip = True 
                 elif retry:
                     # Probably timed out or plain failed but can retry
+                    skip = True 
+                
+                if skip:
+                    t = x*2
+                    msg = "SLEEPING %d ... ATEMP %d - host %s - command %s " % ( 
+                            t, x, host, " ".join(args))
+                    log(msg, logging.DEBUG)
+
+                    time.sleep(t)
                     continue
             break
         except RuntimeError, e:
-            logger.debug("EXCEPTION host %s, command %s, out %s, error %s, exception TIMEOUT ->  %s" % (
-                        host, " ".join(args), out, err, e.args))
+            msg = " rexec EXCEPTION - host %s - command %s - TIMEOUT -> %s" % (host, " ".join(args), e.args)
+            log(msg, logging.DEBUG, out, err)
 
             if retry <= 0:
                 raise
@@ -284,7 +306,8 @@ def rcopy(source, dest,
     in which case it is advised that the destination be a folder.
     """
     
-    logger.debug("SCP %s %s" % (source, dest))
+    msg = " rcopy - scp %s %s " % (source, dest)
+    log(msg, logging.DEBUG)
     
     if isinstance(source, file) and source.tell() == 0:
         source = source.name
