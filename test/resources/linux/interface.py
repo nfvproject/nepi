@@ -41,19 +41,17 @@ class LinuxInterfaceTestCase(unittest.TestCase):
         ec.register_connection(iface, node)
         ec.register_connection(iface, chan)
 
-        try:
-            ec.deploy()
+        ec.deploy()
 
-            while not all([ ec.state(guid) == ResourceState.STARTED \
-                    for guid in [node, iface]]):
-                time.sleep(0.5)
+        while not all([ ec.state(guid) == ResourceState.STARTED \
+                for guid in [node, iface]]) and not ec.finished:
+            time.sleep(0.5)
 
-            self.assertTrue(ec.state(node) == ResourceState.STARTED)
-            self.assertTrue(ec.state(iface) == ResourceState.STARTED)
-            self.assertTrue(ec.get(iface, "deviceName") == "eth0")
+        self.assertTrue(ec.state(node) == ResourceState.STARTED)
+        self.assertTrue(ec.state(iface) == ResourceState.STARTED)
+        self.assertTrue(ec.get(iface, "deviceName") == "eth0")
 
-        finally:
-            ec.shutdown()
+        ec.shutdown()
 
     def test_deploy_fedora(self):
         self.t_deploy(self.fedora_host, self.fedora_user)

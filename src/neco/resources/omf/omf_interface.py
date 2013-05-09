@@ -35,7 +35,7 @@ class OMFWifiInterface(ResourceManager):
         """Register the attributes of an OMF interface 
 
         """
-        alias = Attribute("alias","Alias of the interface", default_value = "w0")
+        alias = Attribute("alias","Alias of the interface", default = "w0")
         mode = Attribute("mode","Mode of the interface")
         type = Attribute("type","Type of the interface")
         essid = Attribute("essid","Essid of the interface")

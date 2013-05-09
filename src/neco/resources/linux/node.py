@@ -14,8 +14,9 @@ import threading
 
 # TODO: Verify files and dirs exists already
 # TODO: Blacklist nodes!
+# TODO: Unify delays!!
 
-DELAY ="1s"
+reschedule_delay = "0.5s"
 
 @clsinit
 class LinuxNode(ResourceManager):
@@ -83,12 +84,13 @@ class LinuxNode(ResourceManager):
     @property
     def exp_dir(self):
         exp_dir = os.path.join(self.home, self.ec.exp_id)
-        return exp_dir if exp_dir.startswith('/') else "${HOME}/"
+        return exp_dir if exp_dir.startswith('/') or \
+                exp_dir.startswith("~/") else "~/"
 
     @property
-    def node_dir(self):
-        node_dir = "node-%d" % self.guid
-        return os.path.join(self.exp_dir, node_dir)
+    def node_home(self):
+        node_home = "node-%d" % self.guid
+        return os.path.join(self.exp_dir, node_home)
 
     @property
     def os(self):
@@ -138,7 +140,7 @@ class LinuxNode(ResourceManager):
         if self.get("cleanHome"):
             self.clean_home()
        
-        self.mkdir(self.node_dir)
+        self.mkdir(self.node_home)
 
         super(LinuxNode, self).provision()
 
@@ -157,7 +159,7 @@ class LinuxNode(ResourceManager):
         ifaces = self.get_connected(LinuxInterface.rtype())
         for iface in ifaces:
             if iface.state < ResourceState.READY:
-                self.ec.schedule(DELAY, self.deploy)
+                self.ec.schedule(reschedule_delay, self.deploy)
                 return 
 
         super(LinuxNode, self).deploy()
@@ -189,7 +191,6 @@ class LinuxNode(ResourceManager):
                 "sudo -S killall tcpdump || /bin/true ; " +
                 "sudo -S killall -u %s || /bin/true ; " % self.get("username") +
                 "sudo -S killall -u %s || /bin/true ; " % self.get("username"))
-
 
         out = err = ""
         (out, err), proc = self.execute(cmd, retry = 1, with_lock = True) 
@@ -242,7 +243,7 @@ class LinuxNode(ResourceManager):
         return self.copy(src, dst)
 
     def install_packages(self, packages, home = None):
-        home = home or self.node_dir
+        home = home or self.node_home
 
         cmd = ""
         if self.os in ["f12", "f14"]:
@@ -257,14 +258,14 @@ class LinuxNode(ResourceManager):
         out = err = ""
         (out, err), proc = self.run_and_wait(cmd, home, 
             pidfile = "instpkg_pid",
-            stdout = "instpkg_log", 
-            stderr = "instpkg_err", 
+            stdout = "instpkg_out", 
+            stderr = "instpkg_err",
             raise_on_error = True)
 
         return (out, err), proc 
 
     def remove_packages(self, packages, home = None):
-        home = home or self.node_dir
+        home = home or self.node_home
 
         cmd = ""
         if self.os in ["f12", "f14"]:
@@ -279,8 +280,8 @@ class LinuxNode(ResourceManager):
         out = err = ""
         (out, err), proc = self.run_and_wait(cmd, home, 
             pidfile = "rmpkg_pid",
-            stdout = "rmpkg_log", 
-            stderr = "rmpkg_err", 
+            stdout = "rmpkg_out", 
+            stderr = "rmpkg_err",
             raise_on_error = True)
          
         return (out, err), proc 
@@ -301,6 +302,7 @@ class LinuxNode(ResourceManager):
             stdout = 'stdout', 
             stderr = 'stderr', 
             sudo = False,
+            tty = False,
             raise_on_error = False):
         """ runs a command in background on the remote host, but waits
             until the command finishes execution.
@@ -314,7 +316,8 @@ class LinuxNode(ResourceManager):
                 stdin = stdin, 
                 stdout = stdout, 
                 stderr = stderr, 
-                sudo = sudo)
+                sudo = sudo,
+                tty = tty)
 
         # check no errors occurred
         if proc.poll() and err:
@@ -395,7 +398,7 @@ class LinuxNode(ResourceManager):
     def check_output(self, home, filename):
         """ checks file content """
         (out, err), proc = self.execute("cat %s" % 
-            os.path.join(home, filename), with_lock = True)
+            os.path.join(home, filename), retry = 1, with_lock = True)
         return (out, err), proc
 
     def is_alive(self):
@@ -513,9 +516,10 @@ class LinuxNode(ResourceManager):
             stdin = None, 
             stdout = 'stdout', 
             stderr = 'stderr', 
-            sudo = False):
+            sudo = False,
+            tty = False):
 
-        self.debug("Running %s" % command)
+        self.debug("Running command '%s'" % command)
         
         if self.localhost:
             (out, err), proc = execfuncs.lspawn(command, pidfile, 
@@ -544,7 +548,8 @@ class LinuxNode(ResourceManager):
                     port = self.get("port"),
                     agent = True,
                     identity = self.get("identity"),
-                    server_key = self.get("serverKey")
+                    server_key = self.get("serverKey"),
+                    tty = tty
                     )
 
         return (out, err), proc

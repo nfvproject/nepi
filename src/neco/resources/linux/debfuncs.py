@@ -6,7 +6,7 @@ def install_packages_command(os, packages):
 
     cmd = ""
     for p in packages:
-        cmd += " ( dpkg -s %(package)s || sudo apt-get -y install %(package)s ) ; " % {
+        cmd += " ( dpkg -s %(package)s || sudo -S apt-get -y install %(package)s ) ; " % {
                 'package': p}
    
     #cmd = (dpkg -s vim || sudo dpkg -s install vim) ; (...)
@@ -18,7 +18,7 @@ def remove_packages_command(os, packages):
 
     cmd = ""
     for p in packages:
-        cmd += " ( dpkg -s %(package)s && sudo apt-get -y purge %(package)s ) ; " % {
+        cmd += " ( dpkg -s %(package)s && sudo -S apt-get -y purge %(package)s ) ; " % {
                 'package': p}
     
     #cmd = (dpkg -s vim || sudo apt-get -y purge vim) ; (...)

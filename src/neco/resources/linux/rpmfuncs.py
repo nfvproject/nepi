@@ -9,7 +9,7 @@ def install_packages_command(os, packages):
 
     cmd = "( %s )" % install_rpmfusion_command(os)
     for p in packages:
-        cmd += " ; ( rpm -q %(package)s || sudo yum -y install %(package)s ) " % {
+        cmd += " ; ( rpm -q %(package)s || sudo -S yum -y install %(package)s ) " % {
             'package': p}
     
     #cmd = ((rpm -q rpmfusion-free-release || sudo -s rpm -i ...) ; (rpm -q vim || sudo yum -y install vim))
@@ -21,7 +21,7 @@ def remove_packages_command(os, packages):
 
     cmd = ""
     for p in packages:
-        cmd += " ( rpm -q %(package)s && sudo yum -y remove %(package)s ) ; " % {
+        cmd += " ( rpm -q %(package)s && sudo -S yum -y remove %(package)s ) ; " % {
                     'package': p}
     
     #cmd = (rpm -q vim || sudo yum -y remove vim) ; (...)

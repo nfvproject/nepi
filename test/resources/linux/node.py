@@ -75,6 +75,18 @@ class LinuxNodeTestCase(unittest.TestCase):
     def t_install(self, host, user):
         node, ec = create_node(host, user)
 
+        (out, err), proc = node.install_packages('gcc')
+        self.assertEquals(out, "")
+
+        (out, err), proc = node.remove_packages('gcc')
+        
+        self.assertEquals(out, "")
+
+
+    @skipIfNotAlive
+    def t_compile(self, host, user):
+        node, ec = create_node(host, user)
+
         app_home = os.path.join(node.exp_dir, "my-app")
         node.mkdir(app_home, clean = True)
 
@@ -142,6 +154,12 @@ main (void)
 
     def test_install_ubuntu(self):
         self.t_install(self.ubuntu_host, self.ubuntu_user)
+
+    def test_compile_fedora(self):
+        self.t_compile(self.fedora_host, self.fedora_user)
+
+    def test_compile_ubuntu(self):
+        self.t_compile(self.ubuntu_host, self.ubuntu_user)
     
     @skipInteractive
     def test_xterm_ubuntu(self):

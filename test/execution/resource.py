@@ -147,15 +147,14 @@ class ResourceManagerTestCase(unittest.TestCase):
         ec.register_connection(iface1, chan)
         ec.register_connection(iface2, chan)
 
-        try:
-            ec.deploy()
+        ec.deploy()
 
-            while not all([ ec.state(guid) == ResourceState.STARTED \
-                    for guid in [app1, app2, node1, node2, iface1, iface2, chan]]):
-                time.sleep(0.5)
+        while not all([ ec.state(guid) == ResourceState.STARTED \
+                for guid in [app1, app2, node1, node2, iface1, iface2, chan]]) \
+                and not ec.finished:
+            time.sleep(0.5)
 
-        finally:
-            ec.shutdown()
+        ec.shutdown()
 
         rmapp1 = ec.get_resource(app1)
         rmapp2 = ec.get_resource(app2)

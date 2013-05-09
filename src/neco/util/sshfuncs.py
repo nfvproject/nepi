@@ -265,7 +265,7 @@ def rexec(command, host, user,
                 
                 if skip:
                     t = x*2
-                    msg = "SLEEPING %d ... ATEMP %d - host %s - command %s " % ( 
+                    msg = "SLEEPING %d ... ATEMPT %d - host %s - command %s " % ( 
                             t, x, host, " ".join(args))
                     log(msg, logging.DEBUG)
 
