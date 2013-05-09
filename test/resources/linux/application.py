@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from neco.execution.ec import ExperimentController 
-from neco.execution.resource import ResourceState
+from neco.execution.resource import ResourceState, ResourceAction
 from neco.execution.trace import TraceAttr
 from neco.resources.linux.node import LinuxNode
 from neco.resources.linux.application import LinuxApplication
@@ -23,6 +23,38 @@ class LinuxApplicationTestCase(unittest.TestCase):
         self.target = 'nepi5.pl.sophia.inria.fr'
 
     @skipIfNotAlive
+    def t_stdout(self, host, user):
+        from neco.execution.resource import ResourceFactory
+        
+        ResourceFactory.register_type(LinuxNode)
+        ResourceFactory.register_type(LinuxApplication)
+
+        ec = ExperimentController()
+        
+        node = ec.register_resource("LinuxNode")
+        ec.set(node, "hostname", host)
+        ec.set(node, "username", user)
+        ec.set(node, "cleanHome", True)
+        ec.set(node, "cleanProcesses", True)
+
+        app = ec.register_resource("LinuxApplication")
+        cmd = "echo 'HOLA'"
+        ec.set(app, "command", cmd)
+        ec.register_connection(app, node)
+
+        ec.deploy()
+
+        ec.wait_finished([app])
+
+        self.assertTrue(ec.state(node) == ResourceState.STARTED)
+        self.assertTrue(ec.state(app) == ResourceState.FINISHED)
+
+        stdout = ec.trace(app, 'stdout')
+        self.assertTrue(stdout.strip() == "HOLA")
+
+        ec.shutdown()
+
+    @skipIfNotAlive
     def t_ping(self, host, user):
         from neco.execution.resource import ResourceFactory
         
@@ -43,29 +75,26 @@ class LinuxApplicationTestCase(unittest.TestCase):
         
         ec.register_connection(app, node)
 
-        try:
-            ec.deploy()
+        ec.deploy()
 
-            while not ec.state(app) == ResourceState.FINISHED:
-                time.sleep(0.5)
+        ec.wait_finished([app])
 
-            self.assertTrue(ec.state(node) == ResourceState.STARTED)
-            self.assertTrue(ec.state(app) == ResourceState.FINISHED)
+        self.assertTrue(ec.state(node) == ResourceState.STARTED)
+        self.assertTrue(ec.state(app) == ResourceState.FINISHED)
 
-            stdout = ec.trace(app, 'stdout')
-            size = ec.trace(app, 'stdout', attr = TraceAttr.SIZE)
-            self.assertEquals(len(stdout), size)
-            
-            block = ec.trace(app, 'stdout', attr = TraceAttr.STREAM, block = 5, offset = 1)
-            self.assertEquals(block, stdout[5:10])
+        stdout = ec.trace(app, 'stdout')
+        size = ec.trace(app, 'stdout', attr = TraceAttr.SIZE)
+        self.assertEquals(len(stdout), size)
+        
+        block = ec.trace(app, 'stdout', attr = TraceAttr.STREAM, block = 5, offset = 1)
+        self.assertEquals(block, stdout[5:10])
 
-            path = ec.trace(app, 'stdout', attr = TraceAttr.PATH)
-            rm = ec.get_resource(app)
-            p = os.path.join(rm.home, 'stdout')
-            self.assertEquals(path, p)
+        path = ec.trace(app, 'stdout', attr = TraceAttr.PATH)
+        rm = ec.get_resource(app)
+        p = os.path.join(rm.app_home, 'stdout')
+        self.assertEquals(path, p)
 
-        finally:
-            ec.shutdown()
+        ec.shutdown()
 
     @skipIfNotAlive
     def t_concurrency(self, host, user):
@@ -90,39 +119,84 @@ class LinuxApplicationTestCase(unittest.TestCase):
             ec.register_connection(app, node)
             apps.append(app)
 
-        try:
-            ec.deploy()
+        ec.deploy()
 
-            while not all([ec.state(guid) == ResourceState.FINISHED \
-                    for guid in apps]):
-                time.sleep(0.5)
+        ec.wait_finished(apps)
 
-            self.assertTrue(ec.state(node) == ResourceState.STARTED)
-            self.assertTrue(
-                   all([ec.state(guid) == ResourceState.FINISHED \
-                    for guid in apps])
-                    )
+        self.assertTrue(ec.state(node) == ResourceState.STARTED)
+        self.assertTrue(
+               all([ec.state(guid) == ResourceState.FINISHED \
+                for guid in apps])
+                )
 
-            for app in apps:
-                stdout = ec.trace(app, 'stdout')
-                size = ec.trace(app, 'stdout', attr = TraceAttr.SIZE)
-                self.assertEquals(len(stdout), size)
-                
-                block = ec.trace(app, 'stdout', attr = TraceAttr.STREAM, block = 5, offset = 1)
-                self.assertEquals(block, stdout[5:10])
+        for app in apps:
+            stdout = ec.trace(app, 'stdout')
+            size = ec.trace(app, 'stdout', attr = TraceAttr.SIZE)
+            self.assertEquals(len(stdout), size)
+            
+            block = ec.trace(app, 'stdout', attr = TraceAttr.STREAM, block = 5, offset = 1)
+            self.assertEquals(block, stdout[5:10])
 
-                path = ec.trace(app, 'stdout', attr = TraceAttr.PATH)
-                rm = ec.get_resource(app)
-                p = os.path.join(rm.home, 'stdout')
-                self.assertEquals(path, p)
+            path = ec.trace(app, 'stdout', attr = TraceAttr.PATH)
+            rm = ec.get_resource(app)
+            p = os.path.join(rm.app_home, 'stdout')
+            self.assertEquals(path, p)
 
-        finally:
-            ec.shutdown()
+        ec.shutdown()
+
+    @skipIfNotAlive
+    def t_condition(self, host, user, depends):
+        from neco.execution.resource import ResourceFactory
+        
+        ResourceFactory.register_type(LinuxNode)
+        ResourceFactory.register_type(LinuxApplication)
+
+        ec = ExperimentController()
+        
+        node = ec.register_resource("LinuxNode")
+        ec.set(node, "hostname", host)
+        ec.set(node, "username", user)
+        ec.set(node, "cleanHome", True)
+        ec.set(node, "cleanProcesses", True)
+
+        server = ec.register_resource("LinuxApplication")
+        cmd = "echo 'HOLA' | nc -l 3333"
+        ec.set(server, "command", cmd)
+        ec.set(server, "depends", depends)
+        ec.register_connection(server, node)
+
+        client = ec.register_resource("LinuxApplication")
+        cmd = "nc 127.0.0.1 3333"
+        ec.set(client, "command", cmd)
+        ec.register_connection(client, node)
+
+        ec.register_condition(client, ResourceAction.START, server, ResourceState.STARTED)
+
+        apps = [client, server]
+        
+        ec.deploy()
+
+        ec.wait_finished(apps)
+
+        self.assertTrue(ec.state(node) == ResourceState.STARTED)
+        self.assertTrue(ec.state(server) == ResourceState.FINISHED)
+        self.assertTrue(ec.state(client) == ResourceState.FINISHED)
+
+        stdout = ec.trace(client, 'stdout')
+        self.assertTrue(stdout.strip() == "HOLA")
+
+        ec.shutdown()
+
+    def test_stdout_fedora(self):
+        self.t_stdout(self.fedora_host, self.fedora_user)
+
+    def test_stdout_ubuntu(self):
+        self.t_stdout(self.ubuntu_host, self.ubuntu_user)
 
     def test_ping_fedora(self):
         self.t_ping(self.fedora_host, self.fedora_user)
 
-    def test_fing_ubuntu(self):
+    def test_ping_ubuntu(self):
         self.t_ping(self.ubuntu_host, self.ubuntu_user)
 
     def test_concurrency_fedora(self):
@@ -131,6 +205,13 @@ class LinuxApplicationTestCase(unittest.TestCase):
     def test_concurrency_ubuntu(self):
         self.t_concurrency(self.ubuntu_host, self.ubuntu_user)
 
+    def test_condition_fedora(self):
+        self.t_condition(self.fedora_host, self.fedora_user, "nc")
+
+    def test_condition_ubuntu(self):
+        self.t_condition(self.ubuntu_host, self.ubuntu_user, "netcat")
+
+    # TODO: test compilation, sources, dependencies, etc!!!
 
 if __name__ == '__main__':
     unittest.main()

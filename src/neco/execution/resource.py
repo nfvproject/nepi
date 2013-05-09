@@ -3,10 +3,13 @@ from neco.execution.trace import TraceAttr
 
 import copy
 import functools
+import inspect
 import logging
+import os
+import pkgutil
 import weakref
 
-_reschedule_delay = "1s"
+reschedule_delay = "0.5s"
 
 class ResourceAction:
     DEPLOY = 0
@@ -374,7 +377,7 @@ class ResourceManager(object):
 
         """
         reschedule = False
-        delay = _reschedule_delay 
+        delay = reschedule_delay 
 
         # check state and time elapsed on all RMs
         for guid in group:
@@ -429,7 +432,7 @@ class ResourceManager(object):
         """
 
         reschedule = False
-        delay = _reschedule_delay 
+        delay = reschedule_delay 
 
         ## evaluate if set conditions are met
 
@@ -452,7 +455,7 @@ class ResourceManager(object):
 
         """
         reschedule = False
-        delay = _reschedule_delay 
+        delay = reschedule_delay 
 
         ## evaluate if set conditions are met
 
@@ -483,7 +486,7 @@ class ResourceManager(object):
 
         """
         reschedule = False
-        delay = _reschedule_delay 
+        delay = reschedule_delay 
 
         ## evaluate if set conditions are met
 
@@ -552,4 +555,45 @@ class ResourceFactory(object):
     def create(cls, rtype, ec, guid):
         rclass = cls._resource_types[rtype]
         return rclass(ec, guid)
+
+def populate_factory():
+    for rclass in find_types():
+        ResourceFactory.register_type(rclass)
+
+def find_types():
+    search_path = os.environ.get("NECO_SEARCH_PATH", "")
+    search_path = set(search_path.split(" "))
+   
+    import neco.resources 
+    path = os.path.dirname(neco.resources.__file__)
+    search_path.add(path)
+
+    types = []
+
+    for importer, modname, ispkg in pkgutil.walk_packages(search_path):
+        loader = importer.find_module(modname)
+        try:
+            module = loader.load_module(loader.fullname)
+            for attrname in dir(module):
+                if attrname.startswith("_"):
+                    continue
+
+                attr = getattr(module, attrname)
+
+                if attr == ResourceManager:
+                    continue
+
+                if not inspect.isclass(attr):
+                    continue
+
+                if issubclass(attr, ResourceManager):
+                    types.append(attr)
+        except:
+            import traceback
+            err = traceback.format_exc()
+            logger = logging.getLogger("Resource.find_types()")
+            logger.error("Error while lading Resource Managers %s" % err)
+
+    return types
+
 

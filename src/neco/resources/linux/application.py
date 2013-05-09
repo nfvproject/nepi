@@ -7,7 +7,7 @@ from neco.util import sshfuncs
 import logging
 import os
 
-DELAY ="1s"
+reschedule_delay = "0.5s"
 
 # TODO: Resolve wildcards in commands!! 
 
@@ -62,12 +62,6 @@ class LinuxApplication(ResourceManager):
         stdin = Attribute("stdin", "Standard input", flags = Flags.ExecReadOnly)
         stdout = Attribute("stdout", "Standard output", flags = Flags.ExecReadOnly)
         stderr = Attribute("stderr", "Standard error", flags = Flags.ExecReadOnly)
-        update_home = Attribute("updateHome", "If application hash has changed remove old directory and"
-                "re-upload before starting experiment. If not keep the same directory", 
-                default = True,
-                type = Types.Bool, 
-                flags = Flags.ExecReadOnly)
-
         tear_down = Attribute("tearDown", "Bash script to be executed before "
                 "releasing the resource", 
                 flags = Flags.ReadOnly)
@@ -84,7 +78,6 @@ class LinuxApplication(ResourceManager):
         cls._register_attribute(stdin)
         cls._register_attribute(stdout)
         cls._register_attribute(stderr)
-        cls._register_attribute(update_home)
         cls._register_attribute(tear_down)
 
     @classmethod
@@ -116,16 +109,16 @@ class LinuxApplication(ResourceManager):
         return None
 
     @property
-    def home(self):
+    def app_home(self):
         return os.path.join(self.node.exp_dir, self._home)
 
     @property
     def src_dir(self):
-        return os.path.join(self.home, 'src')
+        return os.path.join(self.app_home, 'src')
 
     @property
     def build_dir(self):
-        return os.path.join(self.home, 'build')
+        return os.path.join(self.app_home, 'build')
 
     @property
     def pid(self):
@@ -136,7 +129,9 @@ class LinuxApplication(ResourceManager):
         return self._ppid
 
     def trace(self, name, attr = TraceAttr.ALL, block = 512, offset = 0):
-        path = os.path.join(self.home, name)
+        self.info("Retrieving '%s' trace %s " % (name, attr))
+
+        path = os.path.join(self.app_home, name)
         
         cmd = "(test -f %s && echo 'success') || echo 'error'" % path
         (out, err), proc = self.node.execute(cmd)
@@ -150,7 +145,7 @@ class LinuxApplication(ResourceManager):
             return path
 
         if attr == TraceAttr.ALL:
-            (out, err), proc = self.node.check_output(self.home, name)
+            (out, err), proc = self.node.check_output(self.app_home, name)
             
             if err and proc.poll():
                 msg = " Couldn't read trace %s " % name
@@ -177,10 +172,8 @@ class LinuxApplication(ResourceManager):
         return out
             
     def provision(self, filters = None):
-        # TODO: verify home hash or clean home
-
         # create home dir for application
-        self.node.mkdir(self.home)
+        self.node.mkdir(self.app_home)
 
         # upload sources
         self.upload_sources()
@@ -197,10 +190,20 @@ class LinuxApplication(ResourceManager):
         # Install
         self.install()
 
+        command = self.replace_paths(self.get("command"))
+        x11 = self.get("forwardX11") or False
+        if not x11:
+            self.info("Uploading command '%s'" % command)
+            
+            # If the command runs asynchronous, pre upload the command 
+            # to the app.sh file in the remote host
+            dst = os.path.join(self.app_home, "app.sh")
+            self.node.upload(command, dst, text = True)
+
         super(LinuxApplication, self).provision()
 
     def upload_sources(self):
-        # check if sources need to be uploaded and upload them
+        # TODO: check if sources need to be uploaded and upload them
         sources = self.get("sources")
         if sources:
             self.info(" Uploading sources ")
@@ -208,7 +211,7 @@ class LinuxApplication(ResourceManager):
             # create dir for sources
             self.node.mkdir(self.src_dir)
 
-            sources = self.sources.split(' ')
+            sources = sources.split(' ')
 
             http_sources = list()
             for source in list(sources):
@@ -219,6 +222,8 @@ class LinuxApplication(ResourceManager):
             # Download http sources
             for source in http_sources:
                 dst = os.path.join(self.src_dir, source.split("/")[-1])
+                # TODO: Check if the tar.gz is already downloaded using a hash
+                # and don't download twice !!
                 command = "wget -o %s %s" % (dst, source)
                 self.node.execute(command)
 
@@ -239,7 +244,7 @@ class LinuxApplication(ResourceManager):
         depends = self.get("depends")
         if depends:
             self.info(" Installing dependencies %s" % depends)
-            self.node.install_packages(depends, home = self.home)
+            self.node.install_packages(depends, home = self.app_home)
 
     def build(self):
         build = self.get("build")
@@ -251,9 +256,9 @@ class LinuxApplication(ResourceManager):
 
             cmd = self.replace_paths(build)
 
-            (out, err), proc = self.run_and_wait(cmd, self.home,
+            (out, err), proc = self.run_and_wait(cmd, self.app_home,
                 pidfile = "build_pid",
-                stdout = "build_log", 
+                stdout = "build_out", 
                 stderr = "build_err", 
                 raise_on_error = True)
  
@@ -264,18 +269,22 @@ class LinuxApplication(ResourceManager):
 
             cmd = self.replace_paths(install)
 
-            (out, err), proc = self.run_and_wait(cmd, self.home, 
+            (out, err), proc = self.run_and_wait(cmd, self.app_home, 
                 pidfile = "install_pid",
-                stdout = "install_log", 
+                stdout = "install_out", 
                 stderr = "install_err", 
                 raise_on_error = True)
 
     def deploy(self):
+        command = self.replace_paths(self.get("command"))
+        
+        self.info(" Deploying command '%s' " % command)
+
         # Wait until node is associated and deployed
         node = self.node
         if not node or node.state < ResourceState.READY:
             self.debug("---- RESCHEDULING DEPLOY ---- node state %s " % self.node.state )
-            self.ec.schedule(DELAY, self.deploy)
+            self.ec.schedule(reschedule_delay, self.deploy)
         else:
             try:
                 self.discover()
@@ -296,7 +305,7 @@ class LinuxApplication(ResourceManager):
 
         super(LinuxApplication, self).start()
 
-        self.info("Starting command %s" % command)
+        self.info("Starting command '%s'" % command)
 
         if x11:
             (out, err), proc = self.node.execute(command,
@@ -310,7 +319,9 @@ class LinuxApplication(ResourceManager):
             if proc.poll() and err:
                 failed = True
         else:
-            (out, err), proc = self.node.run(command, self.home, 
+            # Run the command asynchronously
+            command = "bash ./app.sh"
+            (out, err), proc = self.node.run(command, self.app_home, 
                 stdin = stdin, 
                 sudo = sudo)
 
@@ -318,14 +329,14 @@ class LinuxApplication(ResourceManager):
                 failed = True
         
             if not failed:
-                pid, ppid = self.node.wait_pid(home = self.home)
+                pid, ppid = self.node.wait_pid(home = self.app_home)
                 if pid: self._pid = int(pid)
                 if ppid: self._ppid = int(ppid)
 
             if not self.pid or not self.ppid:
                 failed = True
  
-        (out, chkerr), proc = self.node.check_output(self.home, 'stderr')
+        (out, chkerr), proc = self.node.check_output(self.app_home, 'stderr')
 
         if failed or out or chkerr:
             # check if execution errors occurred
@@ -374,7 +385,7 @@ class LinuxApplication(ResourceManager):
     @property
     def state(self):
         if self._state == ResourceState.STARTED:
-            (out, err), proc = self.node.check_output(self.home, 'stderr')
+            (out, err), proc = self.node.check_output(self.app_home, 'stderr')
 
             if out or err:
                 if err.find("No such file or directory") >= 0 :
@@ -432,7 +443,7 @@ class LinuxApplication(ResourceManager):
         return ( command
             .replace("${SOURCES}", self.src_dir)
             .replace("${BUILD}", self.build_dir) 
-            .replace("${APPHOME}", self.home) 
+            .replace("${APPHOME}", self.app_home) 
             .replace("${NODEHOME}", self.node.home) )
 
 
