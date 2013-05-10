@@ -75,7 +75,9 @@ class ExperimentController(object):
     def wait_finished(self, guids):
         while not all([self.state(guid) == ResourceState.FINISHED \
                 for guid in guids]) and not self.finished:
-            time.sleep(1)
+            # We keep the sleep as large as possible to 
+            # decrese the number of RM state requests
+            time.sleep(2)
     
     def get_task(self, tid):
         return self._tasks.get(tid)
