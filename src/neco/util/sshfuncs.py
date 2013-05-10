@@ -239,7 +239,8 @@ def rexec(command, host, user,
 
     for x in xrange(retry):
         # connects to the remote host and starts a remote connection
-        proc = subprocess.Popen(args, 
+        proc = subprocess.Popen(args,
+                env = env,
                 stdout = subprocess.PIPE,
                 stdin = subprocess.PIPE, 
                 stderr = subprocess.PIPE)
