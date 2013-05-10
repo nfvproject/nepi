@@ -187,6 +187,45 @@ class LinuxApplicationTestCase(unittest.TestCase):
 
         ec.shutdown()
 
+    @skipIfNotAlive
+    def t_http_sources(self, host, user):
+        from neco.execution.resource import ResourceFactory
+        
+        ResourceFactory.register_type(LinuxNode)
+        ResourceFactory.register_type(LinuxApplication)
+
+        ec = ExperimentController()
+        
+        node = ec.register_resource("LinuxNode")
+        ec.set(node, "hostname", host)
+        ec.set(node, "username", user)
+        ec.set(node, "cleanHome", True)
+        ec.set(node, "cleanProcesses", True)
+
+        sources = "http://nepi.inria.fr/attachment/wiki/WikiStart/pybindgen-r794.tar.gz " \
+            "http://nepi.inria.fr/attachment/wiki/WikiStart/nepi_integration_framework.pdf"
+
+        app = ec.register_resource("LinuxApplication")
+        ec.set(app, "sources", sources)
+
+        ec.register_connection(app, node)
+
+        ec.deploy()
+
+        ec.wait_finished([app])
+
+        self.assertTrue(ec.state(node) == ResourceState.STARTED)
+        self.assertTrue(ec.state(app) == ResourceState.FINISHED)
+
+        err = ec.trace(app, 'http_sources_err')
+        self.assertTrue(err == "")
+        
+        out = ec.trace(app, 'http_sources_out')
+        self.assertTrue(out.find("pybindgen-r794.tar.gz") > -1)
+        self.assertTrue(out.find("nepi_integration_framework.pdf") > -1)
+
+        ec.shutdown()
+
     def test_stdout_fedora(self):
         self.t_stdout(self.fedora_host, self.fedora_user)
 
@@ -210,6 +249,13 @@ class LinuxApplicationTestCase(unittest.TestCase):
 
     def test_condition_ubuntu(self):
         self.t_condition(self.ubuntu_host, self.ubuntu_user, "netcat")
+
+    def test_http_sources_fedora(self):
+        self.t_http_sources(self.fedora_host, self.fedora_user)
+
+    def test_http_sources_ubuntu(self):
+        self.t_http_sources(self.ubuntu_host, self.ubuntu_user)
+
 
     # TODO: test compilation, sources, dependencies, etc!!!
 

@@ -18,6 +18,7 @@ import threading
 
 reschedule_delay = "0.5s"
 
+
 @clsinit
 class LinuxNode(ResourceManager):
     _rtype = "LinuxNode"
@@ -79,18 +80,16 @@ class LinuxNode(ResourceManager):
 
     @property
     def home(self):
-        return self.get("home") or "/tmp"
+        return self.get("home") or ""
 
     @property
-    def exp_dir(self):
-        exp_dir = os.path.join(self.home, self.ec.exp_id)
-        return exp_dir if exp_dir.startswith('/') or \
-                exp_dir.startswith("~/") else "~/"
+    def exp_home(self):
+        return os.path.join(self.home, self.ec.exp_id)
 
     @property
     def node_home(self):
         node_home = "node-%d" % self.guid
-        return os.path.join(self.exp_dir, node_home)
+        return os.path.join(self.exp_home, node_home)
 
     @property
     def os(self):
@@ -197,10 +196,15 @@ class LinuxNode(ResourceManager):
             
     def clean_home(self):
         self.info("Cleaning up home")
-
-        cmd = ("cd %s ; " % self.home +
-            "find . -maxdepth 1  \( -name '.cache' -o -name '.local' -o -name '.config' -o -name 'nepi-*' \)"+
-            " -execdir rm -rf {} + ")
+        
+        cmd = (
+            # "find . -maxdepth 1  \( -name '.cache' -o -name '.local' -o -name '.config' -o -name 'nepi-*' \)" +
+            "find . -maxdepth 1 -name 'nepi-*' " +
+            " -execdir rm -rf {} + "
+            )
+            
+        if self.home:
+            cmd = "cd %s ; " % self.home + cmd
 
         out = err = ""
         (out, err), proc = self.execute(cmd, with_lock = True)
@@ -511,7 +515,7 @@ class LinuxNode(ResourceManager):
 
     def run(self, command, 
             home = None,
-            create_home = True,
+            create_home = False,
             pidfile = "pid",
             stdin = None, 
             stdout = 'stdout', 

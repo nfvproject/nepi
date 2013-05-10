@@ -110,7 +110,7 @@ class LinuxApplication(ResourceManager):
 
     @property
     def app_home(self):
-        return os.path.join(self.node.exp_dir, self._home)
+        return os.path.join(self.node.exp_home, self._home)
 
     @property
     def src_dir(self):
@@ -133,8 +133,8 @@ class LinuxApplication(ResourceManager):
 
         path = os.path.join(self.app_home, name)
         
-        cmd = "(test -f %s && echo 'success') || echo 'error'" % path
-        (out, err), proc = self.node.execute(cmd)
+        command = "(test -f %s && echo 'success') || echo 'error'" % path
+        (out, err), proc = self.node.execute(command)
 
         if (err and proc.poll()) or out.find("error") != -1:
             msg = " Couldn't find trace %s " % name
@@ -190,14 +190,17 @@ class LinuxApplication(ResourceManager):
         # Install
         self.install()
 
-        command = self.replace_paths(self.get("command"))
-        x11 = self.get("forwardX11") or False
-        if not x11:
+        command = self.get("command")
+        x11 = self.get("forwardX11")
+        if not x11 and command:
             self.info("Uploading command '%s'" % command)
-            
+        
+            # TODO: missing set PATH and PYTHONPATH!!
+
             # If the command runs asynchronous, pre upload the command 
             # to the app.sh file in the remote host
             dst = os.path.join(self.app_home, "app.sh")
+            command = self.replace_paths(command)
             self.node.upload(command, dst, text = True)
 
         super(LinuxApplication, self).provision()
@@ -220,14 +223,26 @@ class LinuxApplication(ResourceManager):
                     sources.remove(source)
 
             # Download http sources
-            for source in http_sources:
-                dst = os.path.join(self.src_dir, source.split("/")[-1])
-                # TODO: Check if the tar.gz is already downloaded using a hash
-                # and don't download twice !!
-                command = "wget -o %s %s" % (dst, source)
-                self.node.execute(command)
+            if http_sources:
+                cmd = " wget -c --directory-prefix=${SOURCES} "
+                verif = ""
 
-            self.node.upload(sources, self.src_dir)
+                for source in http_sources:
+                    cmd += " %s " % (source)
+                    verif += " ls ${SOURCES}/%s ;" % os.path.basename(source)
+                
+                # Wget output goes to stderr :S
+                cmd += " 2> /dev/null ; "
+
+                # Add verification
+                cmd += " %s " % verif
+
+                # Upload the command to a file, and execute asynchronously
+                self.upload_and_run(cmd, 
+                        "http_sources.sh", "http_sources_pid", 
+                        "http_sources_out", "http_sources_err")
+            if sources:
+                self.node.upload(sources, self.src_dir)
 
     def upload_code(self):
         code = self.get("code")
@@ -254,32 +269,22 @@ class LinuxApplication(ResourceManager):
             # create dir for build
             self.node.mkdir(self.build_dir)
 
-            cmd = self.replace_paths(build)
-
-            (out, err), proc = self.run_and_wait(cmd, self.app_home,
-                pidfile = "build_pid",
-                stdout = "build_out", 
-                stderr = "build_err", 
-                raise_on_error = True)
+            # Upload the command to a file, and execute asynchronously
+            self.upload_and_run(build, 
+                    "build.sh", "build_pid", 
+                    "build_out", "build_err")
  
     def install(self):
         install = self.get("install")
         if install:
             self.info(" Installing sources ")
 
-            cmd = self.replace_paths(install)
-
-            (out, err), proc = self.run_and_wait(cmd, self.app_home, 
-                pidfile = "install_pid",
-                stdout = "install_out", 
-                stderr = "install_err", 
-                raise_on_error = True)
+            # Upload the command to a file, and execute asynchronously
+            self.upload_and_run(install, 
+                    "install.sh", "install_pid", 
+                    "install_out", "install_err")
 
     def deploy(self):
-        command = self.replace_paths(self.get("command"))
-        
-        self.info(" Deploying command '%s' " % command)
-
         # Wait until node is associated and deployed
         node = self.node
         if not node or node.state < ResourceState.READY:
@@ -287,6 +292,8 @@ class LinuxApplication(ResourceManager):
             self.ec.schedule(reschedule_delay, self.deploy)
         else:
             try:
+                command = self.get("command") or ""
+                self.info(" Deploying command '%s' " % command)
                 self.discover()
                 self.provision()
             except:
@@ -296,33 +303,48 @@ class LinuxApplication(ResourceManager):
             super(LinuxApplication, self).deploy()
 
     def start(self):
-        command = self.replace_paths(self.get("command"))
+        command = self.get("command")
         env = self.get("env")
         stdin = 'stdin' if self.get("stdin") else None
+        stdout = 'stdout' if self.get("stdout") else 'stdout'
+        stderr = 'stderr' if self.get("stderr") else 'stderr'
         sudo = self.get('sudo') or False
         x11 = self.get("forwardX11") or False
         failed = False
 
         super(LinuxApplication, self).start()
 
+        if not command:
+            self.info("No command to start ")
+            self._state = ResourceState.FINISHED
+            return 
+    
         self.info("Starting command '%s'" % command)
 
         if x11:
+            # If the command requires X11 forwarding, we
+            # can't run it asynchronously
             (out, err), proc = self.node.execute(command,
                     sudo = sudo,
                     stdin = stdin,
-                    stdout = 'stdout',
-                    stderr = 'stderr',
+                    stdout = stdout,
+                    stderr = stderr,
                     env = env,
                     forward_x11 = x11)
 
             if proc.poll() and err:
                 failed = True
         else:
-            # Run the command asynchronously
-            command = "bash ./app.sh"
-            (out, err), proc = self.node.run(command, self.app_home, 
+            # Command was  previously uploaded, now run the remote
+            # bash file asynchronously
+            if env:
+                env = self.replace_paths(env)
+
+            cmd = "bash ./app.sh"
+            (out, err), proc = self.node.run(cmd, self.app_home, 
                 stdin = stdin, 
+                stdout = stdout,
+                stderr = stderr,
                 sudo = sudo)
 
             if proc.poll() and err:
@@ -406,6 +428,32 @@ class LinuxApplication(ResourceManager):
 
         return self._state
 
+    def upload_and_run(self, cmd, fname, pidfile, outfile, errfile):
+        dst = os.path.join(self.app_home, fname)
+        cmd = self.replace_paths(cmd)
+        self.node.upload(cmd, dst, text = True)
+
+        cmd = "bash ./%s" % fname
+        (out, err), proc = self.node.run_and_wait(cmd, self.app_home,
+            pidfile = pidfile,
+            stdout = outfile, 
+            stderr = errfile, 
+            raise_on_error = True)
+
+    def replace_paths(self, command):
+        """
+        Replace all special path tags with shell-escaped actual paths.
+        """
+        def absolute_dir(d):
+            return d if d.startswith("/") else os.path.join("${HOME}", d)
+
+        return ( command
+            .replace("${SOURCES}", absolute_dir(self.src_dir))
+            .replace("${BUILD}", absolute_dir(self.build_dir))
+            .replace("${APP_HOME}", absolute_dir(self.app_home))
+            .replace("${NODE_HOME}", absolute_dir(self.node.node_home))
+            .replace("${EXP_HOME}", self.node.exp_home) )
+        
     def valid_connection(self, guid):
         # TODO: Validate!
         return True
@@ -435,15 +483,4 @@ class LinuxApplication(ResourceManager):
         cls._register_attribute(tear_down)
         skey = "".join(map(str, args))
         return hashlib.md5(skey).hexdigest()
-
-    def replace_paths(self, command):
-        """
-        Replace all special path tags with shell-escaped actual paths.
-        """
-        return ( command
-            .replace("${SOURCES}", self.src_dir)
-            .replace("${BUILD}", self.build_dir) 
-            .replace("${APPHOME}", self.app_home) 
-            .replace("${NODEHOME}", self.node.home) )
-
 

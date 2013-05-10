@@ -49,7 +49,7 @@ class LinuxNodeTestCase(unittest.TestCase):
     def t_run(self, host, user):
         node, ec = create_node(host, user)
         
-        app_home = os.path.join(node.exp_dir, "my-app")
+        app_home = os.path.join(node.exp_home, "my-app")
         node.mkdir(app_home, clean = True)
         
         command = "ping %s" % self.target
@@ -87,7 +87,7 @@ class LinuxNodeTestCase(unittest.TestCase):
     def t_compile(self, host, user):
         node, ec = create_node(host, user)
 
-        app_home = os.path.join(node.exp_dir, "my-app")
+        app_home = os.path.join(node.exp_home, "my-app")
         node.mkdir(app_home, clean = True)
 
         prog = """#include <stdio.h>
