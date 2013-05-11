@@ -120,8 +120,9 @@ if __name__ == '__main__':
 
     # Search for available RMs
     populate_factory()
-
-    host1 = 'nepi2.pl.sophia.inria.fr'
+    
+    #host1 = 'nepi2.pl.sophia.inria.fr'
+    host1 = 'planetlab2.u-strasbg.fr'
     host2 = 'roseval.pl.sophia.inria.fr'
 
     ec = ExperimentController(exp_id = exp_id)

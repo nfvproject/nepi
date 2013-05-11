@@ -3,11 +3,13 @@ from neco.execution.trace import Trace, TraceAttr
 from neco.execution.resource import ResourceManager, clsinit, ResourceState
 from neco.resources.linux.node import LinuxNode
 from neco.util import sshfuncs 
+from neco.util.timefuncs import strfnow, strfdiff
 
 import logging
 import os
 
 reschedule_delay = "0.5s"
+state_check_delay = 1
 
 # TODO: Resolve wildcards in commands!! 
 
@@ -95,6 +97,9 @@ class LinuxApplication(ResourceManager):
         self._pid = None
         self._ppid = None
         self._home = "app-%s" % self.guid
+
+        # timestamp of last state check of the application
+        self._last_state_check = strfnow()
 
         self._logger = logging.getLogger("LinuxApplication")
     
@@ -401,9 +406,11 @@ class LinuxApplication(ResourceManager):
             raise RuntimeError, msg
 
     def stop(self):
+        command = self.get('command') or ''
         state = self.state
+        
         if state == ResourceState.STARTED:
-            self.info("Stopping command %s" % command)
+            self.info("Stopping command '%s'" % command)
 
             (out, err), proc = self.node.kill(self.pid, self.ppid)
 
@@ -430,24 +437,31 @@ class LinuxApplication(ResourceManager):
     @property
     def state(self):
         if self._state == ResourceState.STARTED:
-            (out, err), proc = self.node.check_output(self.app_home, 'stderr')
-
-            if out or err:
-                if err.find("No such file or directory") >= 0 :
-                    # The resource is marked as started, but the
-                    # command was not yet executed
-                    return ResourceState.READY
-
+            # To avoid overwhelming the remote hosts and the local processor
+            # with too many ssh queries, the state is only requested
+            # every 'state_check_delay' .
+            if strfdiff(strfnow(), self._last_state_check) > state_check_delay:
                 # check if execution errors occurred
-                msg = " Failed to execute command '%s'" % self.get("command")
-                self.error(msg, out, err)
-                self._state = ResourceState.FAILED
+                (out, err), proc = self.node.check_output(self.app_home, 'stderr')
 
-            elif self.pid and self.ppid:
-                status = self.node.status(self.pid, self.ppid)
+                if out or err:
+                    if err.find("No such file or directory") >= 0 :
+                        # The resource is marked as started, but the
+                        # command was not yet executed
+                        return ResourceState.READY
 
-                if status == sshfuncs.FINISHED:
-                    self._state = ResourceState.FINISHED
+                    msg = " Failed to execute command '%s'" % self.get("command")
+                    self.error(msg, out, err)
+                    self._state = ResourceState.FAILED
+
+                elif self.pid and self.ppid:
+                    status = self.node.status(self.pid, self.ppid)
+
+                    if status == sshfuncs.FINISHED:
+                        self._state = ResourceState.FINISHED
+
+
+                self._last_state_check = strfnow()
 
         return self._state
 
