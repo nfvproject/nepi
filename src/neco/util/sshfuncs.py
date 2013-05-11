@@ -9,10 +9,9 @@ import select
 import signal
 import socket
 import subprocess
+import threading
 import time
 import tempfile
-
-# TODO: Add retries to rcopy!! rcopy is not being retried!
 
 logger = logging.getLogger("sshfuncs")
 
@@ -55,14 +54,21 @@ class NOT_STARTED:
     """
 
 hostbyname_cache = dict()
+hostbyname_cache_lock = threading.Lock()
 
 def gethostbyname(host):
     global hostbyname_cache
+    global hostbyname_cache_lock
     
     hostbyname = hostbyname_cache.get(host)
     if not hostbyname:
-        hostbyname = socket.gethostbyname(host)
-        hostbyname_cache[host] = hostbyname
+        with hostbyname_cache_lock:
+            hostbyname = socket.gethostbyname(host)
+            hostbyname_cache[host] = hostbyname
+
+            msg = " Added hostbyname %s - %s " % (host, hostbyname)
+            log(msg, logging.DEBUG)
+
     return hostbyname
 
 OPENSSH_HAS_PERSIST = None
@@ -297,6 +303,7 @@ def rcopy(source, dest,
         recursive = False,
         identity = None,
         server_key = None,
+        retry = 3,
         strict_host_checking = True):
     """
     Copies from/to remote sites.
@@ -315,9 +322,6 @@ def rcopy(source, dest,
     Source can be a list of files to copy to a single destination,
     in which case it is advised that the destination be a folder.
     """
-    
-    msg = " rcopy - scp %s %s " % (source, dest)
-    log(msg, logging.DEBUG)
     
     if isinstance(source, file) and source.tell() == 0:
         source = source.name
@@ -525,15 +529,41 @@ def rcopy(source, dest,
 
         args.append(dest)
 
-        # connects to the remote host and starts a remote connection
-        proc = subprocess.Popen(args, 
-                stdout = subprocess.PIPE,
-                stdin = subprocess.PIPE, 
-                stderr = subprocess.PIPE)
-        proc._known_hosts = tmp_known_hosts
+        for x in xrange(retry):
+            # connects to the remote host and starts a remote connection
+            proc = subprocess.Popen(args,
+                    stdout = subprocess.PIPE,
+                    stdin = subprocess.PIPE, 
+                    stderr = subprocess.PIPE)
+            
+            # attach tempfile object to the process, to make sure the file stays
+            # alive until the process is finished with it
+            proc._known_hosts = tmp_known_hosts
         
-        (out, err) = proc.communicate()
-        eintr_retry(proc.wait)()
+            try:
+                (out, err) = proc.communicate()
+                eintr_retry(proc.wait)()
+                msg = " rcopy - host %s - command %s " % (host, " ".join(args))
+                log(msg, logging.DEBUG, out, err)
+
+                if proc.poll():
+                    t = x*2
+                    msg = "SLEEPING %d ... ATEMPT %d - host %s - command %s " % ( 
+                            t, x, host, " ".join(args))
+                    log(msg, logging.DEBUG)
+
+                    time.sleep(t)
+                    continue
+
+                break
+            except RuntimeError, e:
+                msg = " rcopy EXCEPTION - host %s - command %s - TIMEOUT -> %s" % (host, " ".join(args), e.args)
+                log(msg, logging.DEBUG, out, err)
+
+                if retry <= 0:
+                    raise
+                retry -= 1
+            
         return ((out, err), proc)
 
 def rspawn(command, pidfile, 

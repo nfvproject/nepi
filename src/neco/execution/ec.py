@@ -14,8 +14,7 @@ from neco.execution.scheduler import HeapScheduler, Task, TaskStatus
 from neco.execution.trace import TraceAttr
 
 # TODO: use multiprocessing instead of threading
-# TODO: Improve speed. Too slow... !!
-# TODO: When something fails during deployment NECO leaves scp and ssh processes running behind!!
+# TODO: When a failure occurrs during deployment scp and ssh processes are left running behind!!
 
 class ECState(object):
     RUNNING = 1

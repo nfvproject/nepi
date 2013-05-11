@@ -413,12 +413,12 @@ class LinuxNode(ResourceManager):
 
         out = err = ""
         try:
-            (out, err), proc = self.execute("echo 'ALIVE'", retry = 5, 
+            (out, err), proc = self.execute("echo 'ALIVE' || (echo 'NOTALIVE') >&2", retry = 5, 
                     with_lock = True)
         except:
             import traceback
             trace = traceback.format_exc()
-            msg = "Unresponsive host "
+            msg = "Unresponsive host  %s " % err
             self.error(msg, out, trace)
             return False
 
