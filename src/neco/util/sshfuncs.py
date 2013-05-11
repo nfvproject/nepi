@@ -12,6 +12,7 @@ import subprocess
 import time
 import tempfile
 
+# TODO: Add retries to rcopy!! rcopy is not being retried!
 
 logger = logging.getLogger("sshfuncs")
 
@@ -56,6 +57,8 @@ class NOT_STARTED:
 hostbyname_cache = dict()
 
 def gethostbyname(host):
+    global hostbyname_cache
+    
     hostbyname = hostbyname_cache.get(host)
     if not hostbyname:
         hostbyname = socket.gethostbyname(host)
@@ -191,7 +194,8 @@ def rexec(command, host, user,
         err_on_timeout = True,
         connect_timeout = 30,
         persistent = True,
-        forward_x11 = False):
+        forward_x11 = False,
+        strict_host_checking = True):
     """
     Executes a remote command, returns ((stdout,stderr),process)
     """
@@ -213,6 +217,10 @@ def rexec(command, host, user,
             '-o', 'ControlMaster=auto',
             '-o', 'ControlPath=%s' % (make_control_path(agent, forward_x11),),
             '-o', 'ControlPersist=60' ])
+
+    if not strict_host_checking:
+        # Do not check for Host key. Unsafe.
+        args.extend(['-o', 'StrictHostKeyChecking=no'])
 
     if agent:
         args.append('-A')
@@ -288,7 +296,8 @@ def rcopy(source, dest,
         agent = True, 
         recursive = False,
         identity = None,
-        server_key = None):
+        server_key = None,
+        strict_host_checking = True):
     """
     Copies from/to remote sites.
     
@@ -499,6 +508,10 @@ def rcopy(source, dest,
             # Create a temporary server key file
             tmp_known_hosts = make_server_key_args(server_key, host, port)
             args.extend(['-o', 'UserKnownHostsFile=%s' % (tmp_known_hosts.name,)])
+
+        if not strict_host_checking:
+            # Do not check for Host key. Unsafe.
+            args.extend(['-o', 'StrictHostKeyChecking=no'])
 
         if isinstance(source,list):
             args.extend(source)

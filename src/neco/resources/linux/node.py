@@ -15,6 +15,7 @@ import threading
 # TODO: Verify files and dirs exists already
 # TODO: Blacklist nodes!
 # TODO: Unify delays!!
+# TODO: Validate outcome of uploads!! 
 
 reschedule_delay = "0.5s"
 
@@ -130,8 +131,9 @@ class LinuxNode(ResourceManager):
     def provision(self, filters = None):
         if not self.is_alive():
             self._state = ResourceState.FAILED
-            self.error("Deploy failed. Unresponsive node")
-            return
+            msg = "Deploy failed. Unresponsive node %s" % self.get("hostname")
+            self.error(msg)
+            raise RuntimeError, msg
 
         if self.get("cleanProcesses"):
             self.clean_processes()
@@ -411,29 +413,27 @@ class LinuxNode(ResourceManager):
 
         out = err = ""
         try:
-            (out, err), proc = self.execute("echo 'ALIVE'", with_lock = True)
+            (out, err), proc = self.execute("echo 'ALIVE'", retry = 5, 
+                    with_lock = True)
         except:
             import traceback
             trace = traceback.format_exc()
             msg = "Unresponsive host "
-            self.warn(msg, out, trace)
+            self.error(msg, out, trace)
             return False
 
         if out.strip().startswith('ALIVE'):
             return True
         else:
             msg = "Unresponsive host "
-            self.warn(msg, out, err)
+            self.error(msg, out, err)
             return False
-
-            # TODO!
-            #if self.check_bad_host(out,err):
-            #    self.blacklist()
 
     def copy(self, src, dst):
         if self.localhost:
             (out, err), proc =  execfuncs.lcopy(source, dest, 
-                    recursive = True)
+                    recursive = True,
+                    strict_host_checking = False)
         else:
             with self._lock:
                 (out, err), proc = sshfuncs.rcopy(
@@ -441,7 +441,8 @@ class LinuxNode(ResourceManager):
                     port = self.get("port"),
                     identity = self.get("identity"),
                     server_key = self.get("serverKey"),
-                    recursive = True)
+                    recursive = True,
+                    strict_host_checking = False)
 
         return (out, err), proc
 
@@ -455,6 +456,7 @@ class LinuxNode(ResourceManager):
             retry = 3,
             err_on_timeout = True,
             connect_timeout = 30,
+            strict_host_checking = False,
             persistent = True,
             with_lock = False
             ):
@@ -488,7 +490,8 @@ class LinuxNode(ResourceManager):
                         retry = retry,
                         err_on_timeout = err_on_timeout,
                         connect_timeout = connect_timeout,
-                        persistent = persistent
+                        persistent = persistent,
+                        strict_host_checking = strict_host_checking
                         )
             else:
                 (out, err), proc = sshfuncs.rexec(

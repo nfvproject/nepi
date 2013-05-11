@@ -464,12 +464,20 @@ class ResourceManager(object):
             reschedule = True
             self.debug("---- RESCHEDULING START ---- state %s " % self.state )
         else:
-            self.debug("---- START CONDITIONS ---- %s" % 
-                    self.conditions.get(ResourceAction.START))
+            start_conditions = self.conditions.get(ResourceAction.START, [])
+            
+            self.debug("---- START CONDITIONS ---- %s" % start_conditions) 
             
             # Verify all start conditions are met
-            start_conditions = self.conditions.get(ResourceAction.START, [])
             for (group, state, time) in start_conditions:
+                # Uncomment for debug
+                #unmet = []
+                #for guid in group:
+                #    rm = self.ec.get_resource(guid)
+                #    unmet.append((guid, rm._state))
+                #
+                #self.debug("---- WAITED STATES ---- %s" % unmet )
+
                 reschedule, delay = self._needs_reschedule(group, state, time)
                 if reschedule:
                     break
