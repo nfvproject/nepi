@@ -386,24 +386,24 @@ class LinuxApplication(ResourceManager):
             if not self.pid or not self.ppid:
                 failed = True
  
-        (out, chkerr), proc = self.node.check_output(self.app_home, 'stderr')
+            (out, chkerr), proc = self.node.check_output(self.app_home, 'stderr')
 
-        if failed or out or chkerr:
-            # check if execution errors occurred
-            msg = " Failed to start command '%s' " % command
-            out = out
-            if err:
-                err = err
-            elif chkerr:
-                err = chkerr
+            if failed or out or chkerr:
+                # check if execution errors occurred
+                msg = " Failed to start command '%s' " % command
+                out = out
+                if err:
+                    err = err
+                elif chkerr:
+                    err = chkerr
 
-            self.error(msg, out, err)
+                self.error(msg, out, err)
 
-            msg2 = " Setting state to Failed"
-            self.debug(msg2)
-            self._state = ResourceState.FAILED
+                msg2 = " Setting state to Failed"
+                self.debug(msg2)
+                self._state = ResourceState.FAILED
 
-            raise RuntimeError, msg
+                raise RuntimeError, msg
 
     def stop(self):
         command = self.get('command') or ''
