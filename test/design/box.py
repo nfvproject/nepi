@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from neco.design.box import Box 
+from nepi.design.box import Box 
 
 import unittest
 

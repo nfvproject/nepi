@@ -1,4 +1,4 @@
-from neco.util.sshfuncs import RUNNING, FINISHED, NOT_STARTED, STDOUT 
+from nepi.util.sshfuncs import RUNNING, FINISHED, NOT_STARTED, STDOUT 
 
 import subprocess
 

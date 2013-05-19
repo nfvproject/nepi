@@ -5,13 +5,13 @@ import sys
 import time
 import threading
 
-from neco.util import guid
-from neco.util.parallel import ParallelRun
-from neco.util.timefuncs import strfnow, strfdiff, strfvalid 
-from neco.execution.resource import ResourceFactory, ResourceAction, \
+from nepi.util import guid
+from nepi.util.parallel import ParallelRun
+from nepi.util.timefuncs import strfnow, strfdiff, strfvalid 
+from nepi.execution.resource import ResourceFactory, ResourceAction, \
         ResourceState
-from neco.execution.scheduler import HeapScheduler, Task, TaskStatus
-from neco.execution.trace import TraceAttr
+from nepi.execution.scheduler import HeapScheduler, Task, TaskStatus
+from nepi.execution.trace import TraceAttr
 
 # TODO: use multiprocessing instead of threading
 # TODO: When a failure occurrs during deployment scp and ssh processes are left running behind!!

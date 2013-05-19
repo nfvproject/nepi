@@ -4,7 +4,7 @@ from sleekxmpp.exceptions import IqError, IqTimeout
 import traceback
 import xml.etree.ElementTree as ET
 
-import neco
+import nepi
 
 # inherit from BaseXmpp and XMLStream classes
 class OMFClient(sleekxmpp.ClientXMPP): 
@@ -46,8 +46,8 @@ class OMFClient(sleekxmpp.ClientXMPP):
         self.add_event_handler("register", self.register)
         self.add_event_handler("pubsub_publish", self.handle_omf_message)
         
-        self._logger = logging.getLogger("neco.omf.xmppClient")
-        self._logger.setLevel(neco.LOGLEVEL)
+        self._logger = logging.getLogger("nepi.omf.xmppClient")
+        self._logger.setLevel(nepi.LOGLEVEL)
 
     @property
     def ready(self):

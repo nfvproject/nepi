@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-from neco.execution.ec import ExperimentController 
-from neco.execution.resource import ResourceState
-from neco.resources.linux.node import LinuxNode
-from neco.resources.linux.interface import LinuxInterface
-from neco.resources.linux.channel import LinuxChannel
-from neco.util.sshfuncs import RUNNING, FINISHED
+from nepi.execution.ec import ExperimentController 
+from nepi.execution.resource import ResourceState
+from nepi.resources.linux.node import LinuxNode
+from nepi.resources.linux.interface import LinuxInterface
+from nepi.resources.linux.channel import LinuxChannel
+from nepi.util.sshfuncs import RUNNING, FINISHED
 
 from test_utils import skipIfNotAlive
 
@@ -23,7 +23,7 @@ class LinuxInterfaceTestCase(unittest.TestCase):
 
     @skipIfNotAlive
     def t_deploy(self, host, user):
-        from neco.execution.resource import ResourceFactory
+        from nepi.execution.resource import ResourceFactory
         
         ResourceFactory.register_type(LinuxNode)
         ResourceFactory.register_type(LinuxInterface)

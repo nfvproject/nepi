@@ -1,4 +1,4 @@
-from neco.design.box import Box
+from nepi.design.box import Box
 
 from xml.dom import minidom
 import sys

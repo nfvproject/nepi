@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from neco.util.sshfuncs import rexec, rcopy, rspawn, rcheckpid, rstatus, rkill,\
+from nepi.util.sshfuncs import rexec, rcopy, rspawn, rcheckpid, rstatus, rkill,\
         RUNNING, FINISHED 
 
 import getpass

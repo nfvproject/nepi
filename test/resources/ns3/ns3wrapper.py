@@ -10,7 +10,7 @@
 #  node n0 sends IGMP traffic to node n3
 
 
-from neco.resources.ns3.ns3wrapper import NS3Wrapper
+from nepi.resources.ns3.ns3wrapper import NS3Wrapper
 
 import os.path
 import time

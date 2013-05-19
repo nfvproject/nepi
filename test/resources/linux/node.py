@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-from neco.resources.linux.node import LinuxNode
-from neco.util.sshfuncs import RUNNING, FINISHED
+from nepi.resources.linux.node import LinuxNode
+from nepi.util.sshfuncs import RUNNING, FINISHED
 
 from test_utils import skipIfNotAlive, skipInteractive, create_node
 

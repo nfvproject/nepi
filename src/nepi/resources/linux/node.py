@@ -1,7 +1,7 @@
-from neco.execution.attribute import Attribute, Flags
-from neco.execution.resource import ResourceManager, clsinit, ResourceState
-from neco.resources.linux import rpmfuncs, debfuncs 
-from neco.util import sshfuncs, execfuncs 
+from nepi.execution.attribute import Attribute, Flags
+from nepi.execution.resource import ResourceManager, clsinit, ResourceState
+from nepi.resources.linux import rpmfuncs, debfuncs 
+from nepi.util import sshfuncs, execfuncs 
 
 import collections
 import logging
@@ -156,7 +156,7 @@ class LinuxNode(ResourceManager):
 
         # Node needs to wait until all associated interfaces are 
         # ready before it can finalize deployment
-        from neco.resources.linux.interface import LinuxInterface
+        from nepi.resources.linux.interface import LinuxInterface
         ifaces = self.get_connected(LinuxInterface.rtype())
         for iface in ifaces:
             if iface.state < ResourceState.READY:

@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-from neco.execution.ec import ExperimentController 
-from neco.execution.resource import ResourceState, ResourceAction
-from neco.execution.trace import TraceAttr
-from neco.resources.linux.node import LinuxNode
-from neco.resources.linux.application import LinuxApplication
+from nepi.execution.ec import ExperimentController 
+from nepi.execution.resource import ResourceState, ResourceAction
+from nepi.execution.trace import TraceAttr
+from nepi.resources.linux.node import LinuxNode
+from nepi.resources.linux.application import LinuxApplication
 
 from test_utils import skipIfNotAlive
 
@@ -24,7 +24,7 @@ class LinuxApplicationTestCase(unittest.TestCase):
 
     @skipIfNotAlive
     def t_stdout(self, host, user):
-        from neco.execution.resource import ResourceFactory
+        from nepi.execution.resource import ResourceFactory
         
         ResourceFactory.register_type(LinuxNode)
         ResourceFactory.register_type(LinuxApplication)
@@ -56,7 +56,7 @@ class LinuxApplicationTestCase(unittest.TestCase):
 
     @skipIfNotAlive
     def t_ping(self, host, user):
-        from neco.execution.resource import ResourceFactory
+        from nepi.execution.resource import ResourceFactory
         
         ResourceFactory.register_type(LinuxNode)
         ResourceFactory.register_type(LinuxApplication)
@@ -98,7 +98,7 @@ class LinuxApplicationTestCase(unittest.TestCase):
 
     @skipIfNotAlive
     def t_concurrency(self, host, user):
-        from neco.execution.resource import ResourceFactory
+        from nepi.execution.resource import ResourceFactory
         
         ResourceFactory.register_type(LinuxNode)
         ResourceFactory.register_type(LinuxApplication)
@@ -146,7 +146,7 @@ class LinuxApplicationTestCase(unittest.TestCase):
 
     @skipIfNotAlive
     def t_condition(self, host, user, depends):
-        from neco.execution.resource import ResourceFactory
+        from nepi.execution.resource import ResourceFactory
         
         ResourceFactory.register_type(LinuxNode)
         ResourceFactory.register_type(LinuxApplication)
@@ -189,7 +189,7 @@ class LinuxApplicationTestCase(unittest.TestCase):
 
     @skipIfNotAlive
     def t_http_sources(self, host, user):
-        from neco.execution.resource import ResourceFactory
+        from nepi.execution.resource import ResourceFactory
         
         ResourceFactory.register_type(LinuxNode)
         ResourceFactory.register_type(LinuxApplication)
