@@ -4,11 +4,11 @@ import ssl
 import sys
 import time
 import hashlib
-import neco
+import nepi
 import threading
 
-from neco.resources.omf.omf_client import OMFClient
-from neco.resources.omf.omf_messages_5_4 import MessageHandler
+from nepi.resources.omf.omf_client import OMFClient
+from nepi.resources.omf.omf_messages_5_4 import MessageHandler
 
 class OMFAPI(object):
     """
@@ -56,8 +56,8 @@ class OMFAPI(object):
         self._hostnames = []
         self._xmpp_root = xmpp_root or "OMF_5.4"
 
-        self._logger = logging.getLogger("neco.omf.omfApi    ")
-        self._logger.setLevel(neco.LOGLEVEL)
+        self._logger = logging.getLogger("nepi.omf.omfApi    ")
+        self._logger.setLevel(nepi.LOGLEVEL)
 
         # OMF xmpp client
         self._client = None

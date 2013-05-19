@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
-from neco.execution.resource import ResourceManager, clsinit
-from neco.execution.attribute import Attribute, Flags 
-from neco.resources.omf.omf_api import OMFAPIFactory
+from nepi.execution.resource import ResourceManager, clsinit
+from nepi.execution.attribute import Attribute, Flags 
+from nepi.resources.omf.omf_api import OMFAPIFactory
 
-import neco
+import nepi
 import logging
 
 @clsinit
@@ -73,8 +73,8 @@ class OMFApplication(ResourceManager):
 
         self._omf_api = None
 
-        self._logger = logging.getLogger("neco.omf.omfApp    ")
-        self._logger.setLevel(neco.LOGLEVEL)
+        self._logger = logging.getLogger("nepi.omf.omfApp    ")
+        self._logger.setLevel(nepi.LOGLEVEL)
 
 
     def _validate_connection(self, guid):

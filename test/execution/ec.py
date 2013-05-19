@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-from neco.execution.ec import ExperimentController, ECState 
-from neco.execution.scheduler import TaskStatus
+from nepi.execution.ec import ExperimentController, ECState 
+from nepi.execution.scheduler import TaskStatus
 
 import datetime
 import time

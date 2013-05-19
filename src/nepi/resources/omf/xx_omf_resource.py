@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-from neco.execution.resource import ResourceManager, clsinit
-from neco.execution.attribute import Attribute
+from nepi.execution.resource import ResourceManager, clsinit
+from nepi.execution.attribute import Attribute
 
-from neco.resources.omf.omf_api import OMFAPIFactory
+from nepi.resources.omf.omf_api import OMFAPIFactory
 
 @clsinit
 class OMFResource(ResourceManager):

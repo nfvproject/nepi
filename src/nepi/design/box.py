@@ -1,4 +1,4 @@
-from neco.util import guid
+from nepi.util import guid
 
 guid_gen = guid.GuidGenerator()
 

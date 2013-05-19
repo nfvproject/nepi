@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-from neco.design.box import Box 
-from neco.util.parser import XMLParser
+from nepi.design.box import Box 
+from nepi.util.parser import XMLParser
 
 import unittest
 

@@ -1,5 +1,5 @@
-from neco.util.timefuncs import strfnow, strfdiff, strfvalid
-from neco.execution.trace import TraceAttr
+from nepi.util.timefuncs import strfnow, strfdiff, strfvalid
+from nepi.execution.trace import TraceAttr
 
 import copy
 import functools
@@ -572,8 +572,8 @@ def find_types():
     search_path = os.environ.get("NEPI_SEARCH_PATH", "")
     search_path = set(search_path.split(" "))
    
-    import neco.resources 
-    path = os.path.dirname(neco.resources.__file__)
+    import nepi.resources 
+    path = os.path.dirname(nepi.resources.__file__)
     search_path.add(path)
 
     types = []

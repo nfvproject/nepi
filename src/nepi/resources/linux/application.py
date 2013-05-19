@@ -1,9 +1,9 @@
-from neco.execution.attribute import Attribute, Flags, Types
-from neco.execution.trace import Trace, TraceAttr
-from neco.execution.resource import ResourceManager, clsinit, ResourceState
-from neco.resources.linux.node import LinuxNode
-from neco.util import sshfuncs 
-from neco.util.timefuncs import strfnow, strfdiff
+from nepi.execution.attribute import Attribute, Flags, Types
+from nepi.execution.trace import Trace, TraceAttr
+from nepi.execution.resource import ResourceManager, clsinit, ResourceState
+from nepi.resources.linux.node import LinuxNode
+from nepi.util import sshfuncs 
+from nepi.util.timefuncs import strfnow, strfdiff
 
 import logging
 import os

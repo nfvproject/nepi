@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-from neco.design.box import Box 
-from neco.util.plot import Plotter
+from nepi.design.box import Box 
+from nepi.util.plot import Plotter
 
 import subprocess
 import unittest

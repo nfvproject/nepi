@@ -1,6 +1,6 @@
-from neco.execution.attribute import Attribute, Flags
-from neco.execution.resource import ResourceManager, clsinit, ResourceState
-from neco.resources.linux.node import LinuxNode
+from nepi.execution.attribute import Attribute, Flags
+from nepi.execution.resource import ResourceManager, clsinit, ResourceState
+from nepi.resources.linux.node import LinuxNode
 
 import collections
 import logging

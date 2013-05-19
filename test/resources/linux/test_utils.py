@@ -1,4 +1,4 @@
-from neco.resources.linux.node import LinuxNode
+from nepi.resources.linux.node import LinuxNode
 
 import os
 

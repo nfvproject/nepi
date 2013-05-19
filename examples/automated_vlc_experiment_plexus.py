@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-from neco.execution.resource import ResourceFactory, ResourceAction, ResourceState
-from neco.execution.ec import ExperimentController
+from nepi.execution.resource import ResourceFactory, ResourceAction, ResourceState
+from nepi.execution.ec import ExperimentController
 
-from neco.resources.omf.omf_node import OMFNode
-from neco.resources.omf.omf_application import OMFApplication
-from neco.resources.omf.omf_interface import OMFWifiInterface
-from neco.resources.omf.omf_channel import OMFChannel
+from nepi.resources.omf.omf_node import OMFNode
+from nepi.resources.omf.omf_application import OMFApplication
+from nepi.resources.omf.omf_interface import OMFWifiInterface
+from nepi.resources.omf.omf_channel import OMFChannel
 
 import logging
 import time

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-from neco.execution.ec import ExperimentController, ECState 
-from neco.execution.resource import ResourceState, ResourceAction, \
+from nepi.execution.ec import ExperimentController, ECState 
+from nepi.execution.resource import ResourceState, ResourceAction, \
         populate_factory
 
 from optparse import OptionParser, SUPPRESS_HELP

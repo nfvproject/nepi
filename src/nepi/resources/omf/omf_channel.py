@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-from neco.execution.resource import ResourceManager, clsinit
-from neco.execution.attribute import Attribute, Flags 
+from nepi.execution.resource import ResourceManager, clsinit
+from nepi.execution.attribute import Attribute, Flags 
 
-from neco.resources.omf.omf_api import OMFAPIFactory
+from nepi.resources.omf.omf_api import OMFAPIFactory
 
-import neco
+import nepi
 import logging
 
 @clsinit
@@ -60,8 +60,8 @@ class OMFChannel(ResourceManager):
 
         self._omf_api = None
 
-        self._logger = logging.getLogger("neco.omf.omfChannel")
-        self._logger.setLevel(neco.LOGLEVEL)
+        self._logger = logging.getLogger("nepi.omf.omfChannel")
+        self._logger.setLevel(nepi.LOGLEVEL)
 
     def _validate_connection(self, guid):
         """Check if the connection is available.

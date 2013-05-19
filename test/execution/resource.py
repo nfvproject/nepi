@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-from neco.execution.attribute import Attribute
-from neco.execution.ec import ExperimentController 
-from neco.execution.resource import ResourceManager, ResourceState, clsinit
+from nepi.execution.attribute import Attribute
+from nepi.execution.ec import ExperimentController 
+from nepi.execution.resource import ResourceManager, ResourceState, clsinit
 
 import time
 import unittest
@@ -27,7 +27,7 @@ class AnotherResource(ResourceManager):
      
 class ResourceFactoryTestCase(unittest.TestCase):
     def test_add_resource_factory(self):
-        from neco.execution.resource import ResourceFactory
+        from nepi.execution.resource import ResourceFactory
 
         ResourceFactory.register_type(MyResource)
         ResourceFactory.register_type(AnotherResource)
@@ -123,7 +123,7 @@ class ResourceManagerTestCase(unittest.TestCase):
          - The channel doesn't wait for any other resource to be ready
 
         """
-        from neco.execution.resource import ResourceFactory
+        from nepi.execution.resource import ResourceFactory
         
         ResourceFactory.register_type(Application)
         ResourceFactory.register_type(Node)
