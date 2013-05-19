@@ -413,6 +413,7 @@ class LinuxNode(ResourceManager):
 
         out = err = ""
         try:
+            # TODO: FIX NOT ALIVE!!!!
             (out, err), proc = self.execute("echo 'ALIVE' || (echo 'NOTALIVE') >&2", retry = 5, 
                     with_lock = True)
         except:

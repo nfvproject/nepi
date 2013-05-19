@@ -55,6 +55,7 @@ def add_ccnd(ec, os_type, peers):
 
     env = "PATH=$PATH:${EXP_HOME}/ccnx/bin"
 
+    # BASH command -> ' ccndstart 2>&1 ; ccndc add ccnx:/ udp  host ;  ccnr 2>&1 '
     command = "ccndstart 2>&1 ; "
     peers = map(lambda peer: "ccndc add ccnx:/ udp  %s" % peer, peers)
     command += " ; ".join(peers) + " ; "

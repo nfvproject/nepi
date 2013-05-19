@@ -273,7 +273,7 @@ class ExperimentController(object):
                 rm.deploy()
                 rm.start_with_conditions()
 
-                # Only if the RM has STOP consitions we
+                # Only if the RM has STOP conditions we
                 # schedule a stop. Otherwise the RM will stop immediately
                 if rm.conditions.get(ResourceAction.STOP):
                     rm.stop_with_conditions()

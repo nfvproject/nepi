@@ -569,7 +569,7 @@ def populate_factory():
         ResourceFactory.register_type(rclass)
 
 def find_types():
-    search_path = os.environ.get("NECO_SEARCH_PATH", "")
+    search_path = os.environ.get("NEPI_SEARCH_PATH", "")
     search_path = set(search_path.split(" "))
    
     import neco.resources 
