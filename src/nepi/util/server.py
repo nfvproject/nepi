@@ -662,11 +662,6 @@ def popen_ssh_command(command, host, port, user, agent,
                 if err.strip().startswith('ssh: ') or err.strip().startswith('mux_client_hello_exchange: '):
                     # SSH error, can safely retry
                     continue
-                elif :
-                    ControlSocket /tmp/nepi_ssh-inria_alina@planetlab04.cnds.unibe.ch:22 already exists, disabling multiplexing
-                    # SSH error, can safely retry (but need to delete controlpath file)
-                    # TODO: delete file
-                    continue
                 elif retry:
                     # Probably timed out or plain failed but can retry
                     continue

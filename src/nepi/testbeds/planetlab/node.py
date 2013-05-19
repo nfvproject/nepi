@@ -619,9 +619,7 @@ class Node(object):
         for cmd in cmds:
             (out,err),proc = server.popen_ssh_command(
                 # Some apps need two kills
-                cmd % {
-                    'slicename' : self.slicename ,
-                },
+                cmd,
                 host = self.hostip,
                 port = None,
                 user = self.slicename,
@@ -820,8 +818,9 @@ class Node(object):
 
     def check_bad_host(self, out, err):
         badre = re.compile(r'(?:'
-                           r"curl: [(]\d+[)] Couldn't resolve host 'download1[.]rpmfusion[.]org'"
+                           #r"curl: [(]\d+[)] Couldn't resolve host 'download1[.]rpmfusion[.]org'"
                            r'|Error: disk I/O error'
                            r')', 
                            re.I)
         return badre.search(out) or badre.search(err)
+
