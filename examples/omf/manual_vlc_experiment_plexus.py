@@ -1,11 +1,30 @@
+"""
+    NEPI, a framework to manage network experiments
+    Copyright (C) 2013 INRIA
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+"""
+
 #!/usr/bin/env python
 from nepi.execution.resource import ResourceFactory
 from nepi.execution.ec import ExperimentController
 
-from nepi.resources.omf.omf_node import OMFNode
-from nepi.resources.omf.omf_application import OMFApplication
-from nepi.resources.omf.omf_interface import OMFWifiInterface
-from nepi.resources.omf.omf_channel import OMFChannel
+from nepi.resources.omf.node import OMFNode
+from nepi.resources.omf.application import OMFApplication
+from nepi.resources.omf.interface import OMFWifiInterface
+from nepi.resources.omf.channel import OMFChannel
 
 import logging
 import time

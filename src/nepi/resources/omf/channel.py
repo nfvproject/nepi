@@ -1,4 +1,22 @@
-#!/usr/bin/env python
+"""
+    NEPI, a framework to manage network experiments
+    Copyright (C) 2013 INRIA
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+"""
+
 from nepi.execution.resource import ResourceManager, clsinit
 from nepi.execution.attribute import Attribute, Flags 
 
@@ -8,7 +26,7 @@ import nepi
 import logging
 
 @clsinit
-class OMFWifiInterface(ResourceManager):
+class OMFChannel(ResourceManager):
     """
     .. class:: Class Args :
       
@@ -24,35 +42,25 @@ class OMFWifiInterface(ResourceManager):
        This class is used only by the Experiment Controller through the Resource Factory
 
     """
-    _rtype = "OMFWifiInterface"
-    _authorized_connections = ["OMFNode" , "OMFChannel"]
-    _waiters = ["OMFNode"]
+    _rtype = "OMFChannel"
+    _authorized_connections = ["OMFWifiInterface", "OMFNode"]
+    _waiters = ["OMFNode", "OMFWifiInterface"]
 
-    #alias2name = dict({'w0':'wlan0', 'w1':'wlan1'})
 
     @classmethod
     def _register_attributes(cls):
-        """Register the attributes of an OMF interface 
-
+        """Register the attributes of an OMF channel
         """
-        alias = Attribute("alias","Alias of the interface", default = "w0")
-        mode = Attribute("mode","Mode of the interface")
-        type = Attribute("type","Type of the interface")
-        essid = Attribute("essid","Essid of the interface")
-        ip = Attribute("ip","IP of the interface")
+        channel = Attribute("channel", "Name of the application")
         xmppSlice = Attribute("xmppSlice","Name of the slice", flags = Flags.Credential)
         xmppHost = Attribute("xmppHost", "Xmpp Server",flags = Flags.Credential)
         xmppPort = Attribute("xmppPort", "Xmpp Port",flags = Flags.Credential)
         xmppPassword = Attribute("xmppPassword", "Xmpp Port",flags = Flags.Credential)
-        cls._register_attribute(alias)
+        cls._register_attribute(channel)
         cls._register_attribute(xmppSlice)
         cls._register_attribute(xmppHost)
         cls._register_attribute(xmppPort)
         cls._register_attribute(xmppPassword)
-        cls._register_attribute(mode)
-        cls._register_attribute(type)
-        cls._register_attribute(essid)
-        cls._register_attribute(ip)
 
     def __init__(self, ec, guid):
         """
@@ -64,16 +72,17 @@ class OMFWifiInterface(ResourceManager):
         :type creds: dict
 
         """
-        super(OMFWifiInterface, self).__init__(ec, guid)
+        super(OMFChannel, self).__init__(ec, guid)
+
+        self._nodes_guid = list()
 
         self._omf_api = None
-        self._alias = self.get('alias')
 
-        self._logger = logging.getLogger("nepi.omf.omfIface  ")
+        self._logger = logging.getLogger("nepi.omf.omfChannel")
         self._logger.setLevel(nepi.LOGLEVEL)
 
     def _validate_connection(self, guid):
-        """ Check if the connection is available.
+        """Check if the connection is available.
 
         :param guid: Guid of the current RM
         :type guid: int
@@ -85,23 +94,28 @@ class OMFWifiInterface(ResourceManager):
             self._logger.debug("Connection between %s %s and %s %s accepted" %
                 (self.rtype(), self._guid, rm.rtype(), guid))
             return True
-        self._logger.debug("Connection between %s %s and %s %s refused" % 
-            (self.rtype(), self._guid, rm.rtype(), guid))
+        self._logger.debug("Connection between %s %s and %s %s refused" % (self.rtype(), self._guid, rm.rtype(), guid))
         return False
 
-    def _get_nodes(self, conn_set):
-        """ Get the RM of the node to which the application is connected
+    def _get_target(self, conn_set):
+        """
+        Get the couples (host, interface) that used this channel
 
         :param conn_set: Connections of the current Guid
         :type conn_set: set
-        :rtype: ResourceManager
+        :rtype: list
+        :return: self._nodes_guid
 
         """
         for elt in conn_set:
-            rm = self.ec.get_resource(elt)
-            if rm.rtype() == "OMFNode":
-                return rm
-        return None
+            rm_iface = self.ec.get_resource(elt)
+            for conn in rm_iface.connections:
+                rm_node = self.ec.get_resource(conn)
+                if rm_node.rtype() == "OMFNode":
+                    couple = [rm_node.get('hostname'), rm_iface.get('alias')]
+                    #print couple
+                    self._nodes_guid.append(couple)
+        return self._nodes_guid
 
     def deploy_action(self):
         """Deploy the RM
@@ -110,33 +124,42 @@ class OMFWifiInterface(ResourceManager):
         self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
             self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
 
-        self._logger.debug(" " + self.rtype() + " ( Guid : " + str(self._guid) +") : " +
-            self.get('mode') + " : " + self.get('type') + " : " +
-            self.get('essid') + " : " + self.get('ip'))
-        #try:
-        if self.get('mode') and self.get('type') and self.get('essid') and self.get('ip'):
-            rm_node = self._get_nodes(self._connections)    
-            for attrname in ["mode", "type", "essid", "ip"]:
-                attrval = self.get(attrname)
-                attrname = "net/%s/%s" % (self._alias, attrname)
+        if self.get('channel'):
+            set_nodes = self._get_target(self._connections) 
+            print set_nodes
+            for couple in set_nodes:
+                #print "Couple node/alias : " + couple[0] + "  ,  " + couple[1]
+                attrval = self.get('channel')
+                attrname = "net/%s/%s" % (couple[1], 'channel')
                 #print "Send the configure message"
-                self._omf_api.configure(rm_node.get('hostname'), attrname, attrval)
+                self._omf_api.configure(couple[0], attrname, attrval)
 
-        super(OMFWifiInterface, self).deploy_action()
+        super(OMFChannel, self).deploy_action()
 
+    def discover(self):
+        """ Discover the availables channels
+
+        """
+        pass
+     
+    def provision(self):
+        """ Provision some availables channels
+
+        """
+        pass
 
     def start(self):
-        """Send Xmpp Messages Using OMF protocol to configure Interface
+        """Send Xmpp Message Using OMF protocol to configure Channel
 
         """
 
-        super(OMFWifiInterface, self).start()
+        super(OMFChannel, self).start()
 
     def stop(self):
         """Send Xmpp Message Using OMF protocol to put down the interface
 
         """
-        super(OMFWifiInterface, self).stop()
+        super(OMFChannel, self).stop()
 
     def release(self):
         """Clean the RM at the end of the experiment
@@ -144,5 +167,4 @@ class OMFWifiInterface(ResourceManager):
         """
         OMFAPIFactory.release_api(self.get('xmppSlice'), 
             self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
-
 
