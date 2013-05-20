@@ -1,3 +1,22 @@
+"""
+    NEPI, a framework to manage network experiments
+    Copyright (C) 2013 INRIA
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+"""
+
 #!/usr/bin/env python
 from nepi.execution.ec import ExperimentController, ECState 
 from nepi.execution.resource import ResourceState, ResourceAction, \
@@ -122,7 +141,6 @@ if __name__ == '__main__':
     # Search for available RMs
     populate_factory()
     
-    #host1 = 'nepi2.pl.sophia.inria.fr'
     host1 = 'planetlab2.u-strasbg.fr'
     host2 = 'roseval.pl.sophia.inria.fr'
 
@@ -137,6 +155,7 @@ if __name__ == '__main__':
 
     pub = add_publish(ec, movie)
     ec.register_connection(pub, node1)
+
     # The movie can only be published after ccnd is running
     ec.register_condition(pub, ResourceAction.START, 
             ccnd1, ResourceState.STARTED)
@@ -148,9 +167,11 @@ if __name__ == '__main__':
      
     stream = add_stream(ec)
     ec.register_connection(stream, node2)
+
     # The stream can only be retrieved after ccnd is running
     ec.register_condition(stream, ResourceAction.START, 
             ccnd2, ResourceState.STARTED)
+
     # And also, the stream can only be retrieved after it was published
     ec.register_condition(stream, ResourceAction.START, 
             pub, ResourceState.STARTED)

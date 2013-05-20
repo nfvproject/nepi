@@ -5,10 +5,10 @@ import sys
 setup(
         name        = "nepi",
         version     = "3.0",
-        description = "Network Experiment Controller",
-        author      = "Alina Quereilhac",
-        url         = "",
-        license     = "GPLv2",
+        description = "Network Experiment Management Framework",
+        author      = "Alina Quereilhac, Julien Tribino, Claudio Freire, Martin Ferrari, Lucía Guevgeozian",
+        url         = "http://nepi.inria.fr",
+        license     = "GPLv3",
         platforms   = "Linux",
         packages    = [
             "nepi",

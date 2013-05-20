@@ -1,3 +1,24 @@
+"""
+    NEPI, a framework to manage network experiments
+    Copyright (C) 2013 INRIA
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+"""
+
+"""
+
 class Server(object):
     def __init__(self, root_dir = ".", log_level = "ERROR", 
             environment_setup = "", clean_root = False):
@@ -341,4 +362,4 @@ class Forwarder(object):
             self._ctrl_sock.close()
         except:
             pass
-
+"""
