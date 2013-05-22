@@ -27,7 +27,7 @@ import nepi
 import threading
 
 from nepi.resources.omf.omf_client import OMFClient
-from nepi.resources.omf.omf_messages_5_4 import MessageHandler
+from nepi.resources.omf.messages_5_4 import MessageHandler
 
 class OMFAPI(object):
     """

@@ -335,7 +335,7 @@ class LinuxApplication(ResourceManager):
         else:
             try:
                 command = self.get("command") or ""
-                self.info(" Deploying command '%s' " % command)
+                self.info("Deploying command '%s' " % command)
                 self.discover()
                 self.provision()
             except:

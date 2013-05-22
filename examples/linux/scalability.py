@@ -64,7 +64,7 @@ if __name__ == '__main__':
     apps = []
   
     hostnames = [
-             "planetlab-2.research.netlab.hut.fi",
+             #"planetlab-2.research.netlab.hut.fi",
              "planetlab2.willab.fi",
              "planetlab3.hiit.fi",
              "planetlab4.hiit.fi",
@@ -74,10 +74,10 @@ if __name__ == '__main__':
              "planetlab-1.ida.liu.se",
              "planetlab2.s3.kth.se",
              "planetlab1.sics.se",
-             "planetlab1.tlm.unavarra.es",
-             "planetlab2.uc3m.es",
-             "planetlab1.uc3m.es",
-             "planetlab2.um.es",
+             #"planetlab1.tlm.unavarra.es",
+             #"planetlab2.uc3m.es",
+             #"planetlab1.uc3m.es",
+             #"planetlab2.um.es",
              "planet1.servers.ua.pt",
              "planetlab2.fct.ualg.pt",
              "planetlab-1.tagus.ist.utl.pt",
