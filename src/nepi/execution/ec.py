@@ -29,7 +29,7 @@ from nepi.util import guid
 from nepi.util.parallel import ParallelRun
 from nepi.util.timefuncs import strfnow, strfdiff, strfvalid 
 from nepi.execution.resource import ResourceFactory, ResourceAction, \
-        ResourceState
+        ResourceState, ResourceState2str
 from nepi.execution.scheduler import HeapScheduler, Task, TaskStatus
 from nepi.execution.trace import TraceAttr
 
@@ -126,10 +126,6 @@ class ExperimentController(object):
         rm = self.get_resource(guid)
         return rm.get_attributes()
 
-    def get_filters(self, guid):
-        rm = self.get_resource(guid)
-        return rm.get_filters()
-
     def register_connection(self, guid1, guid2):
         rm1 = self.get_resource(guid1)
         rm2 = self.get_resource(guid2)
@@ -200,13 +196,13 @@ class ExperimentController(object):
         rm = self.get_resource(guid)
         return rm.trace(name, attr, block, offset)
 
-    def discover(self, guid, filters):
+    def discover(self, guid):
         rm = self.get_resource(guid)
-        return rm.discover(filters)
+        return rm.discover()
 
-    def provision(self, guid, filters):
+    def provision(self, guid):
         rm = self.get_resource(guid)
-        return rm.provision(filters)
+        return rm.provision()
 
     def get(self, guid, name):
         rm = self.get_resource(guid)
@@ -216,8 +212,21 @@ class ExperimentController(object):
         rm = self.get_resource(guid)
         return rm.set(name, value)
 
-    def state(self, guid):
+    def state(self, guid, hr = False):
+        """ Returns the state of a resource
+
+            :param guid: Resource guid
+            :type guid: integer
+
+            :param hr: Human readable. Forces return of a 
+                status string instead of a number 
+            :type hr: boolean
+
+        """
         rm = self.get_resource(guid)
+        if hr:
+            return ResourceState2str.get(rm.state)
+
         return rm.state
 
     def stop(self, guid):

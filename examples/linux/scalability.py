@@ -105,7 +105,7 @@ if __name__ == '__main__':
              "planetlab-1.fokus.fraunhofer.de",
              "iraplab2.iralab.uni-karlsruhe.de",
              "planet2.zib.de",
-             "pl2.uni-rostock.de",
+             #"pl2.uni-rostock.de",
              "onelab-1.fhi-fokus.de",
              "planet2.l3s.uni-hannover.de",
              "planetlab1.exp-math.uni-essen.de",

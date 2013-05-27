@@ -103,7 +103,7 @@ class LinuxInterface(ResourceManager):
         if chan: return chan[0]
         return None
 
-    def discover(self, filters = None):
+    def discover(self):
         devname = self.get("deviceName")
         ip4 = self.get("ip4")
         ip6 = self.get("ip4")
@@ -182,9 +182,9 @@ class LinuxInterface(ResourceManager):
             self.error(msg)
             raise RuntimeError, msg
 
-        super(LinuxInterface, self).discover(filters = filters)
+        super(LinuxInterface, self).discover()
 
-    def provision(self, filters = None):
+    def provision(self):
         devname = self.get("deviceName")
         ip4 = self.get("ip4")
         ip6 = self.get("ip4")
@@ -225,7 +225,7 @@ class LinuxInterface(ResourceManager):
                 self.error(msg, out, err)
                 raise RuntimeError, "%s - %s - %s" % (msg, out, err)
 
-        super(LinuxInterface, self).provision(filters = filters)
+        super(LinuxInterface, self).provision()
 
     def deploy(self):
         # Wait until node is provisioned
