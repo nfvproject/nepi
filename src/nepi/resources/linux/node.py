@@ -147,7 +147,7 @@ class LinuxNode(ResourceManager):
     def localhost(self):
         return self.get("hostname") in ['localhost', '127.0.0.7', '::1']
 
-    def provision(self, filters = None):
+    def provision(self):
         if not self.is_alive():
             self._state = ResourceState.FAILED
             msg = "Deploy failed. Unresponsive node %s" % self.get("hostname")
@@ -643,10 +643,4 @@ class LinuxNode(ResourceManager):
                            r')', 
                            re.I)
         return badre.search(out) or badre.search(err)
-
-    def blacklist(self):
-        # TODO!!!!
-        self.warn(" Blacklisting malfunctioning node ")
-        #import util
-        #util.appendBlacklist(self.hostname)
 

@@ -21,7 +21,7 @@
 class Types:
     String  = "STRING"
     Bool    = "BOOL"
-    Enum    = "ENUM"
+    Enumerate    = "ENUM"
     Double  = "DOUBLE"
     Integer = "INTEGER"
 
@@ -35,16 +35,19 @@ class Flags:
     ExecReadOnly        = 0x02
     # Attribute is an access credential
     Credential      = 0x04
+    # Attribute is a filter used to discover resources
+    Filter      = 0x08
 
 class Attribute(object):
     def __init__(self, name, help, type = Types.String,
             flags = Flags.NoFlags, default = None, allowed = None,
-            set_hook = None):
+            range = None, set_hook = None):
         self._name = name
         self._help = help
         self._type = type
         self._flags = flags
         self._allowed = allowed
+        self._range = range
         self._default = self._value = default
         # callback to be invoked upon changing the 
         # attribute value
@@ -74,6 +77,10 @@ class Attribute(object):
     def allowed(self):
         return self._allowed
 
+    @property
+    def range(self):
+        return self._range
+
     def has_flag(self, flag):
         return (self._flags & flag) == flag
 
@@ -83,8 +90,12 @@ class Attribute(object):
     def set_value(self, value):
         valid = True
 
-        if self.type == Types.Enum:
+        if self.type == Types.Enumerate:
             valid = value in self._allowed
+
+        if self.type in [Types.Double, Types.Integer] and self.range:
+            (min, max) = self.range
+            valid = (value >= min and value <= max) 
         
         valid = valid and self.is_valid_value(value)
 

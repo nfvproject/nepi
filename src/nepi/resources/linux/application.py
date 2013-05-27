@@ -195,7 +195,7 @@ class LinuxApplication(ResourceManager):
 
         return out
             
-    def provision(self, filters = None):
+    def provision(self):
         # create home dir for application
         self.node.mkdir(self.app_home)
 

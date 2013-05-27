@@ -55,10 +55,24 @@ class OMFNode(ResourceManager):
         hostname = Attribute("hostname", "Hostname of the machine")
         cpu = Attribute("cpu", "CPU of the node")
         ram = Attribute("ram", "RAM of the node")
-        xmppSlice = Attribute("xmppSlice","Name of the slice", flags = Flags.Credential)
-        xmppHost = Attribute("xmppHost", "Xmpp Server",flags = Flags.Credential)
-        xmppPort = Attribute("xmppPort", "Xmpp Port",flags = Flags.Credential)
-        xmppPassword = Attribute("xmppPassword", "Xmpp Port",flags = Flags.Credential)
+        xmppSlice = Attribute("xmppSlice","Name of the slice",
+                flags = Flags.Credential)
+        xmppHost = Attribute("xmppHost", "Xmpp Server",
+                flags = Flags.Credential)
+        xmppPort = Attribute("xmppPort", "Xmpp Port",
+                flags = Flags.Credential)
+        xmppPassword = Attribute("xmppPassword", "Xmpp Port",
+                flags = Flags.Credential)
+
+        host = Attribute("host", "Hostname of the machine",
+                flags = Flags.Filter)
+        gateway = Attribute("gateway", "Gateway",
+                flags = Flags.Filter)
+        granularity = Attribute("granularity", "Granularity of the reservation time",
+                flags = Flags.Filter)
+        hardware_type = Attribute("hardware_type", "Hardware type of the machine",
+                flags = Flags.Filter)
+
         cls._register_attribute(hostname)
         cls._register_attribute(ram)
         cls._register_attribute(cpu)
@@ -67,19 +81,10 @@ class OMFNode(ResourceManager):
         cls._register_attribute(xmppPort)
         cls._register_attribute(xmppPassword)
 
-    @classmethod
-    def _register_filters(cls):
-        """Register the filters of an OMF Node
-
-        """
-        hostname = Attribute("hostname", "Hostname of the machine")
-        gateway = Attribute("gateway", "Gateway")
-        granularity = Attribute("granularity", "Granularity of the reservation time")
-        hardware_type = Attribute("hardware_type", "Hardware type of the machine")
-        cls._register_filter(hostname)
-        cls._register_filter(gateway)
-        cls._register_filter(granularity)
-        cls._register_filter(hardware_type)
+        cls._register_attribute(host)
+        cls._register_attribute(gateway)
+        cls._register_attribute(granularity)
+        cls._register_attribute(hardware_type)
 
     # XXX: We don't necessary need to have the credentials at the 
     # moment we create the RM

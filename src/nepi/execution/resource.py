@@ -46,25 +46,39 @@ class ResourceState:
     FAILED = 7
     RELEASED = 8
 
+ResourceState2str = dict({
+    NEW = "NEW",
+    DISCOVERED = "DISCOVERED",
+    PROVISIONED = "PROVISIONED",
+    READY = "READY",
+    STARTED = "STARTED",
+    STOPPED = "STOPPED",
+    FINISHED = "FINISHED",
+    FAILED = "FAILED",
+    RELEASED = "RELEASED",
+    })
+
 def clsinit(cls):
+    """ Initializes template information (i.e. attributes and traces)
+    for the ResourceManager class
+    """
     cls._clsinit()
+    return cls
+
+def clsinit_copy(cls):
+    """ Initializes template information (i.e. attributes and traces)
+    for the ResourceManager class, inheriting attributes and traces
+    from the parent class
+    """
+    cls._clsinit_copy()
     return cls
 
 # Decorator to invoke class initialization method
 @clsinit
 class ResourceManager(object):
     _rtype = "Resource"
-    _filters = None
     _attributes = None
     _traces = None
-
-    @classmethod
-    def _register_filter(cls, attr):
-        """ Resource subclasses will invoke this method to add a 
-        filter attribute
-
-        """
-        cls._filters[attr.name] = attr
 
     @classmethod
     def _register_attribute(cls, attr):
@@ -75,6 +89,14 @@ class ResourceManager(object):
         cls._attributes[attr.name] = attr
 
     @classmethod
+    def _remove_attribute(cls, name):
+        """ Resource subclasses will invoke this method to remove a 
+        resource attribute
+
+        """
+        del cls._attributes[name]
+
+    @classmethod
     def _register_trace(cls, trace):
         """ Resource subclasses will invoke this method to add a 
         resource trace
@@ -82,14 +104,13 @@ class ResourceManager(object):
         """
         cls._traces[trace.name] = trace
 
-
     @classmethod
-    def _register_filters(cls):
-        """ Resource subclasses will invoke this method to register 
-        resource filters
+    def _remove_trace(cls, name):
+        """ Resource subclasses will invoke this method to remove a 
+        resource trace
 
         """
-        pass
+        del cls._traces[name]
 
     @classmethod
     def _register_attributes(cls):
@@ -109,16 +130,14 @@ class ResourceManager(object):
 
     @classmethod
     def _clsinit(cls):
-        """ Create a new dictionnary instance of the dictionnary 
-        with the same template.
- 
-        Each ressource should have the same registration dictionary
-        template with different instances.
+        """ ResourceManager child classes have different attributes and traces.
+        Since the templates that hold the information of attributes and traces
+        are 'class attribute' dictionaries, initially they all point to the 
+        parent class ResourceManager instances of those dictionaries. 
+        In order to make these templates independent from the parent's one,
+        it is necessary re-initialize the corresponding dictionaries. 
+        This is the objective of the _clsinit method
         """
-        # static template for resource filters
-        cls._filters = dict()
-        cls._register_filters()
-
         # static template for resource attributes
         cls._attributes = dict()
         cls._register_attributes()
@@ -128,15 +147,21 @@ class ResourceManager(object):
         cls._register_traces()
 
     @classmethod
-    def rtype(cls):
-        return cls._rtype
+    def _clsinit_copy(cls):
+        """ Same as _clsinit, except that it also inherits all attributes and traces
+        from the parent class.
+        """
+        # static template for resource attributes
+        cls._attributes = copy.deepcopy(cls._attributes)
+        cls._register_attributes()
+
+        # static template for resource traces
+        cls._traces = copy.deepcopy(cls._traces)
+        cls._register_traces()
 
     @classmethod
-    def get_filters(cls):
-        """ Returns a copy of the filters
-
-        """
-        return copy.deepcopy(cls._filters.values())
+    def rtype(cls):
+        return cls._rtype
 
     @classmethod
     def get_attributes(cls):
@@ -260,11 +285,11 @@ class ResourceManager(object):
         if self.valid_connection(guid):
             self._connections.add(guid)
 
-    def discover(self, filters = None):
+    def discover(self):
         self._discover_time = strfnow()
         self._state = ResourceState.DISCOVERED
 
-    def provision(self, filters = None):
+    def provision(self):
         self._provision_time = strfnow()
         self._state = ResourceState.PROVISIONED
 
