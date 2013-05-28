@@ -21,9 +21,6 @@ from nepi.execution.resource import ResourceManager, clsinit
 from nepi.execution.attribute import Attribute, Flags 
 from nepi.resources.omf.omf_api import OMFAPIFactory
 
-import nepi
-import logging
-
 @clsinit
 class OMFApplication(ResourceManager):
     """
@@ -90,10 +87,6 @@ class OMFApplication(ResourceManager):
 
         self._omf_api = None
 
-        self._logger = logging.getLogger("nepi.omf.omfApp    ")
-        self._logger.setLevel(nepi.LOGLEVEL)
-
-
     def _validate_connection(self, guid):
         """Check if the connection is available.
 
@@ -104,13 +97,16 @@ class OMFApplication(ResourceManager):
         """
         rm = self.ec.get_resource(guid)
         if rm.rtype() not in self._authorized_connections:
-            self._logger.debug("Connection between %s %s and %s %s refused : An Application can be connected only to a Node" % (self.rtype(), self._guid, rm.rtype(), guid))
+            msg = "Connection between %s %s and %s %s refused : An Application can be connected only to a Node" % (self.rtype(), self._guid, rm.rtype(), guid)
+            self._logger.debug(msg)
             return False
         elif len(self.connections) != 0 :
-            self._logger.debug("Connection between %s %s and %s %s refused : Already Connected" % (self.rtype(), self._guid, rm.rtype(), guid))
+            msg = "Connection between %s %s and %s %s refused : Already Connected" % (self.rtype(), self._guid, rm.rtype(), guid)
+            self._logger.debug(msg)
             return False
         else :
-            self._logger.debug("Connection between %s %s and %s %s accepted" % (self.rtype(), self._guid, rm.rtype(), guid))
+            msg = "Connection between %s %s and %s %s accepted" % (self.rtype(), self._guid, rm.rtype(), guid)
+            self._logger.debug(msg)
             return True
 
     def _get_nodes(self, conn_set):
@@ -127,20 +123,21 @@ class OMFApplication(ResourceManager):
                 return rm
         return None
 
-    def deploy_action(self):
+    def deploy(self):
         """Deploy the RM
 
         """
         self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
             self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
-        super(OMFApplication, self).deploy_action()
+        super(OMFApplication, self).deploy()
 
     def start(self):
         """Send Xmpp Message Using OMF protocol to execute the application
 
         """
         super(OMFApplication, self).start()
-        self._logger.debug(" " + self.rtype() + " ( Guid : " + str(self._guid) +") : " + self.get('appid') + " : " + self.get('path') + " : " + self.get('args') + " : " + self.get('env'))
+        msg = " " + self.rtype() + " ( Guid : " + str(self._guid) +") : " + self.get('appid') + " : " + self.get('path') + " : " + self.get('args') + " : " + self.get('env')
+        self.debug(msg)
 
         if self.get('appid') and self.get('path') and self.get('args') and self.get('env'):
             rm_node = self._get_nodes(self._connections)

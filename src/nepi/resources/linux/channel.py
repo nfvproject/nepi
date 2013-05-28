@@ -19,16 +19,6 @@
 
 from nepi.execution.attribute import Attribute, Flags
 from nepi.execution.resource import ResourceManager, clsinit, ResourceState
-from nepi.resources.linux.node import LinuxNode
-
-import collections
-import logging
-import os
-import random
-import re
-import tempfile
-import time
-import threading
 
 @clsinit
 class LinuxChannel(ResourceManager):
@@ -36,7 +26,6 @@ class LinuxChannel(ResourceManager):
 
     def __init__(self, ec, guid):
         super(LinuxChannel, self).__init__(ec, guid)
-        self._logger = logging.getLogger("LinuxChannel")
 
     def log_message(self, msg):
         return " guid %d - %s " % (self.guid, msg)

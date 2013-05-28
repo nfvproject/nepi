@@ -23,7 +23,6 @@ from nepi.resources.linux.node import LinuxNode
 from nepi.resources.linux.channel import LinuxChannel
 
 import collections
-import logging
 import os
 import random
 import re
@@ -82,8 +81,6 @@ class LinuxInterface(ResourceManager):
     def __init__(self, ec, guid):
         super(LinuxInterface, self).__init__(ec, guid)
         self._configured = False
-
-        self._logger = logging.getLogger("LinuxInterface")
         
         self.add_set_hooks()
 

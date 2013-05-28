@@ -18,12 +18,12 @@
 """
 
 from nepi.util.timefuncs import strfnow, strfdiff, strfvalid
+from nepi.util.logger import Logger
 from nepi.execution.trace import TraceAttr
 
 import copy
 import functools
 import inspect
-import logging
 import os
 import pkgutil
 import weakref
@@ -47,15 +47,15 @@ class ResourceState:
     RELEASED = 8
 
 ResourceState2str = dict({
-    NEW = "NEW",
-    DISCOVERED = "DISCOVERED",
-    PROVISIONED = "PROVISIONED",
-    READY = "READY",
-    STARTED = "STARTED",
-    STOPPED = "STOPPED",
-    FINISHED = "FINISHED",
-    FAILED = "FAILED",
-    RELEASED = "RELEASED",
+    ResourceState.NEW : "NEW",
+    ResourceState.DISCOVERED : "DISCOVERED",
+    ResourceState.PROVISIONED : "PROVISIONED",
+    ResourceState.READY : "READY",
+    ResourceState.STARTED : "STARTED",
+    ResourceState.STOPPED : "STOPPED",
+    ResourceState.FINISHED : "FINISHED",
+    ResourceState.FAILED : "FAILED",
+    ResourceState.RELEASED : "RELEASED",
     })
 
 def clsinit(cls):
@@ -75,7 +75,7 @@ def clsinit_copy(cls):
 
 # Decorator to invoke class initialization method
 @clsinit
-class ResourceManager(object):
+class ResourceManager(Logger):
     _rtype = "Resource"
     _attributes = None
     _traces = None
@@ -178,6 +178,8 @@ class ResourceManager(object):
         return copy.deepcopy(cls._traces.values())
 
     def __init__(self, ec, guid):
+        super(ResourceManager, self).__init__(self.rtype())
+        
         self._guid = guid
         self._ec = weakref.ref(ec)
         self._connections = set()
@@ -197,39 +199,6 @@ class ResourceManager(object):
         self._provision_time = None
         self._ready_time = None
         self._release_time = None
-
-        # Logging
-        self._logger = logging.getLogger("Resource")
-
-    def debug(self, msg, out = None, err = None):
-        self.log(msg, logging.DEBUG, out, err)
-
-    def error(self, msg, out = None, err = None):
-        self.log(msg, logging.ERROR, out, err)
-
-    def warn(self, msg, out = None, err = None):
-        self.log(msg, logging.WARNING, out, err)
-
-    def info(self, msg, out = None, err = None):
-        self.log(msg, logging.INFO, out, err)
-
-    def log(self, msg, level, out = None, err = None):
-        if out:
-            msg += " - OUT: %s " % out
-
-        if err:
-            msg += " - ERROR: %s " % err
-
-        msg = self.log_message(msg)
-
-        self.logger.log(level, msg)
-
-    def log_message(self, msg):
-        return " %s guid: %d - %s " % (self._rtype, self.guid, msg)
-
-    @property
-    def logger(self):
-        return self._logger
 
     @property
     def guid(self):
@@ -280,6 +249,9 @@ class ResourceManager(object):
     @property
     def state(self):
         return self._state
+
+    def log_message(self, msg):
+        return " %s guid: %d - %s " % (self._rtype, self.guid, msg)
 
     def connect(self, guid):
         if self.valid_connection(guid):

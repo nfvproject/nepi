@@ -24,7 +24,6 @@ from nepi.resources.linux.node import LinuxNode
 from nepi.util import sshfuncs 
 from nepi.util.timefuncs import strfnow, strfdiff
 
-import logging
 import os
 
 reschedule_delay = "0.5s"
@@ -119,8 +118,6 @@ class LinuxApplication(ResourceManager):
 
         # timestamp of last state check of the application
         self._last_state_check = strfnow()
-
-        self._logger = logging.getLogger("LinuxApplication")
     
     def log_message(self, msg):
         return " guid %d - host %s - %s " % (self.guid, 
