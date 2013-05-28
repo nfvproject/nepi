@@ -18,18 +18,18 @@
 """
 
 import datetime
-import logging
 import ssl
 import sys
 import time
 import hashlib
-import nepi
 import threading
+
+from nepi.util.logger import Logger
 
 from nepi.resources.omf.omf_client import OMFClient
 from nepi.resources.omf.messages_5_4 import MessageHandler
 
-class OMFAPI(object):
+class OMFAPI(Logger):
     """
     .. class:: Class Args :
       
@@ -64,6 +64,8 @@ class OMFAPI(object):
         :type xmpp_root: Str
 
         """
+        super(OMFAPI, self).__init__("OMFAPI")
+        
         date = datetime.datetime.now().strftime("%Y-%m-%dt%H.%M.%S")
         tz = -time.altzone if time.daylight != 0 else -time.timezone
         date += "%+06.2f" % (tz / 3600) # timezone difference is in seconds
@@ -74,9 +76,6 @@ class OMFAPI(object):
         self._password = password
         self._hostnames = []
         self._xmpp_root = xmpp_root or "OMF_5.4"
-
-        self._logger = logging.getLogger("nepi.omf.omfApi    ")
-        self._logger.setLevel(nepi.LOGLEVEL)
 
         # OMF xmpp client
         self._client = None
@@ -114,7 +113,7 @@ class OMFAPI(object):
             self._message = MessageHandler(self._slice, self._user)
         else:
             msg = "Unable to connect to the XMPP server."
-            self._logger.error(msg)
+            self.error(msg)
             raise RuntimeError(msg)
 
     def _enroll_experiment(self):
@@ -286,7 +285,8 @@ class OMFAPI(object):
         
         # Wait the send queue to be empty before disconnect
         self._client.disconnect(wait=True)
-        self._logger.debug(" Disconnected from XMPP Server")
+        msg = " Disconnected from XMPP Server"
+        self.debug(msg)
 
 
 class OMFAPIFactory(object):

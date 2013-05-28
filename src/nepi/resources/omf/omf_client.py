@@ -17,16 +17,15 @@
 
 """
 
-import logging
+from nepi.util.logger import Logger
+
 import sleekxmpp
 from sleekxmpp.exceptions import IqError, IqTimeout
 import traceback
 import xml.etree.ElementTree as ET
 
-import nepi
-
 # inherit from BaseXmpp and XMLStream classes
-class OMFClient(sleekxmpp.ClientXMPP): 
+class OMFClient(sleekxmpp.ClientXMPP, Logger): 
     """
     .. class:: Class Args :
       
@@ -51,6 +50,8 @@ class OMFClient(sleekxmpp.ClientXMPP):
 
 
         """
+        Logger.__init__(self, "OMFClient")
+
         sleekxmpp.ClientXMPP.__init__(self, jid, password)
         self._ready = False
         self._registered = False
@@ -65,9 +66,6 @@ class OMFClient(sleekxmpp.ClientXMPP):
         self.add_event_handler("register", self.register)
         self.add_event_handler("pubsub_publish", self.handle_omf_message)
         
-        self._logger = logging.getLogger("nepi.omf.xmppClient")
-        self._logger.setLevel(nepi.LOGLEVEL)
-
     @property
     def ready(self):
         """ Check if the client is ready
@@ -88,7 +86,8 @@ class OMFClient(sleekxmpp.ClientXMPP):
 
         """
         if self._registered:
-            self._logger.info(" %s already registered!" % self.boundjid)
+            msg = " %s already registered!" % self.boundjid
+            self.info(msg)
             return 
 
         resp = self.Iq()
@@ -98,13 +97,15 @@ class OMFClient(sleekxmpp.ClientXMPP):
 
         try:
             resp.send(now=True)
-            self._logger.info(" Account created for %s!" % self.boundjid)
+            msg = " Account created for %s!" % self.boundjid
+            self.info(msg)
             self._registered = True
         except IqError as e:
-            self._logger.error(" Could not register account: %s" %
-                    e.iq['error']['text'])
+            msg = " Could not register account: %s" % e.iq['error']['text']
+            selferror(msg)
         except IqTimeout:
-            self._logger.error(" No response from server.")
+            msg = " No response from server."
+            self.error(msg)
 
     def unregister(self):
         """  Unregister from the Xmppp Server.
@@ -113,12 +114,14 @@ class OMFClient(sleekxmpp.ClientXMPP):
         try:
             self.plugin['xep_0077'].cancel_registration(
                 ifrom=self.boundjid.full)
-            self._logger.info(" Account unregistered for %s!" % self.boundjid)
+            msg = " Account unregistered for %s!" % self.boundjid
+            self.info(msg)
         except IqError as e:
-            self._logger.error(" Could not unregister account: %s" %
-                    e.iq['error']['text'])
+            msg = " Could not unregister account: %s" % e.iq['error']['text']
+            self.error(msg)
         except IqTimeout:
-            self._logger.error(" No response from server.")
+            msg = " No response from server."
+            self.error(msg)
 
     def nodes(self):
         """  Get all the nodes of the Xmppp Server.
@@ -127,11 +130,13 @@ class OMFClient(sleekxmpp.ClientXMPP):
         try:
             result = self['xep_0060'].get_nodes(self._server)
             for item in result['disco_items']['items']:
-                self._logger.info(' - %s' % str(item))
+                msg = ' - %s' % str(item)
+                self.info(msg)
             return result
         except:
             error = traceback.format_exc()
-            self._logger.error(' Could not retrieve node list.\ntraceback:\n%s', error)
+            msg = 'Could not retrieve node list.\ntraceback:\n%s' % error
+            self.error(msg)
 
     def subscriptions(self):
         """  Get all the subscriptions of the Xmppp Server.
@@ -141,11 +146,13 @@ class OMFClient(sleekxmpp.ClientXMPP):
             result = self['xep_0060'].get_subscriptions(self._server)
                 #self.boundjid.full)
             for node in result['node']:
-                self._logger.info(' - %s' % str(node))
+                msg = ' - %s' % str(node)
+                self.info(msg)
             return result
         except:
             error = traceback.format_exc()
-            self._logger.error(' Could not retrieve subscriptions.\ntraceback:\n%s', error)
+            msg = ' Could not retrieve subscriptions.\ntraceback:\n%s' % error
+            self.error(msg)
 
     def create(self, node):
         """  Create the topic corresponding to the node
@@ -154,7 +161,7 @@ class OMFClient(sleekxmpp.ClientXMPP):
         :type node: str
 
         """
-        self._logger.debug(" Create Topic : " + node)
+        self.debug(" Create Topic : " + node)
    
         config = self['xep_0004'].makeForm('submit')
         config.add_field(var='pubsub#node_type', value='leaf')
@@ -168,7 +175,8 @@ class OMFClient(sleekxmpp.ClientXMPP):
             self['xep_0060'].create_node(self._server, node, config = config)
         except:
             error = traceback.format_exc()
-            self._logger.error(' Could not create topic: %s\ntraceback:\n%s' % (node, error))
+            msg = ' Could not create topic: %s\ntraceback:\n%s' % (node, error)
+            self.error(msg)
 
     def delete(self, node):
         """  Delete the topic corresponding to the node
@@ -182,10 +190,12 @@ class OMFClient(sleekxmpp.ClientXMPP):
         #print " length of the queue : " + str(self.event_queue.qsize())
         try:
             self['xep_0060'].delete_node(self._server, node)
-            self._logger.info(' Deleted node: %s' % node)
+            msg = ' Deleted node: %s' % node
+            self.info(msg)
         except:
             error = traceback.format_exc()
-            self._logger.error(' Could not delete topic: %s\ntraceback:\n%s' % (node, error))
+            msg = ' Could not delete topic: %s\ntraceback:\n%s' % (node, error)
+            self.error(msg)
     
     def publish(self, data, node):
         """  Publish the data to the corresponding topic
@@ -197,15 +207,16 @@ class OMFClient(sleekxmpp.ClientXMPP):
 
         """ 
 
-        self._logger.debug(" Publish to Topic : " + node)
+        msg = " Publish to Topic : " + node
+        self.debug(msg)
         try:
             result = self['xep_0060'].publish(self._server,node,payload=data)
             # id = result['pubsub']['publish']['item']['id']
             # print('Published at item id: %s' % id)
         except:
             error = traceback.format_exc()
-            self._logger.error(' Could not publish to: %s\ntraceback:\n%s' \
-                    % (node, error))
+            msg = ' Could not publish to: %s\ntraceback:\n%s' % (node, error)
+            self.error(msg)
 
     def get(self, data):
         """  Get the item
@@ -219,12 +230,13 @@ class OMFClient(sleekxmpp.ClientXMPP):
             result = self['xep_0060'].get_item(self._server, self.boundjid,
                 data)
             for item in result['pubsub']['items']['substanzas']:
-                self._logger.info('Retrieved item %s: %s' % (item['id'], 
-                    tostring(item['payload'])))
+                msg = 'Retrieved item %s: %s' % (item['id'], tostring(item['payload']))
+                self.info(msg)
         except:
             error = traceback.format_exc()
-            self._logger.error(' Could not retrieve item %s from topic %s\ntraceback:\n%s' \
-                    % (data, self.boundjid, error))
+            msg = ' Could not retrieve item %s from topic %s\ntraceback:\n%s' \
+                    % (data, self.boundjid, error)
+            self.error(msg)
 
     def retract(self, data):
         """  Retract the item
@@ -235,11 +247,13 @@ class OMFClient(sleekxmpp.ClientXMPP):
         """
         try:
             result = self['xep_0060'].retract(self._server, self.boundjid, data)
-            self._logger.info(' Retracted item %s from topic %s' % (data, self.boundjid))
+            msg = ' Retracted item %s from topic %s' % (data, self.boundjid)
+            self.info(msg)
         except:
             error = traceback.format_exc()
-            self._logger.error(' Could not retract item %s from topic %s\ntraceback:\n%s' \
-                    % (data, self.boundjid, error))
+            msg = 'Could not retract item %s from topic %s\ntraceback:\n%s' \
+                    % (data, self.boundjid, error)
+            self.error(msg)
 
     def purge(self):
         """  Purge the information in the server
@@ -247,11 +261,13 @@ class OMFClient(sleekxmpp.ClientXMPP):
         """
         try:
             result = self['xep_0060'].purge(self._server, self.boundjid)
-            self._logger.info(' Purged all items from topic %s' % self.boundjid)
+            msg = ' Purged all items from topic %s' % self.boundjid
+            self.info(msg)
         except:
             error = traceback.format_exc()
-            self._logger.error(' Could not purge items from topic %s\ntraceback:\n%s' \
-                    % (self.boundjid, error))
+            msg = ' Could not purge items from topic %s\ntraceback:\n%s' \
+                    % (self.boundjid, error)
+            self.error(msg)
 
     def subscribe(self, node):
         """ Subscribe to a topic
@@ -262,14 +278,15 @@ class OMFClient(sleekxmpp.ClientXMPP):
         """
         try:
             result = self['xep_0060'].subscribe(self._server, node)
-            #self._logger.debug('Subscribed %s to node %s' \
-                    #% (self.boundjid.bare, node))
-            self._logger.info(' Subscribed %s to topic %s' \
-                    % (self.boundjid.user, node))
+            msg = ' Subscribed %s to topic %s' \
+                    % (self.boundjid.user, node)
+            self.info(msg)
+            #self.debug(msg)
         except:
             error = traceback.format_exc()
-            self._logger.error(' Could not subscribe %s to topic %s\ntraceback:\n%s' \
-                    % (self.boundjid.bare, node, error))
+            msg = ' Could not subscribe %s to topic %s\ntraceback:\n%s' \
+                    % (self.boundjid.bare, node, error)
+            self.error(msg)
 
     def unsubscribe(self, node):
         """ Unsubscribe to a topic
@@ -280,11 +297,13 @@ class OMFClient(sleekxmpp.ClientXMPP):
         """
         try:
             result = self['xep_0060'].unsubscribe(self._server, node)
-            self._logger.info(' Unsubscribed %s from topic %s' % (self.boundjid.bare, node))
+            msg = ' Unsubscribed %s from topic %s' % (self.boundjid.bare, node)
+            self.info(msg)
         except:
             error = traceback.format_exc()
-            self._logger.error(' Could not unsubscribe %s from topic %s\ntraceback:\n%s' \
-                    % (self.boundjid.bare, node, error))
+            msg = ' Could not unsubscribe %s from topic %s\ntraceback:\n%s' \
+                    % (self.boundjid.bare, node, error)
+            self.error(msg)
 
     def _check_for_tag(self, root, namespaces, tag):
         """  Check if an element markup is in the ElementTree
@@ -320,9 +339,10 @@ class OMFClient(sleekxmpp.ClientXMPP):
                 response = response + " " + msg.text + " :"
         deb = self._check_for_tag(root, namespaces, "MESSAGE")
         if deb is not None:
-            self._logger.debug(response + " " + deb.text)
+            msg = response + " " + deb.text
+            self.debug(msg)
         else :
-            self._logger.info(response)
+            self.info(response)
 
     def handle_omf_message(self, iq):
         """ Handle published/received message 

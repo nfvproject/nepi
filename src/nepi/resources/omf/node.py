@@ -22,8 +22,6 @@ from nepi.execution.attribute import Attribute, Flags
 
 from nepi.resources.omf.omf_api import OMFAPIFactory
 
-import nepi
-import logging
 import time
 
 @clsinit
@@ -102,10 +100,7 @@ class OMFNode(ResourceManager):
 
         self._omf_api = None 
 
-        self._logger = logging.getLogger("nepi.omf.omfNode   ")
-
         # XXX: TO DISCUSS
-        self._logger.setLevel(nepi.LOGLEVEL)
 
     def _validate_connection(self, guid):
         """Check if the connection is available.
@@ -117,14 +112,14 @@ class OMFNode(ResourceManager):
         """
         rm = self.ec.get_resource(guid)
         if rm.rtype() in self._authorized_connections:
-            self._logger.debug("Connection between %s %s and %s %s accepted" %
-                (self.rtype(), self._guid, rm.rtype(), guid))
+            msg = "Connection between %s %s and %s %s accepted" % (self.rtype(), self._guid, rm.rtype(), guid)
+            self.debug(msg)
             return True
-        self._logger.debug("Connection between %s %s and %s %s refused" %
-            (self.rtype(), self._guid, rm.rtype(), guid))
+        msg = "Connection between %s %s and %s %s refused" % (self.rtype(), self._guid, rm.rtype(), guid)
+        self.debug(msg)
         return False
 
-    def deploy_action(self):
+    def deploy(self):
         """Deploy the RM
 
         """ 
@@ -132,7 +127,7 @@ class OMFNode(ResourceManager):
             self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
         self._omf_api.enroll_host(self.get('hostname'))
 
-        super(OMFNode, self).deploy_action()
+        super(OMFNode, self).deploy()
 
     def discover(self):
         """ Discover the availables nodes

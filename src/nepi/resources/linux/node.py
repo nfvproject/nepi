@@ -23,7 +23,6 @@ from nepi.resources.linux import rpmfuncs, debfuncs
 from nepi.util import sshfuncs, execfuncs 
 
 import collections
-import logging
 import os
 import random
 import re
@@ -91,8 +90,6 @@ class LinuxNode(ResourceManager):
         
         # lock to avoid concurrency issues on methods used by applications 
         self._lock = threading.Lock()
-
-        self._logger = logging.getLogger("LinuxNode")
     
     def log_message(self, msg):
         return " guid %d - host %s - %s " % (self.guid, 

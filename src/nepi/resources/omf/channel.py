@@ -91,10 +91,11 @@ class OMFChannel(ResourceManager):
         """
         rm = self.ec.get_resource(guid)
         if rm.rtype() in self._authorized_connections:
-            self._logger.debug("Connection between %s %s and %s %s accepted" %
-                (self.rtype(), self._guid, rm.rtype(), guid))
+            msg = "Connection between %s %s and %s %s accepted" % (self.rtype(), self._guid, rm.rtype(), guid)
+            self.debug(msg)
             return True
-        self._logger.debug("Connection between %s %s and %s %s refused" % (self.rtype(), self._guid, rm.rtype(), guid))
+        msg = "Connection between %s %s and %s %s refused" % (self.rtype(), self._guid, rm.rtype(), guid)
+        self.debug(msg)
         return False
 
     def _get_target(self, conn_set):
@@ -117,7 +118,7 @@ class OMFChannel(ResourceManager):
                     self._nodes_guid.append(couple)
         return self._nodes_guid
 
-    def deploy_action(self):
+    def deploy(self):
         """Deploy the RM
 
         """
@@ -134,7 +135,7 @@ class OMFChannel(ResourceManager):
                 #print "Send the configure message"
                 self._omf_api.configure(couple[0], attrname, attrval)
 
-        super(OMFChannel, self).deploy_action()
+        super(OMFChannel, self).deploy()
 
     def discover(self):
         """ Discover the availables channels

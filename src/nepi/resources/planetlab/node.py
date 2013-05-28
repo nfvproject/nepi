@@ -23,8 +23,6 @@ from nepi.resources.linux.node import LinuxNode
 
 from nepi.resources.planetlab.plcapi import PLCAPIFactory 
 
-import logging
-
 reschedule_delay = "0.5s"
 
 @clsinit_copy
@@ -167,8 +165,6 @@ class PlanetlabNode(LinuxNode):
         super(PLanetLabNode, self).__init__(ec, guid)
 
         self._plapi = None
-
-        self._logger = logging.getLogger("PlanetLabNode")
     
     @property
     def plapi(self):

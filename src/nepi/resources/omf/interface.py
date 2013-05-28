@@ -22,8 +22,6 @@ from nepi.execution.attribute import Attribute, Flags
 
 from nepi.resources.omf.omf_api import OMFAPIFactory
 
-import nepi
-import logging
 
 @clsinit
 class OMFWifiInterface(ResourceManager):
@@ -87,9 +85,6 @@ class OMFWifiInterface(ResourceManager):
         self._omf_api = None
         self._alias = self.get('alias')
 
-        self._logger = logging.getLogger("nepi.omf.omfIface  ")
-        self._logger.setLevel(nepi.LOGLEVEL)
-
     def _validate_connection(self, guid):
         """ Check if the connection is available.
 
@@ -100,11 +95,11 @@ class OMFWifiInterface(ResourceManager):
         """
         rm = self.ec.get_resource(guid)
         if rm.rtype() in self._authorized_connections:
-            self._logger.debug("Connection between %s %s and %s %s accepted" %
-                (self.rtype(), self._guid, rm.rtype(), guid))
+            msg = "Connection between %s %s and %s %s accepted" % (self.rtype(), self._guid, rm.rtype(), guid)
+            self.debug(msg)
             return True
-        self._logger.debug("Connection between %s %s and %s %s refused" % 
-            (self.rtype(), self._guid, rm.rtype(), guid))
+        msg = "Connection between %s %s and %s %s refused" % (self.rtype(), self._guid, rm.rtype(), guid)
+        self.debug(msg)
         return False
 
     def _get_nodes(self, conn_set):
@@ -121,7 +116,7 @@ class OMFWifiInterface(ResourceManager):
                 return rm
         return None
 
-    def deploy_action(self):
+    def deploy(self):
         """Deploy the RM
 
         """
@@ -140,7 +135,7 @@ class OMFWifiInterface(ResourceManager):
                 #print "Send the configure message"
                 self._omf_api.configure(rm_node.get('hostname'), attrname, attrval)
 
-        super(OMFWifiInterface, self).deploy_action()
+        super(OMFWifiInterface, self).deploy()
 
 
     def start(self):
