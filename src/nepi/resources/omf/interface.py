@@ -17,11 +17,12 @@
 
 """
 
-from nepi.execution.resource import ResourceManager, clsinit
+from nepi.execution.resource import ResourceManager, clsinit, ResourceState
 from nepi.execution.attribute import Attribute, Flags 
 
 from nepi.resources.omf.omf_api import OMFAPIFactory
 
+reschedule_delay = "0.5s"
 
 @clsinit
 class OMFWifiInterface(ResourceManager):
@@ -42,7 +43,6 @@ class OMFWifiInterface(ResourceManager):
     """
     _rtype = "OMFWifiInterface"
     _authorized_connections = ["OMFNode" , "OMFChannel"]
-    _waiters = ["OMFNode"]
 
     #alias2name = dict({'w0':'wlan0', 'w1':'wlan1'})
 
@@ -120,15 +120,20 @@ class OMFWifiInterface(ResourceManager):
         """Deploy the RM
 
         """
-        self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
-            self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
+        if not self._omf_api :
+            self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
+                self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
 
         self._logger.debug(" " + self.rtype() + " ( Guid : " + str(self._guid) +") : " +
             self.get('mode') + " : " + self.get('type') + " : " +
             self.get('essid') + " : " + self.get('ip'))
         #try:
         if self.get('mode') and self.get('type') and self.get('essid') and self.get('ip'):
-            rm_node = self._get_nodes(self._connections)    
+            rm_list = self.get_connected("OMFNode") 
+            for rm_node in rm_list:
+                if rm_node.state < ResourceState.READY:
+                    self.ec.schedule(reschedule_delay, self.deploy)
+                    return 
             for attrname in ["mode", "type", "essid", "ip"]:
                 attrval = self.get(attrname)
                 attrname = "net/%s/%s" % (self._alias, attrname)

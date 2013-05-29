@@ -18,7 +18,7 @@
 """
 
 #!/usr/bin/env python
-from nepi.execution.resource import ResourceFactory, ResourceAction, ResourceState
+from nepi.execution.resource import ResourceFactory, ResourceAction, ResourceState, populate_factory
 from nepi.execution.ec import ExperimentController
 
 from nepi.resources.omf.node import OMFNode
@@ -35,10 +35,7 @@ logging.basicConfig()
 ec = ExperimentController()
 
 # Register the different RM that will be used
-ResourceFactory.register_type(OMFNode)
-ResourceFactory.register_type(OMFWifiInterface)
-ResourceFactory.register_type(OMFChannel)
-ResourceFactory.register_type(OMFApplication)
+populate_factory()
 
 # Create and Configure the Nodes
 node1 = ec.register_resource("OMFNode")
@@ -101,6 +98,7 @@ app1 = ec.register_resource("OMFApplication")
 ec.set(app1, 'appid', 'Vlc#1')
 ec.set(app1, 'path', "/opt/vlc-1.1.13/cvlc")
 ec.set(app1, 'args', "/opt/10-by-p0d.avi --sout '#rtp{dst=10.0.0.37,port=1234,mux=ts}'")
+#ec.set(app1, 'args', "--quiet /opt/big_buck_bunny_240p_mpeg4.ts --sout '#rtp{dst=10.0.0.37,port=1234,mux=ts} '")
 ec.set(app1, 'env', "DISPLAY=localhost:10.0 XAUTHORITY=/root/.Xauthority")
 ec.set(app1, 'xmppSlice', "nepi")
 ec.set(app1, 'xmppHost', "xmpp-plexus.onelab.eu")
@@ -110,7 +108,7 @@ ec.set(app1, 'xmppPassword', "1234")
 app2 = ec.register_resource("OMFApplication")
 ec.set(app2, 'appid', 'Vlc#2')
 ec.set(app2, 'path', "/opt/vlc-1.1.13/cvlc")
-ec.set(app2, 'args', "rtp://10.0.0.37:1234")
+ec.set(app2, 'args', "--quiet rtp://10.0.0.37:1234")
 ec.set(app2, 'env', "DISPLAY=localhost:10.0 XAUTHORITY=/root/.Xauthority")
 ec.set(app2, 'xmppSlice', "nepi")
 ec.set(app2, 'xmppHost', "xmpp-plexus.onelab.eu")
@@ -136,20 +134,17 @@ ec.register_connection(iface2, channel)
 ec.register_connection(node2, iface2)
 ec.register_connection(app2, node2)
 
-# Condition
-#      Topology behaviour : It should not be done by the user, but ....
-#ec.register_condition([iface1, iface2, channel], ResourceAction.START, [node1, node2], ResourceState.STARTED , 2)
-#ec.register_condition(channel, ResourceAction.START, [iface1, iface2], ResourceState.STARTED , 1)
-#ec.register_condition(app1, ResourceAction.START, channel, ResourceState.STARTED , 1)
-
 #      User Behaviour
 ec.register_condition(app2, ResourceAction.START, app1, ResourceState.STARTED , "4s")
-ec.register_condition([app1, app2], ResourceAction.STOP, app2, ResourceState.STARTED , "20s")
+ec.register_condition([app1, app2], ResourceAction.STOP, app2, ResourceState.STARTED , "22s")
 ec.register_condition(app3, ResourceAction.START, app2, ResourceState.STARTED , "25s")
+ec.register_condition(app3, ResourceAction.STOP, app3, ResourceState.STARTED , "1s")
 
 # Deploy
 ec.deploy()
 
+ec.wait_finished([app1, app2, app3])
+
 # Stop Experiment
-time.sleep(50)
+#time.sleep(55)
 ec.shutdown()

@@ -319,6 +319,7 @@ class OMFAPIFactory(object):
             key = cls._make_key(slice, host, port, password)
             cls.lock.acquire()
             if key in cls._apis:
+                #print "Api Counter : " + str(cls._apis[key]['cnt'])
                 cls._apis[key]['cnt'] += 1
                 cls.lock.release()
                 return cls._apis[key]['api']
