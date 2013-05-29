@@ -588,6 +588,7 @@ def find_types():
     search_path = os.environ.get("NEPI_SEARCH_PATH", "")
     search_path = set(search_path.split(" "))
    
+    import inspect
     import nepi.resources 
     path = os.path.dirname(nepi.resources.__file__)
     search_path.add(path)
