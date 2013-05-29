@@ -6,7 +6,7 @@ setup(
         name        = "nepi",
         version     = "3.0",
         description = "Network Experiment Management Framework",
-        author      = "Alina Quereilhac, Julien Tribino, Claudio Freire, Martin Ferrari, Lucía Guevgeozian",
+        author      = "Alina Quereilhac, Julien Tribino, Lucia Guevgeozian",
         url         = "http://nepi.inria.fr",
         license     = "GPLv3",
         platforms   = "Linux",
