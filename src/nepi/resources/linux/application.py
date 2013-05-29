@@ -1,21 +1,21 @@
-"""
-    NEPI, a framework to manage network experiments
-    Copyright (C) 2013 INRIA
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-"""
+#
+#    NEPI, a framework to manage network experiments
+#    Copyright (C) 2013 INRIA
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import Trace, TraceAttr
@@ -29,7 +29,8 @@ import os
 reschedule_delay = "0.5s"
 state_check_delay = 1
 
-# TODO: Resolve wildcards in commands!! 
+# TODO: Resolve wildcards in commands!!
+# TODO: If command is not set give a warning but do not generate an error!
 
 @clsinit
 class LinuxApplication(ResourceManager):
@@ -221,9 +222,9 @@ class LinuxApplication(ResourceManager):
 
             # Export environment
             environ = ""
-            env = self.get("env") or ""
-            for var in env.split(" "):
-                environ += 'export %s\n' % var
+            if self.get("env"):
+                for var in self.get("env").split(" "):
+                    environ += 'export %s\n' % var
 
             command = environ + command
 
