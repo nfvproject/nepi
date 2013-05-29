@@ -131,7 +131,7 @@ class OMFApplication(ResourceManager):
             for rm_node in rm_list:
                 self._omf_api.execute(rm_node.get('hostname'),self.get('appid'), self.get('args'), self.get('path'), self.get('env'))
         else :
-            msg = "Credentials are not initialized"
+            msg = "Application's information are not initialized"
             self.error(msg)
 
     def stop(self):

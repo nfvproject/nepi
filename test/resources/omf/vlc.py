@@ -53,7 +53,7 @@ class OMFResourceFactoryTestCase(unittest.TestCase):
         ResourceFactory.register_type(OMFApplication)
 
         self.assertEquals(OMFNode.rtype(), "OMFNode")
-        self.assertEquals(len(OMFNode._attributes), 7)
+        self.assertEquals(len(OMFNode._attributes), 11)
 
         self.assertEquals(OMFWifiInterface.rtype(), "OMFWifiInterface")
         self.assertEquals(len(OMFWifiInterface._attributes), 9)
@@ -259,19 +259,22 @@ class OMFVLCTestCase(unittest.TestCase):
         self.ec.register_condition(app5, ResourceAction.START, [app3, app2], ResourceState.STARTED , "2s")
         self.ec.register_condition(app5, ResourceAction.START, app1, ResourceState.STARTED , "25s")
 
+        self.ec.register_condition([app1, app2, app3,app4, app5], ResourceAction.STOP, app5, ResourceState.STARTED , "1s")
+
         self.ec.deploy()
-        time.sleep(60)
+
+        self.ec.wait_finished([app1, app2, app3,app4, app5])
 
         self.assertEquals(round(strfdiff(self.ec.get_resource(app2).start_time, self.ec.get_resource(app1).start_time),1), 3.0)
         self.assertEquals(round(strfdiff(self.ec.get_resource(app3).start_time, self.ec.get_resource(app2).start_time),1), 2.0)
         self.assertEquals(round(strfdiff(self.ec.get_resource(app4).start_time, self.ec.get_resource(app3).start_time),1), 3.0)
-        self.assertEquals(round(strfdiff(self.ec.get_resource(app5).start_time, self.ec.get_resource(app3).start_time),1), 2.0)
-        self.assertEquals(round(strfdiff(self.ec.get_resource(app5).start_time, self.ec.get_resource(app1).start_time),1), 7.0)
+        self.assertEquals(round(strfdiff(self.ec.get_resource(app5).start_time, self.ec.get_resource(app3).start_time),1), 20.0)
+        self.assertEquals(round(strfdiff(self.ec.get_resource(app5).start_time, self.ec.get_resource(app1).start_time),1), 25.0)
 
         # Precision is at 1/10. So this one returns an error 7.03 != 7.0
         #self.assertEquals(strfdiff(self.ec.get_resource(app5).start_time, self.ec.get_resource(app1).start_time), 7)
     #In order to release everythings
-        time.sleep(5)
+        time.sleep(1)
 
 
 if __name__ == '__main__':
