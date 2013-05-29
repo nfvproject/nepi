@@ -23,7 +23,7 @@ from nepi.execution.trace import TraceAttr
 
 import copy
 import functools
-import inspect
+import logging
 import os
 import pkgutil
 import weakref
@@ -614,6 +614,7 @@ def find_types():
                     types.append(attr)
         except:
             import traceback
+            import logging
             err = traceback.format_exc()
             logger = logging.getLogger("Resource.find_types()")
             logger.error("Error while lading Resource Managers %s" % err)
