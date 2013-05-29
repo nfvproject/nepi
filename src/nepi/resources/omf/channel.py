@@ -17,13 +17,12 @@
 
 """
 
-from nepi.execution.resource import ResourceManager, clsinit
+from nepi.execution.resource import ResourceManager, clsinit, ResourceState
 from nepi.execution.attribute import Attribute, Flags 
 
 from nepi.resources.omf.omf_api import OMFAPIFactory
 
-import nepi
-import logging
+reschedule_delay = "0.5s"
 
 @clsinit
 class OMFChannel(ResourceManager):
@@ -44,7 +43,6 @@ class OMFChannel(ResourceManager):
     """
     _rtype = "OMFChannel"
     _authorized_connections = ["OMFWifiInterface", "OMFNode"]
-    _waiters = ["OMFNode", "OMFWifiInterface"]
 
 
     @classmethod
@@ -78,9 +76,6 @@ class OMFChannel(ResourceManager):
 
         self._omf_api = None
 
-        self._logger = logging.getLogger("nepi.omf.omfChannel")
-        self._logger.setLevel(nepi.LOGLEVEL)
-
     def _validate_connection(self, guid):
         """Check if the connection is available.
 
@@ -113,6 +108,8 @@ class OMFChannel(ResourceManager):
             for conn in rm_iface.connections:
                 rm_node = self.ec.get_resource(conn)
                 if rm_node.rtype() == "OMFNode":
+                    if rm_iface.state < ResourceState.READY or  rm_node.state < ResourceState.READY:
+                        return "reschedule"
                     couple = [rm_node.get('hostname'), rm_iface.get('alias')]
                     #print couple
                     self._nodes_guid.append(couple)
@@ -122,17 +119,20 @@ class OMFChannel(ResourceManager):
         """Deploy the RM
 
         """
-        self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
-            self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
+        if not self._omf_api :
+            self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
+                self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
 
         if self.get('channel'):
             set_nodes = self._get_target(self._connections) 
+            if set_nodes == "reschedule" :
+                self.ec.schedule(reschedule_delay, self.deploy)
+                return
             print set_nodes
             for couple in set_nodes:
                 #print "Couple node/alias : " + couple[0] + "  ,  " + couple[1]
                 attrval = self.get('channel')
                 attrname = "net/%s/%s" % (couple[1], 'channel')
-                #print "Send the configure message"
                 self._omf_api.configure(couple[0], attrname, attrval)
 
         super(OMFChannel, self).deploy()

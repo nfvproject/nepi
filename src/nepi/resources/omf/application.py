@@ -17,9 +17,11 @@
 
 """
 
-from nepi.execution.resource import ResourceManager, clsinit
+from nepi.execution.resource import ResourceManager, clsinit, ResourceState
 from nepi.execution.attribute import Attribute, Flags 
 from nepi.resources.omf.omf_api import OMFAPIFactory
+
+reschedule_delay = "0.5s"
 
 @clsinit
 class OMFApplication(ResourceManager):
@@ -40,7 +42,6 @@ class OMFApplication(ResourceManager):
     """
     _rtype = "OMFApplication"
     _authorized_connections = ["OMFNode"]
-    _waiters = ["OMFNode", "OMFChannel", "OMFWifiInterface"]
 
     @classmethod
     def _register_attributes(cls):
@@ -98,30 +99,16 @@ class OMFApplication(ResourceManager):
         rm = self.ec.get_resource(guid)
         if rm.rtype() not in self._authorized_connections:
             msg = "Connection between %s %s and %s %s refused : An Application can be connected only to a Node" % (self.rtype(), self._guid, rm.rtype(), guid)
-            self._logger.debug(msg)
+            self.debug(msg)
             return False
         elif len(self.connections) != 0 :
             msg = "Connection between %s %s and %s %s refused : Already Connected" % (self.rtype(), self._guid, rm.rtype(), guid)
-            self._logger.debug(msg)
+            self.debug(msg)
             return False
         else :
             msg = "Connection between %s %s and %s %s accepted" % (self.rtype(), self._guid, rm.rtype(), guid)
-            self._logger.debug(msg)
+            self.debug(msg)
             return True
-
-    def _get_nodes(self, conn_set):
-        """Get the RM of the node to which the application is connected
-
-        :param conn_set: Connections of the current Guid
-        :type conn_set: set
-        :rtype: ResourceManager
-        """
-
-        for elt in conn_set:
-            rm = self.ec.get_resource(elt)
-            if rm.rtype() == "OMFNode":
-                return rm
-        return None
 
     def deploy(self):
         """Deploy the RM
@@ -137,20 +124,27 @@ class OMFApplication(ResourceManager):
         """
         super(OMFApplication, self).start()
         msg = " " + self.rtype() + " ( Guid : " + str(self._guid) +") : " + self.get('appid') + " : " + self.get('path') + " : " + self.get('args') + " : " + self.get('env')
-        self.debug(msg)
+        self.info(msg)
 
         if self.get('appid') and self.get('path') and self.get('args') and self.get('env'):
-            rm_node = self._get_nodes(self._connections)
-            self._omf_api.execute(rm_node.get('hostname'),self.get('appid'), self.get('args'), self.get('path'), self.get('env'))
+            rm_list = self.get_connected("OMFNode")
+            for rm_node in rm_list:
+                self._omf_api.execute(rm_node.get('hostname'),self.get('appid'), self.get('args'), self.get('path'), self.get('env'))
+        else :
+            msg = "Credentials are not initialized"
+            self.error(msg)
 
     def stop(self):
         """Send Xmpp Message Using OMF protocol to kill the application
 
         """
 
-        rm_node = self._get_nodes(self._connections)
-        self._omf_api.exit(rm_node.get('hostname'),self.get('appid'))
+        rm_list = self.get_connected("OMFNode")
+        for rm_node in rm_list :
+            self._omf_api.exit(rm_node.get('hostname'),self.get('appid'))
         super(OMFApplication, self).stop()
+        self._state = ResourceState.FINISHED
+        
 
     def release(self):
         """Clean the RM at the end of the experiment

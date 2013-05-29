@@ -21,10 +21,10 @@
 from nepi.execution.resource import ResourceFactory, ResourceManager, ResourceAction, ResourceState
 from nepi.execution.ec import ExperimentController
 
-from nepi.resources.omf.omf_node import OMFNode
-from nepi.resources.omf.omf_application import OMFApplication
-from nepi.resources.omf.omf_interface import OMFWifiInterface
-from nepi.resources.omf.omf_channel import OMFChannel
+from nepi.resources.omf.node import OMFNode
+from nepi.resources.omf.application import OMFApplication
+from nepi.resources.omf.interface import OMFWifiInterface
+from nepi.resources.omf.channel import OMFChannel
 from nepi.resources.omf.omf_api import OMFAPIFactory
 
 from nepi.util import guid
@@ -257,10 +257,10 @@ class OMFVLCTestCase(unittest.TestCase):
         self.ec.register_condition(app3, ResourceAction.START, app2, ResourceState.STARTED , "2s")
         self.ec.register_condition(app4, ResourceAction.START, app3, ResourceState.STARTED , "3s")
         self.ec.register_condition(app5, ResourceAction.START, [app3, app2], ResourceState.STARTED , "2s")
-        self.ec.register_condition(app5, ResourceAction.START, app1, ResourceState.STARTED , "1m20s")
+        self.ec.register_condition(app5, ResourceAction.START, app1, ResourceState.STARTED , "25s")
 
         self.ec.deploy()
-        time.sleep(150)
+        time.sleep(60)
 
         self.assertEquals(round(strfdiff(self.ec.get_resource(app2).start_time, self.ec.get_resource(app1).start_time),1), 3.0)
         self.assertEquals(round(strfdiff(self.ec.get_resource(app3).start_time, self.ec.get_resource(app2).start_time),1), 2.0)

@@ -531,7 +531,7 @@ class ResourceManager(Logger):
             callback = functools.partial(self.stop_with_conditions)
             self.ec.schedule(delay, callback)
         else:
-            self.logger.debug(" ----- STOPPING ---- ") 
+            self.debug(" ----- STOPPING ---- ") 
             self.stop()
 
     def deploy(self):

@@ -17,12 +17,14 @@
 
 """
 
-from nepi.execution.resource import ResourceManager, clsinit
+from nepi.execution.resource import ResourceManager, clsinit, ResourceState
 from nepi.execution.attribute import Attribute, Flags 
 
 from nepi.resources.omf.omf_api import OMFAPIFactory
 
 import time
+
+reschedule_delay = "0.5s"
 
 @clsinit
 class OMFNode(ResourceManager):
@@ -43,7 +45,6 @@ class OMFNode(ResourceManager):
     """
     _rtype = "OMFNode"
     _authorized_connections = ["OMFApplication" , "OMFWifiInterface"]
-    _waiters = []
 
     @classmethod
     def _register_attributes(cls):
@@ -123,8 +124,9 @@ class OMFNode(ResourceManager):
         """Deploy the RM
 
         """ 
-        self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
-            self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
+        if not self._omf_api :
+            self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
+                self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
         self._omf_api.enroll_host(self.get('hostname'))
 
         super(OMFNode, self).deploy()
