@@ -94,7 +94,9 @@ class ExperimentController(object):
         return self.ecstate in [ECState.FAILED, ECState.TERMINATED]
 
     def wait_finished(self, guids):
-        while not all([self.state(guid) == ResourceState.FINISHED \
+        while not all([self.state(guid) in [ResourceState.FINISHED, 
+            ResourceState.STOPPED, 
+            ResourceState.FAILED] \
                 for guid in guids]) and not self.finished:
             # We keep the sleep as large as possible to 
             # decrese the number of RM state requests
