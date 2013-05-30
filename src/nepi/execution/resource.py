@@ -542,7 +542,7 @@ class ResourceManager(Logger):
             self.error("Wrong state %s for deploy" % self.state)
             return
 
-        self.debug("----- DEPLOYING ---- ")
+        self.debug("----- READY ---- ")
         self._ready_time = strfnow()
         self._state = ResourceState.READY
 

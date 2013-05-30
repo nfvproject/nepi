@@ -95,13 +95,17 @@ class LinuxNodeTestCase(unittest.TestCase):
     def t_install(self, host, user):
         node, ec = create_node(host, user)
 
+        (out, err), proc = node.mkdir(node.node_home, clean=True)
+        self.assertEquals(out, "")
+
         (out, err), proc = node.install_packages('gcc')
         self.assertEquals(out, "")
 
         (out, err), proc = node.remove_packages('gcc')
-        
         self.assertEquals(out, "")
 
+        (out, err), proc = node.rmdir(node.exp_home)
+        self.assertEquals(out, "")
 
     @skipIfNotAlive
     def t_compile(self, host, user):
