@@ -277,7 +277,7 @@ class ResourceManager(Logger):
         self._state = ResourceState.STARTED
 
     def stop(self):
-        """ Start the Resource Manager
+        """ Stop the Resource Manager
 
         """
         if not self._state in [ResourceState.STARTED]:

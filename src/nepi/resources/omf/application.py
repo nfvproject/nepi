@@ -89,21 +89,23 @@ class OMFApplication(ResourceManager):
 
         self._omf_api = None
 
-    def _validate_connection(self, guid):
-        """Check if the connection is available.
+    def valid_connection(self, guid):
+        """Check if the connection with the guid in parameter is possible. Only meaningful connections are allowed.
 
-        :param guid: Guid of the current RM
+        :param guid: Guid of RM it will be connected
         :type guid: int
         :rtype:  Boolean
 
         """
         rm = self.ec.get_resource(guid)
         if rm.rtype() not in self._authorized_connections:
-            msg = "Connection between %s %s and %s %s refused : An Application can be connected only to a Node" % (self.rtype(), self._guid, rm.rtype(), guid)
+            msg = "Connection between %s %s and %s %s refused : An Application can be connected only to a Node" %\
+                (self.rtype(), self._guid, rm.rtype(), guid)
             self.debug(msg)
             return False
         elif len(self.connections) != 0 :
-            msg = "Connection between %s %s and %s %s refused : Already Connected" % (self.rtype(), self._guid, rm.rtype(), guid)
+            msg = "Connection between %s %s and %s %s refused : This Application is already connected" % \
+                (self.rtype(), self._guid, rm.rtype(), guid)
             self.debug(msg)
             return False
         else :
@@ -112,45 +114,65 @@ class OMFApplication(ResourceManager):
             return True
 
     def deploy(self):
-        """Deploy the RM
-
+        """Deploy the RM. It means nothing special for an application for now (later it will be upload sources, ...)
+           It becomes DEPLOYED after getting the xmpp client.
         """
-        self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
-            self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
+        if not self._omf_api :
+            self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
+                self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
+        
         super(OMFApplication, self).deploy()
 
     def start(self):
-        """Send Xmpp Message Using OMF protocol to execute the application
+        """Start the RM. It means : Send Xmpp Message Using OMF protocol to execute the application
+           It becomes STARTED before the messages are sent (for coordination)
 
         """
         super(OMFApplication, self).start()
-        msg = " " + self.rtype() + " ( Guid : " + str(self._guid) +") : " + self.get('appid') + " : " + self.get('path') + " : " + self.get('args') + " : " + self.get('env')
-        self.info(msg)
-
-        if self.get('appid') and self.get('path') and self.get('args') and self.get('env'):
+        if self.get('appid') and self.get('path') and self.get('args') and self.get('env') :
+            msg = " " + self.rtype() + " ( Guid : " + str(self._guid) +") : " + \
+                self.get('appid') + " : " + self.get('path') + " : " + \
+                self.get('args') + " : " + self.get('env')
+            self.info(msg)
             rm_list = self.get_connected("OMFNode")
-            for rm_node in rm_list:
-                self._omf_api.execute(rm_node.get('hostname'),self.get('appid'), self.get('args'), self.get('path'), self.get('env'))
+            try:
+                for rm_node in rm_list:
+                    if rm_node.get('hostname') :
+                        self._omf_api.execute(rm_node.get('hostname'),self.get('appid'), \
+                            self.get('args'), self.get('path'), self.get('env'))
+            except AttributeError:
+                self._state = ResourceState.FAILED
+                msg = "Credentials are not initialzed. XMPP Connections impossible"
+                self.error(msg)
+                return
         else :
+            self._state = ResourceState.FAILED
             msg = "Application's information are not initialized"
             self.error(msg)
 
     def stop(self):
-        """Send Xmpp Message Using OMF protocol to kill the application
+        """Stop the RM. It means : Send Xmpp Message Using OMF protocol to kill the application
+           It becomes STOPPED after the message is sent.
 
         """
-
-        rm_list = self.get_connected("OMFNode")
-        for rm_node in rm_list :
-            self._omf_api.exit(rm_node.get('hostname'),self.get('appid'))
+        try:
+            rm_list = self.get_connected("OMFNode")
+            for rm_node in rm_list :
+                self._omf_api.exit(rm_node.get('hostname'),self.get('appid'))
+        except AttributeError:
+            self._state = ResourceState.FAILED
+            msg = "Credentials were not initialzed. XMPP Connections impossible"
+            self.error(msg)
+            return
         super(OMFApplication, self).stop()
         self._state = ResourceState.FINISHED
         
 
     def release(self):
-        """Clean the RM at the end of the experiment
+        """Clean the RM at the end of the experiment and release the API.
 
         """
-        OMFAPIFactory.release_api(self.get('xmppSlice'), 
-            self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
+        if self._omf_api :
+            OMFAPIFactory.release_api(self.get('xmppSlice'), 
+                self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
 

@@ -304,7 +304,7 @@ class OMFAPIFactory(object):
 
     @classmethod 
     def get_api(cls, slice, host, port, password):
-        """ Get an Api
+        """ Get an OMF Api
 
         :param slice: Xmpp Slice Name
         :type slice: str
@@ -332,7 +332,7 @@ class OMFAPIFactory(object):
 
     @classmethod 
     def create_api(cls, slice, host, port, password):
-        """ Create an API if this one doesn't exist yet with this credentials
+        """ Create an OMF API if this one doesn't exist yet with this credentials
 
         :param slice: Xmpp Slice Name
         :type slice: str
@@ -353,7 +353,7 @@ class OMFAPIFactory(object):
 
     @classmethod 
     def release_api(cls, slice, host, port, password):
-        """ Release an API with this credentials
+        """ Release an OMF API with this credentials
 
         :param slice: Xmpp Slice Name
         :type slice: str

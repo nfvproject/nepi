@@ -95,18 +95,14 @@ class OMFNode(ResourceManager):
         :type ec: ExperimentController
         :param guid: guid of the RM
         :type guid: int
-        :param creds: Credentials to communicate with the rm (XmppClient for OMF)
-        :type creds: dict
 
         """
         super(OMFNode, self).__init__(ec, guid)
 
         self._omf_api = None 
 
-        # XXX: TO DISCUSS
-
-    def _validate_connection(self, guid):
-        """Check if the connection is available.
+    def valid_connection(self, guid):
+        """Check if the connection with the guid in parameter is possible. Only meaningful connections are allowed.
 
         :param guid: Guid of the current RM
         :type guid: int
@@ -123,13 +119,22 @@ class OMFNode(ResourceManager):
         return False
 
     def deploy(self):
-        """Deploy the RM
+        """Deploy the RM. It means : Send Xmpp Message Using OMF protocol to enroll the node into the experiment
+           It becomes DEPLOYED after sending messages to enroll the node
 
         """ 
         if not self._omf_api :
             self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
-                self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
-        self._omf_api.enroll_host(self.get('hostname'))
+               self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
+
+        if self.get('hostname') :
+            try:
+                self._omf_api.enroll_host(self.get('hostname'))
+            except AttributeError:
+                self._state = ResourceState.FAILED
+                msg = "Credentials are not initialzed. XMPP Connections impossible"
+                self.debug(msg)
+                return
 
         super(OMFNode, self).deploy()
 
@@ -145,15 +150,17 @@ class OMFNode(ResourceManager):
         """
         pass
 
-    def start(self):
-        """Send Xmpp Message Using OMF protocol to enroll the node into the experiment
+     def start(self):
+        """Start the RM. It means nothing special for an interface for now
+           It becomes STARTED as soon as this method starts.
 
         """
+
         super(OMFNode, self).start()
 
-
     def stop(self):
-        """Send Xmpp Message Using OMF protocol to disconnect the node
+        """Stop the RM. It means nothing special for an interface for now
+           It becomes STOPPED as soon as this method stops
 
         """
         super(OMFNode, self).stop()
@@ -162,27 +169,8 @@ class OMFNode(ResourceManager):
         """Clean the RM at the end of the experiment
 
         """
-        self._omf_api.release(self.get('hostname'))
-        OMFAPIFactory.release_api(self.get('xmppSlice'), 
-            self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
+        if self._omf_api :
+            self._omf_api.release(self.get('hostname'))
+            OMFAPIFactory.release_api(self.get('xmppSlice'), 
+                self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
 
-
-    def configure(self):
-        #routes = self.tc._add_route.get(self.guid, [])
-        #iface_guids = self.tc.get_connected(self.guid, "devs", "node")
-       
-        for route in routes:
-            (destination, netprefix, nexthop, metric, device) = route
-            netmask = ipaddr2.ipv4_mask2dot(netprefix)
-
-            # Validate that the interface is associated to the node
-            for iface_guid in iface_guids:
-                iface = self.tc.elements.get(iface_guid)
-                if iface.devname == device:
-                    self._omf_api.execute(self.get('hostname'), 
-                        "Id#%s" % str(random.getrandbits(128)), 
-                        "add -net %s netmask %s dev %s" % (destination, netmask, iface.devname), 
-                        "/sbin/route", # path
-                        None, # env
-                     )
-                    break
