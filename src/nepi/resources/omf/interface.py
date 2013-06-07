@@ -86,8 +86,8 @@ class OMFWifiInterface(ResourceManager):
         self._omf_api = None
         self._alias = self.get('alias')
 
-    def _validate_connection(self, guid):
-        """ Check if the connection is available.
+    def valid_connection(self, guid):
+        """ Check if the connection with the guid in parameter is possible. Only meaningful connections are allowed.
 
         :param guid: Guid of the current RM
         :type guid: int
@@ -96,72 +96,73 @@ class OMFWifiInterface(ResourceManager):
         """
         rm = self.ec.get_resource(guid)
         if rm.rtype() in self._authorized_connections:
-            msg = "Connection between %s %s and %s %s accepted" % (self.rtype(), self._guid, rm.rtype(), guid)
+            msg = "Connection between %s %s and %s %s accepted" % \
+                (self.rtype(), self._guid, rm.rtype(), guid)
             self.debug(msg)
             return True
-        msg = "Connection between %s %s and %s %s refused" % (self.rtype(), self._guid, rm.rtype(), guid)
+        msg = "Connection between %s %s and %s %s refused" % \
+             (self.rtype(), self._guid, rm.rtype(), guid)
         self.debug(msg)
         return False
 
-    def _get_nodes(self, conn_set):
-        """ Get the RM of the node to which the application is connected
-
-        :param conn_set: Connections of the current Guid
-        :type conn_set: set
-        :rtype: ResourceManager
-
-        """
-        for elt in conn_set:
-            rm = self.ec.get_resource(elt)
-            if rm.rtype() == "OMFNode":
-                return rm
-        return None
-
     def deploy(self):
-        """Deploy the RM
-
+        """Deploy the RM. It means : Get the xmpp client and send messages using OMF 5.4 protocol to configure the interface
+           It becomes DEPLOYED after sending messages to configure the interface
         """
         if not self._omf_api :
             self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
                 self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
 
-        self._logger.debug(" " + self.rtype() + " ( Guid : " + str(self._guid) +") : " +
-            self.get('mode') + " : " + self.get('type') + " : " +
-            self.get('essid') + " : " + self.get('ip'))
-        #try:
         if self.get('mode') and self.get('type') and self.get('essid') and self.get('ip'):
+            self.debug(" " + self.rtype() + " ( Guid : " + str(self._guid) +") : " + \
+                self.get('mode') + " : " + self.get('type') + " : " + \
+                self.get('essid') + " : " + self.get('ip'))
             rm_list = self.get_connected("OMFNode") 
             for rm_node in rm_list:
                 if rm_node.state < ResourceState.READY:
                     self.ec.schedule(reschedule_delay, self.deploy)
                     return 
-            for attrname in ["mode", "type", "essid", "ip"]:
-                attrval = self.get(attrname)
-                attrname = "net/%s/%s" % (self._alias, attrname)
-                #print "Send the configure message"
-                self._omf_api.configure(rm_node.get('hostname'), attrname, attrval)
+                if rm_node.get('hostname') :
+                    try :
+                        for attrname in ["mode", "type", "essid", "ip"]:
+                            attrval = self.get(attrname)
+                            attrname = "net/%s/%s" % (self._alias, attrname)
+                            #print "Send the configure message"
+                            self._omf_api.configure(rm_node.get('hostname'), attrname, attrval)
+                    except AttributeError:
+                        self._state = ResourceState.FAILED
+                        msg = "Credentials are not initialzed. XMPP Connections impossible"
+                        self.debug(msg)
+                        return
+                else :
+                    msg = "The channel is connected with an undefined node"
+                    self.error(msg)
+        else :
+            msg = "Interface's variable are not initialized"
+            self.error(msg)
 
         super(OMFWifiInterface, self).deploy()
 
-
     def start(self):
-        """Send Xmpp Messages Using OMF protocol to configure Interface
+        """Start the RM. It means nothing special for an interface for now
+           It becomes STARTED as soon as this method starts.
 
         """
 
         super(OMFWifiInterface, self).start()
 
     def stop(self):
-        """Send Xmpp Message Using OMF protocol to put down the interface
+        """Stop the RM. It means nothing special for an interface for now
+           It becomes STOPPED as soon as this method stops
 
         """
         super(OMFWifiInterface, self).stop()
 
     def release(self):
-        """Clean the RM at the end of the experiment
+        """Clean the RM at the end of the experiment and release the API
 
         """
-        OMFAPIFactory.release_api(self.get('xmppSlice'), 
-            self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
-
+        if self._omf_api :
+            OMFAPIFactory.release_api(self.get('xmppSlice'), 
+                self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
 

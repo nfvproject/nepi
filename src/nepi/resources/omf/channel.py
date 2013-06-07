@@ -1,22 +1,21 @@
-#
-#    NEPI, a framework to manage network experiments
-#    Copyright (C) 2013 INRIA
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-# Author: Alina Quereilhac <alina.quereilhac@inria.fr>
-#         Julien Tribino <julien.tribino@inria.fr>
+"""
+    NEPI, a framework to manage network experiments
+    Copyright (C) 2013 INRIA
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+c
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+"""
 
 from nepi.execution.resource import ResourceManager, clsinit, ResourceState
 from nepi.execution.attribute import Attribute, Flags 
@@ -77,8 +76,8 @@ class OMFChannel(ResourceManager):
 
         self._omf_api = None
 
-    def _validate_connection(self, guid):
-        """Check if the connection is available.
+    def valid_connection(self, guid):
+        """Check if the connection with the guid in parameter is possible. Only meaningful connections are allowed.
 
         :param guid: Guid of the current RM
         :type guid: int
@@ -96,7 +95,7 @@ class OMFChannel(ResourceManager):
 
     def _get_target(self, conn_set):
         """
-        Get the couples (host, interface) that used this channel
+        Get the couples (host, interface) that uses this channel
 
         :param conn_set: Connections of the current Guid
         :type conn_set: set
@@ -108,35 +107,13 @@ class OMFChannel(ResourceManager):
             rm_iface = self.ec.get_resource(elt)
             for conn in rm_iface.connections:
                 rm_node = self.ec.get_resource(conn)
-                if rm_node.rtype() == "OMFNode":
-                    if rm_iface.state < ResourceState.READY or  rm_node.state < ResourceState.READY:
+                if rm_node.rtype() == "OMFNode" and rm_node.get('hostname'):
+                    if rm_iface.state < ResourceState.READY or rm_node.state < ResourceState.READY:
                         return "reschedule"
                     couple = [rm_node.get('hostname'), rm_iface.get('alias')]
                     #print couple
                     self._nodes_guid.append(couple)
         return self._nodes_guid
-
-    def deploy(self):
-        """Deploy the RM
-
-        """
-        if not self._omf_api :
-            self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
-                self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
-
-        if self.get('channel'):
-            set_nodes = self._get_target(self._connections) 
-            if set_nodes == "reschedule" :
-                self.ec.schedule(reschedule_delay, self.deploy)
-                return
-            print set_nodes
-            for couple in set_nodes:
-                #print "Couple node/alias : " + couple[0] + "  ,  " + couple[1]
-                attrval = self.get('channel')
-                attrname = "net/%s/%s" % (couple[1], 'channel')
-                self._omf_api.configure(couple[0], attrname, attrval)
-
-        super(OMFChannel, self).deploy()
 
     def discover(self):
         """ Discover the availables channels
@@ -150,23 +127,59 @@ class OMFChannel(ResourceManager):
         """
         pass
 
+    def deploy(self):
+        """Deploy the RM. It means : Get the xmpp client and send messages using OMF 5.4 protocol to configure the channel
+           It becomes DEPLOYED after sending messages to configure the channel
+
+        """
+        if not self._omf_api :
+            self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
+                self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
+
+
+        if self.get('channel'):
+            set_nodes = self._get_target(self._connections) 
+            if set_nodes == "reschedule" :
+                self.ec.schedule(reschedule_delay, self.deploy)
+                return
+            print set_nodes
+            try:
+                for couple in set_nodes:
+                    #print "Couple node/alias : " + couple[0] + "  ,  " + couple[1]
+                    attrval = self.get('channel')
+                    attrname = "net/%s/%s" % (couple[1], 'channel')
+                    self._omf_api.configure(couple[0], attrname, attrval)
+            except AttributeError:
+                self._state = ResourceState.FAILED
+                msg = "Credentials are not initialzed. XMPP Connections impossible"
+                self.debug(msg)
+                return
+        else :
+            msg = "Channel's value is not initialized"
+            self.error(msg)
+
+        super(OMFChannel, self).deploy()
+
     def start(self):
-        """Send Xmpp Message Using OMF protocol to configure Channel
+        """Start the RM. It means nothing special for a channel for now
+           It becomes STARTED as soon as this method starts.
 
         """
 
         super(OMFChannel, self).start()
 
     def stop(self):
-        """Send Xmpp Message Using OMF protocol to put down the interface
+        """Stop the RM. It means nothing special for a channel for now
+           It becomes STOPPED as soon as this method stops
 
         """
         super(OMFChannel, self).stop()
 
     def release(self):
-        """Clean the RM at the end of the experiment
+        """Clean the RM at the end of the experiment and release the API
 
         """
-        OMFAPIFactory.release_api(self.get('xmppSlice'), 
-            self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
+        if self._omf_api :
+            OMFAPIFactory.release_api(self.get('xmppSlice'), 
+                self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
 

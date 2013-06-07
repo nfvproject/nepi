@@ -163,7 +163,7 @@ class MessageHandler():
         return payload
 
     def alias_function(self, name, target):
-        """ Build a Alias Message
+        """ Build an Alias Message
 
         :param name: Name of the new alias
         :type name: str

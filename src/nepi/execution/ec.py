@@ -94,6 +94,7 @@ class ExperimentController(object):
         return self.ecstate in [ECState.FAILED, ECState.TERMINATED]
 
     def wait_finished(self, guids):
+       # Take into account if only one guids is given in parameter
         while not all([self.state(guid) in [ResourceState.FINISHED, 
             ResourceState.STOPPED, 
             ResourceState.FAILED] \
