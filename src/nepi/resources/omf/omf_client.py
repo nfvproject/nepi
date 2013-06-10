@@ -25,15 +25,15 @@ from sleekxmpp.exceptions import IqError, IqTimeout
 import traceback
 import xml.etree.ElementTree as ET
 
-# inherit from BaseXmpp and XMLStream classes
+# inherit from BaseXmpp and XMLstream classes
 class OMFClient(sleekxmpp.ClientXMPP, Logger): 
     """
     .. class:: Class Args :
       
         :param jid: Jabber Id (= Xmpp Slice + Date)
-        :type jid: Str
+        :type jid: str
         :param password: Jabber Password (= Xmpp Password)
-        :type password: Str
+        :type password: str
 
     .. note::
 
@@ -45,9 +45,9 @@ class OMFClient(sleekxmpp.ClientXMPP, Logger):
         """
 
         :param jid: Jabber Id (= Xmpp Slice + Date)
-        :type jid: Str
+        :type jid: str
         :param password: Jabber Password (= Xmpp Password)
-        :type password: Str
+        :type password: str
 
 
         """

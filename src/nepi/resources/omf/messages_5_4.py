@@ -25,9 +25,9 @@ class MessageHandler():
     .. class:: Class Args :
       
         :param sliceid: Slice Name (= Xmpp Slice)
-        :type expid: Str
+        :type expid: str
         :param expid: Experiment ID (= Xmpp User)
-        :type expid: Str
+        :type expid: str
 
     .. note::
 
@@ -39,9 +39,9 @@ class MessageHandler():
         """
 
         :param sliceid: Slice Name (= Xmpp Slice)
-        :type expid: Str
+        :type expid: str
         :param expid: Experiment ID (= Xmpp User)
-        :type expid: Str
+        :type expid: str
 
         """
         self._slice_id = sliceid

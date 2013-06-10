@@ -27,6 +27,9 @@ class TaskStatus:
 
 
 class Task(object):
+    """ This class is to define a task, that is represented by an id,
+    an execution time 'timestamp' and an action 'callback """
+
     def __init__(self, timestamp, callback):
         self.id = None 
         self.timestamp = timestamp
@@ -35,7 +38,11 @@ class Task(object):
         self.status = TaskStatus.NEW
 
 class HeapScheduler(object):
-    """ This class is thread safe.
+    """ Create a Heap Scheduler.
+
+    .. note::
+
+    This class is thread safe.
     All calls to C Extensions are made atomic by the GIL in the CPython implementation.
     heapq.heappush, heapq.heappop, and list access are therefore thread-safe """
 
@@ -46,6 +53,11 @@ class HeapScheduler(object):
         self._idgen = itertools.count(1)
 
     def schedule(self, task):
+        """ Add the task 'task' in the heap of the scheduler
+
+        :param task: task that need to be schedule
+        :type task: task
+        """
         if task.id == None:
             task.id = self._idgen.next()
         entry = (task.timestamp, task.id, task)
@@ -54,12 +66,20 @@ class HeapScheduler(object):
         return task
 
     def remove(self, tid):
+        """ Remove a task form the heap
+
+        :param tid: Id of the task that need to be removed
+        :type tid: int
+        """
         try:
             self._valid.remove(tid)
         except:
             pass
 
     def next(self):
+        """ Get the next task in the scheduler
+
+        """
         while self._queue:
             try:
                 timestamp, tid, task = heapq.heappop(self._queue)

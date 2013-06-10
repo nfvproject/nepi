@@ -31,11 +31,17 @@ import weakref
 reschedule_delay = "0.5s"
 
 class ResourceAction:
+    """ Action that a user can order to a Resource Manager
+   
+    """
     DEPLOY = 0
     START = 1
     STOP = 2
 
 class ResourceState:
+    """ State of a Resource Manager
+   
+    """
     NEW = 0
     DISCOVERED = 1
     PROVISIONED = 2
@@ -161,6 +167,9 @@ class ResourceManager(Logger):
 
     @classmethod
     def rtype(cls):
+        """ Returns the type of the Resource Manager
+
+        """
         return cls._rtype
 
     @classmethod
@@ -202,18 +211,24 @@ class ResourceManager(Logger):
 
     @property
     def guid(self):
+        """ Returns the guid of the current RM """
         return self._guid
 
     @property
     def ec(self):
+        """ Returns the Experiment Controller """
         return self._ec()
 
     @property
     def connections(self):
+        """ Returns the set of connection for this RM"""
         return self._connections
 
     @property
     def conditions(self):
+        """ Returns the list of conditions for this RM
+        The list is a dictionary with for each action, a list of tuple 
+        describing the conditions. """
         return self._conditions
 
     @property
@@ -248,25 +263,45 @@ class ResourceManager(Logger):
 
     @property
     def state(self):
+        """ Get the state of the current RM """
         return self._state
 
     def log_message(self, msg):
+        """ Improve debugging message by adding more information 
+            as the guid and the type of the RM
+
+        :param msg: Message to log
+        :type msg: str
+        :rtype: str
+        """
         return " %s guid: %d - %s " % (self._rtype, self.guid, msg)
 
     def connect(self, guid):
+        """ Connect the current RM with the RM 'guid'
+
+        :param guid: Guid of the RM the current RM will be connected
+        :type guid: int
+        """
         if self.valid_connection(guid):
             self._connections.add(guid)
 
     def discover(self):
+        """ Discover the Resource. As it is specific for each RM, 
+        this method take the time when the RM become DISCOVERED and
+        change the status """
         self._discover_time = strfnow()
         self._state = ResourceState.DISCOVERED
 
     def provision(self):
+        """ Provision the Resource. As it is specific for each RM, 
+        this method take the time when the RM become PROVISIONNED and
+        change the status """
         self._provision_time = strfnow()
         self._state = ResourceState.PROVISIONED
 
     def start(self):
-        """ Start the Resource Manager
+        """ Start the Resource Manager. As it is specific to each RM, this methods
+        just change, after some verifications, the status to STARTED and save the time.
 
         """
         if not self._state in [ResourceState.READY, ResourceState.STOPPED]:
@@ -277,7 +312,8 @@ class ResourceManager(Logger):
         self._state = ResourceState.STARTED
 
     def stop(self):
-        """ Stop the Resource Manager
+        """ Stop the Resource Manager. As it is specific to each RM, this methods
+        just change, after some verifications, the status to STOPPED and save the time.
 
         """
         if not self._state in [ResourceState.STARTED]:
@@ -369,6 +405,12 @@ class ResourceManager(Logger):
         conditions.append((group, state, time))
 
     def get_connected(self, rtype):
+        """ Return the list of RM with the type 'rtype' 
+
+        :param rtype: Type of the RM we look for
+        :type rtype: str
+        :return : list of guid
+        """
         connected = []
         for guid in self.connections:
             rm = self.ec.get_resource(guid)
@@ -554,7 +596,8 @@ class ResourceManager(Logger):
         self._state = ResourceState.RELEASED
 
     def valid_connection(self, guid):
-        """Check if the connection is available.
+        """Check if the connection is available. This method need to be 
+        redefined by each new Resource Manager.
 
         :param guid: Guid of the current Resource Manager
         :type guid: int
@@ -569,22 +612,32 @@ class ResourceFactory(object):
 
     @classmethod
     def resource_types(cls):
+        """Return the type of the Class"""
         return cls._resource_types
 
     @classmethod
     def register_type(cls, rclass):
+        """Register a new Ressource Manager"""
         cls._resource_types[rclass.rtype()] = rclass
 
     @classmethod
     def create(cls, rtype, ec, guid):
+        """Create a new instance of a Ressource Manager"""
         rclass = cls._resource_types[rtype]
         return rclass(ec, guid)
 
 def populate_factory():
+        """Register all the possible RM that exists in the current version of Nepi.
+
+        """
     for rclass in find_types():
         ResourceFactory.register_type(rclass)
 
 def find_types():
+        """Look into the different folders to find all the 
+        availables Resources Managers
+
+        """
     search_path = os.environ.get("NEPI_SEARCH_PATH", "")
     search_path = set(search_path.split(" "))
    
