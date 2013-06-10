@@ -35,15 +35,15 @@ class OMFAPI(Logger):
     .. class:: Class Args :
       
         :param slice: Xmpp Slice
-        :type slice: Str
+        :type slice: str
         :param host: Xmpp Server
-        :type host: Str
+        :type host: str
         :param port: Xmpp Port
-        :type port: Str
+        :type port: str
         :param password: Xmpp password
-        :type password: Str
+        :type password: str
         :param xmpp_root: Root of the Xmpp Topic Architecture
-        :type xmpp_root: Str
+        :type xmpp_root: str
 
     .. note::
 
@@ -54,15 +54,15 @@ class OMFAPI(Logger):
         """
     
         :param slice: Xmpp Slice
-        :type slice: Str
+        :type slice: str
         :param host: Xmpp Server
-        :type host: Str
+        :type host: str
         :param port: Xmpp Port
-        :type port: Str
+        :type port: str
         :param password: Xmpp password
-        :type password: Str
+        :type password: str
         :param xmpp_root: Root of the Xmpp Topic Architecture
-        :type xmpp_root: Str
+        :type xmpp_root: str
 
         """
         super(OMFAPI, self).__init__("OMFAPI")

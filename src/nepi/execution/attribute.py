@@ -27,6 +27,9 @@ class Types:
 
 ### Attribute Flags
 class Flags:
+    """ Differents flags to characterize an attribute
+
+    """
     # Attribute can be modified by the user 
     NoFlags         = 0x00
     # Attribute is not modifiable by the user
@@ -39,6 +42,27 @@ class Flags:
     Filter      = 0x08
 
 class Attribute(object):
+    """
+    .. class:: Class Args :
+      
+        :param name: Name of the attribute
+        :type name: str
+        :param help: Help about the attribute
+        :type help: str
+        :param type: type of the attribute
+        :type type: str
+        :param flags: Help about the attribute
+        :type flags: str
+        :param default: Default value of the attribute
+        :type default: str
+        :param allowed: Allowed value for this attribute
+        :type allowed: str
+        :param range: Range of the attribute
+        :type range: str
+        :param set_hook: hook that is related with this attribute
+        :type set_hook: str
+
+    """
     def __init__(self, name, help, type = Types.String,
             flags = Flags.NoFlags, default = None, allowed = None,
             range = None, set_hook = None):
@@ -55,39 +79,53 @@ class Attribute(object):
 
     @property
     def name(self):
+    """ Returns the name of the attribute """
         return self._name
 
     @property
     def default(self):
+    """ Returns the default value of the attribute """
         return self._default
 
     @property
     def type(self):
+    """ Returns the type of the attribute """
         return self._type
 
     @property
     def help(self):
+    """ Returns the help of the attribute """
         return self._help
 
     @property
     def flags(self):
+    """ Returns the flags of the attribute """
         return self._flags
 
     @property
     def allowed(self):
+    """ Returns the allowed value for this attribute """
         return self._allowed
 
     @property
     def range(self):
+    """ Returns the range of the attribute """
         return self._range
 
     def has_flag(self, flag):
+    """ Returns true if the attribute has the flag 'flag'
+
+        :param flag: Flag that need to be ckecked
+        :type flag: Flags
+    """
         return (self._flags & flag) == flag
 
     def get_value(self):
+    """ Returns the value of the attribute """
         return self._value
 
     def set_value(self, value):
+    """ Change the value of the attribute after checking the type """
         valid = True
 
         if self.type == Types.Enumerate:

@@ -18,12 +18,26 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 class TraceAttr:
+    """ Class representing the different attributes 
+    that can characterized a trace.
+
+    """
     ALL = 'all'
     STREAM = 'stream'
     PATH = 'path'
     SIZE = 'size'
 
 class Trace(object):
+    """
+    .. class:: Class Args :
+      
+        :param name: Name of the trace
+        :type name: str
+        :param help: Help about the trace
+        :type help: str
+
+    """
+
     def __init__(self, name, help):
         self._name = name
         self._help = help
@@ -31,9 +45,11 @@ class Trace(object):
 
     @property
     def name(self):
+    """ Returns the name of the trace """
         return self._name
 
     @property
     def help(self):
+    """ Returns the help of the trace """
         return self._help
 
