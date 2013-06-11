@@ -19,8 +19,8 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 
-from nepi.resources.linux.node import LinuxNode
-from nepi.util.sshfuncs import RUNNING, FINISHED
+from nepi.resources.linux.node import LinuxNode, ExitCode
+from nepi.util.sshfuncs import ProcStatus
 
 from test_utils import skipIfNotAlive, skipInteractive, create_node
 
@@ -31,27 +31,13 @@ import unittest
 
 class LinuxNodeTestCase(unittest.TestCase):
     def setUp(self):
-        self.fedora_host = 'nepi2.pl.sophia.inria.fr'
-        self.fedora_user = 'inria_nepi'
+        self.fedora_host = "nepi2.pl.sophia.inria.fr"
+        self.fedora_user = "inria_nepi"
 
-        self.ubuntu_host = 'roseval.pl.sophia.inria.fr'
-        self.ubuntu_user = 'alina'
+        self.ubuntu_host = "roseval.pl.sophia.inria.fr"
+        self.ubuntu_user = "alina"
         
-        self.target = 'nepi5.pl.sophia.inria.fr'
-
-    @skipIfNotAlive
-    def t_xterm(self, host, user):
-        node, ec = create_node(host, user)
-
-        node.install_packages('xterm')
-
-        (out, err), proc = node.execute('xterm', forward_x11 = True)
-        
-        self.assertEquals(out, "")
-
-        (out, err), proc = node.remove_packages('xterm')
-        
-        self.assertEquals(out, "")
+        self.target = "nepi5.pl.sophia.inria.fr"
 
     @skipIfNotAlive
     def t_execute(self, host, user):
@@ -74,14 +60,14 @@ class LinuxNodeTestCase(unittest.TestCase):
         
         command = "ping %s" % self.target
         node.run(command, app_home)
-        pid, ppid = node.checkpid(app_home)
+        pid, ppid = node.getpid(app_home)
 
         status = node.status(pid, ppid)
-        self.assertTrue(status, RUNNING)
+        self.assertTrue(status, ProcStatus.RUNNING)
 
         node.kill(pid, ppid)
         status = node.status(pid, ppid)
-        self.assertTrue(status, FINISHED)
+        self.assertTrue(status, ProcStatus.FINISHED)
         
         (out, err), proc = node.check_output(app_home, "stdout")
 
@@ -92,19 +78,117 @@ class LinuxNodeTestCase(unittest.TestCase):
         node.rmdir(app_home)
 
     @skipIfNotAlive
+    def t_exitcode_ok(self, host, user):
+        command = "echo 'OK!'"
+        
+        node, ec = create_node(host, user)
+         
+        app_home = os.path.join(node.exp_home, "my-app")
+        node.mkdir(app_home, clean = True)
+         
+        (out, err), proc = node.run_and_wait(command, app_home,
+            shfile = "cmd.sh",
+            pidfile = "pid",
+            ecodefile = "exitcode",
+            stdout = "stdout", 
+            stderr = "stderr",
+            raise_on_error = True)
+ 
+        # get the pid of the process
+        ecode = node.exitcode(app_home)
+        self.assertEquals(ecode, ExitCode.OK)
+
+    @skipIfNotAlive
+    def t_exitcode_kill(self, host, user):
+        node, ec = create_node(host, user)
+         
+        app_home = os.path.join(node.exp_home, "my-app")
+        node.mkdir(app_home, clean = True)
+       
+        # Upload command that will not finish
+        command = "ping localhost"
+        (out, err), proc = node.upload_command(command, app_home, 
+            shfile = "cmd.sh",
+            ecodefile = "exitcode")
+
+        (out, err), proc = node.run(command, app_home,
+            pidfile = "pidfile",
+            stdout = "stdout", 
+            stderr = "stderr")
+ 
+        # Just wait to make sure the ping started
+        time.sleep(5)
+
+        # The process is still running, so no retfile has been created yet
+        ecode = node.exitcode(app_home)
+        self.assertEquals(ecode, ExitCode.FILENOTFOUND)
+        
+        (out, err), proc = node.check_errors(app_home)
+        self.assertEquals(err, "")
+        
+        # Now kill the app
+        pid, ppid = node.getpid(app_home)
+        node.kill(pid, ppid)
+         
+        (out, err), proc = node.check_errors(app_home)
+        self.assertEquals(err, "")
+
+    @skipIfNotAlive
+    def t_exitcode_error(self, host, user):
+        # Try to execute a command that doesn't exist
+        command = "unexistent-command"
+        
+        node, ec = create_node(host, user)
+         
+        app_home = os.path.join(node.exp_home, "my-app")
+        node.mkdir(app_home, clean = True)
+         
+        (out, err), proc = node.run_and_wait(command, app_home,
+            shfile = "cmd.sh",
+            pidfile = "pid",
+            ecodefile = "exitcode",
+            stdout = "stdout", 
+            stderr = "stderr",
+            raise_on_error = False)
+ 
+        # get the pid of the process
+        ecode = node.exitcode(app_home)
+        # bash erro 127 - command not found
+        self.assertEquals(ecode, 127)
+ 
+        (out, err), proc = node.check_errors(app_home)
+        self.assertNotEquals(out, "")
+
+    @skipIfNotAlive
     def t_install(self, host, user):
         node, ec = create_node(host, user)
 
-        (out, err), proc = node.mkdir(node.node_home, clean=True)
+        (out, err), proc = node.mkdir(node.node_home, clean = True)
         self.assertEquals(out, "")
 
-        (out, err), proc = node.install_packages('gcc')
+        (out, err), proc = node.install_packages("gcc", node.node_home)
         self.assertEquals(out, "")
 
-        (out, err), proc = node.remove_packages('gcc')
+        (out, err), proc = node.remove_packages("gcc", node.node_home)
         self.assertEquals(out, "")
 
         (out, err), proc = node.rmdir(node.exp_home)
+        self.assertEquals(out, "")
+
+    @skipIfNotAlive
+    def t_xterm(self, host, user):
+        node, ec = create_node(host, user)
+
+        (out, err), proc = node.mkdir(node.node_home, clean = True)
+        self.assertEquals(out, "")
+        
+        node.install_packages("xterm", node.node_home)
+        self.assertEquals(out, "")
+
+        (out, err), proc = node.execute("xterm", forward_x11 = True)
+        self.assertEquals(out, "")
+
+        (out, err), proc = node.remove_packages("xterm", node.node_home)
         self.assertEquals(out, "")
 
     @skipIfNotAlive
@@ -128,7 +212,7 @@ main (void)
         node.upload(prog, dst, text = True)
 
         # install gcc
-        node.install_packages('gcc')
+        node.install_packages('gcc', app_home)
 
         # compile the program using gcc
         command = "cd %s; gcc -Wall hello.c -o hello" % app_home
@@ -147,12 +231,12 @@ main (void)
 
         # retrieve the output file 
         src = os.path.join(app_home, "hello.out")
-        f = tempfile.NamedTemporaryFile(delete=False)
+        f = tempfile.NamedTemporaryFile(delete = False)
         dst = f.name
         node.download(src, dst)
         f.close()
 
-        node.remove_packages('gcc')
+        node.remove_packages("gcc", app_home)
         node.rmdir(app_home)
 
         f = open(dst, "r")
@@ -184,6 +268,24 @@ main (void)
 
     def test_compile_ubuntu(self):
         self.t_compile(self.ubuntu_host, self.ubuntu_user)
+
+    def test_exitcode_ok_fedora(self):
+        self.t_exitcode_ok(self.fedora_host, self.fedora_user)
+
+    def test_exitcode_ok_ubuntu(self):
+        self.t_exitcode_ok(self.ubuntu_host, self.ubuntu_user)
+
+    def test_exitcode_kill_fedora(self):
+        self.t_exitcode_kill(self.fedora_host, self.fedora_user)
+
+    def test_exitcode_kill_ubuntu(self):
+        self.t_exitcode_kill(self.ubuntu_host, self.ubuntu_user)
+
+    def test_exitcode_error_fedora(self):
+        self.t_exitcode_error(self.fedora_host, self.fedora_user)
+
+    def test_exitcode_error_ubuntu(self):
+        self.t_exitcode_error(self.ubuntu_host, self.ubuntu_user)
     
     @skipInteractive
     def test_xterm_ubuntu(self):

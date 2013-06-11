@@ -79,53 +79,53 @@ class Attribute(object):
 
     @property
     def name(self):
-    """ Returns the name of the attribute """
+        """ Returns the name of the attribute """
         return self._name
 
     @property
     def default(self):
-    """ Returns the default value of the attribute """
+        """ Returns the default value of the attribute """
         return self._default
 
     @property
     def type(self):
-    """ Returns the type of the attribute """
+        """ Returns the type of the attribute """
         return self._type
 
     @property
     def help(self):
-    """ Returns the help of the attribute """
+        """ Returns the help of the attribute """
         return self._help
 
     @property
     def flags(self):
-    """ Returns the flags of the attribute """
+        """ Returns the flags of the attribute """
         return self._flags
 
     @property
     def allowed(self):
-    """ Returns the allowed value for this attribute """
+        """ Returns the allowed value for this attribute """
         return self._allowed
 
     @property
     def range(self):
-    """ Returns the range of the attribute """
+        """ Returns the range of the attribute """
         return self._range
 
     def has_flag(self, flag):
-    """ Returns true if the attribute has the flag 'flag'
+        """ Returns true if the attribute has the flag 'flag'
 
         :param flag: Flag that need to be ckecked
         :type flag: Flags
-    """
+        """
         return (self._flags & flag) == flag
 
     def get_value(self):
-    """ Returns the value of the attribute """
+        """ Returns the value of the attribute """
         return self._value
 
     def set_value(self, value):
-    """ Change the value of the attribute after checking the type """
+        """ Change the value of the attribute after checking the type """
         valid = True
 
         if self.type == Types.Enumerate:

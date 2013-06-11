@@ -19,8 +19,8 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 
-from nepi.util.sshfuncs import rexec, rcopy, rspawn, rcheckpid, rstatus, rkill,\
-        RUNNING, FINISHED 
+from nepi.util.sshfuncs import rexec, rcopy, rspawn, rgetpid, rstatus, rkill,\
+        ProcStatus
 
 import getpass
 import unittest
@@ -231,7 +231,7 @@ class SSHfuncsTestCase(unittest.TestCase):
 
         time.sleep(2)
 
-        (pid, ppid) = rcheckpid(pidfile,
+        (pid, ppid) = rgetpid(pidfile,
                 host = host,
                 user = user,
                 port = env.port,
@@ -243,7 +243,7 @@ class SSHfuncsTestCase(unittest.TestCase):
                 port = env.port, 
                 agent = True)
 
-        self.assertEquals(status, RUNNING)
+        self.assertEquals(status, ProcStatus.RUNNING)
 
         rkill(pid, ppid,
                 host = host,
@@ -257,7 +257,7 @@ class SSHfuncsTestCase(unittest.TestCase):
                 port = env.port, 
                 agent = True)
         
-        self.assertEquals(status, FINISHED)
+        self.assertEquals(status, ProcStatus.FINISHED)
 
 
 if __name__ == '__main__':

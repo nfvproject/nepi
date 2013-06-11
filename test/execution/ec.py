@@ -72,7 +72,7 @@ class ExecuteControllersTestCase(unittest.TestCase):
 
     def test_schedule_exception(self):
         def raise_error():
-            raise RuntimeError, "the error"
+            raise RuntimeError, "NOT A REAL ERROR. JUST TESTING!"
 
         ec = ExperimentController()
         ec.schedule("2s", raise_error)

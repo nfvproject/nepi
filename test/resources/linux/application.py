@@ -34,13 +34,13 @@ import unittest
 
 class LinuxApplicationTestCase(unittest.TestCase):
     def setUp(self):
-        self.fedora_host = 'nepi2.pl.sophia.inria.fr'
-        self.fedora_user = 'inria_nepi'
+        self.fedora_host = "nepi2.pl.sophia.inria.fr"
+        self.fedora_user = "inria_nepi"
 
-        self.ubuntu_host = 'roseval.pl.sophia.inria.fr'
-        self.ubuntu_user = 'alina'
+        self.ubuntu_host = "roseval.pl.sophia.inria.fr"
+        self.ubuntu_user = "alina"
         
-        self.target = 'nepi5.pl.sophia.inria.fr'
+        self.target = "nepi5.pl.sophia.inria.fr"
 
     @skipIfNotAlive
     def t_stdout(self, host, user):
@@ -69,7 +69,7 @@ class LinuxApplicationTestCase(unittest.TestCase):
         self.assertTrue(ec.state(node) == ResourceState.STARTED)
         self.assertTrue(ec.state(app) == ResourceState.FINISHED)
 
-        stdout = ec.trace(app, 'stdout')
+        stdout = ec.trace(app, "stdout")
         self.assertTrue(stdout.strip() == "HOLA")
 
         ec.shutdown()
@@ -102,16 +102,16 @@ class LinuxApplicationTestCase(unittest.TestCase):
         self.assertTrue(ec.state(node) == ResourceState.STARTED)
         self.assertTrue(ec.state(app) == ResourceState.FINISHED)
 
-        stdout = ec.trace(app, 'stdout')
-        size = ec.trace(app, 'stdout', attr = TraceAttr.SIZE)
+        stdout = ec.trace(app, "stdout")
+        size = ec.trace(app, "stdout", attr = TraceAttr.SIZE)
         self.assertEquals(len(stdout), size)
         
-        block = ec.trace(app, 'stdout', attr = TraceAttr.STREAM, block = 5, offset = 1)
+        block = ec.trace(app, "stdout", attr = TraceAttr.STREAM, block = 5, offset = 1)
         self.assertEquals(block, stdout[5:10])
 
-        path = ec.trace(app, 'stdout', attr = TraceAttr.PATH)
+        path = ec.trace(app, "stdout", attr = TraceAttr.PATH)
         rm = ec.get_resource(app)
-        p = os.path.join(rm.app_home, 'stdout')
+        p = os.path.join(rm.app_home, "stdout")
         self.assertEquals(path, p)
 
         ec.shutdown()
@@ -202,7 +202,7 @@ class LinuxApplicationTestCase(unittest.TestCase):
         self.assertTrue(ec.state(server) == ResourceState.FINISHED)
         self.assertTrue(ec.state(client) == ResourceState.FINISHED)
 
-        stdout = ec.trace(client, 'stdout')
+        stdout = ec.trace(client, "stdout")
         self.assertTrue(stdout.strip() == "HOLA")
 
         ec.shutdown()
@@ -222,8 +222,8 @@ class LinuxApplicationTestCase(unittest.TestCase):
         ec.set(node, "cleanHome", True)
         ec.set(node, "cleanProcesses", True)
 
-        sources = "http://nepi.inria.fr/attachment/wiki/WikiStart/pybindgen-r794.tar.gz " \
-            "http://nepi.inria.fr/attachment/wiki/WikiStart/nepi_integration_framework.pdf"
+        sources = "http://nepi.inria.fr/code/nef/archive/tip.tar.gz " \
+                " http://nepi.inria.fr/code/nef/raw-file/8ace577d4079/src/nef/images/menu/connect.png"
 
         app = ec.register_resource("LinuxApplication")
         ec.set(app, "sources", sources)
@@ -237,12 +237,12 @@ class LinuxApplicationTestCase(unittest.TestCase):
         self.assertTrue(ec.state(node) == ResourceState.STARTED)
         self.assertTrue(ec.state(app) == ResourceState.FINISHED)
 
-        err = ec.trace(app, 'http_sources_err')
-        self.assertTrue(err == "")
+        exitcode = ec.trace(app, "http_sources_exitcode")
+        self.assertTrue(exitcode.strip() == "0")
         
-        out = ec.trace(app, 'http_sources_out')
-        self.assertTrue(out.find("pybindgen-r794.tar.gz") > -1)
-        self.assertTrue(out.find("nepi_integration_framework.pdf") > -1)
+        out = ec.trace(app, "http_sources_stdout")
+        self.assertTrue(out.find("tip.tar.gz") > -1)
+        self.assertTrue(out.find("connect.png") > -1)
 
         ec.shutdown()
 
@@ -276,8 +276,6 @@ class LinuxApplicationTestCase(unittest.TestCase):
     def test_http_sources_ubuntu(self):
         self.t_http_sources(self.ubuntu_host, self.ubuntu_user)
 
-
-    # TODO: test compilation, sources, dependencies, etc!!!
 
 if __name__ == '__main__':
     unittest.main()
