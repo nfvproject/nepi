@@ -28,11 +28,12 @@ from optparse import OptionParser, SUPPRESS_HELP
 import os
 import time
 
-def add_node(ec, host, user):
+def add_node(ec, host, user, ssh_key = None):
     node = ec.register_resource("LinuxNode")
     ec.set(node, "hostname", host)
     ec.set(node, "username", user)
-    #ec.set(node, "cleanHome", True)
+    ec.set(node, "identity", ssh_key)
+    ec.set(node, "cleanHome", True)
     ec.set(node, "cleanProcesses", True)
     return node
 
@@ -40,18 +41,18 @@ def add_ccnd(ec, os_type, peers):
     if os_type == "f12":
         depends = ( " autoconf openssl-devel  expat-devel libpcap-devel "
                 " ecryptfs-utils-devel libxml2-devel automake gawk " 
-                " gcc gcc-c++ git pcre-devel ")
+                " gcc gcc-c++ git pcre-devel make ")
     elif os_type == "ubuntu":
         depends = ( " autoconf libssl-dev libexpat-dev libpcap-dev "
                 " libecryptfs0 libxml2-utils automake gawk gcc g++ "
-                " git-core pkg-config libpcre3-dev ")
+                " git-core pkg-config libpcre3-dev make ")
 
     sources = "http://www.ccnx.org/releases/ccnx-0.7.1.tar.gz"
 
     build = (
         # Evaluate if ccnx binaries are already installed
         " ( "
-            "  test -d ${EXP_HOME}/ccnx/bin"
+            "  test -f ${EXP_HOME}/ccnx/bin/ccnd"
         " ) || ( "
         # If not, untar and build
             " ( "
@@ -66,7 +67,7 @@ def add_ccnd(ec, os_type, peers):
     install = (
         # Evaluate if ccnx binaries are already installed
         " ( "
-            "  test -d ${EXP_HOME}/ccnx/bin "
+            "  test -f ${EXP_HOME}/ccnx/bin/ccnd"
         " ) || ( "
             "  mkdir -p ${EXP_HOME}/ccnx/bin && "
             "  cp -r ${SOURCES}/ccnx ${EXP_HOME}"
@@ -75,11 +76,11 @@ def add_ccnd(ec, os_type, peers):
 
     env = "PATH=$PATH:${EXP_HOME}/ccnx/bin"
 
-    # BASH command -> ' ccndstart 2>&1 ; ccndc add ccnx:/ udp  host ;  ccnr 2>&1 '
-    command = "ccndstart 2>&1 ; "
+    # BASH command -> ' ccndstart ; ccndc add ccnx:/ udp  host ;  ccnr '
+    command = "ccndstart ; "
     peers = map(lambda peer: "ccndc add ccnx:/ udp  %s" % peer, peers)
     command += " ; ".join(peers) + " ; "
-    command += " ccnr 2>&1 "
+    command += " ccnr "
 
     app = ec.register_resource("LinuxApplication")
     ec.set(app, "depends", depends)
@@ -104,7 +105,7 @@ def add_publish(ec, movie):
 
 def add_stream(ec):
     env = "PATH=$PATH:${EXP_HOME}/ccnx/bin"
-    command = "sudo -S dbus-uuidgen --ensure ; ( ccncat ccnx:/VIDEO | vlc - ) 2>&1"
+    command = "sudo -S dbus-uuidgen --ensure ; ( ccncat ccnx:/VIDEO | vlc - ) "
 
     app = ec.register_resource("LinuxApplication")
     ec.set(app, "depends", "vlc")
@@ -117,37 +118,56 @@ def add_stream(ec):
 def get_options():
     slicename = os.environ.get("PL_SLICE")
 
-    usage = "usage: %prog -s <pl-slice> -u <user-2> -m <movie> -l <exp-id>"
+    # We use a specific SSH private key for PL if the PL_SSHKEY is specified or the
+    # id_rsa_planetlab exists 
+    default_key = "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'])
+    default_key = default_key if os.path.exists(default_key) else None
+    pl_ssh_key = os.environ.get("PL_SSHKEY", default_key)
+
+    usage = "usage: %prog -s <pl-slice> -u <username> -m <movie> -l <exp-id> -i <ssh_key>"
 
     parser = OptionParser(usage=usage)
     parser.add_option("-s", "--pl-slice", dest="pl_slice", 
-            help="PlanetLab slicename", default=slicename, type="str")
-    parser.add_option("-u", "--user-2", dest="user2", 
-            help="User for non PlanetLab machine", type="str")
+            help="PlanetLab slicename", default = slicename, type="str")
+    parser.add_option("-u", "--username", dest="username", 
+            help="User for extra host (non PlanetLab)", type="str")
     parser.add_option("-m", "--movie", dest="movie", 
             help="Stream movie", type="str")
     parser.add_option("-l", "--exp-id", dest="exp_id", 
             help="Label to identify experiment", type="str")
+    parser.add_option("-i", "--pl-ssh-key", dest="pl_ssh_key", 
+            help="Path to private SSH key to be used for connection", 
+            default = pl_ssh_key, type="str")
 
     (options, args) = parser.parse_args()
 
     if not options.movie:
         parser.error("movie is a required argument")
 
-    return (options.pl_slice, options.user2, options.movie, options.exp_id)
+    return (options.pl_slice, options.username, options.movie, options.exp_id, 
+            options.pl_ssh_key)
 
 if __name__ == '__main__':
-    ( pl_slice, user2, movie, exp_id ) = get_options()
+    ( pl_slice, username, movie, exp_id, pl_ssh_key ) = get_options()
 
     # Search for available RMs
     populate_factory()
     
+    # PlanetLab node
     host1 = 'planetlab2.u-strasbg.fr'
+    
+    # Another node 
+    # IMPORTANT NOTE: you must replace this host for another one
+    #       you have access to. You must set up your SSH keys so
+    #       the host can be accessed through SSH without prompting
+    #       for a password. The host must allow X forwarding using SSH.
     host2 = 'roseval.pl.sophia.inria.fr'
 
+    # Create the ExperimentController instance
     ec = ExperimentController(exp_id = exp_id)
 
-    node1 = add_node(ec, host1, pl_slice)
+    # Register a ResourceManager (RM) for the PlanetLab node
+    node1 = add_node(ec, host1, pl_slice, pl_ssh_key)
     
     peers = [host2]
     ccnd1 = add_ccnd(ec, "f12", peers)
@@ -161,7 +181,7 @@ if __name__ == '__main__':
     ec.register_condition(pub, ResourceAction.START, 
             ccnd1, ResourceState.STARTED)
     
-    node2 = add_node(ec, host2, user2)
+    node2 = add_node(ec, host2, username)
     peers = [host1]
     ccnd2 = add_ccnd(ec, "ubuntu", peers)
     ec.register_connection(ccnd2, node2)
@@ -177,10 +197,13 @@ if __name__ == '__main__':
     ec.register_condition(stream, ResourceAction.START, 
             pub, ResourceState.STARTED)
  
+    # Deploy all ResourceManagers
     ec.deploy()
 
+    # Wait until the applications are finished
     apps = [ccnd1, pub, ccnd2, stream]
     ec.wait_finished(apps)
 
+    # Shutdown the experiment controller
     ec.shutdown()
 

@@ -439,6 +439,9 @@ class ExperimentController(object):
         if not group:
             group = self.resources
 
+        if isinstance(group, int):
+            group = [group]
+
         # Before starting deployment we disorder the group list with the
         # purpose of speeding up the whole deployment process.
         # It is likely that the user inserted in the 'group' list closely
@@ -450,7 +453,7 @@ class ExperimentController(object):
         # same conditions (e.g. LinuxApplications running on a same 
         # node share a single lock, so they will tend to be serialized).
         # If we disorder the group list, this problem can be mitigated.
-        random.shuffle(group)
+        #random.shuffle(group)
 
         def wait_all_and_start(group):
             reschedule = False
@@ -467,7 +470,7 @@ class ExperimentController(object):
                 # If all resources are read, we schedule the start
                 for guid in group:
                     rm = self.get_resource(guid)
-                    self.schedule("0.01s", rm.start_with_conditions)
+                    self.schedule("0s", rm.start_with_conditions)
 
         if wait_all_ready:
             # Schedule the function that will check all resources are
@@ -479,7 +482,7 @@ class ExperimentController(object):
 
         for guid in group:
             rm = self.get_resource(guid)
-            self.schedule("0.001s", rm.deploy)
+            self.schedule("0s", rm.deploy)
 
             if not wait_all_ready:
                 self.schedule("1s", rm.start_with_conditions)
@@ -518,12 +521,16 @@ class ExperimentController(object):
         
     def shutdown(self):
         """ Shutdown the Experiment Controller. 
-        It means : Release all the resources and stop the scheduler
+        Releases all the resources and stops task processing thread
 
         """
         self.release()
 
-        self._stop_scheduler()
+        # Mark the EC state as TERMINATED
+        self._state = ECState.TERMINATED
+
+        # Notify condition to wake up the processing thread
+        self._notify()
         
         if self._thread.is_alive():
            self._thread.join()
@@ -554,18 +561,28 @@ class ExperimentController(object):
             self._tasks[task.id] = task
   
         # Notify condition to wake up the processing thread
-        self._cond.acquire()
-        self._cond.notify()
-        self._cond.release()
+        self._notify()
 
         return task.id
      
     def _process(self):
-        """ Process at executing the task that are in the scheduler.
+        """ Process scheduled tasks.
+
+        The _process method is executed in an independent thread held by the 
+        ExperimentController for as long as the experiment is running.
+        
+        Tasks are scheduled by invoking the schedule method with a target callback. 
+        The schedule method is givedn a execution time which controls the
+        order in which tasks are processed. 
+
+        Tasks are processed in parallel using multithreading. 
+        The environmental variable NEPI_NTHREADS can be used to control
+        the number of threads used to process tasks. The default value is 50.
 
         """
+        nthreads = int(os.environ.get("NEPI_NTHREADS", "50"))
 
-        runner = ParallelRun(maxthreads = 50)
+        runner = ParallelRun(maxthreads = nthreads)
         runner.start()
 
         try:
@@ -602,18 +619,18 @@ class ExperimentController(object):
             self._logger.error("Error while processing tasks in the EC: %s" % err)
 
             self._state = ECState.FAILED
-   
-        # Mark EC state as terminated
-        if self.ecstate == ECState.RUNNING:
-            # Synchronize to get errors if occurred
+        finally:   
             runner.sync()
-            self._state = ECState.TERMINATED
 
     def _execute(self, task):
-        """ Invoke the callback of the task 'task'
+        """ Executes a single task. 
 
-            :param task: Id of the task
-            :type task: int
+            If the invokation of the task callback raises an
+            exception, the processing thread of the ExperimentController
+            will be stopped and the experiment will be aborted.
+
+            :param task: Object containing the callback to execute
+            :type task: Task
 
         """
         # Invoke callback
@@ -629,22 +646,21 @@ class ExperimentController(object):
             
             self._logger.error("Error occurred while executing task: %s" % err)
 
-            self._stop_scheduler()
+            # Set the EC to FAILED state (this will force to exit the task
+            # processing thread)
+            self._state = ECState.FAILED
+
+            # Notify condition to wake up the processing thread
+            self._notify()
 
             # Propage error to the ParallelRunner
             raise
 
-    def _stop_scheduler(self):
-        """ Stop the scheduler and put the EC into a FAILED State.
-
+    def _notify(self):
+        """ Awakes the processing thread in case it is blocked waiting
+        for a new task to be scheduled.
         """
-
-        # Mark the EC as failed
-        self._state = ECState.FAILED
-
-        # Wake up the EC in case it was sleeping
         self._cond.acquire()
         self._cond.notify()
         self._cond.release()
-
 

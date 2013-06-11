@@ -627,17 +627,16 @@ class ResourceFactory(object):
         return rclass(ec, guid)
 
 def populate_factory():
-        """Register all the possible RM that exists in the current version of Nepi.
-
-        """
+    """Register all the possible RM that exists in the current version of Nepi.
+    """
     for rclass in find_types():
         ResourceFactory.register_type(rclass)
 
 def find_types():
-        """Look into the different folders to find all the 
-        availables Resources Managers
+    """Look into the different folders to find all the 
+    availables Resources Managers
 
-        """
+    """
     search_path = os.environ.get("NEPI_SEARCH_PATH", "")
     search_path = set(search_path.split(" "))
    

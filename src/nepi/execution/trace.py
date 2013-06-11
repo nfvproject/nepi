@@ -45,11 +45,11 @@ class Trace(object):
 
     @property
     def name(self):
-    """ Returns the name of the trace """
+        """ Returns the name of the trace """
         return self._name
 
     @property
     def help(self):
-    """ Returns the help of the trace """
+        """ Returns the help of the trace """
         return self._help
 

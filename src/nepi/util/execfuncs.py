@@ -17,7 +17,7 @@
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
-from nepi.util.sshfuncs import RUNNING, FINISHED, NOT_STARTED, STDOUT 
+from nepi.util.sshfuncs import ProcStatus, STDOUT
 
 import subprocess
 
@@ -134,7 +134,7 @@ def lspawn(command, pidfile,
 
     return (out,err),proc
 
-def lcheckpid(pidfile):
+def lgetpid(pidfile):
     """
     Check the pidfile of a process spawned with remote_spawn.
     
@@ -179,14 +179,14 @@ def lstatus(pid, ppid):
         })
     
     if proc.wait():
-        return NOT_STARTED
+        return ProcStatus.NOT_STARTED
     
     status = False
     if out:
         status = (out.strip() == 'wait')
     else:
-        return NOT_STARTED
-    return RUNNING if status else FINISHED
+        return ProcStatus.NOT_STARTED
+    return ProcStatus.RUNNING if status else ProcStatus.FINISHED
  
 
 def lkill(pid, ppid, sudo = False):

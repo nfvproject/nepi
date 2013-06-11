@@ -57,20 +57,18 @@ class STDOUT:
     redirect to whatever stdout was redirected to.
     """
 
-class RUNNING:
+class ProcStatus:
     """
-    Process is still running
+    Codes for status of remote spawned process
     """
+    # Process is still running
+    RUNNING = 1
 
-class FINISHED:
-    """
-    Process is finished
-    """
-
-class NOT_STARTED:
-    """
-    Process hasn't started running yet (this should be very rare)
-    """
+    # Process is finished
+    FINISHED = 2
+    
+    # Process hasn't started running yet (this should be very rare)
+    NOT_STARTED = 3
 
 hostbyname_cache = dict()
 hostbyname_cache_lock = threading.Lock()
@@ -511,6 +509,9 @@ def rcopy(source, dest,
         tmp_known_hosts = None
 
         args = ['scp', '-q', '-p', '-C',
+                # Speed up transfer using blowfish cypher specification which is 
+                # faster than the default one (3des)
+                '-c', 'blowfish',
                 # Don't bother with localhost. Makes test easier
                 '-o', 'NoHostAuthenticationForLocalhost=yes',
                 '-o', 'ConnectTimeout=60',
@@ -588,7 +589,7 @@ def rcopy(source, dest,
 def rspawn(command, pidfile, 
         stdout = '/dev/null', 
         stderr = STDOUT, 
-        stdin = '/dev/null', 
+        stdin = '/dev/null',
         home = None, 
         create_home = False, 
         sudo = False,
@@ -600,28 +601,41 @@ def rspawn(command, pidfile,
         server_key = None,
         tty = False):
     """
-    Spawn a remote command such that it will continue working asynchronously.
-    
-    Parameters:
-        command: the command to run - it should be a single line.
+    Spawn a remote command such that it will continue working asynchronously in 
+    background. 
+
+        :param command: The command to run, it should be a single line.
+        :type command: str
+
+        :param pidfile: Path to a file where to store the pid and ppid of the 
+                        spawned process
+        :type pidfile: str
+
+        :param stdout: Path to file to redirect standard output. 
+                       The default value is /dev/null
+        :type stdout: str
+
+        :param stderr: Path to file to redirect standard error.
+                       If the special STDOUT value is used, stderr will 
+                       be redirected to the same file as stdout
+        :type stderr: str
+
+        :param stdin: Path to a file with input to be piped into the command's standard input
+        :type stdin: str
+
+        :param home: Path to working directory folder. 
+                    It is assumed to exist unless the create_home flag is set.
+        :type home: str
+
+        :param create_home: Flag to force creation of the home folder before 
+                            running the command
+        :type create_home: bool
+ 
+        :param sudo: Flag forcing execution with sudo user
+        :type sudo: bool
         
-        pidfile: path of a (ideally unique to this task) pidfile for tracking the process.
-        
-        stdout: path of a file to redirect standard output to - must be a string.
-            Defaults to /dev/null
-        stderr: path of a file to redirect standard error to - string or the special STDOUT value
-            to redirect to the same file stdout was redirected to. Defaults to STDOUT.
-        stdin: path of a file with input to be piped into the command's standard input
-        
-        home: path of a folder to use as working directory - should exist, unless you specify create_home
-        
-        create_home: if True, the home folder will be created first with mkdir -p
-        
-        sudo: whether the command needs to be executed as root
-        
-        host/port/user/agent/identity: see rexec
-    
-    Returns:
+        :rtype: touple
+
         (stdout, stderr), process
         
         Of the spawning process, which only captures errors at spawning time.
@@ -667,7 +681,7 @@ def rspawn(command, pidfile,
     return ((out, err), proc)
 
 @eintr_retry
-def rcheckpid(pidfile,
+def rgetpid(pidfile,
         host = None, 
         port = None, 
         user = None, 
@@ -675,19 +689,21 @@ def rcheckpid(pidfile,
         identity = None,
         server_key = None):
     """
-    Check the pidfile of a process spawned with remote_spawn.
-    
-    Parameters:
-        pidfile: the pidfile passed to remote_span
-        
-        host/port/user/agent/identity: see rexec
-    
-    Returns:
-        
-        A (pid, ppid) tuple useful for calling remote_status and remote_kill,
-        or None if the pidfile isn't valid yet (maybe the process is still starting).
-    """
+    Returns the pid and ppid of a process from a remote file where the 
+    information was stored.
 
+        :param home: Path to directory where the pidfile is located
+        :type home: str
+
+        :param pidfile: Name of file containing the pid information
+        :type pidfile: str
+        
+        :rtype: int
+        
+        A (pid, ppid) tuple useful for calling rstatus and rkill,
+        or None if the pidfile isn't valid yet (can happen when process is staring up)
+
+    """
     (out,err),proc = rexec(
         "cat %(pidfile)s" % {
             'pidfile' : pidfile,
@@ -719,18 +735,17 @@ def rstatus(pid, ppid,
         identity = None,
         server_key = None):
     """
-    Check the status of a process spawned with remote_spawn.
-    
-    Parameters:
-        pid/ppid: pid and parent-pid of the spawned process. See remote_check_pid
-        
-        host/port/user/agent/identity: see rexec
-    
-    Returns:
-        
-        One of NOT_STARTED, RUNNING, FINISHED
-    """
+    Returns a code representing the the status of a remote process
 
+        :param pid: Process id of the process
+        :type pid: int
+
+        :param ppid: Parent process id of process
+        :type ppid: int
+    
+        :rtype: int (One of NOT_STARTED, RUNNING, FINISHED)
+    
+    """
     (out,err),proc = rexec(
         # Check only by pid. pid+ppid does not always work (especially with sudo) 
         " (( ps --pid %(pid)d -o pid | grep -c %(pid)d && echo 'wait')  || echo 'done' ) | tail -n 1" % {
@@ -746,7 +761,7 @@ def rstatus(pid, ppid,
         )
     
     if proc.wait():
-        return NOT_STARTED
+        return ProcStatus.NOT_STARTED
     
     status = False
     if err:
@@ -755,8 +770,8 @@ def rstatus(pid, ppid,
     elif out:
         status = (out.strip() == 'wait')
     else:
-        return NOT_STARTED
-    return RUNNING if status else FINISHED
+        return ProcStatus.NOT_STARTED
+    return ProcStatus.RUNNING if status else ProcStatus.FINISHED
 
 @eintr_retry
 def rkill(pid, ppid,
@@ -769,23 +784,21 @@ def rkill(pid, ppid,
         server_key = None, 
         nowait = False):
     """
-    Kill a process spawned with remote_spawn.
-    
+    Sends a kill signal to a remote process.
+
     First tries a SIGTERM, and if the process does not end in 10 seconds,
     it sends a SIGKILL.
-    
-    Parameters:
-        pid/ppid: pid and parent-pid of the spawned process. See remote_check_pid
+ 
+        :param pid: Process id of process to be killed
+        :type pid: int
+
+        :param ppid: Parent process id of process to be killed
+        :type ppid: int
+
+        :param sudo: Flag indicating if sudo should be used to kill the process
+        :type sudo: bool
         
-        sudo: whether the command was run with sudo - careful killing like this.
-        
-        host/port/user/agent/identity: see rexec
-    
-    Returns:
-        
-        Nothing, should have killed the process
     """
-    
     subkill = "$(ps --ppid %(pid)d -o pid h)" % { 'pid' : pid }
     cmd = """
 SUBKILL="%(subkill)s" ;
