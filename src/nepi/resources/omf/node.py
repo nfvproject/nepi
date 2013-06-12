@@ -150,7 +150,7 @@ class OMFNode(ResourceManager):
         """
         pass
 
-     def start(self):
+    def start(self):
         """Start the RM. It means nothing special for an interface for now
            It becomes STARTED as soon as this method starts.
 

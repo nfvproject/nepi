@@ -405,11 +405,11 @@ class ResourceManager(Logger):
         conditions.append((group, state, time))
 
     def get_connected(self, rtype):
-        """ Return the list of RM with the type 'rtype' 
+        """ Return the list of RM with the type 'rtype'
 
         :param rtype: Type of the RM we look for
         :type rtype: str
-        :return : list of guid
+        :return: list of guid
         """
         connected = []
         for guid in self.connections:
@@ -473,8 +473,8 @@ class ResourceManager(Logger):
 
     def set_with_conditions(self, name, value, group, state, time):
         """ Set value 'value' on attribute with name 'name' when 'time' 
-            has elapsed since all elements in 'group' have reached state
-           'state'
+        has elapsed since all elements in 'group' have reached state
+        'state'
 
         :param name: Name of the attribute to set
         :type name: str
@@ -486,7 +486,6 @@ class ResourceManager(Logger):
         :type state: str
         :param time: Time to wait after 'state' is reached on all RMs in group. (e.g. '2s')
         :type time: str
-
         """
 
         reschedule = False

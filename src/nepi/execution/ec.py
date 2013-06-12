@@ -54,10 +54,9 @@ class ExperimentController(object):
         :type root_dir: str
 
     .. note::
-
-       This class is the only one used by the User. Indeed, the user "talks"
-       only with the Experiment Controller and this latter forward to 
-       the different Resources Manager the order provided by the user.
+        This class is the only one used by the User. Indeed, the user "talks"
+        only with the Experiment Controller and this latter forward to 
+        the different Resources Manager the order provided by the user.
 
     """
 
@@ -165,7 +164,8 @@ class ExperimentController(object):
     def resources(self):
         """ Returns the list of all the Resource Manager Id
 
-        :rtype:  set
+        :rtype: set
+
         """
         return self._resources.keys()
 
@@ -175,8 +175,8 @@ class ExperimentController(object):
 
         :param rtype: Type of the RM
         :type rtype: str
-        :return : Id of the RM
-        :rtype:  int
+        :return: Id of the RM
+        :rtype: int
         """
         # Get next available guid
         guid = self._guid_generator.next(guid)
@@ -194,7 +194,7 @@ class ExperimentController(object):
 
         :param guid: Guid of the RM
         :type guid: int
-        :return : List of attributes
+        :return: List of attributes
         :rtype: list
         """
         rm = self.get_resource(guid)
@@ -209,7 +209,6 @@ class ExperimentController(object):
 
             :param guid2: Second guid to connect
             :type guid: ResourceManager
-
         """
         rm1 = self.get_resource(guid1)
         rm2 = self.get_resource(guid2)
