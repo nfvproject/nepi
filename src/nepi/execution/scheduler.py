@@ -42,9 +42,11 @@ class HeapScheduler(object):
 
     .. note::
 
-    This class is thread safe.
-    All calls to C Extensions are made atomic by the GIL in the CPython implementation.
-    heapq.heappush, heapq.heappop, and list access are therefore thread-safe """
+        This class is thread safe.
+        All calls to C Extensions are made atomic by the GIL in the CPython implementation.
+        heapq.heappush, heapq.heappop, and list access are therefore thread-safe.
+
+    """
 
     def __init__(self):
         super(HeapScheduler, self).__init__()

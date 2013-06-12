@@ -16,7 +16,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-"""
+
 
 class Server(object):
     def __init__(self, root_dir = ".", log_level = "ERROR", 
@@ -361,4 +361,4 @@ class Forwarder(object):
             self._ctrl_sock.close()
         except:
             pass
-"""
+

@@ -22,7 +22,7 @@
 import logging
 import hashlib
 
-from parser import sfa_sfav1
+from sfa_sfav1 import SFAResourcesParser
 import subprocess
 import warnings
 
@@ -262,8 +262,8 @@ class SFAApiFactory(object):
     def get_api(slice_id = None, sfi_auth = None, sfi_user = None,
             sfi_registry = None, sfi_sm = None, timeout = None, private_key = None):
 
-        key = cls.make_key(aggregate = 'ple', slice_id, sfi_auth, sfi_user, sfi_registry, sfi_sm,
-            timeout, private_key)
+        key = cls.make_key(slice_id, sfi_auth, sfi_user, sfi_registry,
+                           sfi_sm, timeout, private_key, aggregate = 'ple')
         api = cls._apis.get(key)
         cls.lock.acquire()
         api._fetch_resources_info(resources = False)
