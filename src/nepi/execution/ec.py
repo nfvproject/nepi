@@ -138,22 +138,40 @@ class ExperimentController(object):
 
     def wait_finished(self, guids):
         """ Blocking method that wait until all the RM from the 'guid' list 
-            reach the state FINISHED
+            reached the state FINISHED
 
+        :param guids: List of guids
+        :type guids: list
+        """
+        return self.wait(guids)
+
+    def wait_started(self, guids):
+        """ Blocking method that wait until all the RM from the 'guid' list 
+            reached the state STARTED
+
+        :param guids: List of guids
+        :type guids: list
+        """
+        return self.wait(guids, states = [ResourceState.STARTED, ResourceState.FINISHED])
+
+    def wait(self, guids, states = [ResourceState.FINISHED]):
+        """ Blocking method that waits until all the RM from the 'guid' list 
+            reached state 'state' or until a failure occurs
+            
         :param guids: List of guids
         :type guids: list
         """
         if isinstance(guids, int):
             guids = [guids]
 
-        while not all([self.state(guid) in [ResourceState.FINISHED, 
-            ResourceState.STOPPED, 
-            ResourceState.FAILED] \
-                for guid in guids]) and not self.finished:
-            # We keep the sleep as large as possible to 
-            # decrese the number of RM state requests
+        while not all([self.state(guid) in states for guid in guids]) and \
+                not any([self.state(guid) in [
+                        ResourceState.STOPPED, 
+                        ResourceState.FAILED] for guid in guids]) and \
+                not self.finished:
+            # We keep the sleep big to decrease the number of RM state queries
             time.sleep(2)
-    
+   
     def get_task(self, tid):
         """ Get a specific task
 
@@ -448,8 +466,13 @@ class ExperimentController(object):
         self.logger.debug(" ------- DEPLOY START ------ ")
 
         if not group:
-            group = self.resources
-
+            # By default, if not deployment group is indicated, 
+            # all RMs that are undeployed will be deployed
+            group = []
+            for guid in self.resources:
+                if self.state(guid) == ResourceState.NEW:
+                    group.append(guid)
+                
         if isinstance(group, int):
             group = [group]
 
@@ -651,6 +674,7 @@ class ExperimentController(object):
 
             self._state = ECState.FAILED
         finally:   
+            self._logger.info("Exiting the task processing loop ... ")
             runner.sync()
 
     def _execute(self, task):

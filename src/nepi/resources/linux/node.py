@@ -48,6 +48,16 @@ class ExitCode:
     ERROR = -3
     OK = 0
 
+class OSType:
+    """
+    Supported flavors of Linux OS
+    """
+    FEDORA_12 = "f12"
+    FEDORA_14 = "f14"
+    FEDORA = "fedora"
+    UBUNTU = "ubuntu"
+    DEBIAN = "debian"
+
 @clsinit
 class LinuxNode(ResourceManager):
     _rtype = "LinuxNode"
@@ -136,13 +146,13 @@ class LinuxNode(ResourceManager):
             raise RuntimeError, "%s - %s - %s" %( msg, out, err )
 
         if out.find("Fedora release 12") == 0:
-            self._os = "f12"
+            self._os = OSType.FEDORA_12
         elif out.find("Fedora release 14") == 0:
-            self._os = "f14"
+            self._os = OSType.FEDORA_14
         elif out.find("Debian") == 0: 
-            self._os = "debian"
+            self._os = OSType.DEBIAN
         elif out.find("Ubuntu") ==0:
-            self._os = "ubuntu"
+            self._os = OSType.UBUNTU
         else:
             msg = "Unsupported OS"
             self.error(msg, out)
@@ -276,9 +286,9 @@ class LinuxNode(ResourceManager):
 
     def install_packages(self, packages, home):
         command = ""
-        if self.os in ["f12", "f14"]:
+        if self.os in [OSType.FEDORA_12, OSType.FEDORA_14, OSType.FEDORA]:
             command = rpmfuncs.install_packages_command(self.os, packages)
-        elif self.os in ["debian", "ubuntu"]:
+        elif self.os in [OSType.DEBIAN, OSType.UBUNTU]:
             command = debfuncs.install_packages_command(self.os, packages)
         else:
             msg = "Error installing packages ( OS not known ) "
@@ -298,9 +308,9 @@ class LinuxNode(ResourceManager):
 
     def remove_packages(self, packages, home):
         command = ""
-        if self.os in ["f12", "f14"]:
+        if self.os in [OSType.FEDORA_12, OSType.FEDORA_14, OSType.FEDORA]:
             command = rpmfuncs.remove_packages_command(self.os, packages)
-        elif self.os in ["debian", "ubuntu"]:
+        elif self.os in [OSType.DEBIAN, OSType.UBUNTU]:
             command = debfuncs.remove_packages_command(self.os, packages)
         else:
             msg = "Error removing packages ( OS not known ) "
@@ -411,7 +421,7 @@ class LinuxNode(ResourceManager):
             ecodefile = "exitcode",
             env = None):
 
-        command = "{ ( %(command)s ) ; } ; echo $? > %(ecodefile)s " % {
+        command = " ( %(command)s ) ; echo $? > %(ecodefile)s " % {
                 'command': command,
                 'ecodefile': ecodefile,
                 } 
@@ -450,8 +460,9 @@ class LinuxNode(ResourceManager):
             
             # If the stderr file was not found, assume nothing happened.
             # We just ignore the error.
-            if ecode == ExitCode.FILENOTFOUND and proc.poll() == 1: # cat - No such file or directory
-                err = ""
+            # (cat returns 1 for error "No such file or directory")
+            if ecode == ExitCode.FILENOTFOUND and proc.poll() == 1: 
+                out = err = ""
        
         return (out, err), proc
  

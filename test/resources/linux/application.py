@@ -34,13 +34,13 @@ import unittest
 
 class LinuxApplicationTestCase(unittest.TestCase):
     def setUp(self):
-        self.fedora_host = "nepi2.pl.sophia.inria.fr"
+        self.fedora_host = "nepi5.pl.sophia.inria.fr"
         self.fedora_user = "inria_nepi"
 
         self.ubuntu_host = "roseval.pl.sophia.inria.fr"
         self.ubuntu_user = "alina"
         
-        self.target = "nepi5.pl.sophia.inria.fr"
+        self.target = "nepi3.pl.sophia.inria.fr"
 
     @skipIfNotAlive
     def t_stdout(self, host, user):
@@ -258,10 +258,10 @@ class LinuxApplicationTestCase(unittest.TestCase):
     def test_ping_ubuntu(self):
         self.t_ping(self.ubuntu_host, self.ubuntu_user)
 
-    def test_concurrency_fedora(self):
+    def ztest_concurrency_fedora(self):
         self.t_concurrency(self.fedora_host, self.fedora_user)
 
-    def test_concurrency_ubuntu(self):
+    def ztest_concurrency_ubuntu(self):
         self.t_concurrency(self.ubuntu_host, self.ubuntu_user)
 
     def test_condition_fedora(self):

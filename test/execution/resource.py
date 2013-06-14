@@ -23,6 +23,7 @@ from nepi.execution.attribute import Attribute
 from nepi.execution.ec import ExperimentController 
 from nepi.execution.resource import ResourceManager, ResourceState, clsinit
 
+import random
 import time
 import unittest
 
@@ -126,8 +127,14 @@ class Application(ResourceManager):
         if node.state < ResourceState.READY:
             self.ec.schedule("0.5s", self.deploy)
         else:
+            time.sleep(random.random() * 5)
             super(Application, self).deploy()
             self.logger.debug(" -------- DEPLOYED ------- ")
+
+    def start(self):
+        super(Application, self).start()
+        time.sleep(random.random() * 5)
+        self._state = ResourceState.FINISHED
 
 class ResourceManagerTestCase(unittest.TestCase):
     def test_deploy_in_order(self):
@@ -169,10 +176,8 @@ class ResourceManagerTestCase(unittest.TestCase):
 
         ec.deploy()
 
-        while not all([ ec.state(guid) == ResourceState.STARTED \
-                for guid in [app1, app2, node1, node2, iface1, iface2, chan]]) \
-                and not ec.finished:
-            time.sleep(0.5)
+        guids = [app1, app2]
+        ec.wait_finished(guids)
 
         ec.shutdown()
 
@@ -200,6 +205,36 @@ class ResourceManagerTestCase(unittest.TestCase):
          # - Interface needs to wait until Channel is ready to be ready
         self.assertTrue(rmchan.ready_time < rmiface1.ready_time)
         self.assertTrue(rmchan.ready_time < rmiface2.ready_time)
+
+    def test_concurrency(self):
+        from nepi.execution.resource import ResourceFactory
+        
+        ResourceFactory.register_type(Application)
+        ResourceFactory.register_type(Node)
+        ResourceFactory.register_type(Interface)
+        ResourceFactory.register_type(Channel)
+
+        ec = ExperimentController()
+
+        node = ec.register_resource("Node")
+
+        apps = list()
+        for i in xrange(5000):
+            app = ec.register_resource("Application")
+            ec.register_connection(app, node)
+            apps.append(app)
+
+        ec.deploy()
+
+        ec.wait_finished(apps)
+        
+        self.assertTrue(ec.state(node) == ResourceState.STARTED)
+        self.assertTrue(
+               all([ec.state(guid) == ResourceState.FINISHED \
+                for guid in apps])
+                )
+
+        ec.shutdown()
 
     def test_start_with_condition(self):
         # TODO!!!
