@@ -162,7 +162,7 @@ class PlanetlabNode(LinuxNode):
         cls._register_attribute(timeframe)
 
     def __init__(self, ec, guid):
-        super(PLanetLabNode, self).__init__(ec, guid)
+        super(PLanetlabNode, self).__init__(ec, guid)
 
         self._plapi = None
     

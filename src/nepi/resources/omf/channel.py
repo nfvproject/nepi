@@ -153,7 +153,7 @@ class OMFChannel(ResourceManager):
                 self._state = ResourceState.FAILED
                 msg = "Credentials are not initialzed. XMPP Connections impossible"
                 self.debug(msg)
-                return
+                raise
         else :
             msg = "Channel's value is not initialized"
             self.error(msg)
@@ -170,7 +170,7 @@ class OMFChannel(ResourceManager):
 
     def stop(self):
         """Stop the RM. It means nothing special for a channel for now
-           It becomes STOPPED as soon as this method stops
+           It becomes STOPPED as soon as this method is called
 
         """
         super(OMFChannel, self).stop()

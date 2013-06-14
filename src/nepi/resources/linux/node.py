@@ -184,8 +184,8 @@ class LinuxNode(ResourceManager):
     def deploy(self):
         if self.state == ResourceState.NEW:
             try:
-               self.discover()
-               self.provision()
+                self.discover()
+                self.provision()
             except:
                 self._state = ResourceState.FAILED
                 raise
