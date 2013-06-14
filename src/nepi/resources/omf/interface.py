@@ -133,7 +133,7 @@ class OMFWifiInterface(ResourceManager):
                         self._state = ResourceState.FAILED
                         msg = "Credentials are not initialzed. XMPP Connections impossible"
                         self.debug(msg)
-                        return
+                        raise
                 else :
                     msg = "The channel is connected with an undefined node"
                     self.error(msg)

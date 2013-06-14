@@ -134,7 +134,7 @@ class OMFNode(ResourceManager):
                 self._state = ResourceState.FAILED
                 msg = "Credentials are not initialzed. XMPP Connections impossible"
                 self.debug(msg)
-                return
+                raise AttributeError, msg
 
         super(OMFNode, self).deploy()
 

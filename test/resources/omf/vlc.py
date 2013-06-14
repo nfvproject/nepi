@@ -124,6 +124,11 @@ class OMFVLCTestCase(unittest.TestCase):
         self.ec.set(self.app2, 'xmppPassword', "1234")
 
         self.app3 = self.ec.register_resource("OMFApplication")
+        self.ec.set(self.app3, 'appid', 'Kill#2')
+        self.ec.set(self.app3, 'path', "/usr/bin/killall")
+        self.ec.set(self.app3, 'args', "vlc")
+        self.ec.set(self.app3, 'env', " ")
+
         self.app4 = self.ec.register_resource("OMFApplication")
 
         self.app5 = self.ec.register_resource("OMFApplication")
