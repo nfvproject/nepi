@@ -22,6 +22,7 @@
 from nepi.execution.ec import ExperimentController, ECState 
 from nepi.execution.resource import ResourceState, ResourceAction, \
         populate_factory
+from nepi.resources.linux.node import OSType
 
 from optparse import OptionParser, SUPPRESS_HELP
 
@@ -33,16 +34,16 @@ def add_node(ec, host, user, ssh_key = None):
     ec.set(node, "hostname", host)
     ec.set(node, "username", user)
     ec.set(node, "identity", ssh_key)
-    ec.set(node, "cleanHome", True)
+    #ec.set(node, "cleanHome", True)
     ec.set(node, "cleanProcesses", True)
     return node
 
 def add_ccnd(ec, os_type, peers):
-    if os_type == "f12":
+    if os_type == OSType.FEDORA:
         depends = ( " autoconf openssl-devel  expat-devel libpcap-devel "
                 " ecryptfs-utils-devel libxml2-devel automake gawk " 
                 " gcc gcc-c++ git pcre-devel make ")
-    elif os_type == "ubuntu":
+    else: # UBUNTU
         depends = ( " autoconf libssl-dev libexpat-dev libpcap-dev "
                 " libecryptfs0 libxml2-utils automake gawk gcc g++ "
                 " git-core pkg-config libpcre3-dev make ")
@@ -61,7 +62,7 @@ def add_ccnd(ec, os_type, peers):
              " ) && "
                 "cd ${SOURCES}/ccnx && "
                 # Just execute and silence warnings...
-                "(  ( ./configure && make )  2>&1 )"
+                "( ./configure && make ) "
          " )") 
 
     install = (
@@ -77,10 +78,10 @@ def add_ccnd(ec, os_type, peers):
     env = "PATH=$PATH:${EXP_HOME}/ccnx/bin"
 
     # BASH command -> ' ccndstart ; ccndc add ccnx:/ udp  host ;  ccnr '
-    command = "ccndstart ; "
+    command = "ccndstart && "
     peers = map(lambda peer: "ccndc add ccnx:/ udp  %s" % peer, peers)
-    command += " ; ".join(peers) + " ; "
-    command += " ccnr "
+    command += " ; ".join(peers) + " && "
+    command += " ccnr & "
 
     app = ec.register_resource("LinuxApplication")
     ec.set(app, "depends", depends)
@@ -170,7 +171,7 @@ if __name__ == '__main__':
     node1 = add_node(ec, host1, pl_slice, pl_ssh_key)
     
     peers = [host2]
-    ccnd1 = add_ccnd(ec, "f12", peers)
+    ccnd1 = add_ccnd(ec, OSType.FEDORA, peers)
 
     ec.register_connection(ccnd1, node1)
 

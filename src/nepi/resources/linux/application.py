@@ -102,11 +102,9 @@ class LinuxApplication(ResourceManager):
     def _register_traces(cls):
         stdout = Trace("stdout", "Standard output stream")
         stderr = Trace("stderr", "Standard error stream")
-        buildlog = Trace("buildlog", "Output of the build process")
 
         cls._register_trace(stdout)
         cls._register_trace(stderr)
-        cls._register_trace(buildlog)
 
     def __init__(self, ec, guid):
         super(LinuxApplication, self).__init__(ec, guid)
@@ -222,6 +220,7 @@ class LinuxApplication(ResourceManager):
 
             # replace application specific paths in the command
             command = self.replace_paths(command)
+            env = env and self.replace_paths(env)
 
             self.node.upload_command(command, self.app_home, 
                     shfile = "app.sh",
@@ -248,13 +247,16 @@ class LinuxApplication(ResourceManager):
 
             # Download http sources remotely
             if http_sources:
-                command = " wget -c --directory-prefix=${SOURCES} "
-                check = ""
+                command = [" wget -c --directory-prefix=${SOURCES} "]
+                check = []
 
                 for source in http_sources:
-                    command += " %s " % (source)
-                    check += " ls ${SOURCES}/%s ;" % os.path.basename(source)
+                    command.append(" %s " % (source))
+                    check.append(" ls ${SOURCES}/%s " % os.path.basename(source))
                 
+                command = " ".join(command)
+                check = " ; ".join(check)
+
                 # Append the command to check that the sources were downloaded
                 command += " ; %s " % check
 
@@ -307,7 +309,7 @@ class LinuxApplication(ResourceManager):
             self.node.mkdir(self.build_dir)
 
             # replace application specific paths in the command
-            command = self.replace_paths(command)
+            command = self.replace_paths(build)
 
             # Upload the command to a file, and execute asynchronously
             self.node.run_and_wait(command, self.app_home,
@@ -323,7 +325,7 @@ class LinuxApplication(ResourceManager):
             self.info(" Installing sources ")
 
             # replace application specific paths in the command
-            command = self.replace_paths(command)
+            command = self.replace_paths(install)
 
             # Upload the command to a file, and execute asynchronously
             self.node.run_and_wait(command, self.app_home,
@@ -388,7 +390,7 @@ class LinuxApplication(ResourceManager):
                 for var in env.split(" "):
                     environ += ' %s ' % var
 
-                command = "(" + environ + " ; " + command + ")"
+                command = "{" + environ + " ; " + command + " ; }"
                 command = self.replace_paths(command)
 
             # If the command requires X11 forwarding, we
@@ -515,8 +517,4 @@ class LinuxApplication(ResourceManager):
     def valid_connection(self, guid):
         # TODO: Validate!
         return True
-        # XXX: What if it is connected to more than one node?
-        resources = self.find_resources(exact_tags = [tags.NODE])
-        self._node = resources[0] if len(resources) == 1 else None
-        return self._node
 

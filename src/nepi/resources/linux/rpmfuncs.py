@@ -47,11 +47,13 @@ def remove_packages_command(os, packages):
     return cmd 
 
 def install_rpmfusion_command(os):
+    from nepi.resources.linux.node import OSType
+
     cmd = "rpm -q rpmfusion-free-release || sudo -S rpm -i %(package)s"
 
-    if os == "f12":
+    if os in [OSType.FEDORA, OSType.FEDORA_12]:
         cmd =  cmd %  {'package': RPM_FUSION_URL_F12}
-    elif os == "f14":
+    elif os == OSType.FEDORA_14:
         # This one works for f13+
         cmd = cmd %  {'package': RPM_FUSION_URL}
     else:

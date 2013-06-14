@@ -40,7 +40,7 @@ class LinuxInterface(ResourceManager):
     @classmethod
     def _register_attributes(cls):
         ip4 = Attribute("ip4", "IPv4 Address",
-                flags = Flags.ExecReadOnly)
+              flags = Flags.ExecReadOnly)
 
         ip6 = Attribute("ip6", "IPv6 Address",
                 flags = Flags.ExecReadOnly)
@@ -56,7 +56,7 @@ class LinuxInterface(ResourceManager):
                 flags = Flags.ExecReadOnly)
 
         mtu = Attribute("mtu", "Maximum transmition unit for device",
-            type = Types.Integer)
+                type = Types.Integer)
 
         devname = Attribute("deviceName", 
                 "Name of the network interface (e.g. eth0, wlan0, etc)",
