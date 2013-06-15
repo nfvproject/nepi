@@ -339,6 +339,7 @@ class LinuxNode(ResourceManager):
         
     def run_and_wait(self, command, home, 
             shfile = "cmd.sh",
+            env = None,
             pidfile = "pidfile", 
             ecodefile = "exitcode", 
             stdin = None, 
@@ -354,7 +355,10 @@ class LinuxNode(ResourceManager):
         since in the remote host the command can continue to run detached
         even if network disconnections occur
         """
-        self.upload_command(command, home, shfile, ecodefile)
+        self.upload_command(command, home, 
+            shfile = shfile, 
+            ecodefile = ecodefile, 
+            env = env)
 
         command = "bash ./%s" % shfile
         # run command in background in remote host
@@ -420,18 +424,26 @@ class LinuxNode(ResourceManager):
             shfile = "cmd.sh",
             ecodefile = "exitcode",
             env = None):
+        """ Saves the command as a bash script file in the remote host, and
+        forces to save the exit code of the command execution to the ecodefile
+        """
+      
+        # Prepare command to be executed as a bash script file
+        # Make sure command ends in ';' so the curly brackets syntax is correct
+        if not command.strip()[-1] == ';':
+            command += " ; "
 
-        command = " ( %(command)s ) ; echo $? > %(ecodefile)s " % {
+        # The exit code of the command will be stored in ecodefile
+        command = " { { %(command)s } ; echo $? > %(ecodefile)s ; } " % {
                 'command': command,
                 'ecodefile': ecodefile,
                 } 
 
         # Export environment
-        environ = ""
-        if env:
-            for var in env.split(" "):
-                environ += 'export %s\n' % var
+        environ = "\n".join(map(lambda e: "export %s" % e, env.split(" "))) \
+            if env else ""
 
+        # Add environ to command
         command = environ + command
 
         dst = os.path.join(home, shfile)
@@ -569,6 +581,7 @@ class LinuxNode(ResourceManager):
             connect_timeout = 30,
             strict_host_checking = False,
             persistent = True,
+            blocking = True,
             with_lock = False
             ):
         """ Notice that this invocation will block until the
@@ -602,6 +615,7 @@ class LinuxNode(ResourceManager):
                         err_on_timeout = err_on_timeout,
                         connect_timeout = connect_timeout,
                         persistent = persistent,
+                        blocking = blocking, 
                         strict_host_checking = strict_host_checking
                         )
             else:
@@ -622,7 +636,9 @@ class LinuxNode(ResourceManager):
                     retry = retry,
                     err_on_timeout = err_on_timeout,
                     connect_timeout = connect_timeout,
-                    persistent = persistent
+                    persistent = persistent,
+                    blocking = blocking, 
+                    strict_host_checking = strict_host_checking
                     )
 
         return (out, err), proc
