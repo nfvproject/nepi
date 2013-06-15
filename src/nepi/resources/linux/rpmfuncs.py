@@ -26,30 +26,29 @@ def install_packages_command(os, packages):
     if not isinstance(packages, list):
         packages = [packages]
 
-    cmd = "( %s )" % install_rpmfusion_command(os)
-    for p in packages:
-        cmd += " ; ( rpm -q %(package)s || sudo -S yum -y install %(package)s ) " % {
-                    'package': p}
+    cmd = install_rpmfusion_command(os) + " && "
+    cmd += " && ".join(map(lambda p: 
+            " { rpm -q %(package)s || sudo -S yum -y install %(package)s ; } " % {
+                    'package': p}, packages))
     
-    #cmd = ((rpm -q rpmfusion-free-release || sudo -s rpm -i ...) ; (rpm -q vim || sudo yum -y install vim))
-    return " ( %s )" % cmd 
+    #cmd = { rpm -q rpmfusion-free-release || sudo -s rpm -i ... ; } && { rpm -q vim || sudo yum -y install vim ; } && ..
+    return cmd 
 
 def remove_packages_command(os, packages):
     if not isinstance(packages, list):
         packages = [packages]
 
-    cmd = ""
-    for p in packages:
-        cmd += " ( rpm -q %(package)s && sudo -S yum -y remove %(package)s ) ; " % {
-                    'package': p}
-
-    #cmd = (rpm -q vim || sudo yum -y remove vim) ; (...)
+    cmd = " && ".join(map(lambda p: 
+            " { rpm -q %(package)s && sudo -S yum -y remove %(package)s ; } " % {
+                    'package': p}, packages))
+        
+    #cmd = { rpm -q vim && sudo yum -y remove vim ; } && ..
     return cmd 
 
 def install_rpmfusion_command(os):
     from nepi.resources.linux.node import OSType
 
-    cmd = "rpm -q rpmfusion-free-release || sudo -S rpm -i %(package)s"
+    cmd = " { rpm -q rpmfusion-free-release ||  sudo -S rpm -i %(package)s ; } "
 
     if os in [OSType.FEDORA, OSType.FEDORA_12]:
         cmd =  cmd %  {'package': RPM_FUSION_URL_F12}

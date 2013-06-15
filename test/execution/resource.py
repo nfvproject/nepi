@@ -219,7 +219,7 @@ class ResourceManagerTestCase(unittest.TestCase):
         node = ec.register_resource("Node")
 
         apps = list()
-        for i in xrange(5000):
+        for i in xrange(1000):
             app = ec.register_resource("Application")
             ec.register_connection(app, node)
             apps.append(app)

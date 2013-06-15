@@ -23,23 +23,21 @@ def install_packages_command(os, packages):
     if not isinstance(packages, list):
         packages = [packages]
 
-    cmd = ""
-    for p in packages:
-        cmd += " ( dpkg -s %(package)s || sudo -S apt-get -y install %(package)s ) ; " % {
-                'package': p}
-   
-    #cmd = (dpkg -s vim || sudo dpkg -s install vim) ; (...)
+    cmd = " && ".join(map(lambda p: 
+            " { dpkg -s %(package)s || sudo -S apt-get -y install %(package)s ; } " % {
+                    'package': p}, packages))
+        
+    #cmd = { dpkg -s vim || sudo -S apt-get -y install vim ; } && ..
     return cmd 
 
 def remove_packages_command(os, packages):
     if not isinstance(packages, list):
         packages = [packages]
 
-    cmd = ""
-    for p in packages:
-        cmd += " ( dpkg -s %(package)s && sudo -S apt-get -y purge %(package)s ) ; " % {
-                'package': p}
-    
-    #cmd = (dpkg -s vim || sudo apt-get -y purge vim) ; (...)
+    cmd = " && ".join(map(lambda p: 
+            " { dpkg -s %(package)s && sudo -S apt-get -y purge %(package)s ; } " % {
+                    'package': p}, packages))
+        
+    #cmd = { dpkg -s vim && sudo -S apt-get -y purge vim ; } && ..
     return cmd 
 

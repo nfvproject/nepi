@@ -16,6 +16,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
+#         Claudio Freire <claudio-daniel.freire@inria.fr>
 
 import base64
 import errno
@@ -218,6 +219,7 @@ def rexec(command, host, user,
         connect_timeout = 30,
         persistent = True,
         forward_x11 = False,
+        blocking = True,
         strict_host_checking = True):
     """
     Executes a remote command, returns ((stdout,stderr),process)
@@ -280,6 +282,12 @@ def rexec(command, host, user,
         # alive until the process is finished with it
         proc._known_hosts = tmp_known_hosts
     
+        # by default, rexec calls _communicate which will block 
+        # until the process has exit. The argument block == False 
+        # forces to rexec to return immediately, without blocking 
+        if not blocking:
+           return (("", ""), proc)
+
         try:
             out, err = _communicate(proc, stdin, timeout, err_on_timeout)
             msg = " rexec - host %s - command %s " % (host, " ".join(args))
@@ -648,7 +656,7 @@ def rspawn(command, pidfile,
     else:
         stderr = ' ' + stderr
     
-    daemon_command = '{ { %(command)s  > %(stdout)s 2>%(stderr)s < %(stdin)s & } ; echo $! 1 > %(pidfile)s ; }' % {
+    daemon_command = '{ { %(command)s > %(stdout)s 2>%(stderr)s < %(stdin)s & } ; echo $! 1 > %(pidfile)s ; }' % {
         'command' : command,
         'pidfile' : shell_escape(pidfile),
         'stdout' : stdout,

@@ -112,6 +112,10 @@ class LinuxApplication(ResourceManager):
         self._ppid = None
         self._home = "app-%s" % self.guid
 
+        # keep a reference to the running process handler when 
+        # the command is not executed as remote daemon in background
+        self._proc = None
+
         # timestamp of last state check of the application
         self._last_state_check = strfnow()
     
@@ -144,6 +148,18 @@ class LinuxApplication(ResourceManager):
     @property
     def ppid(self):
         return self._ppid
+
+    @property
+    def in_foreground(self):
+        """ Returns True is the command needs to be executed in foreground.
+        This means that command will be executed using 'execute' instead of
+        'run'.
+
+        When using X11 forwarding option, the command can not run in background
+        and detached from a terminal in the remote host, since we need to keep 
+        the SSH connection to receive graphical data
+        """
+        return self.get("forwardX11") or False
 
     def trace(self, name, attr = TraceAttr.ALL, block = 512, offset = 0):
         self.info("Retrieving '%s' trace %s " % (name, attr))
@@ -210,29 +226,32 @@ class LinuxApplication(ResourceManager):
         # Install
         self.install()
 
-        # Upload command
+        # Upload command to remote bash script
+        # - only if command can be executed in background and detached
         command = self.get("command")
-        x11 = self.get("forwardX11")
-        env = self.get("env")
-        
-        if command and not x11:
+
+        if command and not self.in_foreground:
             self.info("Uploading command '%s'" % command)
 
             # replace application specific paths in the command
             command = self.replace_paths(command)
+            
+            # replace application specific paths in the environment
+            env = self.get("env")
             env = env and self.replace_paths(env)
 
             self.node.upload_command(command, self.app_home, 
                     shfile = "app.sh",
                     env = env)
        
+        self.info("Provisioning finished")
+
         super(LinuxApplication, self).provision()
 
     def upload_sources(self):
-        # TODO: check if sources need to be uploaded and upload them
         sources = self.get("sources")
         if sources:
-            self.info(" Uploading sources ")
+            self.info("Uploading sources ")
 
             # create dir for sources
             self.node.mkdir(self.src_dir)
@@ -263,7 +282,9 @@ class LinuxApplication(ResourceManager):
                 # replace application specific paths in the command
                 command = self.replace_paths(command)
                 
-                # Upload the command to a file, and execute asynchronously
+                # Upload the command to a bash script and run it
+                # in background ( but wait until the command has
+                # finished to continue )
                 self.node.run_and_wait(command, self.app_home,
                         shfile = "http_sources.sh",
                         pidfile = "http_sources_pidfile", 
@@ -280,7 +301,7 @@ class LinuxApplication(ResourceManager):
             # create dir for sources
             self.node.mkdir(self.src_dir)
 
-            self.info(" Uploading code ")
+            self.info("Uploading code ")
 
             dst = os.path.join(self.src_dir, "code")
             self.node.upload(sources, dst, text = True)
@@ -297,13 +318,13 @@ class LinuxApplication(ResourceManager):
     def install_dependencies(self):
         depends = self.get("depends")
         if depends:
-            self.info(" Installing dependencies %s" % depends)
+            self.info("Installing dependencies %s" % depends)
             self.node.install_packages(depends, self.app_home)
 
     def build(self):
         build = self.get("build")
         if build:
-            self.info(" Building sources ")
+            self.info("Building sources ")
             
             # create dir for build
             self.node.mkdir(self.build_dir)
@@ -311,7 +332,9 @@ class LinuxApplication(ResourceManager):
             # replace application specific paths in the command
             command = self.replace_paths(build)
 
-            # Upload the command to a file, and execute asynchronously
+            # Upload the command to a bash script and run it
+            # in background ( but wait until the command has
+            # finished to continue )
             self.node.run_and_wait(command, self.app_home,
                     shfile = "build.sh",
                     pidfile = "build_pidfile", 
@@ -322,12 +345,14 @@ class LinuxApplication(ResourceManager):
     def install(self):
         install = self.get("install")
         if install:
-            self.info(" Installing sources ")
+            self.info("Installing sources ")
 
             # replace application specific paths in the command
             command = self.replace_paths(install)
 
-            # Upload the command to a file, and execute asynchronously
+            # Upload the command to a bash script and run it
+            # in background ( but wait until the command has
+            # finished to continue )
             self.node.run_and_wait(command, self.app_home,
                     shfile = "install.sh",
                     pidfile = "install_pidfile", 
@@ -356,57 +381,59 @@ class LinuxApplication(ResourceManager):
             super(LinuxApplication, self).deploy()
 
     def start(self):
-        command = self.get('command')
-        env = self.get('env')
-        stdin = 'stdin' if self.get('stdin') else None
-        stdout = 'stdout' if self.get('stdout') else 'stdout'
-        stderr = 'stderr' if self.get('stderr') else 'stderr'
-        sudo = self.get('sudo') or False
-        x11 = self.get('forwardX11') or False
+        command = self.get("command")
+        env = self.get("env")
+        stdin = "stdin" if self.get("stdin") else None
+        stdout = "stdout" if self.get("stdout") else "stdout"
+        stderr = "stderr" if self.get("stderr") else "stderr"
+        sudo = self.get("sudo") or False
         failed = False
 
-        if not command:
-            # If no command was given, then the application 
-            # is directly marked as FINISHED
-            self._state = ResourceState.FINISHED
-        else:
-            super(LinuxApplication, self).start()
-    
         self.info("Starting command '%s'" % command)
 
-        if x11:
-            # If X11 forwarding was specified, then the application
-            # can not run detached, so instead of invoking asynchronous
-            # 'run' we invoke synchronous 'execute'.
+        if self.in_foreground:
+            # If command should be ran in foreground, we invoke
+            # the node 'execute' method
             if not command:
                 msg = "No command is defined but X11 forwarding has been set"
                 self.error(msg)
                 self._state = ResourceState.FAILED
                 raise RuntimeError, msg
 
-            if env:
-                # Export environment
-                environ = ""
-                for var in env.split(" "):
-                    environ += ' %s ' % var
+            # Export environment
+            environ = "\n".join(map(lambda e: "export %s" % e, env.split(" ")))\
+                if env else ""
 
-                command = "{" + environ + " ; " + command + " ; }"
-                command = self.replace_paths(command)
+            command = environ + command
+            command = self.replace_paths(command)
+            
+            x11 = self.get("forwardX11")
 
-            # If the command requires X11 forwarding, we
-            # can't run it asynchronously
-            (out, err), proc = self.node.execute(command,
+            # We save the reference to the process in self._proc 
+            # to be able to kill the process from the stop method
+            (out, err), self._proc = self.node.execute(command,
                     sudo = sudo,
                     stdin = stdin,
-                    forward_x11 = x11)
+                    forward_x11 = x11,
+                    blocking = False)
 
-            self._state = ResourceState.FINISHED
+            if self._proc.poll():
+                out = ""
+                err = self._proc.stderr.read()
+                self._state = ResourceState.FAILED
+                self.error(msg, out, err)
+                raise RuntimeError, msg
+            
+            super(LinuxApplication, self).start()
 
-            if proc.poll() and err:
-                failed = True
-        else:
-            # Command was  previously uploaded, now run the remote
-            # bash file asynchronously
+        elif command:
+            # If command is set (i.e. application not used only for dependency
+            # installation), and it does not need to run in foreground, we use 
+            # the 'run' method of the node to launch the application as a daemon 
+
+            # The real command to execute was previously uploaded to a remote bash
+            # script during deployment, now run the remote script using 'run' method 
+            # from the node
             cmd = "bash ./app.sh"
             (out, err), proc = self.node.run(cmd, self.app_home, 
                 stdin = stdin, 
@@ -437,23 +464,43 @@ class LinuxApplication(ResourceManager):
                 self._state = ResourceState.FAILED
 
                 raise RuntimeError, msg
+            
+            super(LinuxApplication, self).start()
 
+        else:
+            # If no command was given (i.e. Application was used for dependency
+            # installation), then the application is directly marked as FINISHED
+            self._state = ResourceState.FINISHED
+ 
     def stop(self):
+        """ Stops application execution
+        """
         command = self.get('command') or ''
         state = self.state
-        
+
         if state == ResourceState.STARTED:
+            stopped = True
+
             self.info("Stopping command '%s'" % command)
+        
+            # If the command is running in foreground (it was launched using
+            # the node 'execute' method), then we use the handler to the Popen
+            # process to kill it. Else we send a kill signal using the pid and ppid
+            # retrieved after running the command with the node 'run' method
 
-            (out, err), proc = self.node.kill(self.pid, self.ppid)
-
-            if out or err:
-                # check if execution errors occurred
-                msg = " Failed to STOP command '%s' " % self.get("command")
-                self.error(msg, out, err)
-                self._state = ResourceState.FAILED
-                stopped = False
+            if self._proc:
+                self._proc.kill()
             else:
+                (out, err), proc = self.node.kill(self.pid, self.ppid)
+
+                if out or err:
+                    # check if execution errors occurred
+                    msg = " Failed to STOP command '%s' " % self.get("command")
+                    self.error(msg, out, err)
+                    self._state = ResourceState.FAILED
+                    stopped = False
+
+            if stopped:
                 super(LinuxApplication, self).stop()
 
     def release(self):
@@ -470,32 +517,46 @@ class LinuxApplication(ResourceManager):
     @property
     def state(self):
         if self._state == ResourceState.STARTED:
-            # To avoid overwhelming the remote hosts and the local processor
-            # with too many ssh queries, the state is only requested
-            # every 'state_check_delay' seconds.
-            state_check_delay = 0.5
-            if strfdiff(strfnow(), self._last_state_check) > state_check_delay:
-                # check if execution errors occurred
-                (out, err), proc = self.node.check_errors(self.app_home)
-
-                if out or err:
-                    if err.find("No such file or directory") >= 0 :
-                        # The resource is marked as started, but the
-                        # command was not yet executed
-                        return ResourceState.READY
-
-                    msg = " Failed to execute command '%s'" % self.get("command")
-                    self.error(msg, out, err)
+            if self.in_foreground:
+                retcode = self._proc.poll()
+                
+                # retcode == None -> running
+                # retcode > 0 -> error
+                # retcode == 0 -> finished
+                if retcode:
+                    out = ""
+                    err = self._proc.stderr.read()
                     self._state = ResourceState.FAILED
+                    self.error(msg, out, err)
+                elif retcode == 0:
+                    self._state = ResourceState.FINISHED
 
-                elif self.pid and self.ppid:
-                    status = self.node.status(self.pid, self.ppid)
+            else:
+                # To avoid overwhelming the remote hosts and the local processor
+                # with too many ssh queries, the state is only requested
+                # every 'state_check_delay' seconds.
+                state_check_delay = 0.5
+                if strfdiff(strfnow(), self._last_state_check) > state_check_delay:
+                    # check if execution errors occurred
+                    (out, err), proc = self.node.check_errors(self.app_home)
 
-                    if status == ProcStatus.FINISHED:
-                        self._state = ResourceState.FINISHED
+                    if out or err:
+                        if err.find("No such file or directory") >= 0 :
+                            # The resource is marked as started, but the
+                            # command was not yet executed
+                            return ResourceState.READY
 
+                        msg = " Failed to execute command '%s'" % self.get("command")
+                        self.error(msg, out, err)
+                        self._state = ResourceState.FAILED
 
-                self._last_state_check = strfnow()
+                    elif self.pid and self.ppid:
+                        status = self.node.status(self.pid, self.ppid)
+
+                        if status == ProcStatus.FINISHED:
+                            self._state = ResourceState.FINISHED
+
+                    self._last_state_check = strfnow()
 
         return self._state
 

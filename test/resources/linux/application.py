@@ -25,7 +25,7 @@ from nepi.execution.trace import TraceAttr
 from nepi.resources.linux.node import LinuxNode
 from nepi.resources.linux.application import LinuxApplication
 
-from test_utils import skipIfNotAlive
+from test_utils import skipIfNotAlive, skipInteractive
 
 import os
 import time
@@ -34,13 +34,13 @@ import unittest
 
 class LinuxApplicationTestCase(unittest.TestCase):
     def setUp(self):
-        self.fedora_host = "nepi5.pl.sophia.inria.fr"
+        self.fedora_host = "nepi2.pl.sophia.inria.fr"
         self.fedora_user = "inria_nepi"
 
         self.ubuntu_host = "roseval.pl.sophia.inria.fr"
         self.ubuntu_user = "alina"
         
-        self.target = "nepi3.pl.sophia.inria.fr"
+        self.target = "nepi5.pl.sophia.inria.fr"
 
     @skipIfNotAlive
     def t_stdout(self, host, user):
@@ -246,6 +246,36 @@ class LinuxApplicationTestCase(unittest.TestCase):
 
         ec.shutdown()
 
+    @skipIfNotAlive
+    def t_xterm(self, host, user):
+        from nepi.execution.resource import ResourceFactory
+        
+        ResourceFactory.register_type(LinuxNode)
+        ResourceFactory.register_type(LinuxApplication)
+
+        ec = ExperimentController()
+        
+        node = ec.register_resource("LinuxNode")
+        ec.set(node, "hostname", host)
+        ec.set(node, "username", user)
+        ec.set(node, "cleanHome", True)
+        ec.set(node, "cleanProcesses", True)
+
+        app = ec.register_resource("LinuxApplication")
+        ec.set(app, "command", "xterm")
+        ec.set(app, "depends", "xterm")
+        ec.set(app, "forwardX11", True)
+
+        ec.register_connection(app, node)
+
+        ec.deploy()
+
+        ec.wait_finished([app])
+
+        self.assertTrue(ec.state(app) == ResourceState.FINISHED)
+
+        ec.shutdown()
+
     def test_stdout_fedora(self):
         self.t_stdout(self.fedora_host, self.fedora_user)
 
@@ -258,10 +288,10 @@ class LinuxApplicationTestCase(unittest.TestCase):
     def test_ping_ubuntu(self):
         self.t_ping(self.ubuntu_host, self.ubuntu_user)
 
-    def ztest_concurrency_fedora(self):
+    def test_concurrency_fedora(self):
         self.t_concurrency(self.fedora_host, self.fedora_user)
 
-    def ztest_concurrency_ubuntu(self):
+    def test_concurrency_ubuntu(self):
         self.t_concurrency(self.ubuntu_host, self.ubuntu_user)
 
     def test_condition_fedora(self):
@@ -275,6 +305,12 @@ class LinuxApplicationTestCase(unittest.TestCase):
 
     def test_http_sources_ubuntu(self):
         self.t_http_sources(self.ubuntu_host, self.ubuntu_user)
+
+    @skipInteractive
+    def test_xterm_ubuntu(self):
+        """ Interactive test. Should not run automatically """
+        self.t_xterm(self.ubuntu_host, self.ubuntu_user)
+
 
 
 if __name__ == '__main__':

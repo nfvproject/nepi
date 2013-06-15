@@ -55,7 +55,7 @@ def skipIfNotAlive(func):
 def skipInteractive(func):
     name = func.__name__
     def wrapped(*args, **kwargs):
-        mode = os.environ.get("NEPI_INTERACTIVE", False)
+        mode = os.environ.get("NEPI_INTERACTIVE_TEST", False)
         mode = mode and  mode.lower() in ['true', 'yes']
         if not mode:
             print "*** WARNING: Skipping test %s: Interactive mode off \n" % name

@@ -492,8 +492,7 @@ class ExperimentController(object):
         def wait_all_and_start(group):
             reschedule = False
             for guid in group:
-                rm = self.get_resource(guid)
-                if rm.state < ResourceState.READY:
+                if self.state(guid) < ResourceState.READY:
                     reschedule = True
                     break
 
