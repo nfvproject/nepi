@@ -268,6 +268,9 @@ def rexec(command, host, user,
         tmp_known_hosts = make_server_key_args(server_key, host, port)
         args.extend(['-o', 'UserKnownHostsFile=%s' % (tmp_known_hosts.name,)])
 
+    if sudo:
+        command = "sudo " + command
+
     args.append(command)
 
     for x in xrange(retry):

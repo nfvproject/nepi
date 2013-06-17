@@ -428,19 +428,14 @@ class LinuxNode(ResourceManager):
         forces to save the exit code of the command execution to the ecodefile
         """
       
-        # Prepare command to be executed as a bash script file
-        # Make sure command ends in ';' so the curly brackets syntax is correct
-        if not command.strip()[-1] == ';':
-            command += " ; "
-
         # The exit code of the command will be stored in ecodefile
-        command = " { { %(command)s } ; echo $? > %(ecodefile)s ; } " % {
+        command = " %(command)s ; echo $? > %(ecodefile)s ;" % {
                 'command': command,
                 'ecodefile': ecodefile,
                 } 
 
         # Export environment
-        environ = "\n".join(map(lambda e: "export %s" % e, env.split(" "))) \
+        environ = "\n".join(map(lambda e: "export %s" % e, env.split(" "))) + "\n" \
             if env else ""
 
         # Add environ to command
