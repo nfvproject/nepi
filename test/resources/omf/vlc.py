@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python
 #
 #    NEPI, a framework to manage network experiments
@@ -29,15 +28,10 @@ from nepi.resources.omf.interface import OMFWifiInterface
 from nepi.resources.omf.channel import OMFChannel
 from nepi.resources.omf.omf_api import OMFAPIFactory
 
-from nepi.util import guid
 from nepi.util.timefuncs import *
 
 import time
 import unittest
-import logging
-
-logging.basicConfig()
-
 
 class DummyEC(ExperimentController):
     pass
