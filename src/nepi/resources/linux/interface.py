@@ -110,7 +110,7 @@ class LinuxInterface(ResourceManager):
         mtu = self.get("mtu")
 
         # Get current interfaces information
-        (out, err), proc = self.node.execute("ifconfig", sudo = True)
+        (out, err), proc = self.node.execute("ifconfig", sudo = True, tty = True)
 
         if err and proc.poll():
             msg = " Error retrieving interface information "

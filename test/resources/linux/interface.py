@@ -24,7 +24,6 @@ from nepi.execution.resource import ResourceState
 from nepi.resources.linux.node import LinuxNode
 from nepi.resources.linux.interface import LinuxInterface
 from nepi.resources.linux.channel import LinuxChannel
-from nepi.util.sshfuncs import RUNNING, FINISHED
 
 from test_utils import skipIfNotAlive
 
