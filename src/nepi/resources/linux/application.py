@@ -151,13 +151,14 @@ class LinuxApplication(ResourceManager):
 
     @property
     def in_foreground(self):
-        """ Returns True is the command needs to be executed in foreground.
+        """ Returns True if the command needs to be executed in foreground.
         This means that command will be executed using 'execute' instead of
-        'run'.
+        'run' ('run' executes a command in background and detached from the 
+        terminal)
 
         When using X11 forwarding option, the command can not run in background
-        and detached from a terminal in the remote host, since we need to keep 
-        the SSH connection to receive graphical data
+        and detached from a terminal, since we need to keep the terminal attached 
+        to interact with it.
         """
         return self.get("forwardX11") or False
 
@@ -392,8 +393,8 @@ class LinuxApplication(ResourceManager):
         self.info("Starting command '%s'" % command)
 
         if self.in_foreground:
-            # If command should be ran in foreground, we invoke
-            # the node 'execute' method
+            # If command should run in foreground, we invoke 'execute' method
+            # of the node
             if not command:
                 msg = "No command is defined but X11 forwarding has been set"
                 self.error(msg)
@@ -401,8 +402,7 @@ class LinuxApplication(ResourceManager):
                 raise RuntimeError, msg
 
             # Export environment
-            environ = "\n".join(map(lambda e: "export %s" % e, env.split(" ")))\
-                if env else ""
+            environ = self.node.format_environment(env, inline = True)
 
             command = environ + command
             command = self.replace_paths(command)
@@ -410,7 +410,9 @@ class LinuxApplication(ResourceManager):
             x11 = self.get("forwardX11")
 
             # We save the reference to the process in self._proc 
-            # to be able to kill the process from the stop method
+            # to be able to kill the process from the stop method.
+            # We also set blocking = False, since we don't want the
+            # thread to block until the execution finishes.
             (out, err), self._proc = self.node.execute(command,
                     sudo = sudo,
                     stdin = stdin,
@@ -427,13 +429,14 @@ class LinuxApplication(ResourceManager):
             super(LinuxApplication, self).start()
 
         elif command:
-            # If command is set (i.e. application not used only for dependency
-            # installation), and it does not need to run in foreground, we use 
-            # the 'run' method of the node to launch the application as a daemon 
+            # If command is set (i.e. application is not used only for dependency
+            # installation), and it does not need to run in foreground, then we  
+            # invoke the 'run' method of the node to launch the application as a 
+            # daemon in background
 
             # The real command to execute was previously uploaded to a remote bash
-            # script during deployment, now run the remote script using 'run' method 
-            # from the node
+            # script during deployment, now launch the remote script using 'run'
+            # method from the node
             cmd = "bash ./app.sh"
             (out, err), proc = self.node.run(cmd, self.app_home, 
                 stdin = stdin, 
@@ -516,8 +519,12 @@ class LinuxApplication(ResourceManager):
     
     @property
     def state(self):
+        """ Returns the state of the application
+        """
         if self._state == ResourceState.STARTED:
             if self.in_foreground:
+                # Check if the process we used to execute the command
+                # is still running ...
                 retcode = self._proc.poll()
                 
                 # retcode == None -> running
@@ -525,32 +532,31 @@ class LinuxApplication(ResourceManager):
                 # retcode == 0 -> finished
                 if retcode:
                     out = ""
+                    msg = " Failed to execute command '%s'" % self.get("command")
                     err = self._proc.stderr.read()
-                    self._state = ResourceState.FAILED
                     self.error(msg, out, err)
+                    self._state = ResourceState.FAILED
                 elif retcode == 0:
                     self._state = ResourceState.FINISHED
 
             else:
-                # To avoid overwhelming the remote hosts and the local processor
-                # with too many ssh queries, the state is only requested
-                # every 'state_check_delay' seconds.
+                # We need to query the status of the command we launched in 
+                # background. In oredr to avoid overwhelming the remote host and
+                # the local processor with too many ssh queries, the state is only
+                # requested every 'state_check_delay' seconds.
                 state_check_delay = 0.5
                 if strfdiff(strfnow(), self._last_state_check) > state_check_delay:
                     # check if execution errors occurred
                     (out, err), proc = self.node.check_errors(self.app_home)
 
-                    if out or err:
-                        if err.find("No such file or directory") >= 0 :
-                            # The resource is marked as started, but the
-                            # command was not yet executed
-                            return ResourceState.READY
-
+                    if err:
                         msg = " Failed to execute command '%s'" % self.get("command")
                         self.error(msg, out, err)
                         self._state = ResourceState.FAILED
 
                     elif self.pid and self.ppid:
+                        # No execution errors occurred. Make sure the background
+                        # process with the recorded pid is still running.
                         status = self.node.status(self.pid, self.ppid)
 
                         if status == ProcStatus.FINISHED:

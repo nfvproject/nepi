@@ -44,23 +44,42 @@ class Flags:
 class Attribute(object):
     """
     .. class:: Class Args :
+
+        An Attribute reflects a configuration parameter for
+        a particular resource. Attributes might be read only or
+        not.
       
         :param name: Name of the attribute
         :type name: str
-        :param help: Help about the attribute
+
+        :param help: Attribute description
         :type help: str
-        :param type: type of the attribute
+        
+        :param type: The type expected for the attribute value.
+                     Should be one of Attribute.Types .
         :type type: str
-        :param flags: Help about the attribute
-        :type flags: str
+
+        :param flags: Defines attribute behavior (i.e. whether it is read-only,
+                read and write, etc). This parameter should take its values from
+                Attribute.Flags. Flags values can be bitwised.
+        :type flags: hex
+
         :param default: Default value of the attribute
-        :type default: str
-        :param allowed: Allowed value for this attribute
-        :type allowed: str
-        :param range: Range of the attribute
-        :type range: str
-        :param set_hook: hook that is related with this attribute
-        :type set_hook: str
+        :type default: depends on the type of attribute
+        
+        :param allowed: List of values that the attribute can take. 
+                This parameter is only meaningful for Enumerate type attributes.
+        :type allowed: list
+        
+        :param range: (max, min) tuple with range of possible values for
+                attributes.
+                This parameter is only meaningful for Integer or Double type
+                attributes.
+        :type range: (int, int) or (float, float)
+        
+        :param set_hook: Function that will be executed when ever a new 
+                value is set for the attribute.
+        :type set_hook: function
 
     """
     def __init__(self, name, help, type = Types.String,

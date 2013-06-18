@@ -388,7 +388,7 @@ class LinuxNode(ResourceManager):
         (out, err), proc = self.check_errors(home, ecodefile, stderr)
 
         # Out is what was written in the stderr file
-        if out or err:
+        if err:
             msg = " Failed to run command '%s' " % command
             self.error(msg, out, err)
 
@@ -434,14 +434,23 @@ class LinuxNode(ResourceManager):
                 } 
 
         # Export environment
-        environ = "\n".join(map(lambda e: "export %s" % e, env.split(" "))) + "\n" \
-            if env else ""
+        environ = self.format_environment(env)
 
         # Add environ to command
         command = environ + command
 
         dst = os.path.join(home, shfile)
         return self.upload(command, dst, text = True)
+
+    def format_environment(self, env, inline = False):
+        """Format environmental variables for command to be executed either
+        as an inline command (i.e. PYTHONPATH=src/.. python script.py) or
+        as a bash script (i.e. export PYTHONPATH=src/.. \n export LALA=.. \n)
+        """
+        sep = " " if inline else "\n"
+        export = " " if inline else "export"
+        return sep.join(map(lambda e: "%s %s" % (export, e), env.split(" "))) \
+                + sep if env else ""
 
     def check_errors(self, home, 
             ecodefile = "exitcode", 
@@ -450,11 +459,12 @@ class LinuxNode(ResourceManager):
         Checks whether errors occurred while running a command.
         It first checks the exit code for the command, and only if the
         exit code is an error one it returns the error output.
+
         """
         out = err = ""
         proc = None
 
-        # get Exit code
+        # get exit code saved in the 'exitcode' file
         ecode = self.exitcode(home, ecodefile)
 
         if ecode in [ ExitCode.CORRUPTFILE, ExitCode.ERROR ]:
@@ -463,12 +473,18 @@ class LinuxNode(ResourceManager):
             # The process returned an error code or didn't exist. 
             # Check standard error.
             (out, err), proc = self.check_output(home, stderr)
-            
-            # If the stderr file was not found, assume nothing happened.
-            # We just ignore the error.
+
+            # If the stderr file was not found, assume nothing bad happened,
+            # and just ignore the error.
             # (cat returns 1 for error "No such file or directory")
             if ecode == ExitCode.FILENOTFOUND and proc.poll() == 1: 
                 out = err = ""
+            else:
+                # The actual error (read from the stderr file) is in 'out'.
+                # We swap the variables to avoid confusion. It is more
+                # intuitive to find the 'error' in err variable.
+                err = out
+                out = ""
        
         return (out, err), proc
  

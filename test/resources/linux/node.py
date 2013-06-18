@@ -153,11 +153,13 @@ class LinuxNodeTestCase(unittest.TestCase):
  
         # get the pid of the process
         ecode = node.exitcode(app_home)
+
         # bash erro 127 - command not found
         self.assertEquals(ecode, 127)
  
         (out, err), proc = node.check_errors(app_home)
-        self.assertNotEquals(out, "")
+
+        self.assertEquals(err.strip(), "./cmd.sh: line 1: unexistent-command: command not found")
 
     @skipIfNotAlive
     def t_install(self, host, user):
