@@ -269,7 +269,6 @@ class LinuxNode(ResourceManager):
         if not self.localhost:
             # Build destination as <user>@<server>:<path>
             dst = "%s@%s:%s" % (self.get("username"), self.get("hostname"), dst)
-
         result = self.copy(src, dst)
 
         # clean up temp file
