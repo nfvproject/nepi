@@ -375,7 +375,6 @@ class LinuxNode(ResourceManager):
             self.error(msg, out, err)
             if raise_on_error:
                 raise RuntimeError, msg
-
         # Wait for pid file to be generated
         pid, ppid = self.wait_pid(
                 home = home, 
@@ -454,7 +453,8 @@ class LinuxNode(ResourceManager):
 
     def check_errors(self, home, 
             ecodefile = "exitcode", 
-            stderr = "stderr"):
+            stderr = "stderr",
+            stdout = "stdout"):
         """
         Checks whether errors occurred while running a command.
         It first checks the exit code for the command, and only if the
@@ -472,19 +472,16 @@ class LinuxNode(ResourceManager):
         elif ecode > 0 or ecode == ExitCode.FILENOTFOUND:
             # The process returned an error code or didn't exist. 
             # Check standard error.
-            (out, err), proc = self.check_output(home, stderr)
+            (err, eerr), proc = self.check_output(home, stderr)
+
+            # Alsow retrive standard output for information
+            (out, oerr), oproc = self.check_output(home, stdout)
 
             # If the stderr file was not found, assume nothing bad happened,
             # and just ignore the error.
             # (cat returns 1 for error "No such file or directory")
             if ecode == ExitCode.FILENOTFOUND and proc.poll() == 1: 
-                out = err = ""
-            else:
-                # The actual error (read from the stderr file) is in 'out'.
-                # We swap the variables to avoid confusion. It is more
-                # intuitive to find the 'error' in err variable.
-                err = out
-                out = ""
+                err = "" 
        
         return (out, err), proc
  
