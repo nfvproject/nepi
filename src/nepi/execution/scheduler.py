@@ -62,6 +62,7 @@ class HeapScheduler(object):
         """
         if task.id == None:
             task.id = self._idgen.next()
+
         entry = (task.timestamp, task.id, task)
         self._valid.add(task.id)
         heapq.heappush(self._queue, entry)

@@ -23,6 +23,8 @@ from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState
 from nepi.resources.linux.application import LinuxApplication
 from nepi.resources.linux.node import OSType
 
+from nepi.util.sshfuncs import ProcStatus
+from nepi.util.timefuncs import strfnow, strfdiff
 import os
 
 @clsinit_copy
@@ -185,90 +187,7 @@ class LinuxCCND(LinuxApplication):
         super(LinuxCCND, self).deploy()
 
     def start(self):
-        command = self.get("command")
-        env = self.get("env")
-        stdin = "stdin" if self.get("stdin") else None
-        stdout = "stdout" if self.get("stdout") else "stdout"
-        stderr = "stderr" if self.get("stderr") else "stderr"
-        sudo = self.get("sudo") or False
-        x11 = self.get("forwardX11") or False
-        failed = False
-
-        if not command:
-            # If no command was given, then the application 
-            # is directly marked as FINISHED
-            self._state = ResourceState.FINISHED
-    
-        self.info("Starting command '%s'" % command)
-
-        if x11:
-            # If X11 forwarding was specified, then the application
-            # can not run detached, so instead of invoking asynchronous
-            # 'run' we invoke synchronous 'execute'.
-            if not command:
-                msg = "No command is defined but X11 forwarding has been set"
-                self.error(msg)
-                self._state = ResourceState.FAILED
-                raise RuntimeError, msg
-
-            # Export environment
-            environ = "\n".join(map(lambda e: "export %s" % e, env.split(" ")))\
-                if env else ""
-
-            command = environ + command
-            command = self.replace_paths(command)
-
-            # Mark application as started before executing the command
-            # since after the thread will be blocked by the execution
-            # until it finished
-            super(LinuxApplication, self).start()
-            
-            # If the command requires X11 forwarding, we
-            # can't run it asynchronously
-            (out, err), proc = self.node.execute(command,
-                    sudo = sudo,
-                    stdin = stdin,
-                    forward_x11 = x11)
-
-            self._state = ResourceState.FINISHED
-
-            if proc.poll() and err:
-                failed = True
-        else:
-            # Command was  previously uploaded, now run the remote
-            # bash file asynchronously
-            cmd = "bash ./app.sh"
-            (out, err), proc = self.node.run(cmd, self.app_home, 
-                stdin = stdin, 
-                stdout = stdout,
-                stderr = stderr,
-                sudo = sudo)
-
-            # check if execution errors occurred
-            msg = " Failed to start command '%s' " % command
-            
-            if proc.poll() and err:
-                self.error(msg, out, err)
-                raise RuntimeError, msg
-        
-            # Check status of process running in background
-            pid, ppid = self.node.wait_pid(self.app_home)
-            if pid: self._pid = int(pid)
-            if ppid: self._ppid = int(ppid)
-
-            # If the process is not running, check for error information
-            # on the remote machine
-            if not self.pid or not self.ppid:
-                (out, err), proc = self.node.check_output(self.app_home, 'stderr')
-                self.error(msg, out, err)
-
-                msg2 = " Setting state to Failed"
-                self.debug(msg2)
-                self._state = ResourceState.FAILED
-
-                raise RuntimeError, msg
-            
-            super(LinuxApplication, self).start()
+        super(LinuxCCND, self).start()
 
     def stop(self):
         command = self.get('command') or ''
@@ -299,30 +218,28 @@ class LinuxCCND(LinuxApplication):
     @property
     def state(self):
         if self._state == ResourceState.STARTED:
-            # To avoid overwhelming the remote hosts and the local processor
-            # with too many ssh queries, the state is only requested
-            # every 'state_check_delay' seconds.
+            # we executed the ccndstart command. This should have started
+            # a remote ccnd daemon. The way we can query wheather ccnd is
+            # still running is by executing the ccndstatus command.
             state_check_delay = 0.5
             if strfdiff(strfnow(), self._last_state_check) > state_check_delay:
-                # check if execution errors occurred
-                (out, err), proc = self.node.check_errors(self.app_home)
+                env = self.get('env') or ""
+                environ = self.node.format_environment(env, inline = True)
+                command = environ + "; ccndstatus"
+                command = self.replace_paths(command)
+            
+                (out, err), proc = self.node.execute(command)
 
-                if out or err:
-                    if err.find("No such file or directory") >= 0 :
-                        # The resource is marked as started, but the
-                        # command was not yet executed
-                        return ResourceState.READY
+                retcode = proc.poll()
 
-                    msg = " Failed to execute command '%s'" % self.get("command")
+                if retcode == 1 and err.find("No such file or directory") > -1:
+                    # ccnd is not running (socket not found)
+                    self._state = ResourceState.FINISHED
+                elif retcode:
+                    # other error
+                    msg = " Failed to execute command '%s'" % command
                     self.error(msg, out, err)
                     self._state = ResourceState.FAILED
-
-                elif self.pid and self.ppid:
-                    status = self.node.status(self.pid, self.ppid)
-
-                    if status == ProcStatus.FINISHED:
-                        self._state = ResourceState.FINISHED
-
 
                 self._last_state_check = strfnow()
 
@@ -356,7 +273,8 @@ class LinuxCCND(LinuxApplication):
         return (
             # Evaluate if ccnx binaries are already installed
             " ( "
-                "  test -f ${EXP_HOME}/ccnx/bin/ccnd"
+                " test -f ${EXP_HOME}/ccnx/bin/ccnd && "
+                " echo 'sources found, nothing to do' "
             " ) || ( "
             # If not, untar and build
                 " ( "
@@ -373,8 +291,10 @@ class LinuxCCND(LinuxApplication):
         return (
             # Evaluate if ccnx binaries are already installed
             " ( "
-                "  test -f ${EXP_HOME}/ccnx/bin/ccnd"
+                " test -f ${EXP_HOME}/ccnx/bin/ccnd && "
+                " echo 'sources found, nothing to do' "
             " ) || ( "
+            # If not, install
                 "  mkdir -p ${EXP_HOME}/ccnx/bin && "
                 "  cp -r ${SOURCES}/ccnx ${EXP_HOME}"
             " )"
