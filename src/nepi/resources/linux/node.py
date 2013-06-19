@@ -385,7 +385,10 @@ class LinuxNode(ResourceManager):
         # wait until command finishes to execute
         self.wait_run(pid, ppid)
       
-        (out, err), proc = self.check_errors(home, ecodefile, stderr)
+        (out, err), proc = self.check_errors(home,
+            ecodefile = ecodefile,
+            stdout = stdout,
+            stderr= stderr)
 
         # Out is what was written in the stderr file
         if err:
@@ -454,8 +457,8 @@ class LinuxNode(ResourceManager):
 
     def check_errors(self, home, 
             ecodefile = "exitcode", 
-            stderr = "stderr",
-            stdout = "stdout"):
+            stdout = "stdout",
+            stderr = "stderr"):
         """
         Checks whether errors occurred while running a command.
         It first checks the exit code for the command, and only if the
