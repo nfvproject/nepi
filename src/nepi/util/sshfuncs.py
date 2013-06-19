@@ -288,11 +288,14 @@ def rexec(command, host, user,
         # by default, rexec calls _communicate which will block 
         # until the process has exit. The argument block == False 
         # forces to rexec to return immediately, without blocking 
-        if not blocking:
-           return (("", ""), proc)
-
         try:
-            out, err = _communicate(proc, stdin, timeout, err_on_timeout)
+            if blocking:
+                out, err = _communicate(proc, stdin, timeout, err_on_timeout)
+            else:
+                out = err = ""
+                if proc.poll():
+                    err = self._proc.stderr.read()
+
             msg = " rexec - host %s - command %s " % (host, " ".join(args))
             log(msg, logging.DEBUG, out, err)
 

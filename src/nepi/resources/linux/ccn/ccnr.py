@@ -22,7 +22,7 @@ from nepi.execution.trace import Trace, TraceAttr
 from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState, \
     ResourceAction
 from nepi.resources.linux.application import LinuxApplication
-from nepi.resources.linux.ccnd import LinuxCCND
+from nepi.resources.linux.ccn.ccnd import LinuxCCND
 from nepi.resources.linux.node import OSType
 
 from nepi.util.sshfuncs import ProcStatus
@@ -185,6 +185,8 @@ class LinuxCCNR(LinuxApplication):
 
     def __init__(self, ec, guid):
         super(LinuxCCNR, self).__init__(ec, guid)
+        # Marks whether ccnr is running
+        self._running = False
 
     @property
     def ccnd(self):
@@ -202,16 +204,44 @@ class LinuxCCNR(LinuxApplication):
         # Wait until associated ccnd is provisioned
         ccnd = self.ccnd
 
-        if not ccnd or ccnd.state < ResourceState.PROVISIONED:
+        if not ccnd or ccnd.state < ResourceState.READY:
+            # ccnr needs to wait until ccnd is deployed and running
             self.ec.schedule(reschedule_delay, self.deploy)
         else:
-            # Add a start after condition so CCNR will not start
-            # before CCND does
-            self.ec.register_condition(self.guid, ResourceAction.START, 
-                ccnd.guid, ResourceState.STARTED)
- 
             # Invoke the actual deployment
             super(LinuxCCNR, self).deploy()
+
+            # As soon as the ccnd sources are deployed, we launch the
+            # daemon ( we don't want to lose time launching the ccn 
+            # daemon later on )
+            if self._state == ResourceState.READY:
+                self._start_in_background()
+                self._running = True
+
+    def start(self):
+        # CCND should already be started by now.
+        # Nothing to do but to set the state to STARTED
+        if self._running:
+            self._start_time = strfnow()
+            self._state = ResourceState.STARTED
+        else:
+            msg = " Failed to execute command '%s'" % command
+            self.error(msg, out, err)
+            self._state = ResourceState.FAILED
+            raise RuntimeError, msg
+
+    @property
+    def state(self):
+        state = super(LinuxCCNR, self).state()
+        if self._state in [ResourceState.TERMINATED, ResourceState.FAILED]:
+            self._running = False
+
+        if self._state == ResourceState.READY:
+            # CCND is really deployed only when ccn daemon is running 
+            if not self._running:
+                return ResourceState.PROVISIONED
+ 
+        return self._state
 
     @property
     def _default_command(self):

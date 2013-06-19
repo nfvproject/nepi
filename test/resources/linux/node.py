@@ -32,6 +32,7 @@ import unittest
 class LinuxNodeTestCase(unittest.TestCase):
     def setUp(self):
         self.fedora_host = "nepi2.pl.sophia.inria.fr"
+        self.fedora_host = "planetlab2.u-strasbg.fr"
         self.fedora_user = "inria_nepi"
 
         self.ubuntu_host = "roseval.pl.sophia.inria.fr"
@@ -166,32 +167,32 @@ class LinuxNodeTestCase(unittest.TestCase):
         node, ec = create_node(host, user)
 
         (out, err), proc = node.mkdir(node.node_home, clean = True)
-        self.assertEquals(out, "")
+        self.assertEquals(err, "")
 
         (out, err), proc = node.install_packages("gcc", node.node_home)
-        self.assertEquals(out, "")
+        self.assertEquals(err, "")
 
         (out, err), proc = node.remove_packages("gcc", node.node_home)
-        self.assertEquals(out, "")
+        self.assertEquals(err, "")
 
         (out, err), proc = node.rmdir(node.exp_home)
-        self.assertEquals(out, "")
+        self.assertEquals(err, "")
 
     @skipIfNotAlive
     def t_xterm(self, host, user):
         node, ec = create_node(host, user)
 
         (out, err), proc = node.mkdir(node.node_home, clean = True)
-        self.assertEquals(out, "")
+        self.assertEquals(err, "")
         
         node.install_packages("xterm", node.node_home)
-        self.assertEquals(out, "")
+        self.assertEquals(err, "")
 
         (out, err), proc = node.execute("xterm", forward_x11 = True)
-        self.assertEquals(out, "")
+        self.assertEquals(err, "")
 
         (out, err), proc = node.remove_packages("xterm", node.node_home)
-        self.assertEquals(out, "")
+        self.assertEquals(err, "")
 
     @skipIfNotAlive
     def t_compile(self, host, user):

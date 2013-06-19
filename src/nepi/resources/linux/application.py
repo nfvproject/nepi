@@ -383,104 +383,103 @@ class LinuxApplication(ResourceManager):
 
     def start(self):
         command = self.get("command")
+
+        self.info("Starting command '%s'" % command)
+
+        if not command:
+            # If no command was given (i.e. Application was used for dependency
+            # installation), then the application is directly marked as FINISHED
+            self._state = ResourceState.FINISHED
+        else:
+            if self.in_foreground:
+                self._start_in_foreground()
+            else:
+                self._start_in_background()
+
+            super(LinuxApplication, self).start()
+
+    def _start_in_foreground(self):
+        command = self.get("command")
+        env = self.get("env")
+        stdin = "stdin" if self.get("stdin") else None
+        sudo = self.get("sudo") or False
+        x11 = self.get("forwardX11")
+
+        # Command will be launched in foreground and attached to the
+        # terminal using the node 'execute' in non blocking mode.
+
+        # Export environment
+        environ = self.node.format_environment(env, inline = True)
+        command = environ + command
+        command = self.replace_paths(command)
+
+        self.info("Starting command IN FOREGROUND '%s'" % command)
+        
+        # We save the reference to the process in self._proc 
+        # to be able to kill the process from the stop method.
+        # We also set blocking = False, since we don't want the
+        # thread to block until the execution finishes.
+        (out, err), self._proc = self.node.execute(command,
+                sudo = sudo,
+                stdin = stdin,
+                forward_x11 = x11,
+                blocking = False)
+
+        if self._proc.poll():
+            self._state = ResourceState.FAILED
+            self.error(msg, out, err)
+            raise RuntimeError, msg
+
+    def _start_in_background(self):
+        command = self.get("command")
         env = self.get("env")
         stdin = "stdin" if self.get("stdin") else None
         stdout = "stdout" if self.get("stdout") else "stdout"
         stderr = "stderr" if self.get("stderr") else "stderr"
         sudo = self.get("sudo") or False
-        failed = False
 
-        self.info("Starting command '%s'" % command)
+        # Command will be as a daemon in baground and detached from any terminal.
+        # The real command to run was previously uploaded to a bash script
+        # during deployment, now launch the remote script using 'run'
+        # method from the node
+        cmd = "bash ./app.sh"
+        (out, err), proc = self.node.run(cmd, self.app_home, 
+            stdin = stdin, 
+            stdout = stdout,
+            stderr = stderr,
+            sudo = sudo)
 
-        if self.in_foreground:
-            # If command should run in foreground, we invoke 'execute' method
-            # of the node
-            if not command:
-                msg = "No command is defined but X11 forwarding has been set"
-                self.error(msg)
+        # check if execution errors occurred
+        msg = " Failed to start command '%s' " % command
+        
+        if proc.poll():
+            self._state = ResourceState.FAILED
+            self.error(msg, out, err)
+            raise RuntimeError, msg
+    
+        # Wait for pid file to be generated
+        pid, ppid = self.node.wait_pid(self.app_home)
+        if pid: self._pid = int(pid)
+        if ppid: self._ppid = int(ppid)
+
+        # If the process is not running, check for error information
+        # on the remote machine
+        if not self.pid or not self.ppid:
+            (out, err), proc = self.check_errors(home, ecodefile, stderr)
+
+            # Out is what was written in the stderr file
+            if err:
                 self._state = ResourceState.FAILED
-                raise RuntimeError, msg
-
-            # Export environment
-            environ = self.node.format_environment(env, inline = True)
-
-            command = environ + command
-            command = self.replace_paths(command)
-            
-            x11 = self.get("forwardX11")
-
-            # We save the reference to the process in self._proc 
-            # to be able to kill the process from the stop method.
-            # We also set blocking = False, since we don't want the
-            # thread to block until the execution finishes.
-            (out, err), self._proc = self.node.execute(command,
-                    sudo = sudo,
-                    stdin = stdin,
-                    forward_x11 = x11,
-                    blocking = False)
-
-            if self._proc.poll():
-                out = ""
-                err = self._proc.stderr.read()
-                self._state = ResourceState.FAILED
-                self.error(msg, out, err)
-                raise RuntimeError, msg
-            
-            super(LinuxApplication, self).start()
-
-        elif command:
-            # If command is set (i.e. application is not used only for dependency
-            # installation), and it does not need to run in foreground, then we  
-            # invoke the 'run' method of the node to launch the application as a 
-            # daemon in background
-
-            # The real command to execute was previously uploaded to a remote bash
-            # script during deployment, now launch the remote script using 'run'
-            # method from the node
-            cmd = "bash ./app.sh"
-            (out, err), proc = self.node.run(cmd, self.app_home, 
-                stdin = stdin, 
-                stdout = stdout,
-                stderr = stderr,
-                sudo = sudo)
-
-            # check if execution errors occurred
-            msg = " Failed to start command '%s' " % command
-            
-            if proc.poll():
+                msg = " Failed to start command '%s' " % command
                 self.error(msg, out, err)
                 raise RuntimeError, msg
         
-            # Wait for pid file to be generated
-            pid, ppid = self.node.wait_pid(self.app_home)
-            if pid: self._pid = int(pid)
-            if ppid: self._ppid = int(ppid)
-  
-            # If the process is not running, check for error information
-            # on the remote machine
-            if not self.pid or not self.ppid:
-                (out, err), proc = self.check_errors(home, ecodefile, stderr)
-
-                # Out is what was written in the stderr file
-                if err:
-                    msg = " Failed to start command '%s' " % command
-                    self.error(msg, out, err)
-                    raise RuntimeError, msg
-
-            super(LinuxApplication, self).start()
-
-        else:
-            # If no command was given (i.e. Application was used for dependency
-            # installation), then the application is directly marked as FINISHED
-            self._state = ResourceState.FINISHED
- 
     def stop(self):
         """ Stops application execution
         """
         command = self.get('command') or ''
-        state = self.state
 
-        if state == ResourceState.STARTED:
+        if self.state == ResourceState.STARTED:
             stopped = True
 
             self.info("Stopping command '%s'" % command)
@@ -513,6 +512,7 @@ class LinuxApplication(ResourceManager):
             self.node.execute(tear_down)
 
         self.stop()
+
         if self.state == ResourceState.STOPPED:
             super(LinuxApplication, self).release()
     

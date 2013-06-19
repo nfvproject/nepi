@@ -121,6 +121,8 @@ class LinuxCCND(LinuxApplication):
 
     def __init__(self, ec, guid):
         super(LinuxCCND, self).__init__(ec, guid)
+        # Marks whether daemon is running
+        self._running = False
 
     def deploy(self):
         if not self.get("command"):
@@ -142,6 +144,25 @@ class LinuxCCND(LinuxApplication):
             self.set("env", self._default_environment)
 
         super(LinuxCCND, self).deploy()
+
+        # As soon as the ccnd sources are deployed, we launch the
+        # daemon ( we don't want to lose time launching the ccn 
+        # daemon later on )
+        if self._state == ResourceState.READY:
+            self._start_in_background()
+            self._running = True
+
+    def start(self):
+        # CCND should already be started by now.
+        # Nothing to do but to set the state to STARTED
+        if self._running:
+            self._start_time = strfnow()
+            self._state = ResourceState.STARTED
+        else:
+            msg = " Failed to execute command '%s'" % command
+            self.error(msg, out, err)
+            self._state = ResourceState.FAILED
+            raise RuntimeError, msg
 
     def stop(self):
         command = self.get('command') or ''
@@ -171,33 +192,41 @@ class LinuxCCND(LinuxApplication):
 
     @property
     def state(self):
-        if self._state == ResourceState.STARTED:
-            # we executed the ccndstart command. This should have started
-            # a remote ccnd daemon. The way we can query wheather ccnd is
-            # still running is by executing the ccndstatus command.
+        # First check if the ccnd has failed
+        if self._running and strfdiff(strfnow(), self._last_state_check) > state_check_delay:
             state_check_delay = 0.5
-            if strfdiff(strfnow(), self._last_state_check) > state_check_delay:
-                env = self.get('env') or ""
-                environ = self.node.format_environment(env, inline = True)
-                command = environ + "; ccndstatus"
-                command = self.replace_paths(command)
-            
-                (out, err), proc = self.node.execute(command)
+            (out, err), proc = self._cndstatus()
 
-                retcode = proc.poll()
+            retcode = proc.poll()
 
-                if retcode == 1 and err.find("No such file or directory") > -1:
-                    # ccnd is not running (socket not found)
-                    self._state = ResourceState.FINISHED
-                elif retcode:
-                    # other error
-                    msg = " Failed to execute command '%s'" % command
-                    self.error(msg, out, err)
-                    self._state = ResourceState.FAILED
+            if retcode == 1 and err.find("No such file or directory") > -1:
+                # ccnd is not running (socket not found)
+                self._running = False
+                self._state = ResourceState.FINISHED
+            elif retcode:
+                # other errors ...
+                self._running = False
+                msg = " Failed to execute command '%s'" % command
+                self.error(msg, out, err)
+                self._state = ResourceState.FAILED
 
-                self._last_state_check = strfnow()
+            self._last_state_check = strfnow()
+
+        if self._state == ResourceState.READY:
+            # CCND is really deployed only when ccn daemon is running 
+            if not self._running:
+                return ResourceState.PROVISIONED
 
         return self._state
+
+    @property
+    def _ccndstatus(self):
+        env = self.get('env') or ""
+        environ = self.node.format_environment(env, inline = True)
+        command = environ + "; ccndstatus"
+        command = self.replace_paths(command)
+    
+        return self.node.execute(command)
 
     @property
     def _default_command(self):
