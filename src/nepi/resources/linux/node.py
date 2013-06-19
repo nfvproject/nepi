@@ -370,11 +370,12 @@ class LinuxNode(ResourceManager):
                 tty = tty)
 
         # check no errors occurred
-        if proc.poll() and err:
+        if proc.poll():
             msg = " Failed to run command '%s' " % command
             self.error(msg, out, err)
             if raise_on_error:
                 raise RuntimeError, msg
+
         # Wait for pid file to be generated
         pid, ppid = self.wait_pid(
                 home = home, 
@@ -448,8 +449,8 @@ class LinuxNode(ResourceManager):
         """
         sep = " " if inline else "\n"
         export = " " if inline else "export"
-        return sep.join(map(lambda e: "%s %s" % (export, e), env.split(" "))) \
-                + sep if env else ""
+        return sep.join(map(lambda e: "%s %s" % (export, e),
+            env.strip().split(" "))) + sep if env else ""
 
     def check_errors(self, home, 
             ecodefile = "exitcode", 
@@ -461,8 +462,10 @@ class LinuxNode(ResourceManager):
         exit code is an error one it returns the error output.
 
         """
-        out = err = ""
         proc = None
+        err = ""
+        # retrive standard output from the file
+        (out, oerr), oproc = self.check_output(home, stdout)
 
         # get exit code saved in the 'exitcode' file
         ecode = self.exitcode(home, ecodefile)
@@ -474,15 +477,12 @@ class LinuxNode(ResourceManager):
             # Check standard error.
             (err, eerr), proc = self.check_output(home, stderr)
 
-            # Alsow retrive standard output for information
-            (out, oerr), oproc = self.check_output(home, stdout)
-
             # If the stderr file was not found, assume nothing bad happened,
             # and just ignore the error.
             # (cat returns 1 for error "No such file or directory")
             if ecode == ExitCode.FILENOTFOUND and proc.poll() == 1: 
                 err = "" 
-       
+            
         return (out, err), proc
  
     def wait_pid(self, home, pidfile = "pidfile", raise_on_error = False):

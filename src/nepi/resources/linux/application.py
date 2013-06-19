@@ -447,27 +447,26 @@ class LinuxApplication(ResourceManager):
             # check if execution errors occurred
             msg = " Failed to start command '%s' " % command
             
-            if proc.poll() and err:
+            if proc.poll():
                 self.error(msg, out, err)
                 raise RuntimeError, msg
         
-            # Check status of process running in background
+            # Wait for pid file to be generated
             pid, ppid = self.node.wait_pid(self.app_home)
             if pid: self._pid = int(pid)
             if ppid: self._ppid = int(ppid)
-
+  
             # If the process is not running, check for error information
             # on the remote machine
             if not self.pid or not self.ppid:
-                (out, err), proc = self.node.check_output(self.app_home, 'stderr')
-                self.error(msg, out, err)
+                (out, err), proc = self.check_errors(home, ecodefile, stderr)
 
-                msg2 = " Setting state to Failed"
-                self.debug(msg2)
-                self._state = ResourceState.FAILED
+                # Out is what was written in the stderr file
+                if err:
+                    msg = " Failed to start command '%s' " % command
+                    self.error(msg, out, err)
+                    raise RuntimeError, msg
 
-                raise RuntimeError, msg
-            
             super(LinuxApplication, self).start()
 
         else:

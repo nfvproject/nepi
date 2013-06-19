@@ -122,49 +122,6 @@ class LinuxCCND(LinuxApplication):
     def __init__(self, ec, guid):
         super(LinuxCCND, self).__init__(ec, guid)
 
-    def trace(self, name, attr = TraceAttr.ALL, block = 512, offset = 0):
-        self.info("Retrieving '%s' trace %s " % (name, attr))
-
-        path = os.path.join(self.app_home, name)
-        
-        command = "(test -f %s && echo 'success') || echo 'error'" % path
-        (out, err), proc = self.node.execute(command)
-
-        if (err and proc.poll()) or out.find("error") != -1:
-            msg = " Couldn't find trace %s " % name
-            self.error(msg, out, err)
-            return None
-    
-        if attr == TraceAttr.PATH:
-            return path
-
-        if attr == TraceAttr.ALL:
-            (out, err), proc = self.node.check_output(self.app_home, name)
-            
-            if err and proc.poll():
-                msg = " Couldn't read trace %s " % name
-                self.error(msg, out, err)
-                return None
-
-            return out
-
-        if attr == TraceAttr.STREAM:
-            cmd = "dd if=%s bs=%d count=1 skip=%d" % (path, block, offset)
-        elif attr == TraceAttr.SIZE:
-            cmd = "stat -c%%s %s " % path
-
-        (out, err), proc = self.node.execute(cmd)
-
-        if err and proc.poll():
-            msg = " Couldn't find trace %s " % name
-            self.error(msg, out, err)
-            return None
-        
-        if attr == TraceAttr.SIZE:
-            out = int(out.strip())
-
-        return out
-            
     def deploy(self):
         if not self.get("command"):
             self.set("command", self._default_command)
@@ -185,9 +142,6 @@ class LinuxCCND(LinuxApplication):
             self.set("env", self._default_environment)
 
         super(LinuxCCND, self).deploy()
-
-    def start(self):
-        super(LinuxCCND, self).start()
 
     def stop(self):
         command = self.get('command') or ''
@@ -318,11 +272,9 @@ class LinuxCCND(LinuxApplication):
             "prefix" : "CCND_PREFIX",
             })
 
-        env = "PATH=$PATH:${EXP_HOME}/ccnx/bin"
-        for key in envs.keys():
-            val = self.get(key)
-            if val:
-                env += " %s=%s" % (key, val)
+        env = "PATH=$PATH:${EXP_HOME}/ccnx/bin "
+        env += " ".join(map(lambda k: "%s=%s" % (envs.get(k), self.get(k)) \
+            if self.get(k) else "", envs.keys()))
         
         return env            
         
