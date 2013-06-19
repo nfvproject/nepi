@@ -20,7 +20,6 @@
 
 
 from nepi.resources.planetlab.plcapi import PLCAPIFactory
-from nepi.util.sshfuncs import RUNNING, FINISHED
 
 import os
 import unittest

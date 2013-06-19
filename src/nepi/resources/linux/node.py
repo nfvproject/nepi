@@ -60,6 +60,88 @@ class OSType:
 
 @clsinit
 class LinuxNode(ResourceManager):
+    """
+    .. class:: Class Args :
+      
+        :param ec: The Experiment controller
+        :type ec: ExperimentController
+        :param guid: guid of the RM
+        :type guid: int
+
+    .. note::
+
+        There are different ways in which commands can be executed using the
+        LinuxNode interface (i.e. 'execute' - blocking and non blocking, 'run',
+        'run_and_wait'). 
+        
+        Brief explanation:
+
+            * 'execute' (blocking mode) :  
+
+                     HOW IT WORKS: 'execute', forks a process and run the
+                     command, synchronously, attached to the terminal, in
+                     foreground.
+                     The execute method will block until the command returns
+                     the result on 'out', 'err' (so until it finishes executing).
+  
+                     USAGE: short-lived commands that must be executed attached
+                     to a terminal and in foreground, for which it IS necessary
+                     to block until the command has finished (e.g. if you want
+                     to run 'ls' or 'cat').
+
+            * 'execute' (NON blocking mode - blocking = False) :
+
+                    HOW IT WORKS: Same as before, except that execute method
+                    will return immediately (even if command still running).
+
+                    USAGE: long-lived commands that must be executed attached
+                    to a terminal and in foreground, but for which it is not
+                    necessary to block until the command has finished. (e.g.
+                    start an application using X11 forwarding)
+
+             * 'run' :
+
+                   HOW IT WORKS: Connects to the host ( using SSH if remote)
+                   and launches the command in background, detached from any
+                   terminal (daemonized), and returns. The command continues to
+                   run remotely, but since it is detached from the terminal,
+                   its pipes (stdin, stdout, stderr) can't be redirected to the
+                   console (as normal non detached processes would), and so they
+                   are explicitly redirected to files. The pidfile is created as
+                   part of the process of launching the command. The pidfile
+                   holds the pid and ppid of the process forked in background,
+                   so later on it is possible to check whether the command is still
+                   running.
+
+                    USAGE: long-lived commands that can run detached in background,
+                    for which it is NOT necessary to block (wait) until the command
+                    has finished. (e.g. start an application that is not using X11
+                    forwarding. It can run detached and remotely in background)
+
+             * 'run_and_wait' :
+
+                    HOW IT WORKS: Similar to 'run' except that it 'blocks' until
+                    the command has finished execution. It also checks whether
+                    errors occurred during runtime by reading the exitcode file,
+                    which contains the exit code of the command that was run
+                    (checking stderr only is not always reliable since many
+                    commands throw debugging info to stderr and the only way to
+                    automatically know whether an error really happened is to
+                    check the process exit code).
+
+                    Another difference with respect to 'run', is that instead
+                    of directly executing the command as a bash command line,
+                    it uploads the command to a bash script and runs the script.
+                    This allows to use the bash script to debug errors, since
+                    it remains at the remote host and can be run manually to
+                    reproduce the error.
+                  
+                    USAGE: medium-lived commands that can run detached in
+                    background, for which it IS necessary to block (wait) until
+                    the command has finished. (e.g. Package installation,
+                    source compilation, file download, etc)
+
+    """
     _rtype = "LinuxNode"
 
     @classmethod
@@ -429,9 +511,12 @@ class LinuxNode(ResourceManager):
         """ Saves the command as a bash script file in the remote host, and
         forces to save the exit code of the command execution to the ecodefile
         """
+
+        if not (command.strip().endswith(";") or command.strip().endswith("&")):
+            command += ";"
       
         # The exit code of the command will be stored in ecodefile
-        command = " %(command)s ; echo $? > %(ecodefile)s ;" % {
+        command = " { %(command)s } ; echo $? > %(ecodefile)s ;" % {
                 'command': command,
                 'ecodefile': ecodefile,
                 } 
@@ -447,13 +532,15 @@ class LinuxNode(ResourceManager):
 
     def format_environment(self, env, inline = False):
         """Format environmental variables for command to be executed either
-        as an inline command (i.e. PYTHONPATH=src/.. python script.py) or
+        as an inline command
+        (i.e. export PYTHONPATH=src/..; export LALAL= ..;python script.py) or 
         as a bash script (i.e. export PYTHONPATH=src/.. \n export LALA=.. \n)
         """
-        sep = " " if inline else "\n"
-        export = " " if inline else "export"
-        return sep.join(map(lambda e: "%s %s" % (export, e),
-            env.strip().split(" "))) + sep if env else ""
+        if not env: return ""
+        env = env.strip()
+
+        sep = ";" if inline else "\n"
+        return sep.join(map(lambda e: " export %s" % e, env.split(" "))) + sep 
 
     def check_errors(self, home, 
             ecodefile = "exitcode", 

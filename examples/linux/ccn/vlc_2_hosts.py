@@ -34,7 +34,7 @@ def add_node(ec, host, user, ssh_key = None):
     ec.set(node, "hostname", host)
     ec.set(node, "username", user)
     ec.set(node, "identity", ssh_key)
-    #ec.set(node, "cleanHome", True)
+    ec.set(node, "cleanHome", True)
     ec.set(node, "cleanProcesses", True)
     return node
 
