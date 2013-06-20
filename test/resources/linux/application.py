@@ -35,7 +35,6 @@ import unittest
 class LinuxApplicationTestCase(unittest.TestCase):
     def setUp(self):
         self.fedora_host = "nepi2.pl.sophia.inria.fr"
-        self.fedora_host = "planetlab2.u-strasbg.fr"
         self.fedora_user = "inria_nepi"
 
         self.ubuntu_host = "roseval.pl.sophia.inria.fr"

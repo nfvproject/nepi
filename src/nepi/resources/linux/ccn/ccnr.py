@@ -23,10 +23,8 @@ from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState
     ResourceAction
 from nepi.resources.linux.application import LinuxApplication
 from nepi.resources.linux.ccn.ccnd import LinuxCCND
-from nepi.resources.linux.node import OSType
-
-from nepi.util.sshfuncs import ProcStatus
 from nepi.util.timefuncs import strfnow, strfdiff
+
 import os
 
 reschedule_delay = "0.5s"
@@ -185,6 +183,8 @@ class LinuxCCNR(LinuxApplication):
 
     def __init__(self, ec, guid):
         super(LinuxCCNR, self).__init__(ec, guid)
+        self._home = "ccnr-%s" % self.guid
+
         # Marks whether ccnr is running
         self._running = False
 
@@ -192,6 +192,11 @@ class LinuxCCNR(LinuxApplication):
     def ccnd(self):
         ccnd = self.get_connected(LinuxCCND.rtype())
         if ccnd: return ccnd[0]
+        return None
+
+    @property
+    def node(self):
+        if self.ccnd: return self.ccnd.node
         return None
 
     def deploy(self):
@@ -211,9 +216,8 @@ class LinuxCCNR(LinuxApplication):
             # Invoke the actual deployment
             super(LinuxCCNR, self).deploy()
 
-            # As soon as the ccnd sources are deployed, we launch the
-            # daemon ( we don't want to lose time launching the ccn 
-            # daemon later on )
+            # As soon as deployment is finished, we launch the ccnr
+            # command ( we don't want to lose time ccnr later on )
             if self._state == ResourceState.READY:
                 self._start_in_background()
                 self._running = True
@@ -232,8 +236,8 @@ class LinuxCCNR(LinuxApplication):
 
     @property
     def state(self):
-        state = super(LinuxCCNR, self).state()
-        if self._state in [ResourceState.TERMINATED, ResourceState.FAILED]:
+        state = super(LinuxCCNR, self).state
+        if self._state in [ResourceState.FINISHED, ResourceState.FAILED]:
             self._running = False
 
         if self._state == ResourceState.READY:

@@ -413,8 +413,6 @@ class LinuxApplication(ResourceManager):
         command = environ + command
         command = self.replace_paths(command)
 
-        self.info("Starting command IN FOREGROUND '%s'" % command)
-        
         # We save the reference to the process in self._proc 
         # to be able to kill the process from the stop method.
         # We also set blocking = False, since we don't want the
