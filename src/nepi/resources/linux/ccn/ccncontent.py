@@ -23,44 +23,43 @@ from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState
     ResourceAction
 from nepi.resources.linux.application import LinuxApplication
 from nepi.resources.linux.ccn.ccnr import LinuxCCNR
-from nepi.resources.linux.node import OSType
-
-from nepi.util.sshfuncs import ProcStatus
 from nepi.util.timefuncs import strfnow, strfdiff
+
 import os
 
 reschedule_delay = "0.5s"
 
 @clsinit_copy
-class LinuxCCNR(LinuxApplication):
+class LinuxCCNContent(LinuxApplication):
     _rtype = "LinuxCCNContent"
 
     @classmethod
     def _register_attributes(cls):
         content_name = Attribute("contentName",
                 "The name of the content to publish (e.g. ccn:/VIDEO) ",
-            flags = Flags.ExecReadOnly)
+                flags = Flags.ExecReadOnly)
+
         content = Attribute("content",
                 "The content to publish. It can be a path to a file or plain text ",
-            flags = Flags.ExecReadOnly)
-
+                flags = Flags.ExecReadOnly)
 
         cls._register_attribute(content_name)
         cls._register_attribute(content)
 
-    @classmethod
-    def _register_traces(cls):
-        log = Trace("log", "CCND log output")
-
-        cls._register_trace(log)
-
     def __init__(self, ec, guid):
         super(LinuxCCNContent, self).__init__(ec, guid)
-
+        self._home = "content-%s" % self.guid
+        self._published = False
+        
     @property
     def ccnr(self):
         ccnr = self.get_connected(LinuxCCNR.rtype())
         if ccnr: return ccnr[0]
+        return None
+
+    @property
+    def node(self):
+        if self.ccnr: return self.ccnr.node
         return None
 
     def deploy(self):
@@ -70,19 +69,52 @@ class LinuxCCNR(LinuxApplication):
         if not self.get("env"):
             self.set("env", self._default_environment)
 
+        if not self.get("stdin"):
+            # set content to stdin, so the content will be
+            # uploaded during provision
+            self.set("stdin", self.get("content"))
+
         # Wait until associated ccnd is provisioned
         ccnr = self.ccnr
 
-        if not ccnr or ccnr.state < ResourceState.STARTED:
+        if not ccnr or ccnr.state < ResourceState.READY:
+            # ccnr needs to wait until ccnd is deployed and running
             self.ec.schedule(reschedule_delay, self.deploy)
         else:
-            # Add a start after condition so CCNR will not start
-            # before CCND does
-            self.ec.register_condition(self.guid, ResourceAction.START, 
-                ccnd.guid, ResourceState.STARTED)
- 
             # Invoke the actual deployment
             super(LinuxCCNContent, self).deploy()
+
+            # As soon as the ccnr is running we can push the content
+            # to the repository ( we don't want to lose time launching 
+            # writting the content to the repository later on )
+            if self._state == ResourceState.READY:
+                self._start_in_background()
+                self._published = True
+
+    def start(self):
+        # CCNR should already be started by now.
+        # Nothing to do but to set the state to STARTED
+        if self._published:
+            self._start_time = strfnow()
+            self._state = ResourceState.STARTED
+        else:
+            msg = "Failed to execute command '%s'" % command
+            self.error(msg, out, err)
+            self._state = ResourceState.FAILED
+            raise RuntimeError, msg
+
+    @property
+    def state(self):
+        state = super(LinuxCCNContent, self).state
+        if self._state in [ResourceState.FINISHED, ResourceState.FAILED]:
+            self._published = False
+
+        if self._state == ResourceState.READY:
+            # CCND is really deployed only when ccn daemon is running 
+            if not self._published:
+                return ResourceState.PROVISIONED
+ 
+        return self._state
 
     @property
     def _default_command(self):

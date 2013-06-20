@@ -22,9 +22,8 @@ from nepi.execution.trace import Trace, TraceAttr
 from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState
 from nepi.resources.linux.application import LinuxApplication
 from nepi.resources.linux.node import OSType
-
-from nepi.util.sshfuncs import ProcStatus
 from nepi.util.timefuncs import strfnow, strfdiff
+
 import os
 
 @clsinit_copy
@@ -46,6 +45,7 @@ class LinuxCCND(LinuxApplication):
             "  128 - face registration debugging \n"
             "  -1 - max logging \n"
             "  Or apply bitwise OR to these values to get combinations of them",
+            type = Types.Integer,
             flags = Flags.ExecReadOnly)
 
         port = Attribute("port", "Sets the CCN_LOCAL_PORT environmental variable. "
@@ -121,6 +121,8 @@ class LinuxCCND(LinuxApplication):
 
     def __init__(self, ec, guid):
         super(LinuxCCND, self).__init__(ec, guid)
+        self._home = "ccnd-%s" % self.guid
+
         # Marks whether daemon is running
         self._running = False
 
@@ -193,9 +195,9 @@ class LinuxCCND(LinuxApplication):
     @property
     def state(self):
         # First check if the ccnd has failed
+        state_check_delay = 0.5
         if self._running and strfdiff(strfnow(), self._last_state_check) > state_check_delay:
-            state_check_delay = 0.5
-            (out, err), proc = self._cndstatus()
+            (out, err), proc = self._ccndstatus
 
             retcode = proc.poll()
 
@@ -206,7 +208,7 @@ class LinuxCCND(LinuxApplication):
             elif retcode:
                 # other errors ...
                 self._running = False
-                msg = " Failed to execute command '%s'" % command
+                msg = " Failed to execute command '%s'" % self.get("command")
                 self.error(msg, out, err)
                 self._state = ResourceState.FAILED
 
@@ -223,7 +225,7 @@ class LinuxCCND(LinuxApplication):
     def _ccndstatus(self):
         env = self.get('env') or ""
         environ = self.node.format_environment(env, inline = True)
-        command = environ + "; ccndstatus"
+        command = environ + " ccndstatus"
         command = self.replace_paths(command)
     
         return self.node.execute(command)
@@ -246,7 +248,7 @@ class LinuxCCND(LinuxApplication):
 
     @property
     def _default_sources(self):
-        return "http://www.ccnx.org/releases/ccnx-0.7.1.tar.gz"
+        return "http://www.ccnx.org/releases/ccnx-0.7.2.tar.gz"
 
     @property
     def _default_build(self):
@@ -302,7 +304,7 @@ class LinuxCCND(LinuxApplication):
             })
 
         env = "PATH=$PATH:${EXP_HOME}/ccnx/bin "
-        env += " ".join(map(lambda k: "%s=%s" % (envs.get(k), self.get(k)) \
+        env += " ".join(map(lambda k: "%s=%s" % (envs.get(k), str(self.get(k))) \
             if self.get(k) else "", envs.keys()))
         
         return env            
