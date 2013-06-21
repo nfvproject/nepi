@@ -19,18 +19,16 @@
 
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import Trace, TraceAttr
-from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState, \
+from nepi.execution.resource import clsinit_copy, ResourceState, \
     ResourceAction
-from nepi.resources.linux.application import LinuxApplication
+from nepi.resources.linux.ccn.ccnapplication import LinuxCCNApplication
 from nepi.resources.linux.ccn.ccnd import LinuxCCND
 from nepi.util.timefuncs import strfnow, strfdiff
 
 import os
 
-reschedule_delay = "0.5s"
-
 @clsinit_copy
-class LinuxCCNR(LinuxApplication):
+class LinuxCCNR(LinuxCCNApplication):
     _rtype = "LinuxCCNR"
 
     @classmethod
@@ -185,47 +183,49 @@ class LinuxCCNR(LinuxApplication):
         super(LinuxCCNR, self).__init__(ec, guid)
         self._home = "ccnr-%s" % self.guid
 
-        # Marks whether ccnr is running
-        self._running = False
-
-    @property
-    def ccnd(self):
-        ccnd = self.get_connected(LinuxCCND.rtype())
-        if ccnd: return ccnd[0]
-        return None
-
-    @property
-    def node(self):
-        if self.ccnd: return self.ccnd.node
-        return None
-
     def deploy(self):
-        if not self.get("command"):
-            self.set("command", self._default_command)
-        
-        if not self.get("env"):
-            self.set("env", self._default_environment)
-
-        # Wait until associated ccnd is provisioned
-        ccnd = self.ccnd
-
-        if not ccnd or ccnd.state < ResourceState.READY:
+        if not self.ccnd or self.ccnd.state < ResourceState.READY:
+            self.debug("---- RESCHEDULING DEPLOY ---- CCND state %s " % self.ccnd.state )
+            
+            reschedule_delay = "0.5s"
             # ccnr needs to wait until ccnd is deployed and running
             self.ec.schedule(reschedule_delay, self.deploy)
         else:
-            # Invoke the actual deployment
-            super(LinuxCCNR, self).deploy()
+            command = self._start_command
+            env = self._environment
 
-            # As soon as deployment is finished, we launch the ccnr
-            # command ( we don't want to lose time ccnr later on )
-            if self._state == ResourceState.READY:
-                self._start_in_background()
-                self._running = True
+            self.set("command", command)
+            self.set("env", env)
+
+            self.info("Deploying command '%s' " % command)
+
+            self.node.mkdir(self.app_home)
+
+            # upload sources
+            self.upload_sources()
+
+            # We want to make sure the repository is running
+            # before the experiment starts.
+            # Run the command as a bash script in background,
+            # in the host ( but wait until the command has
+            # finished to continue )
+            env = self.replace_paths(env)
+            command = self.replace_paths(command)
+
+            self.node.run_and_wait(command, self.app_home,
+                    env = env,
+                    shfile = "app.sh",
+                    raise_on_error = True)
+
+            self.debug("----- READY ---- ")
+            self._ready_time = strfnow()
+            self._state = ResourceState.READY
 
     def start(self):
-        # CCND should already be started by now.
-        # Nothing to do but to set the state to STARTED
-        if self._running:
+        if self._state == ResourceState.READY:
+            command = self.get("command")
+            self.info("Starting command '%s'" % command)
+
             self._start_time = strfnow()
             self._state = ResourceState.STARTED
         else:
@@ -235,24 +235,11 @@ class LinuxCCNR(LinuxApplication):
             raise RuntimeError, msg
 
     @property
-    def state(self):
-        state = super(LinuxCCNR, self).state
-        if self._state in [ResourceState.FINISHED, ResourceState.FAILED]:
-            self._running = False
-
-        if self._state == ResourceState.READY:
-            # CCND is really deployed only when ccn daemon is running 
-            if not self._running:
-                return ResourceState.PROVISIONED
- 
-        return self._state
+    def _start_command(self):
+        return "ccnr &"
 
     @property
-    def _default_command(self):
-        return "ccnr"
-
-    @property
-    def _default_environment(self):
+    def _environment(self):
         envs = dict({
             "maxFanout": "CCNR_BTREE_MAX_FANOUT",
             "maxLeafEntries": "CCNR_BTREE_MAX_LEAF_ENTRIES",
@@ -285,7 +272,7 @@ class LinuxCCNR(LinuxApplication):
         env = "PATH=$PATH:${EXP_HOME}/ccnx/bin "
         env += " ".join(map(lambda k: "%s=%s" % (envs.get(k), self.get(k)) \
             if self.get(k) else "", envs.keys()))
-        
+       
         return env            
         
     def valid_connection(self, guid):

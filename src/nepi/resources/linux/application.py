@@ -111,6 +111,7 @@ class LinuxApplication(ResourceManager):
         self._pid = None
         self._ppid = None
         self._home = "app-%s" % self.guid
+        self._in_foreground = False
 
         # keep a reference to the running process handler when 
         # the command is not executed as remote daemon in background
@@ -155,12 +156,12 @@ class LinuxApplication(ResourceManager):
         This means that command will be executed using 'execute' instead of
         'run' ('run' executes a command in background and detached from the 
         terminal)
-
+        
         When using X11 forwarding option, the command can not run in background
         and detached from a terminal, since we need to keep the terminal attached 
         to interact with it.
         """
-        return self.get("forwardX11") or False
+        return self.get("forwardX11") or self._in_foreground
 
     def trace(self, name, attr = TraceAttr.ALL, block = 512, offset = 0):
         self.info("Retrieving '%s' trace %s " % (name, attr))
@@ -312,8 +313,14 @@ class LinuxApplication(ResourceManager):
         if stdin:
             # create dir for sources
             self.info(" Uploading stdin ")
-
+            
             dst = os.path.join(self.app_home, "stdin")
+
+            # TODO:
+            # Check wether file already exists and if it exists 
+            # wether the file we want to upload is the same
+            # (using md5sum)
+
             self.node.upload(stdin, dst, text = True)
 
     def install_dependencies(self):
@@ -391,6 +398,7 @@ class LinuxApplication(ResourceManager):
             # installation), then the application is directly marked as FINISHED
             self._state = ResourceState.FINISHED
         else:
+
             if self.in_foreground:
                 self._start_in_foreground()
             else:
@@ -400,7 +408,6 @@ class LinuxApplication(ResourceManager):
 
     def _start_in_foreground(self):
         command = self.get("command")
-        env = self.get("env")
         stdin = "stdin" if self.get("stdin") else None
         sudo = self.get("sudo") or False
         x11 = self.get("forwardX11")
@@ -409,6 +416,7 @@ class LinuxApplication(ResourceManager):
         # terminal using the node 'execute' in non blocking mode.
 
         # Export environment
+        env = self.get("env")
         environ = self.node.format_environment(env, inline = True)
         command = environ + command
         command = self.replace_paths(command)
@@ -463,7 +471,8 @@ class LinuxApplication(ResourceManager):
         # If the process is not running, check for error information
         # on the remote machine
         if not self.pid or not self.ppid:
-            (out, err), proc = self.check_errors(home, ecodefile, stderr)
+            (out, err), proc = self.node.check_errors(self.app_home,
+                    stderr = stderr) 
 
             # Out is what was written in the stderr file
             if err:
@@ -490,14 +499,17 @@ class LinuxApplication(ResourceManager):
             if self._proc:
                 self._proc.kill()
             else:
-                (out, err), proc = self.node.kill(self.pid, self.ppid)
+                # Only try to kill the process if the pid and ppid
+                # were retrieved
+                if self.pid and self.ppid:
+                    (out, err), proc = self.node.kill(self.pid, self.ppid)
 
-                if out or err:
-                    # check if execution errors occurred
-                    msg = " Failed to STOP command '%s' " % self.get("command")
-                    self.error(msg, out, err)
-                    self._state = ResourceState.FAILED
-                    stopped = False
+                    if out or err:
+                        # check if execution errors occurred
+                        msg = " Failed to STOP command '%s' " % self.get("command")
+                        self.error(msg, out, err)
+                        self._state = ResourceState.FAILED
+                        stopped = False
 
             if stopped:
                 super(LinuxApplication, self).stop()
@@ -523,7 +535,7 @@ class LinuxApplication(ResourceManager):
                 # Check if the process we used to execute the command
                 # is still running ...
                 retcode = self._proc.poll()
-                
+
                 # retcode == None -> running
                 # retcode > 0 -> error
                 # retcode == 0 -> finished

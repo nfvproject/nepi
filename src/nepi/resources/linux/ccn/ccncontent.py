@@ -18,19 +18,16 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 from nepi.execution.attribute import Attribute, Flags, Types
-from nepi.execution.trace import Trace, TraceAttr
-from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState, \
+from nepi.execution.resource import clsinit_copy, ResourceState, \
     ResourceAction
-from nepi.resources.linux.application import LinuxApplication
+from nepi.resources.linux.ccn.ccnapplication import LinuxCCNApplication
 from nepi.resources.linux.ccn.ccnr import LinuxCCNR
 from nepi.util.timefuncs import strfnow, strfdiff
 
 import os
 
-reschedule_delay = "0.5s"
-
 @clsinit_copy
-class LinuxCCNContent(LinuxApplication):
+class LinuxCCNContent(LinuxCCNApplication):
     _rtype = "LinuxCCNContent"
 
     @classmethod
@@ -49,7 +46,6 @@ class LinuxCCNContent(LinuxApplication):
     def __init__(self, ec, guid):
         super(LinuxCCNContent, self).__init__(ec, guid)
         self._home = "content-%s" % self.guid
-        self._published = False
         
     @property
     def ccnr(self):
@@ -63,68 +59,63 @@ class LinuxCCNContent(LinuxApplication):
         return None
 
     def deploy(self):
-        if not self.get("command"):
-            self.set("command", self._default_command)
-        
-        if not self.get("env"):
-            self.set("env", self._default_environment)
+        if not self.ccnr or self.ccnr.state < ResourceState.READY:
+            self.debug("---- RESCHEDULING DEPLOY ---- node state %s " % self.node.state )
+            
+            reschedule_delay = "0.5s"
+            # ccnr needs to wait until ccnd is deployed and running
+            self.ec.schedule(reschedule_delay, self.deploy)
+        else:
+            command = self._start_command
+            env = self._environment
 
-        if not self.get("stdin"):
+            self.set("command", command)
+            self.set("env", env)
+
             # set content to stdin, so the content will be
             # uploaded during provision
             self.set("stdin", self.get("content"))
 
-        # Wait until associated ccnd is provisioned
-        ccnr = self.ccnr
+            self.info("Deploying command '%s' " % command)
 
-        if not ccnr or ccnr.state < ResourceState.READY:
-            # ccnr needs to wait until ccnd is deployed and running
-            self.ec.schedule(reschedule_delay, self.deploy)
-        else:
-            # Invoke the actual deployment
-            super(LinuxCCNContent, self).deploy()
+            self.node.mkdir(self.app_home)
 
-            # As soon as the ccnr is running we can push the content
-            # to the repository ( we don't want to lose time launching 
-            # writting the content to the repository later on )
-            if self._state == ResourceState.READY:
-                self._start_in_background()
-                self._published = True
+            # upload content 
+            self.upload_stdin()
+
+            # We want to make sure the content is published
+            # before the experiment starts.
+            # Run the command as a bash script in the background, 
+            # in the host ( but wait until the command has
+            # finished to continue )
+            self.execute_command(command, env)
+
+            self.debug("----- READY ---- ")
+            self._ready_time = strfnow()
+            self._state = ResourceState.READY
 
     def start(self):
-        # CCNR should already be started by now.
-        # Nothing to do but to set the state to STARTED
-        if self._published:
+        if self._state == ResourceState.READY:
+            command = self.get("command")
+            self.info("Starting command '%s'" % command)
+
             self._start_time = strfnow()
             self._state = ResourceState.STARTED
         else:
-            msg = "Failed to execute command '%s'" % command
+            msg = " Failed to execute command '%s'" % command
             self.error(msg, out, err)
             self._state = ResourceState.FAILED
             raise RuntimeError, msg
 
     @property
     def state(self):
-        state = super(LinuxCCNContent, self).state
-        if self._state in [ResourceState.FINISHED, ResourceState.FAILED]:
-            self._published = False
-
-        if self._state == ResourceState.READY:
-            # CCND is really deployed only when ccn daemon is running 
-            if not self._published:
-                return ResourceState.PROVISIONED
- 
         return self._state
 
     @property
-    def _default_command(self):
-        return "ccnseqwriter -r %s " % self.get("contentName")
+    def _start_command(self):
+        return "ccnseqwriter -r %s < %s" % (self.get("contentName"),
+                os.path.join(self.app_home, 'stdin'))
 
-    @property
-    def _default_environment(self):
-        env = "PATH=$PATH:${EXP_HOME}/ccnx/bin "
-        return env            
-        
     def valid_connection(self, guid):
         # TODO: Validate!
         return True
