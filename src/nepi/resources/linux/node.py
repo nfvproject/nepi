@@ -429,12 +429,10 @@ class LinuxNode(ResourceManager):
             sudo = False,
             tty = False,
             raise_on_error = False):
-        """ 
-        runs a command in background on the remote host, busy-waiting
-        until the command finishes execution.
-        This is more robust than doing a simple synchronized 'execute',
-        since in the remote host the command can continue to run detached
-        even if network disconnections occur
+        """
+        Uploads the 'command' to a bash script in the host.
+        Then runs the script detached in background in the host, and
+        busy-waites until the script finishes executing.
         """
         self.upload_command(command, home, 
             shfile = shfile, 
@@ -537,7 +535,9 @@ class LinuxNode(ResourceManager):
         as a bash script (i.e. export PYTHONPATH=src/.. \n export LALA=.. \n)
         """
         if not env: return ""
-        env = env.strip()
+
+        # Remove extra white spaces
+        env = re.sub(r'\s+', ' ', env.strip())
 
         sep = ";" if inline else "\n"
         return sep.join(map(lambda e: " export %s" % e, env.split(" "))) + sep 

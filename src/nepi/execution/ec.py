@@ -152,9 +152,12 @@ class ExperimentController(object):
         :param guids: List of guids
         :type guids: list
         """
-        return self.wait(guids, states = [ResourceState.STARTED, ResourceState.FINISHED])
+        return self.wait(guids, states = [ResourceState.STARTED,
+            ResourceState.STOPPED,
+            ResourceState.FINISHED])
 
-    def wait(self, guids, states = [ResourceState.FINISHED]):
+    def wait(self, guids, states = [ResourceState.FINISHED, 
+        ResourceState.STOPPED]):
         """ Blocking method that waits until all the RM from the 'guid' list 
             reached state 'state' or until a failure occurs
             
@@ -166,9 +169,14 @@ class ExperimentController(object):
 
         while not all([self.state(guid) in states for guid in guids]) and \
                 not any([self.state(guid) in [
-                        ResourceState.STOPPED, 
                         ResourceState.FAILED] for guid in guids]) and \
                 not self.finished:
+            # debug logging
+            waited = ""
+            for guid in guids:
+                waited += "guid %d - %s \n" % (guid, self.state(guid, hr = True))
+            self.logger.debug(" WAITING FOR %s " % waited )
+            
             # We keep the sleep big to decrease the number of RM state queries
             time.sleep(2)
    

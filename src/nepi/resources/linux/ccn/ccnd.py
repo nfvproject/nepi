@@ -26,6 +26,8 @@ from nepi.util.timefuncs import strfnow, strfdiff
 
 import os
 
+# TODO: use ccndlogging to dynamically change the logging level
+
 @clsinit_copy
 class LinuxCCND(LinuxApplication):
     _rtype = "LinuxCCND"
@@ -123,41 +125,80 @@ class LinuxCCND(LinuxApplication):
         super(LinuxCCND, self).__init__(ec, guid)
         self._home = "ccnd-%s" % self.guid
 
-        # Marks whether daemon is running
-        self._running = False
-
     def deploy(self):
-        if not self.get("command"):
-            self.set("command", self._default_command)
-        
-        if not self.get("depends"):
-            self.set("depends", self._default_dependencies)
+        if not self.node or self.node.state < ResourceState.READY:
+            self.debug("---- RESCHEDULING DEPLOY ---- node state %s " % self.node.state )
+            
+            reschedule_delay = "0.5s"
+            # ccnr needs to wait until ccnd is deployed and running
+            self.ec.schedule(reschedule_delay, self.deploy)
+        else:
+            if not self.get("command"):
+                self.set("command", self._start_command)
+            
+            if not self.get("depends"):
+                self.set("depends", self._dependencies)
 
-        if not self.get("sources"):
-            self.set("sources", self._default_sources)
+            if not self.get("sources"):
+                self.set("sources", self._sources)
 
-        if not self.get("build"):
-            self.set("build", self._default_build)
+            if not self.get("build"):
+                self.set("build", self._build)
 
-        if not self.get("install"):
-            self.set("install", self._default_install)
+            if not self.get("install"):
+                self.set("install", self._install)
 
-        if not self.get("env"):
-            self.set("env", self._default_environment)
+            if not self.get("env"):
+                self.set("env", self._environment)
 
-        super(LinuxCCND, self).deploy()
+            command = self.get("command")
+            env = self.get("env")
 
-        # As soon as the ccnd sources are deployed, we launch the
-        # daemon ( we don't want to lose time launching the ccn 
-        # daemon later on )
-        if self._state == ResourceState.READY:
-            self._start_in_background()
-            self._running = True
+            self.info("Deploying command '%s' " % command)
+
+            # create home dir for application
+            self.node.mkdir(self.app_home)
+
+            # upload sources
+            self.upload_sources()
+
+            # upload code
+            self.upload_code()
+
+            # upload stdin
+            self.upload_stdin()
+
+            # install dependencies
+            self.install_dependencies()
+
+            # build
+            self.build()
+
+            # Install
+            self.install()
+
+            # We want to make sure the repository is running
+            # before the experiment starts.
+            # Run the command as a bash script in background,
+            # in the host ( but wait until the command has
+            # finished to continue )
+            env = self.replace_paths(env)
+            command = self.replace_paths(command)
+
+            self.node.run_and_wait(command, self.app_home,
+                    env = env,
+                    shfile = "app.sh",
+                    raise_on_error = True)
+    
+            self.debug("----- READY ---- ")
+            self._ready_time = strfnow()
+            self._state = ResourceState.READY
 
     def start(self):
-        # CCND should already be started by now.
-        # Nothing to do but to set the state to STARTED
-        if self._running:
+        if self._state == ResourceState.READY:
+            command = self.get("command")
+            self.info("Starting command '%s'" % command)
+
             self._start_time = strfnow()
             self._state = ResourceState.STARTED
         else:
@@ -189,35 +230,29 @@ class LinuxCCND(LinuxApplication):
                         stdout = "ccndstop_stdout", 
                         stderr = "ccndstop_stderr")
 
-
-            super(LinuxCCND, self).stop()
-
+            self._stop_time = strfnow()
+            self._state = ResourceState.STOPPED
+    
     @property
     def state(self):
         # First check if the ccnd has failed
         state_check_delay = 0.5
-        if self._running and strfdiff(strfnow(), self._last_state_check) > state_check_delay:
+        if self._state == ResourceState.STARTED and \
+                strfdiff(strfnow(), self._last_state_check) > state_check_delay:
             (out, err), proc = self._ccndstatus
 
             retcode = proc.poll()
 
             if retcode == 1 and err.find("No such file or directory") > -1:
                 # ccnd is not running (socket not found)
-                self._running = False
                 self._state = ResourceState.FINISHED
             elif retcode:
                 # other errors ...
-                self._running = False
                 msg = " Failed to execute command '%s'" % self.get("command")
                 self.error(msg, out, err)
                 self._state = ResourceState.FAILED
 
             self._last_state_check = strfnow()
-
-        if self._state == ResourceState.READY:
-            # CCND is really deployed only when ccn daemon is running 
-            if not self._running:
-                return ResourceState.PROVISIONED
 
         return self._state
 
@@ -231,11 +266,11 @@ class LinuxCCND(LinuxApplication):
         return self.node.execute(command)
 
     @property
-    def _default_command(self):
+    def _start_command(self):
         return "ccndstart"
 
     @property
-    def _default_dependencies(self):
+    def _dependencies(self):
         if self.node.os in [ OSType.FEDORA_12 , OSType.FEDORA_14 ]:
             return ( " autoconf openssl-devel  expat-devel libpcap-devel "
                 " ecryptfs-utils-devel libxml2-devel automake gawk " 
@@ -247,11 +282,11 @@ class LinuxCCND(LinuxApplication):
         return ""
 
     @property
-    def _default_sources(self):
+    def _sources(self):
         return "http://www.ccnx.org/releases/ccnx-0.7.2.tar.gz"
 
     @property
-    def _default_build(self):
+    def _build(self):
         sources = self.get("sources").split(" ")[0]
         sources = os.path.basename(sources)
 
@@ -272,7 +307,7 @@ class LinuxCCND(LinuxApplication):
              " )") % ({ 'sources': sources })
 
     @property
-    def _default_install(self):
+    def _install(self):
         return (
             # Evaluate if ccnx binaries are already installed
             " ( "
@@ -286,7 +321,7 @@ class LinuxCCND(LinuxApplication):
             )
 
     @property
-    def _default_environment(self):
+    def _environment(self):
         envs = dict({
             "debug": "CCND_DEBUG",
             "port": "CCN_LOCAL_PORT",
