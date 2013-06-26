@@ -19,6 +19,24 @@
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
+
+# NOTE: This experiment example uses the generic LinuxApplication
+#       ResourceManager to do the CCN set up in the hosts.
+#       Alternatively, CCN specific ResourceManagers can be used
+#       (i.e. LinuxCCND, LinuxCCNR, etc...), and those require less 
+#       manual configuration.
+#
+#
+
+# CCN topology:
+#
+#                
+#                 
+#  content                ccncat
+#  PL host               Linux host
+#  0 ------- Internet ------ 0
+#           
+
 from nepi.execution.ec import ExperimentController, ECState 
 from nepi.execution.resource import ResourceState, ResourceAction, \
         populate_factory
@@ -117,7 +135,7 @@ def add_stream(ec):
     return app
 
 def get_options():
-    slicename = os.environ.get("PL_SLICE")
+    pl_slice = os.environ.get("PL_SLICE")
 
     # We use a specific SSH private key for PL if the PL_SSHKEY is specified or the
     # id_rsa_planetlab exists 
@@ -125,16 +143,33 @@ def get_options():
     default_key = default_key if os.path.exists(default_key) else None
     pl_ssh_key = os.environ.get("PL_SSHKEY", default_key)
 
-    usage = "usage: %prog -s <pl-slice> -u <username> -m <movie> -l <exp-id> -i <ssh_key>"
+    # Default planetlab host
+    pl_host = "planetlab2.u-strasbg.fr"
+
+    # Another Linux host 
+    # IMPORTANT NOTE: you must replace this host for another one
+    #       you have access to. You must set up your SSH keys so
+    #       the host can be accessed through SSH without prompting
+    #       for a password. The host must allow X forwarding using SSH.
+    linux_host = 'roseval.pl.sophia.inria.fr'
+
+    usage = "usage: %prog -p <pl-host> -s <pl-slice> -l <linux-host> -u <linux-user> -m <movie> -e <exp-id> -i <ssh_key>"
 
     parser = OptionParser(usage=usage)
+    parser.add_option("-p", "--pl-host", dest="pl_host", 
+            help="PlanetLab hostname (already added to the <pl-slice> on the web site)", 
+            default = pl_host, type="str")
     parser.add_option("-s", "--pl-slice", dest="pl_slice", 
-            help="PlanetLab slicename", default = slicename, type="str")
-    parser.add_option("-u", "--username", dest="username", 
-            help="User for extra host (non PlanetLab)", type="str")
+            help="PlanetLab slicename", default = pl_slice, type="str")
+    parser.add_option("-l", "--linux-host", dest="linux_host", 
+            help="Hostname of second Linux host (non PlanetLab)",
+            default = linux_host, type="str")
+    parser.add_option("-u", "--linux-user", dest="linux_user", 
+            help="User for extra Linux host (non PlanetLab)", default = linux_host,
+            type="str")
     parser.add_option("-m", "--movie", dest="movie", 
             help="Stream movie", type="str")
-    parser.add_option("-l", "--exp-id", dest="exp_id", 
+    parser.add_option("-e", "--exp-id", dest="exp_id", 
             help="Label to identify experiment", type="str")
     parser.add_option("-i", "--pl-ssh-key", dest="pl_ssh_key", 
             help="Path to private SSH key to be used for connection", 
@@ -145,48 +180,47 @@ def get_options():
     if not options.movie:
         parser.error("movie is a required argument")
 
-    return (options.pl_slice, options.username, options.movie, options.exp_id, 
+    return (options.pl_host, options.pl_slice, options.linux_host, 
+            options.linux_user, options.movie, options.exp_id, 
             options.pl_ssh_key)
 
 if __name__ == '__main__':
-    ( pl_slice, username, movie, exp_id, pl_ssh_key ) = get_options()
+    ( pl_host, pl_user, linux_host, linux_user, movie, exp_id, pl_ssh_key 
+            ) = get_options()
 
     # Search for available RMs
     populate_factory()
     
-    # PlanetLab node
-    host1 = 'planetlab2.u-strasbg.fr'
-    
-    # Another node 
-    # IMPORTANT NOTE: you must replace this host for another one
-    #       you have access to. You must set up your SSH keys so
-    #       the host can be accessed through SSH without prompting
-    #       for a password. The host must allow X forwarding using SSH.
-    host2 = 'roseval.pl.sophia.inria.fr'
-
     # Create the ExperimentController instance
     ec = ExperimentController(exp_id = exp_id)
 
-    # Register a ResourceManager (RM) for the PlanetLab node
-    node1 = add_node(ec, host1, pl_slice, pl_ssh_key)
-    
-    peers = [host2]
-    ccnd1 = add_ccnd(ec, OSType.FEDORA, peers)
+    # Register ResourceManager (RM) 
 
+    # Register first PlanetLab host
+    node1 = add_node(ec, pl_host, pl_user, pl_ssh_key)
+
+    # Register CCN setup for PL host
+    peers = [linux_host]
+    ccnd1 = add_ccnd(ec, OSType.FEDORA, peers)
     ec.register_connection(ccnd1, node1)
 
+    # Register content producer application (ccnseqwriter)
     pub = add_publish(ec, movie)
     ec.register_connection(pub, node1)
 
     # The movie can only be published after ccnd is running
     ec.register_condition(pub, ResourceAction.START, 
             ccnd1, ResourceState.STARTED)
-    
-    node2 = add_node(ec, host2, username)
-    peers = [host1]
+   
+    # Register Linux host
+    node2 = add_node(ec, linux_host, linux_user)
+
+    # Register CCN setup for Linux host
+    peers = [pl_host]
     ccnd2 = add_ccnd(ec, "ubuntu", peers)
     ec.register_connection(ccnd2, node2)
      
+    # Register consumer application (ccncat)
     stream = add_stream(ec)
     ec.register_connection(stream, node2)
 
