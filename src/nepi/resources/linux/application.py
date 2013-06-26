@@ -25,8 +25,10 @@ from nepi.util.sshfuncs import ProcStatus
 from nepi.util.timefuncs import strfnow, strfdiff
 
 import os
+import subprocess
 
 # TODO: Resolve wildcards in commands!!
+# TODO: compare_hash for all files that are uploaded!
 
 
 @clsinit
@@ -37,7 +39,7 @@ class LinuxApplication(ResourceManager):
     def _register_attributes(cls):
         command = Attribute("command", "Command to execute", 
                 flags = Flags.ExecReadOnly)
-        forward_x11 = Attribute("forwardX11", " Enables X11 forwarding for SSH connections", 
+        forward_x11 = Attribute("forwardX11", "Enables X11 forwarding for SSH connections", 
                 flags = Flags.ExecReadOnly)
         env = Attribute("env", "Environment variables string for command execution",
                 flags = Flags.ExecReadOnly)
@@ -316,10 +318,10 @@ class LinuxApplication(ResourceManager):
             
             dst = os.path.join(self.app_home, "stdin")
 
-            # TODO:
-            # Check wether file already exists and if it exists 
-            # wether the file we want to upload is the same
-            # (using md5sum)
+            # If what we are uploading is a file, check whether
+            # the same file already exists (using md5sum)
+            if self.compare_hash(stdin, dst):
+                return
 
             self.node.upload(stdin, dst, text = True)
 
@@ -589,7 +591,39 @@ class LinuxApplication(ResourceManager):
             .replace("${NODE_HOME}", absolute_dir(self.node.node_home))
             .replace("${EXP_HOME}", absolute_dir(self.node.exp_home) )
             )
-        
+
+    def compare_hash(self, local, remote):
+        # getting md5sum from remote file
+        (out, err), proc = self.node.execute("md5sum %s " % remote)
+
+        if proc.poll() == 0: #OK
+            if not os.path.isfile(local):
+                # store to a tmp file
+                f = tempfile.NamedTemporaryFile()
+                f.write(local)
+                f.flush()
+                local = f.name
+
+            lproc = subprocess.Popen(["md5sum", local],
+                stdout = subprocess.PIPE,
+                stderr = subprocess.PIPE) 
+
+            # getting md5sum from local file
+            (lout, lerr) = lproc.communicate()
+
+            # files are the same, no need to upload
+            lchk = lout.strip().split(" ")[0]
+            rchk = out.strip().split(" ")[0]
+
+            msg = " Comparing files: LOCAL %s md5sum %s - REMOTE %s md5sum %s" % (
+                    local, lchk, remote, rchk)
+            self.debug(msg)
+
+            if lchk == rchk:
+                return True
+
+        return False
+
     def valid_connection(self, guid):
         # TODO: Validate!
         return True

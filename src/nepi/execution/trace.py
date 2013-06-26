@@ -18,9 +18,8 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 class TraceAttr:
-    """ Class representing the different attributes 
-    that can characterized a trace.
-
+    """ Trace attributes represent different information
+    aspects that can be retrieved from a trace.
     """
     ALL = 'all'
     STREAM = 'stream'

@@ -41,8 +41,9 @@
 from nepi.execution.ec import ExperimentController, ECState 
 from nepi.execution.resource import ResourceState, ResourceAction, \
         populate_factory
-from nepi.resources.linux.node import OSType
+from nepi.execution.trace import TraceAttr
 
+import subprocess
 from optparse import OptionParser, SUPPRESS_HELP
 
 import os
@@ -83,45 +84,71 @@ def add_content(ec, ccnr, content_name, content):
     return co
 
 def add_stream(ec, ccnd, content_name):
-    command = "sudo -S dbus-uuidgen --ensure ; ccncat %s | vlc - " % \
-            content_name
+    # ccnx v7.2 issue 101007 
+    command = "ccnpeek %(content_name)s; ccncat %(content_name)s" % {
+            "content_name" : content_name}
 
     app = ec.register_resource("LinuxCCNApplication")
-    ec.set(app, "depends", "vlc")
-    ec.set(app, "forwardX11", True)
     ec.set(app, "command", command)
     ec.register_connection(app, ccnd)
 
     return app
 
+def get_options():
+    pl_slice = os.environ.get("PL_SLICE")
+
+    # We use a specific SSH private key for PL if the PL_SSHKEY is specified or the
+    # id_rsa_planetlab exists 
+    default_key = "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'])
+    default_key = default_key if os.path.exists(default_key) else None
+    pl_ssh_key = os.environ.get("PL_SSHKEY", default_key)
+
+    usage = "usage: %prog -s <pl-user> -m <movie> -c -e <exp-id> -i <ssh_key>"
+
+    parser = OptionParser(usage=usage)
+    parser.add_option("-s", "--pl-user", dest="pl_user", 
+            help="PlanetLab slicename", default = pl_slice, type="str")
+    parser.add_option("-m", "--movie", dest="movie", 
+            help="Stream movie", type="str")
+    parser.add_option("-e", "--exp-id", dest="exp_id", 
+            help="Label to identify experiment", type="str")
+    parser.add_option("-i", "--pl-ssh-key", dest="pl_ssh_key", 
+            help="Path to private SSH key to be used for connection", 
+            default = pl_ssh_key, type="str")
+
+    (options, args) = parser.parse_args()
+
+    if not options.movie:
+        parser.error("movie is a required argument")
+
+    return (options.pl_user, options.movie, options.exp_id, options.pl_ssh_key)
+
+
 if __name__ == '__main__':
+    content_name = "ccnx:/test/VIDEO"
+    
+    ( pl_user, movie, exp_id, pl_ssh_key ) = get_options()
+
     # Search for available RMs
     populate_factory()
     
-    ec = ExperimentController(exp_id = "olahh")
+    ec = ExperimentController(exp_id = exp_id)
     
     # hosts
     host1 = "planetlab2.u-strasbg.fr"
     host2 = "planet1.servers.ua.pt"
     host3 = "planetlab1.cs.uoi.gr"
     host4 = "planetlab1.aston.ac.uk"
-    host5 = "itchy.comlab.bth.se"
-    host6 = "roseval.pl.sophia.inria.fr"
-
-    # users
-    pluser = "inria_alina"
-    user = "alina"
-
-    content_name = "ccnx:/VIDEO"
-    video = "/home/alina/repos/nepi/examples/big_buck_bunny_240p_mpeg4_lq.ts"
-    """
+    host5 = "planetlab2.willab.fi"
+    host6 = "planetlab-1.fokus.fraunhofer.de"
+    
     # describe nodes in the central ring
     ring_hosts = [host1, host2, host3, host4]
     ccnds = dict()
 
     for i in xrange(len(ring_hosts)):
         host = ring_hosts[i]
-        node = add_node(ec, host, pluser)
+        node = add_node(ec, host, pl_user)
         ccnd = add_ccnd(ec, node)
         ccnr = add_ccnr(ec, ccnd)
         ccnds[host] = ccnd
@@ -146,35 +173,51 @@ if __name__ == '__main__':
     # l5 : h1 - h3 , h3 - h1
     l5u = add_fib_entry(ec, ccnds[host1], host3)
     l5d = add_fib_entry(ec, ccnds[host3], host1)
-    """  
+    
     # border node 1
-    bnode1 = add_node(ec, host5, pluser)
+    bnode1 = add_node(ec, host5, pl_user)
     ccndb1 = add_ccnd(ec, bnode1)
     ccnrb1 = add_ccnr(ec, ccndb1)
-    co = add_content(ec, ccnrb1, content_name, video)
+    ccnds[host5] = ccndb1
+    co = add_content(ec, ccnrb1, content_name, movie)
 
     # border node 2
-    bnode2 = add_node(ec, host6, user)
+    bnode2 = add_node(ec, host6, pl_user)
     ccndb2 = add_ccnd(ec, bnode2)
     ccnrb2 = add_ccnr(ec, ccndb2)
+    ccnds[host6] = ccndb2
     app = add_stream(ec, ccndb2, content_name)
  
     # connect border nodes
-    #add_fib_entry(ec, ccndb1, host1)
-    #add_fib_entry(ec, ccnds[host1], host5)
+    add_fib_entry(ec, ccndb1, host1)
+    add_fib_entry(ec, ccnds[host1], host5)
 
-    #add_fib_entry(ec, ccndb2, host3)
-    #add_fib_entry(ec, ccnds[host3], host6)
- 
-    add_fib_entry(ec, ccndb2, host5)
-    add_fib_entry(ec, ccndb1, host6)
+    add_fib_entry(ec, ccndb2, host3)
+    add_fib_entry(ec, ccnds[host3], host6)
+
+    # Put down l5 10s after transfer started
+    ec.register_condition(l5u, ResourceAction.STOP, 
+            app, ResourceState.STARTED, time = "10s")
+    ec.register_condition(l5d, ResourceAction.STOP, 
+            app, ResourceState.STARTED, time = "10s")
  
     # deploy all ResourceManagers
     ec.deploy()
 
-    ec.wait_finished([app])
+    ec.wait_started([app])
+
+    rvideo_path = ec.trace(app, "stdout", attr = TraceAttr.PATH)
+    command = 'tail -f %s' % rvideo_path
+
+    # pulling the content of the video received
+    # on b2, to stream it locally
+    proc1 = subprocess.Popen(['ssh',
+        '-o', 'StrictHostKeyChecking=no',
+        '-l', pl_user, host6,
+        command],
+        stdout = subprocess.PIPE, 
+        stderr = subprocess.PIPE)
     
-    """
     proc2 = subprocess.Popen(['vlc', 
         '--ffmpeg-threads=1',
         '--sub-filter', 'marq', 
@@ -182,10 +225,22 @@ if __name__ == '__main__':
         '(c) copyright 2008, Blender Foundation / www.bigbuckbunny.org', 
         '--marq-position=8', 
         '--no-video-title-show', '-'], 
-        stdin=proc1.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdin=proc1.stdout, 
+        stdout=subprocess.PIPE, 
+        stderr=subprocess.PIPE)
+
+    (stdout, stderr) = proc2.communicate() 
 
     dirpath = tempfile.mkdtemp()
-    """
+    print "Storing to DIRPATH ", dirpath
+
+    for ccnd in ccnds.values():
+        stdout = ec.trace(ccnd, "stderr")
+        fname = "log-%d" % ccnd
+        path = os.path.join(dirpath, fname)
+        f = open(path, "w")
+        f.write(stdout)
+        f.close()
 
     # shutdown the experiment controller
     ec.shutdown()

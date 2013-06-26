@@ -27,7 +27,7 @@ reschedule_delay = "0.5s"
 
 @clsinit_copy
 class PlanetlabNode(LinuxNode):
-    _rtype = "PlanetLabNode"
+    _rtype = "PlanetlabNode"
 
     @classmethod
     def _register_attributes(cls):
@@ -207,31 +207,6 @@ class PlanetlabNode(LinuxNode):
 
         return self._os
 
-    @property
-    def localhost(self):
-        return False
-
-    def discover(self):
-        # Get the list of nodes that match the filters
-
-
-        # find one that 
-        if not self.is_alive():
-            self._state = ResourceState.FAILED
-            msg = "Deploy failed. Unresponsive node %s" % self.get("hostname")
-            self.error(msg)
-            raise RuntimeError, msg
-
-        if self.get("cleanProcesses"):
-            self.clean_processes()
-
-        if self.get("cleanHome"):
-            self.clean_home()
-       
-        self.mkdir(self.node_home)
-
-        super(PlanetlabNode, self).discover()
-
     def provision(self):
         if not self.is_alive():
             self._state = ResourceState.FAILED
@@ -281,29 +256,6 @@ class PlanetlabNode(LinuxNode):
         out = err = ""
         (out, err), proc = self.execute(cmd, retry = 1, with_lock = True) 
             
-    def is_alive(self):
-        if self.localhost:
-            return True
-
-        out = err = ""
-        try:
-            # TODO: FIX NOT ALIVE!!!!
-            (out, err), proc = self.execute("echo 'ALIVE' || (echo 'NOTALIVE') >&2", retry = 5, 
-                    with_lock = True)
-        except:
-            import traceback
-            trace = traceback.format_exc()
-            msg = "Unresponsive host  %s " % err
-            self.error(msg, out, trace)
-            return False
-
-        if out.strip().startswith('ALIVE'):
-            return True
-        else:
-            msg = "Unresponsive host "
-            self.error(msg, out, err)
-            return False
-
     def blacklist(self):
         # TODO!!!!
         self.warn(" Blacklisting malfunctioning node ")
