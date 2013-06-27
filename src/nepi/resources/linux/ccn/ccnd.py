@@ -22,7 +22,7 @@ from nepi.execution.trace import Trace, TraceAttr
 from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState
 from nepi.resources.linux.application import LinuxApplication
 from nepi.resources.linux.node import OSType
-from nepi.util.timefuncs import strfnow, strfdiff
+from nepi.util.timefuncs import tnow, tdiff
 
 import os
 
@@ -191,7 +191,7 @@ class LinuxCCND(LinuxApplication):
                     raise_on_error = True)
     
             self.debug("----- READY ---- ")
-            self._ready_time = strfnow()
+            self._ready_time = tnow()
             self._state = ResourceState.READY
 
     def start(self):
@@ -199,7 +199,7 @@ class LinuxCCND(LinuxApplication):
             command = self.get("command")
             self.info("Starting command '%s'" % command)
 
-            self._start_time = strfnow()
+            self._start_time = tnow()
             self._state = ResourceState.STARTED
         else:
             msg = " Failed to execute command '%s'" % command
@@ -230,7 +230,7 @@ class LinuxCCND(LinuxApplication):
                         stdout = "ccndstop_stdout", 
                         stderr = "ccndstop_stderr")
 
-            self._stop_time = strfnow()
+            self._stop_time = tnow()
             self._state = ResourceState.STOPPED
     
     @property
@@ -238,7 +238,7 @@ class LinuxCCND(LinuxApplication):
         # First check if the ccnd has failed
         state_check_delay = 0.5
         if self._state == ResourceState.STARTED and \
-                strfdiff(strfnow(), self._last_state_check) > state_check_delay:
+                tdiff(tnow(), self._last_state_check) > state_check_delay:
             (out, err), proc = self._ccndstatus
 
             retcode = proc.poll()
@@ -252,7 +252,7 @@ class LinuxCCND(LinuxApplication):
                 self.error(msg, out, err)
                 self._state = ResourceState.FAILED
 
-            self._last_state_check = strfnow()
+            self._last_state_check = tnow()
 
         return self._state
 

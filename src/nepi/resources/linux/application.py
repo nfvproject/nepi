@@ -22,7 +22,7 @@ from nepi.execution.trace import Trace, TraceAttr
 from nepi.execution.resource import ResourceManager, clsinit, ResourceState
 from nepi.resources.linux.node import LinuxNode
 from nepi.util.sshfuncs import ProcStatus
-from nepi.util.timefuncs import strfnow, strfdiff
+from nepi.util.timefuncs import tnow, tdiffsec
 
 import os
 import subprocess
@@ -120,7 +120,7 @@ class LinuxApplication(ResourceManager):
         self._proc = None
 
         # timestamp of last state check of the application
-        self._last_state_check = strfnow()
+        self._last_state_check = tnow()
     
     def log_message(self, msg):
         return " guid %d - host %s - %s " % (self.guid, 
@@ -556,7 +556,7 @@ class LinuxApplication(ResourceManager):
                 # the local processor with too many ssh queries, the state is only
                 # requested every 'state_check_delay' seconds.
                 state_check_delay = 0.5
-                if strfdiff(strfnow(), self._last_state_check) > state_check_delay:
+                if tdiffsec(tnow(), self._last_state_check) > state_check_delay:
                     # check if execution errors occurred
                     (out, err), proc = self.node.check_errors(self.app_home)
 
@@ -573,7 +573,7 @@ class LinuxApplication(ResourceManager):
                         if status == ProcStatus.FINISHED:
                             self._state = ResourceState.FINISHED
 
-                    self._last_state_check = strfnow()
+                    self._last_state_check = tnow()
 
         return self._state
 

@@ -27,7 +27,7 @@ import threading
 
 from nepi.util import guid
 from nepi.util.parallel import ParallelRun
-from nepi.util.timefuncs import strfnow, strfdiff, strfvalid 
+from nepi.util.timefuncs import tnow, tdiffsec, stabsformat 
 from nepi.execution.resource import ResourceFactory, ResourceAction, \
         ResourceState, ResourceState2str
 from nepi.execution.scheduler import HeapScheduler, Task, TaskStatus
@@ -185,7 +185,7 @@ class ExperimentController(object):
 
         :param tid: Id of the task
         :type tid: int
-        :rtype:  unknow
+        :rtype: Task
         """
         return self._tasks.get(tid)
 
@@ -194,7 +194,7 @@ class ExperimentController(object):
 
         :param guid: Id of the task
         :type guid: int
-        :rtype:  ResourceManager
+        :rtype: ResourceManager
         """
         return self._resources.get(guid)
 
@@ -594,8 +594,7 @@ class ExperimentController(object):
 
             :return : The Id of the task
         """
-        timestamp = strfvalid(date)
-        
+        timestamp = stabsformat(date)
         task = Task(timestamp, callback)
         task = self._scheduler.schedule(task)
 
@@ -661,10 +660,10 @@ class ExperimentController(object):
                 else:
                     # The task timestamp is in the future. Wait for timeout 
                     # or until another task is scheduled.
-                    now = strfnow()
+                    now = tnow()
                     if now < task.timestamp:
                         # Calculate timeout in seconds
-                        timeout = strfdiff(task.timestamp, now)
+                        timeout = tdiffsec(task.timestamp, now)
 
                         # Re-schedule task with the same timestamp
                         self._scheduler.schedule(task)
