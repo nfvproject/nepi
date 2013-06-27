@@ -28,33 +28,67 @@ _rerel = re.compile("^(?P<time>\d+(.\d+)?)(?P<units>h|m|s|ms|us)$")
 # Work around to fix "ImportError: Failed to import _strptime because the import lock is held by another thread."
 datetime.datetime.strptime("20120807124732894211", _strf)
 
-def strfnow():
-    """ Current date """
-    return datetime.datetime.now().strftime(_strf)
+def stformat(sdate):
+    """ Constructs a datetime object from a string date with
+    format YYYYMMddHHMMSSffff 
 
-def strfdiff(str1, str2):
-    # Time difference in seconds without ignoring miliseconds
-    d1 = datetime.datetime.strptime(str1, _strf)
-    d2 = datetime.datetime.strptime(str2, _strf)
-    diff = d1 - d2
-    ddays = diff.days * 86400
-    dus = round(diff.microseconds * 1.0e-06, 2) 
-    ret = ddays + diff.seconds + dus
-    # delay must be > 0
-    return (ret or 0.001)
+    """
+    return datetime.datetime.strptime(sdate, _strf).date()
 
-def strfvalid(date):
-    """ User defined date to scheduler date 
+def tsfromat(date = None):
+    """ Formats a datetime object to a string with format YYYYMMddHHMMSSffff.
+    If no date is given, the current date is used.
     
-    :param date : user define date matchin the pattern _strf 
+    """
+    if not date:
+        date = tnow()
+
+    return date.strftime(_strf)
+
+def tnow():
+    """ Returns datetime object with the current time """
+    return datetime.datetime.now()
+
+def tdiff(date1, date2):
+    """ Returns difference ( date1 - date2 ) as a datetime object,
+    where date1 and date 2 are datetime objects 
+    
+    """
+    return date1 - date2
+
+def tdiffsec(date1, date2):
+    """ Returns the date difference ( date1 - date2 ) in seconds,
+    where date1 and date 2 are datetime objects 
+    
+    """
+    diff = tdiff(date1, date2)
+    return diff.total_seconds()
+
+def stabsformat(sdate, dbase = None):
+    """ Constructs a datetime object from a string date.
+    The string date can be expressed as an absolute date
+    ( i.e. format YYYYMMddHHMMSSffff ) or as a relative time
+    ( e.g. format '5m' or '10s'). 
+    If the date is a relative time and the dbase parameter 
+    is given (dbase must be datetime object), the returned
+    date will be dbase + sdate. If dbase is None, 
+    current time will be used instead as base time.
+
+    :param date : string date  
     :type date : date 
 
     """
-    if not date:
-        return strfnow()
-    if _reabs.match(date):
-        return date
-    m = _rerel.match(date)
+
+    # No date given, return current datetime
+    if not sdate:
+        return tnow()
+
+    # Absolute date is given
+    if _reabs.match(sdate):
+        return stformat(sdate)
+
+    # Relative time is given
+    m = _rerel.match(sdate)
     if m:
         time = float(m.groupdict()['time'])
         units = m.groupdict()['units']
@@ -67,9 +101,12 @@ def strfvalid(date):
         elif units == 'ms':
             delta = datetime.timedelta(microseconds = (time*1000)) 
         else:
-            delta = datetime.timedelta(microseconds = time) 
-        now = datetime.datetime.now()
-        d = now + delta
-        return d.strftime(_strf)
+            delta = datetime.timedelta(microseconds = time)
+        
+        if not dbase:
+            dbase = tnow()
+
+        return dbase + delta
+
     return None
 

@@ -23,7 +23,7 @@ from nepi.execution.resource import clsinit_copy, ResourceState, \
     ResourceAction
 from nepi.resources.linux.ccn.ccnapplication import LinuxCCNApplication
 from nepi.resources.linux.ccn.ccnd import LinuxCCND
-from nepi.util.timefuncs import strfnow, strfdiff
+from nepi.util.timefuncs import tnow
 
 import os
 
@@ -218,7 +218,7 @@ class LinuxCCNR(LinuxCCNApplication):
                     raise_on_error = True)
 
             self.debug("----- READY ---- ")
-            self._ready_time = strfnow()
+            self._ready_time = tnow()
             self._state = ResourceState.READY
 
     def start(self):
@@ -226,7 +226,7 @@ class LinuxCCNR(LinuxCCNApplication):
             command = self.get("command")
             self.info("Starting command '%s'" % command)
 
-            self._start_time = strfnow()
+            self._start_time = tnow()
             self._state = ResourceState.STARTED
         else:
             msg = " Failed to execute command '%s'" % command

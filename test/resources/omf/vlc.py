@@ -28,6 +28,8 @@ from nepi.resources.omf.interface import OMFWifiInterface
 from nepi.resources.omf.channel import OMFChannel
 from nepi.resources.omf.omf_api import OMFAPIFactory
 
+from nepi.util.timefuncs import tdiffsec
+
 from nepi.util.timefuncs import *
 
 import time
@@ -151,7 +153,8 @@ class OMFVLCTestCase(unittest.TestCase):
         self.ec.register_condition(self.app5, ResourceAction.START, [self.app3, self.app2], ResourceState.STARTED , "2s")
         self.ec.register_condition(self.app5, ResourceAction.START, self.app1, ResourceState.STARTED , "25s")
 
-        self.ec.register_condition([self.app1, self.app2, self.app3,self.app4, self.app5], ResourceAction.STOP, self.app5, ResourceState.STARTED , "1s")
+        self.ec.register_condition([self.app1, self.app2, self.app3,self.app4, self.app5], 
+                ResourceAction.STOP, self.app5, ResourceState.STARTED , "1s")
 
     def tearDown(self):
         self.ec.shutdown()
@@ -211,14 +214,21 @@ class OMFVLCTestCase(unittest.TestCase):
 
         self.ec.wait_finished([self.app1, self.app2, self.app3,self.app4, self.app5])
 
-        self.assertEquals(round(strfdiff(self.ec.get_resource(self.app2).start_time, self.ec.get_resource(self.app1).start_time),1), 3.0)
-        self.assertEquals(round(strfdiff(self.ec.get_resource(self.app3).start_time, self.ec.get_resource(self.app2).start_time),1), 2.0)
-        self.assertEquals(round(strfdiff(self.ec.get_resource(self.app4).start_time, self.ec.get_resource(self.app3).start_time),1), 3.0)
-        self.assertEquals(round(strfdiff(self.ec.get_resource(self.app5).start_time, self.ec.get_resource(self.app3).start_time),1), 20.0)
-        self.assertEquals(round(strfdiff(self.ec.get_resource(self.app5).start_time, self.ec.get_resource(self.app1).start_time),1), 25.0)
+        print " HOLA ", self.ec.get_resource(self.app2).start_time, self.ec.get_resource(self.app1).start_time
+
+        self.assertEquals(round(tdiffsec(self.ec.get_resource(self.app2).start_time, 
+            self.ec.get_resource(self.app1).start_time),1), 3.0)
+        self.assertEquals(round(tdiffsec(self.ec.get_resource(self.app3).start_time, 
+            self.ec.get_resource(self.app2).start_time),1), 2.0)
+        self.assertEquals(round(tdiffsec(self.ec.get_resource(self.app4).start_time, 
+            self.ec.get_resource(self.app3).start_time),1), 3.0)
+        self.assertEquals(round(tdiffsec(self.ec.get_resource(self.app5).start_time, 
+            self.ec.get_resource(self.app3).start_time),1), 20.0)
+        self.assertEquals(round(tdiffsec(self.ec.get_resource(self.app5).start_time, 
+            self.ec.get_resource(self.app1).start_time),1), 25.0)
         # Precision is at 1/10. So this one returns an error 7.03 != 7.0
-        #self.assertEquals(strfdiff(self.ec.get_resource(self.app5).start_time, self.ec.get_resource(self.app1).start_time), 7)
-    #In order to release everythings
+        #self.assertEquals(tdiffsec(self.ec.get_resource(self.app5).start_time, self.ec.get_resource(self.app1).start_time), 7)
+        #In order to release everythings
         time.sleep(1)
 
 
