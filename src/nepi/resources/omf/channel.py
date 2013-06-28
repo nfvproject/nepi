@@ -17,12 +17,12 @@
 
 """
 
-from nepi.execution.resource import ResourceManager, clsinit, ResourceState
+from nepi.execution.resource import ResourceManager, clsinit, ResourceState, \
+        reschedule_delay
 from nepi.execution.attribute import Attribute, Flags 
 
 from nepi.resources.omf.omf_api import OMFAPIFactory
 
-reschedule_delay = "0.5s"
 
 @clsinit
 class OMFChannel(ResourceManager):

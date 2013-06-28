@@ -18,7 +18,8 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 from nepi.execution.attribute import Attribute, Flags
-from nepi.execution.resource import ResourceManager, clsinit, ResourceState
+from nepi.execution.resource import ResourceManager, clsinit, ResourceState, \
+        reschedule_delay
 from nepi.resources.linux import rpmfuncs, debfuncs 
 from nepi.util import sshfuncs, execfuncs
 from nepi.util.sshfuncs import ProcStatus
@@ -36,7 +37,6 @@ import threading
 # TODO: Unify delays!!
 # TODO: Validate outcome of uploads!! 
 
-reschedule_delay = "0.5s"
 
 class ExitCode:
     """
@@ -52,6 +52,7 @@ class OSType:
     """
     Supported flavors of Linux OS
     """
+    FEDORA_8 = "f8"
     FEDORA_12 = "f12"
     FEDORA_14 = "f14"
     FEDORA = "fedora"
@@ -227,7 +228,9 @@ class LinuxNode(ResourceManager):
             self.error(msg, out, err)
             raise RuntimeError, "%s - %s - %s" %( msg, out, err )
 
-        if out.find("Fedora release 12") == 0:
+        if out.find("Fedora release 8") == 0:
+            self._os = OSType.FEDORA_8
+        elif out.find("Fedora release 12") == 0:
             self._os = OSType.FEDORA_12
         elif out.find("Fedora release 14") == 0:
             self._os = OSType.FEDORA_14
@@ -241,6 +244,15 @@ class LinuxNode(ResourceManager):
             raise RuntimeError, "%s - %s " %( msg, out )
 
         return self._os
+
+    @property
+    def use_deb(self):
+        return self.os in [OSType.DEBIAN, OSType.UBUNTU]
+
+    @property
+    def use_rpm(self):
+        return self.os in [OSType.FEDORA_12, OSType.FEDORA_14, OSType.FEDORA_8,
+                OSType.FEDORA]
 
     @property
     def localhost(self):
@@ -367,9 +379,9 @@ class LinuxNode(ResourceManager):
 
     def install_packages(self, packages, home):
         command = ""
-        if self.os in [OSType.FEDORA_12, OSType.FEDORA_14, OSType.FEDORA]:
+        if self.use_rpm:
             command = rpmfuncs.install_packages_command(self.os, packages)
-        elif self.os in [OSType.DEBIAN, OSType.UBUNTU]:
+        elif self.use_deb:
             command = debfuncs.install_packages_command(self.os, packages)
         else:
             msg = "Error installing packages ( OS not known ) "
@@ -389,9 +401,9 @@ class LinuxNode(ResourceManager):
 
     def remove_packages(self, packages, home):
         command = ""
-        if self.os in [OSType.FEDORA_12, OSType.FEDORA_14, OSType.FEDORA]:
+        if self.use_rpm:
             command = rpmfuncs.remove_packages_command(self.os, packages)
-        elif self.os in [OSType.DEBIAN, OSType.UBUNTU]:
+        elif self.use_deb:
             command = debfuncs.remove_packages_command(self.os, packages)
         else:
             msg = "Error removing packages ( OS not known ) "

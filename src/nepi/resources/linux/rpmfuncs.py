@@ -26,7 +26,8 @@ def install_packages_command(os, packages):
     if not isinstance(packages, list):
         packages = [packages]
 
-    cmd = install_rpmfusion_command(os) + " && "
+    cmd = install_rpmfusion_command(os)
+    if cmd: cmd += " && "
     cmd += " && ".join(map(lambda p: 
             " { rpm -q %(package)s || sudo -S yum -y install %(package)s ; } " % {
                     'package': p}, packages))
@@ -51,11 +52,13 @@ def install_rpmfusion_command(os):
     cmd = " { rpm -q rpmfusion-free-release ||  sudo -S rpm -i %(package)s ; } "
 
     if os in [OSType.FEDORA, OSType.FEDORA_12]:
+        # For f12
         cmd =  cmd %  {'package': RPM_FUSION_URL_F12}
     elif os == OSType.FEDORA_14:
-        # This one works for f13+
+        # For f13+
         cmd = cmd %  {'package': RPM_FUSION_URL}
     else:
+        # Fedora 8 is unmaintained 
         cmd = ""
 
     return cmd

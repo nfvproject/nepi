@@ -19,14 +19,16 @@
 
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import Trace, TraceAttr
-from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState
+from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState, \
+    reschedule_delay
 from nepi.resources.linux.application import LinuxApplication
 from nepi.resources.linux.node import OSType
-from nepi.util.timefuncs import tnow, tdiff
+from nepi.util.timefuncs import tnow, tdiffsec
 
 import os
 
 # TODO: use ccndlogging to dynamically change the logging level
+
 
 @clsinit_copy
 class LinuxCCND(LinuxApplication):
@@ -129,8 +131,7 @@ class LinuxCCND(LinuxApplication):
         if not self.node or self.node.state < ResourceState.READY:
             self.debug("---- RESCHEDULING DEPLOY ---- node state %s " % self.node.state )
             
-            reschedule_delay = "0.5s"
-            # ccnr needs to wait until ccnd is deployed and running
+            # ccnd needs to wait until node is deployed and running
             self.ec.schedule(reschedule_delay, self.deploy)
         else:
             if not self.get("command"):
@@ -238,7 +239,7 @@ class LinuxCCND(LinuxApplication):
         # First check if the ccnd has failed
         state_check_delay = 0.5
         if self._state == ResourceState.STARTED and \
-                tdiff(tnow(), self._last_state_check) > state_check_delay:
+                tdiffsec(tnow(), self._last_state_check) > state_check_delay:
             (out, err), proc = self._ccndstatus
 
             retcode = proc.poll()
@@ -271,11 +272,11 @@ class LinuxCCND(LinuxApplication):
 
     @property
     def _dependencies(self):
-        if self.node.os in [ OSType.FEDORA_12 , OSType.FEDORA_14 ]:
+        if self.node.use_rpm:
             return ( " autoconf openssl-devel  expat-devel libpcap-devel "
                 " ecryptfs-utils-devel libxml2-devel automake gawk " 
                 " gcc gcc-c++ git pcre-devel make ")
-        elif self.node.os in [ OSType.UBUNTU , OSType.DEBIAN]:
+        elif self.node.use_deb:
             return ( " autoconf libssl-dev libexpat-dev libpcap-dev "
                 " libecryptfs0 libxml2-utils automake gawk gcc g++ "
                 " git-core pkg-config libpcre3-dev make ")

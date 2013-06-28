@@ -20,13 +20,12 @@
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import Trace, TraceAttr
 from nepi.execution.resource import clsinit_copy, ResourceState, \
-    ResourceAction
+    ResourceAction, reschedule_delay
 from nepi.resources.linux.ccn.ccnapplication import LinuxCCNApplication
 from nepi.util.timefuncs import tnow
 
 import os
 
-reschedule_delay = "0.5s"
 
 # TODO: Add rest of options for ccndc!!!
 #       Implement ENTRY DELETE!!

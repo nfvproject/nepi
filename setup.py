@@ -15,6 +15,7 @@ setup(
             "nepi.design",
             "nepi.execution",
             "nepi.resources",
+            "nepi.resources.all",
             "nepi.resources.linux",
             "nepi.resources.linux.ccn",
             "nepi.resources.netns",

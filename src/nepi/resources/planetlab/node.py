@@ -18,12 +18,11 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 from nepi.execution.attribute import Attribute, Flags, Types
-from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState
+from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState, \
+        reschedule_delay
 from nepi.resources.linux.node import LinuxNode
-
 from nepi.resources.planetlab.plcapi import PLCAPIFactory 
 
-reschedule_delay = "0.5s"
 
 @clsinit_copy
 class PlanetlabNode(LinuxNode):

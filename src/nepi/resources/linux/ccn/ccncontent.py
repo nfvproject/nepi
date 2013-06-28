@@ -19,7 +19,7 @@
 
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.resource import clsinit_copy, ResourceState, \
-    ResourceAction
+    ResourceAction, reschedule_delay
 from nepi.resources.linux.ccn.ccnapplication import LinuxCCNApplication
 from nepi.resources.linux.ccn.ccnr import LinuxCCNR
 from nepi.util.timefuncs import tnow
@@ -62,7 +62,6 @@ class LinuxCCNContent(LinuxCCNApplication):
         if not self.ccnr or self.ccnr.state < ResourceState.READY:
             self.debug("---- RESCHEDULING DEPLOY ---- node state %s " % self.node.state )
             
-            reschedule_delay = "0.5s"
             # ccnr needs to wait until ccnd is deployed and running
             self.ec.schedule(reschedule_delay, self.deploy)
         else:

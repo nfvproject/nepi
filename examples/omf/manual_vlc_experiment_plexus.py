@@ -125,27 +125,27 @@ app3.set('xmppHost', "xmpp-plexus.onelab.eu")
 app3.set('xmppPort', "5222")
 app3.set('xmppPassword', "1234")
 
-# Connection
-app3.connect(node1.guid)
-node1.connect(app3.guid)
+# register_connection
+app3.register_connection(node1.guid)
+node1.register_connection(app3.guid)
 
-app1.connect(node1.guid)
-node1.connect(app1.guid)
+app1.register_connection(node1.guid)
+node1.register_connection(app1.guid)
 
-node1.connect(iface1.guid)
-iface1.connect(node1.guid)
+node1.register_connection(iface1.guid)
+iface1.register_connection(node1.guid)
 
-iface1.connect(channel.guid)
-channel.connect(iface1.guid)
+iface1.register_connection(channel.guid)
+channel.register_connection(iface1.guid)
 
-channel.connect(iface2.guid)
-iface2.connect(channel.guid)
+channel.register_connection(iface2.guid)
+iface2.register_connection(channel.guid)
 
-iface2.connect(node2.guid)
-node2.connect(iface2.guid)
+iface2.register_connection(node2.guid)
+node2.register_connection(iface2.guid)
 
-node2.connect(app2.guid)
-app2.connect(node2.guid)
+node2.register_connection(app2.guid)
+app2.register_connection(node2.guid)
 
 # Local Deploy
 node1.deploy()

@@ -48,14 +48,13 @@ from optparse import OptionParser, SUPPRESS_HELP
 
 import os
 import time
-import tempfile
 
 def add_node(ec, host, user, ssh_key = None):
     node = ec.register_resource("LinuxNode")
     ec.set(node, "hostname", host)
     ec.set(node, "username", user)
     ec.set(node, "identity", ssh_key)
-    ec.set(node, "cleanHome", True)
+    #ec.set(node, "cleanHome", True)
     ec.set(node, "cleanProcesses", True)
     return node
 
@@ -94,6 +93,13 @@ def add_stream(ec, ccnd, content_name):
 
     return app
 
+def add_collector(ec, trace_name, store_dir):
+    collector = ec.register_resource("Collector")
+    ec.set(collector, "traceName", trace_name)
+    ec.set(collector, "storeDir", store_dir)
+
+    return collector
+
 def get_options():
     pl_slice = os.environ.get("PL_SLICE")
 
@@ -103,7 +109,7 @@ def get_options():
     default_key = default_key if os.path.exists(default_key) else None
     pl_ssh_key = os.environ.get("PL_SSHKEY", default_key)
 
-    usage = "usage: %prog -s <pl-user> -m <movie> -c -e <exp-id> -i <ssh_key>"
+    usage = "usage: %prog -s <pl-user> -m <movie> -e <exp-id> -i <ssh_key> -r <results"
 
     parser = OptionParser(usage=usage)
     parser.add_option("-s", "--pl-user", dest="pl_user", 
@@ -115,40 +121,50 @@ def get_options():
     parser.add_option("-i", "--pl-ssh-key", dest="pl_ssh_key", 
             help="Path to private SSH key to be used for connection", 
             default = pl_ssh_key, type="str")
+    parser.add_option("-r", "--results", dest="results", default = "/tmp",  
+            help="Path to directory where to store results", type="str") 
 
     (options, args) = parser.parse_args()
 
     if not options.movie:
         parser.error("movie is a required argument")
 
-    return (options.pl_user, options.movie, options.exp_id, options.pl_ssh_key)
-
+    return (options.pl_user, options.movie, options.exp_id, options.pl_ssh_key,
+            options.results)
 
 if __name__ == '__main__':
     content_name = "ccnx:/test/VIDEO"
     
-    ( pl_user, movie, exp_id, pl_ssh_key ) = get_options()
+    ( pl_user, movie, exp_id, pl_ssh_key, results_dir ) = get_options()
 
     # Search for available RMs
     populate_factory()
     
     ec = ExperimentController(exp_id = exp_id)
     
-    # hosts
-    host1 = "planetlab2.u-strasbg.fr"
-    host2 = "planet1.servers.ua.pt"
-    host3 = "planetlab1.cs.uoi.gr"
-    host4 = "planetlab1.aston.ac.uk"
-    host5 = "planetlab2.willab.fi"
-    host6 = "planetlab-1.fokus.fraunhofer.de"
-    
+    # hosts in Europe
+    #host1 = "planetlab2.u-strasbg.fr"
+    #host2 = "planet1.servers.ua.pt"
+    #host3 = "planetlab1.cs.uoi.gr"
+    #host4 = "planetlab1.aston.ac.uk"
+    #host5 = "planetlab2.willab.fi"
+    #host6 = "planetlab-1.fokus.fraunhofer.de"
+
+    # host in the US
+    host1 = "planetlab4.wail.wisc.edu"
+    host2 = "planetlab2.cs.columbia.edu"
+    host3 = "ricepl-2.cs.rice.edu"
+    host4 = "node1.planetlab.albany.edu"
+    host5 = "earth.cs.brown.edu"
+    host6 = "planetlab2.engr.uconn.edu"
+
     # describe nodes in the central ring
     ring_hosts = [host1, host2, host3, host4]
     ccnds = dict()
 
     for i in xrange(len(ring_hosts)):
         host = ring_hosts[i]
-        node = add_node(ec, host, pl_user)
+        node = add_node(ec, host, pl_user, pl_ssh_key)
         ccnd = add_ccnd(ec, node)
         ccnr = add_ccnr(ec, ccnd)
         ccnds[host] = ccnd
@@ -175,14 +191,14 @@ if __name__ == '__main__':
     l5d = add_fib_entry(ec, ccnds[host3], host1)
     
     # border node 1
-    bnode1 = add_node(ec, host5, pl_user)
+    bnode1 = add_node(ec, host5, pl_user, pl_ssh_key)
     ccndb1 = add_ccnd(ec, bnode1)
     ccnrb1 = add_ccnr(ec, ccndb1)
     ccnds[host5] = ccndb1
     co = add_content(ec, ccnrb1, content_name, movie)
 
     # border node 2
-    bnode2 = add_node(ec, host6, pl_user)
+    bnode2 = add_node(ec, host6, pl_user, pl_ssh_key)
     ccndb2 = add_ccnd(ec, bnode2)
     ccnrb2 = add_ccnr(ec, ccndb2)
     ccnds[host6] = ccndb2
@@ -201,9 +217,15 @@ if __name__ == '__main__':
     ec.register_condition(l5d, ResourceAction.STOP, 
             app, ResourceState.STARTED, time = "10s")
  
+    # Register a collector to automatically collect traces
+    collector = add_collector(ec, "stderr", results_dir)
+    for ccnd in ccnds.values():
+        ec.register_connection(collector, ccnd)
+
     # deploy all ResourceManagers
     ec.deploy()
 
+    # Wait until ccncat has started retrieving the content
     ec.wait_started([app])
 
     rvideo_path = ec.trace(app, "stdout", attr = TraceAttr.PATH)
@@ -229,18 +251,7 @@ if __name__ == '__main__':
         stdout=subprocess.PIPE, 
         stderr=subprocess.PIPE)
 
-    (stdout, stderr) = proc2.communicate() 
-
-    dirpath = tempfile.mkdtemp()
-    print "Storing to DIRPATH ", dirpath
-
-    for ccnd in ccnds.values():
-        stdout = ec.trace(ccnd, "stderr")
-        fname = "log-%d" % ccnd
-        path = os.path.join(dirpath, fname)
-        f = open(path, "w")
-        f.write(stdout)
-        f.close()
+    (stdout, stderr) = proc2.communicate()
 
     # shutdown the experiment controller
     ec.shutdown()

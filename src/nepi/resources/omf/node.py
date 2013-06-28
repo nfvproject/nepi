@@ -19,14 +19,14 @@
 #         Julien Tribino <julien.tribino@inria.fr>
 
 
-from nepi.execution.resource import ResourceManager, clsinit, ResourceState
+from nepi.execution.resource import ResourceManager, clsinit, ResourceState, \
+        reschedule_delay
 from nepi.execution.attribute import Attribute, Flags 
 
 from nepi.resources.omf.omf_api import OMFAPIFactory
 
 import time
 
-reschedule_delay = "0.5s"
 
 @clsinit
 class OMFNode(ResourceManager):
