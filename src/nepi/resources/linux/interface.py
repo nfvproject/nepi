@@ -18,7 +18,8 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 from nepi.execution.attribute import Attribute, Types, Flags
-from nepi.execution.resource import ResourceManager, clsinit, ResourceState
+from nepi.execution.resource import ResourceManager, clsinit, ResourceState, \
+        reschedule_delay
 from nepi.resources.linux.node import LinuxNode
 from nepi.resources.linux.channel import LinuxChannel
 
@@ -31,7 +32,6 @@ import time
 
 # TODO: UP, MTU attributes!
 
-reschedule_delay = "0.5s"
 
 @clsinit
 class LinuxInterface(ResourceManager):

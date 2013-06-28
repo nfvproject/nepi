@@ -35,7 +35,7 @@ def stformat(sdate):
     """
     return datetime.datetime.strptime(sdate, _strf).date()
 
-def tsfromat(date = None):
+def tsformat(date = None):
     """ Formats a datetime object to a string with format YYYYMMddHHMMSSffff.
     If no date is given, the current date is used.
     

@@ -251,8 +251,8 @@ class ExperimentController(object):
         rm1 = self.get_resource(guid1)
         rm2 = self.get_resource(guid2)
 
-        rm1.connect(guid2)
-        rm2.connect(guid1)
+        rm1.register_connection(guid2)
+        rm2.register_connection(guid1)
 
     def register_condition(self, group1, action, group2, state,
             time = None):

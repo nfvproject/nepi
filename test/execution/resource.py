@@ -21,7 +21,8 @@
 
 from nepi.execution.attribute import Attribute
 from nepi.execution.ec import ExperimentController 
-from nepi.execution.resource import ResourceManager, ResourceState, clsinit
+from nepi.execution.resource import ResourceManager, ResourceState, clsinit, \
+        ResourceAction
 
 import random
 import time
@@ -45,24 +46,7 @@ class AnotherResource(ResourceManager):
 
     def __init__(self, ec, guid):
         super(AnotherResource, self).__init__(ec, guid)
-     
-class ResourceFactoryTestCase(unittest.TestCase):
-    def test_add_resource_factory(self):
-        from nepi.execution.resource import ResourceFactory
 
-        ResourceFactory.register_type(MyResource)
-        ResourceFactory.register_type(AnotherResource)
-
-        self.assertEquals(MyResource.rtype(), "MyResource")
-        self.assertEquals(len(MyResource._attributes), 1)
-
-        self.assertEquals(ResourceManager.rtype(), "Resource")
-        self.assertEquals(len(ResourceManager._attributes), 0)
-
-        self.assertEquals(AnotherResource.rtype(), "AnotherResource")
-        self.assertEquals(len(AnotherResource._attributes), 0)
-
-        self.assertEquals(len(ResourceFactory.resource_types()), 2)
 
 class Channel(ResourceManager):
     _rtype = "Channel"
@@ -135,8 +119,56 @@ class Application(ResourceManager):
         super(Application, self).start()
         time.sleep(random.random() * 5)
         self._state = ResourceState.FINISHED
+   
+
+class ResourceFactoryTestCase(unittest.TestCase):
+    def test_add_resource_factory(self):
+        from nepi.execution.resource import ResourceFactory
+
+        ResourceFactory.register_type(MyResource)
+        ResourceFactory.register_type(AnotherResource)
+
+        self.assertEquals(MyResource.rtype(), "MyResource")
+        self.assertEquals(len(MyResource._attributes), 1)
+
+        self.assertEquals(ResourceManager.rtype(), "Resource")
+        self.assertEquals(len(ResourceManager._attributes), 0)
+
+        self.assertEquals(AnotherResource.rtype(), "AnotherResource")
+        self.assertEquals(len(AnotherResource._attributes), 0)
+
+        self.assertEquals(len(ResourceFactory.resource_types()), 2)
 
 class ResourceManagerTestCase(unittest.TestCase):
+    def test_register_condition(self):
+        ec = ExperimentController()
+        rm = ResourceManager(ec, 15)
+
+        group = [1,3,5,7]
+        rm.register_condition(ResourceAction.START, group,
+                ResourceState.STARTED)
+
+        group = [10,8]
+        rm.register_condition(ResourceAction.START,
+                group, ResourceState.STARTED, time = "10s")
+
+        waiting_for = []
+        conditions = rm.conditions.get(ResourceAction.START)
+        for (group, state, time) in conditions:
+            waiting_for.extend(group)
+
+        self.assertEquals(waiting_for, [1, 3, 5, 7, 10, 8])
+
+        group = [1, 2, 3, 4, 6]
+        rm.unregister_condition(group)
+
+        waiting_for = []
+        conditions = rm.conditions.get(ResourceAction.START)
+        for (group, state, time) in conditions:
+            waiting_for.extend(group)
+
+        self.assertEquals(waiting_for, [5, 7, 10, 8])
+
     def test_deploy_in_order(self):
         """
         Test scenario: 2 applications running one on 1 node each. 
