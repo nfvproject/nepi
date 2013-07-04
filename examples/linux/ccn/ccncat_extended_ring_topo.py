@@ -109,7 +109,7 @@ def get_options():
     default_key = default_key if os.path.exists(default_key) else None
     pl_ssh_key = os.environ.get("PL_SSHKEY", default_key)
 
-    usage = "usage: %prog -s <pl-user> -m <movie> -e <exp-id> -i <ssh_key> -r <results"
+    usage = "usage: %prog -s <pl-user> -m <movie> -e <exp-id> -i <ssh_key> -r <results>"
 
     parser = OptionParser(usage=usage)
     parser.add_option("-s", "--pl-user", dest="pl_user", 

@@ -82,7 +82,14 @@ class LinuxFIBEntry(LinuxCCNApplication):
             self.info("Deploying command '%s' " % command)
 
             self.node.mkdir(self.app_home)
-            self.execute_command(command, env)
+            (out, err), proc = self.execute_command(command, env)
+
+            if proc.poll():
+                self._state = ResourceState.FAILED
+                msg = "Failed to execute command"
+                self.error(msg, out, err)
+                raise RuntimeError, msg
+
 
             self.debug("----- READY ---- ")
             self._ready_time = tnow()
@@ -109,7 +116,10 @@ class LinuxFIBEntry(LinuxCCNApplication):
             self.info("Stopping command '%s'" % command)
 
             command = self._stop_command
-            self.execute_command(command, env)
+            (out, err), proc = self.execute_command(command, env)
+
+            if proc.poll():
+                pass
 
             self._stop_time = tnow()
             self._state = ResourceState.STOPPED

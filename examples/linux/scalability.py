@@ -79,7 +79,7 @@ if __name__ == '__main__':
              #"planetlab1.uc3m.es",
              #"planetlab2.um.es",
              "planet1.servers.ua.pt",
-             "planetlab2.fct.ualg.pt",
+             #"planetlab2.fct.ualg.pt",
              "planetlab-1.tagus.ist.utl.pt",
              "planetlab-2.tagus.ist.utl.pt",
              "planetlab-um00.di.uminho.pt",
@@ -90,9 +90,9 @@ if __name__ == '__main__':
              "planetlab1.pjwstk.edu.pl",
              "ple2.tu.koszalin.pl",
              "planetlab2.ci.pwr.wroc.pl",
-             "planetlab2.cyfronet.pl",
+             #"planetlab2.cyfronet.pl",
              "plab2.ple.silweb.pl",
-             "planetlab1.cyfronet.pl",
+             #"planetlab1.cyfronet.pl",
              "plab4.ple.silweb.pl",
              "ple2.dmcs.p.lodz.pl",
              "planetlab2.pjwstk.edu.pl",
@@ -102,14 +102,14 @@ if __name__ == '__main__':
              "planetlab-1.ing.unimo.it",
              "gschembra4.diit.unict.it",
              "iraplab1.iralab.uni-karlsruhe.de",
-             "planetlab-1.fokus.fraunhofer.de",
+             #"planetlab-1.fokus.fraunhofer.de",
              "iraplab2.iralab.uni-karlsruhe.de",
              "planet2.zib.de",
              #"pl2.uni-rostock.de",
              "onelab-1.fhi-fokus.de",
              "planet2.l3s.uni-hannover.de",
              "planetlab1.exp-math.uni-essen.de",
-             "planetlab-2.fokus.fraunhofer.de",
+             #"planetlab-2.fokus.fraunhofer.de",
              "planetlab02.tkn.tu-berlin.de",
              "planetlab1.informatik.uni-goettingen.de",
              "planetlab1.informatik.uni-erlangen.de",
@@ -148,7 +148,7 @@ if __name__ == '__main__':
              "orval.infonet.fundp.ac.be",
              "rochefort.infonet.fundp.ac.be",
             ]
- 
+
     ec = ExperimentController(exp_id = exp_id)
 
     for host in hostnames:

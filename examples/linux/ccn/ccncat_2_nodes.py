@@ -71,14 +71,14 @@ def add_ccnd(ec, os_type, peers):
     build = (
         # Evaluate if ccnx binaries are already installed
         " ( "
-            "  test -f ${EXP_HOME}/ccnx/bin/ccnd"
+            "  test -f ${BIN}/ccnx-0.7.1/bin/ccnd"
         " ) || ( "
         # If not, untar and build
             " ( "
-                " mkdir -p ${SOURCES}/ccnx && "
-                " tar xf ${SOURCES}/ccnx-0.7.1.tar.gz --strip-components=1 -C ${SOURCES}/ccnx "
+                " mkdir -p ${SRC}/ccnx-0.7.1 && "
+                " tar xf ${SRC}/ccnx-0.7.1.tar.gz --strip-components=1 -C ${SRC}/ccnx-0.7.1 "
              " ) && "
-                "cd ${SOURCES}/ccnx && "
+                "cd ${SRC}/ccnx-0.7.1 && "
                 # Just execute and silence warnings...
                 "( ./configure && make ) "
          " )") 
@@ -86,14 +86,14 @@ def add_ccnd(ec, os_type, peers):
     install = (
         # Evaluate if ccnx binaries are already installed
         " ( "
-            "  test -f ${EXP_HOME}/ccnx/bin/ccnd"
+            "  test -f ${BIN}/ccnx-0.7.1/bin/ccnd"
         " ) || ( "
-            "  mkdir -p ${EXP_HOME}/ccnx/bin && "
-            "  cp -r ${SOURCES}/ccnx ${EXP_HOME}"
+            "  mkdir -p ${BIN}/ccnx-0.7.1/bin && "
+            "  cp -r ${SRC}/ccnx-0.7.1/bin ${BIN}/ccnx-0.7.1"
         " )"
     )
 
-    env = "PATH=$PATH:${EXP_HOME}/ccnx/bin"
+    env = "PATH=$PATH:${BIN}/ccnx-0.7.1/bin"
 
     # BASH command -> ' ccndstart ; ccndc add ccnx:/ udp  host ;  ccnr '
     command = "ccndstart && "
@@ -112,7 +112,7 @@ def add_ccnd(ec, os_type, peers):
     return app
 
 def add_publish(ec, movie):
-    env = "PATH=$PATH:${EXP_HOME}/ccnx/bin"
+    env = "PATH=$PATH:${BIN}/ccnx-0.7.1/bin"
     command = "ccnseqwriter -r ccnx:/VIDEO"
 
     app = ec.register_resource("LinuxApplication")
@@ -123,7 +123,7 @@ def add_publish(ec, movie):
     return app
 
 def add_stream(ec):
-    env = "PATH=$PATH:${EXP_HOME}/ccnx/bin"
+    env = "PATH=$PATH:${BIN}/ccnx-0.7.1/bin"
     command = "sudo -S dbus-uuidgen --ensure ; ( ccncat ccnx:/VIDEO | vlc - ) "
 
     app = ec.register_resource("LinuxApplication")

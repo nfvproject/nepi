@@ -55,6 +55,7 @@ class LinuxNodeTestCase(unittest.TestCase):
     def t_run(self, host, user):
         node, ec = create_node(host, user)
         
+        node.find_home()
         app_home = os.path.join(node.exp_home, "my-app")
         node.mkdir(app_home, clean = True)
         
@@ -83,6 +84,7 @@ class LinuxNodeTestCase(unittest.TestCase):
         
         node, ec = create_node(host, user)
          
+        node.find_home()
         app_home = os.path.join(node.exp_home, "my-app")
         node.mkdir(app_home, clean = True)
          
@@ -102,13 +104,15 @@ class LinuxNodeTestCase(unittest.TestCase):
     def t_exitcode_kill(self, host, user):
         node, ec = create_node(host, user)
          
+        node.find_home()
         app_home = os.path.join(node.exp_home, "my-app")
         node.mkdir(app_home, clean = True)
        
         # Upload command that will not finish
         command = "ping localhost"
-        (out, err), proc = node.upload_command(command, app_home, 
-            shfile = "cmd.sh",
+        shfile = os.path.join(app_home, "cmd.sh")
+        (out, err), proc = node.upload_command(command, 
+            shfile = shfile,
             ecodefile = "exitcode")
 
         (out, err), proc = node.run(command, app_home,
@@ -140,6 +144,7 @@ class LinuxNodeTestCase(unittest.TestCase):
         
         node, ec = create_node(host, user)
          
+        node.find_home()
         app_home = os.path.join(node.exp_home, "my-app")
         node.mkdir(app_home, clean = True)
          
@@ -159,12 +164,13 @@ class LinuxNodeTestCase(unittest.TestCase):
  
         (out, err), proc = node.check_errors(app_home)
 
-        self.assertEquals(err.strip(), "./cmd.sh: line 1: unexistent-command: command not found")
+        self.assertTrue(err.find("cmd.sh: line 1: unexistent-command: command not found") > -1)
 
     @skipIfNotAlive
     def t_install(self, host, user):
         node, ec = create_node(host, user)
 
+        node.find_home()
         (out, err), proc = node.mkdir(node.node_home, clean = True)
         self.assertEquals(err, "")
 
@@ -178,9 +184,41 @@ class LinuxNodeTestCase(unittest.TestCase):
         self.assertEquals(err, "")
 
     @skipIfNotAlive
+    def t_clean(self, host, user):
+        node, ec = create_node(host, user)
+
+        node.find_home()
+        node.mkdir(node.lib_dir)
+        node.mkdir(node.node_home)
+
+        command1 = " [ -d %s ] && echo 'Found'" % node.lib_dir
+        (out, err), proc = node.execute(command1)
+    
+        self.assertEquals(out.strip(), "Found")
+
+        command2 = " [ -d %s ] && echo 'Found'" % node.node_home
+        (out, err), proc = node.execute(command2)
+    
+        self.assertEquals(out.strip(), "Found")
+
+        node.clean_experiment()
+        
+        (out, err), proc = node.execute(command2)
+
+        self.assertEquals(out.strip(), "")
+
+        node.clean_home()
+        
+        (out, err), proc = node.execute(command1)
+
+        self.assertEquals(out.strip(), "")
+
+
+    @skipIfNotAlive
     def t_xterm(self, host, user):
         node, ec = create_node(host, user)
 
+        node.find_home()
         (out, err), proc = node.mkdir(node.node_home, clean = True)
         self.assertEquals(err, "")
         
@@ -197,6 +235,7 @@ class LinuxNodeTestCase(unittest.TestCase):
     def t_compile(self, host, user):
         node, ec = create_node(host, user)
 
+        node.find_home()
         app_home = os.path.join(node.exp_home, "my-app")
         node.mkdir(app_home, clean = True)
 
@@ -288,7 +327,13 @@ main (void)
 
     def test_exitcode_error_ubuntu(self):
         self.t_exitcode_error(self.ubuntu_host, self.ubuntu_user)
-    
+
+    def test_clean_fedora(self):
+        self.t_clean(self.fedora_host, self.fedora_user)
+
+    def test_clean_ubuntu(self):
+        self.t_clean(self.ubuntu_host, self.ubuntu_user)
+     
     @skipInteractive
     def test_xterm_ubuntu(self):
         """ Interactive test. Should not run automatically """

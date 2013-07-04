@@ -31,12 +31,10 @@ import re
 import tempfile
 import time
 import threading
+import traceback
 
-# TODO: Verify files and dirs exists already
-# TODO: Blacklist nodes!
 # TODO: Unify delays!!
 # TODO: Validate outcome of uploads!! 
-
 
 class ExitCode:
     """
@@ -165,8 +163,12 @@ class LinuxNode(ResourceManager):
         server_key = Attribute("serverKey", "Server public key", 
                 flags = Flags.ExecReadOnly)
         
-        clean_home = Attribute("cleanHome", "Remove all files and directories " + \
-                " from home folder before starting experiment", 
+        clean_home = Attribute("cleanHome", "Remove all nepi files and directories "
+                " from node home folder before starting experiment", 
+                flags = Flags.ExecReadOnly)
+
+        clean_experiment = Attribute("cleanExperiment", "Remove all files and directories " 
+                " from a previous same experiment, before the new experiment starts", 
                 flags = Flags.ExecReadOnly)
         
         clean_processes = Attribute("cleanProcesses", 
@@ -184,12 +186,15 @@ class LinuxNode(ResourceManager):
         cls._register_attribute(identity)
         cls._register_attribute(server_key)
         cls._register_attribute(clean_home)
+        cls._register_attribute(clean_experiment)
         cls._register_attribute(clean_processes)
         cls._register_attribute(tear_down)
 
     def __init__(self, ec, guid):
         super(LinuxNode, self).__init__(ec, guid)
         self._os = None
+        # home directory at Linux host
+        self._home_dir = ""
         
         # lock to avoid concurrency issues on methods used by applications 
         self._lock = threading.Lock()
@@ -199,17 +204,47 @@ class LinuxNode(ResourceManager):
                 self.get("hostname"), msg)
 
     @property
-    def home(self):
-        return self.get("home") or ""
+    def home_dir(self):
+        home = self.get("home") or ""
+        if not home.startswith("/"):
+           home = os.path.join(self._home_dir, home) 
+        return home
+
+    @property
+    def usr_dir(self):
+        return os.path.join(self.home_dir, "nepi-usr")
+
+    @property
+    def lib_dir(self):
+        return os.path.join(self.usr_dir, "lib")
+
+    @property
+    def bin_dir(self):
+        return os.path.join(self.usr_dir, "bin")
+
+    @property
+    def src_dir(self):
+        return os.path.join(self.usr_dir, "src")
+
+    @property
+    def share_dir(self):
+        return os.path.join(self.usr_dir, "share")
+
+    @property
+    def exp_dir(self):
+        return os.path.join(self.home_dir, "nepi-exp")
 
     @property
     def exp_home(self):
-        return os.path.join(self.home, self.ec.exp_id)
+        return os.path.join(self.exp_dir, self.ec.exp_id)
 
     @property
     def node_home(self):
-        node_home = "node-%d" % self.guid
-        return os.path.join(self.exp_home, node_home)
+        return os.path.join(self.exp_home, "node-%d" % self.guid)
+
+    @property
+    def run_home(self):
+        return os.path.join(self.node_home, self.ec.run_id)
 
     @property
     def os(self):
@@ -259,18 +294,32 @@ class LinuxNode(ResourceManager):
         return self.get("hostname") in ['localhost', '127.0.0.7', '::1']
 
     def provision(self):
+        # check if host is alive
         if not self.is_alive():
-            self._state = ResourceState.FAILED
+            self.fail()
+            
             msg = "Deploy failed. Unresponsive node %s" % self.get("hostname")
             self.error(msg)
             raise RuntimeError, msg
+
+        self.find_home()
 
         if self.get("cleanProcesses"):
             self.clean_processes()
 
         if self.get("cleanHome"):
             self.clean_home()
-       
+ 
+        if self.get("cleanExperiment"):
+            self.clean_experiment()
+    
+        # Create shared directory structure
+        self.mkdir(self.lib_dir)
+        self.mkdir(self.bin_dir)
+        self.mkdir(self.src_dir)
+        self.mkdir(self.share_dir)
+
+        # Create experiment node home directory
         self.mkdir(self.node_home)
 
         super(LinuxNode, self).provision()
@@ -300,6 +349,8 @@ class LinuxNode(ResourceManager):
         if tear_down:
             self.execute(tear_down)
 
+        self.clean_processes()
+
         super(LinuxNode, self).release()
 
     def valid_connection(self, guid):
@@ -327,356 +378,27 @@ class LinuxNode(ResourceManager):
         (out, err), proc = self.execute(cmd, retry = 1, with_lock = True) 
             
     def clean_home(self):
+        """ Cleans all NEPI related folders in the Linux host
+        """
         self.info("Cleaning up home")
         
-        cmd = (
-            # "find . -maxdepth 1  \( -name '.cache' -o -name '.local' -o -name '.config' -o -name 'nepi-*' \)" +
-            "find . -maxdepth 1 -name 'nepi-*' " +
-            " -execdir rm -rf {} + "
-            )
-            
-        if self.home:
-            cmd = "cd %s ; " % self.home + cmd
+        cmd = "cd %s ; find . -maxdepth 1 \( -name 'nepi-usr' -o -name 'nepi-exp' \) -execdir rm -rf {} + " % (
+                self.home_dir )
 
-        out = err = ""
-        (out, err), proc = self.execute(cmd, with_lock = True)
+        return self.execute(cmd, with_lock = True)
 
-    def upload(self, src, dst, text = False):
-        """ Copy content to destination
-
-           src  content to copy. Can be a local file, directory or a list of files
-
-           dst  destination path on the remote host (remote is always self.host)
-
-           text src is text input, it must be stored into a temp file before uploading
+    def clean_experiment(self):
+        """ Cleans all experiment related files in the Linux host.
+        It preserves NEPI files and folders that have a multi experiment
+        scope.
         """
-        # If source is a string input 
-        f = None
-        if text and not os.path.isfile(src):
-            # src is text input that should be uploaded as file
-            # create a temporal file with the content to upload
-            f = tempfile.NamedTemporaryFile(delete=False)
-            f.write(src)
-            f.close()
-            src = f.name
-
-        if not self.localhost:
-            # Build destination as <user>@<server>:<path>
-            dst = "%s@%s:%s" % (self.get("username"), self.get("hostname"), dst)
-        result = self.copy(src, dst)
-
-        # clean up temp file
-        if f:
-            os.remove(f.name)
-
-        return result
-
-    def download(self, src, dst):
-        if not self.localhost:
-            # Build destination as <user>@<server>:<path>
-            src = "%s@%s:%s" % (self.get("username"), self.get("hostname"), src)
-        return self.copy(src, dst)
-
-    def install_packages(self, packages, home):
-        command = ""
-        if self.use_rpm:
-            command = rpmfuncs.install_packages_command(self.os, packages)
-        elif self.use_deb:
-            command = debfuncs.install_packages_command(self.os, packages)
-        else:
-            msg = "Error installing packages ( OS not known ) "
-            self.error(msg, self.os)
-            raise RuntimeError, msg
-
-        out = err = ""
-        (out, err), proc = self.run_and_wait(command, home, 
-            shfile = "instpkg.sh",
-            pidfile = "instpkg_pidfile",
-            ecodefile = "instpkg_exitcode",
-            stdout = "instpkg_stdout", 
-            stderr = "instpkg_stderr",
-            raise_on_error = True)
-
-        return (out, err), proc 
-
-    def remove_packages(self, packages, home):
-        command = ""
-        if self.use_rpm:
-            command = rpmfuncs.remove_packages_command(self.os, packages)
-        elif self.use_deb:
-            command = debfuncs.remove_packages_command(self.os, packages)
-        else:
-            msg = "Error removing packages ( OS not known ) "
-            self.error(msg)
-            raise RuntimeError, msg
-
-        out = err = ""
-        (out, err), proc = self.run_and_wait(command, home, 
-            shfile = "rmpkg.sh",
-            pidfile = "rmpkg_pidfile",
-            ecodefile = "rmpkg_exitcode",
-            stdout = "rmpkg_stdout", 
-            stderr = "rmpkg_stderr",
-            raise_on_error = True)
-         
-        return (out, err), proc 
-
-    def mkdir(self, path, clean = False):
-        if clean:
-            self.rmdir(path)
-
-        return self.execute("mkdir -p %s" % path, with_lock = True)
-
-    def rmdir(self, path):
-        return self.execute("rm -rf %s" % path, with_lock = True)
+        self.info("Cleaning up experiment files")
         
-    def run_and_wait(self, command, home, 
-            shfile = "cmd.sh",
-            env = None,
-            pidfile = "pidfile", 
-            ecodefile = "exitcode", 
-            stdin = None, 
-            stdout = "stdout", 
-            stderr = "stderr", 
-            sudo = False,
-            tty = False,
-            raise_on_error = False):
-        """
-        Uploads the 'command' to a bash script in the host.
-        Then runs the script detached in background in the host, and
-        busy-waites until the script finishes executing.
-        """
-        self.upload_command(command, home, 
-            shfile = shfile, 
-            ecodefile = ecodefile, 
-            env = env)
-
-        command = "bash ./%s" % shfile
-        # run command in background in remote host
-        (out, err), proc = self.run(command, home, 
-                pidfile = pidfile,
-                stdin = stdin, 
-                stdout = stdout, 
-                stderr = stderr, 
-                sudo = sudo,
-                tty = tty)
-
-        # check no errors occurred
-        if proc.poll():
-            msg = " Failed to run command '%s' " % command
-            self.error(msg, out, err)
-            if raise_on_error:
-                raise RuntimeError, msg
-
-        # Wait for pid file to be generated
-        pid, ppid = self.wait_pid(
-                home = home, 
-                pidfile = pidfile, 
-                raise_on_error = raise_on_error)
-
-        # wait until command finishes to execute
-        self.wait_run(pid, ppid)
-      
-        (out, err), proc = self.check_errors(home,
-            ecodefile = ecodefile,
-            stdout = stdout,
-            stderr= stderr)
-
-        # Out is what was written in the stderr file
-        if err:
-            msg = " Failed to run command '%s' " % command
-            self.error(msg, out, err)
-
-            if raise_on_error:
-                raise RuntimeError, msg
-        
-        return (out, err), proc
-
-    def exitcode(self, home, ecodefile = "exitcode"):
-        """
-        Get the exit code of an application.
-        Returns an integer value with the exit code 
-        """
-        (out, err), proc = self.check_output(home, ecodefile)
-
-        # Succeeded to open file, return exit code in the file
-        if proc.wait() == 0:
-            try:
-                return int(out.strip())
-            except:
-                # Error in the content of the file!
-                return ExitCode.CORRUPTFILE
-
-        # No such file or directory
-        if proc.returncode == 1:
-            return ExitCode.FILENOTFOUND
-        
-        # Other error from 'cat'
-        return ExitCode.ERROR
-
-    def upload_command(self, command, home, 
-            shfile = "cmd.sh",
-            ecodefile = "exitcode",
-            env = None):
-        """ Saves the command as a bash script file in the remote host, and
-        forces to save the exit code of the command execution to the ecodefile
-        """
-
-        if not (command.strip().endswith(";") or command.strip().endswith("&")):
-            command += ";"
-      
-        # The exit code of the command will be stored in ecodefile
-        command = " { %(command)s } ; echo $? > %(ecodefile)s ;" % {
-                'command': command,
-                'ecodefile': ecodefile,
-                } 
-
-        # Export environment
-        environ = self.format_environment(env)
-
-        # Add environ to command
-        command = environ + command
-
-        dst = os.path.join(home, shfile)
-        return self.upload(command, dst, text = True)
-
-    def format_environment(self, env, inline = False):
-        """Format environmental variables for command to be executed either
-        as an inline command
-        (i.e. export PYTHONPATH=src/..; export LALAL= ..;python script.py) or 
-        as a bash script (i.e. export PYTHONPATH=src/.. \n export LALA=.. \n)
-        """
-        if not env: return ""
-
-        # Remove extra white spaces
-        env = re.sub(r'\s+', ' ', env.strip())
-
-        sep = ";" if inline else "\n"
-        return sep.join(map(lambda e: " export %s" % e, env.split(" "))) + sep 
-
-    def check_errors(self, home, 
-            ecodefile = "exitcode", 
-            stdout = "stdout",
-            stderr = "stderr"):
-        """
-        Checks whether errors occurred while running a command.
-        It first checks the exit code for the command, and only if the
-        exit code is an error one it returns the error output.
-
-        """
-        proc = None
-        err = ""
-        # retrive standard output from the file
-        (out, oerr), oproc = self.check_output(home, stdout)
-
-        # get exit code saved in the 'exitcode' file
-        ecode = self.exitcode(home, ecodefile)
-
-        if ecode in [ ExitCode.CORRUPTFILE, ExitCode.ERROR ]:
-            err = "Error retrieving exit code status from file %s/%s" % (home, ecodefile)
-        elif ecode > 0 or ecode == ExitCode.FILENOTFOUND:
-            # The process returned an error code or didn't exist. 
-            # Check standard error.
-            (err, eerr), proc = self.check_output(home, stderr)
-
-            # If the stderr file was not found, assume nothing bad happened,
-            # and just ignore the error.
-            # (cat returns 1 for error "No such file or directory")
-            if ecode == ExitCode.FILENOTFOUND and proc.poll() == 1: 
-                err = "" 
+        cmd = "cd %s ; find . -maxdepth 1 -name '%s' -execdir rm -rf {} + " % (
+                self.exp_dir,
+                self.ec.exp_id )
             
-        return (out, err), proc
- 
-    def wait_pid(self, home, pidfile = "pidfile", raise_on_error = False):
-        """ Waits until the pid file for the command is generated, 
-            and returns the pid and ppid of the process """
-        pid = ppid = None
-        delay = 1.0
-
-        for i in xrange(4):
-            pidtuple = self.getpid(home = home, pidfile = pidfile)
-            
-            if pidtuple:
-                pid, ppid = pidtuple
-                break
-            else:
-                time.sleep(delay)
-                delay = delay * 1.5
-        else:
-            msg = " Failed to get pid for pidfile %s/%s " % (
-                    home, pidfile )
-            self.error(msg)
-            
-            if raise_on_error:
-                raise RuntimeError, msg
-
-        return pid, ppid
-
-    def wait_run(self, pid, ppid, trial = 0):
-        """ wait for a remote process to finish execution """
-        start_delay = 1.0
-
-        while True:
-            status = self.status(pid, ppid)
-            
-            if status is ProcStatus.FINISHED:
-                break
-            elif status is not ProcStatus.RUNNING:
-                delay = delay * 1.5
-                time.sleep(delay)
-                # If it takes more than 20 seconds to start, then
-                # asume something went wrong
-                if delay > 20:
-                    break
-            else:
-                # The app is running, just wait...
-                time.sleep(0.5)
-
-    def check_output(self, home, filename):
-        """ Retrives content of file """
-        (out, err), proc = self.execute("cat %s" % 
-            os.path.join(home, filename), retry = 1, with_lock = True)
-        return (out, err), proc
-
-    def is_alive(self):
-        if self.localhost:
-            return True
-
-        out = err = ""
-        try:
-            # TODO: FIX NOT ALIVE!!!!
-            (out, err), proc = self.execute("echo 'ALIVE' || (echo 'NOTALIVE') >&2", retry = 5, 
-                    with_lock = True)
-        except:
-            import traceback
-            trace = traceback.format_exc()
-            msg = "Unresponsive host  %s " % err
-            self.error(msg, out, trace)
-            return False
-
-        if out.strip().startswith('ALIVE'):
-            return True
-        else:
-            msg = "Unresponsive host "
-            self.error(msg, out, err)
-            return False
-
-    def copy(self, src, dst):
-        if self.localhost:
-            (out, err), proc = execfuncs.lcopy(source, dest, 
-                    recursive = True,
-                    strict_host_checking = False)
-        else:
-            with self._lock:
-                (out, err), proc = sshfuncs.rcopy(
-                    src, dst, 
-                    port = self.get("port"),
-                    identity = self.get("identity"),
-                    server_key = self.get("serverKey"),
-                    recursive = True,
-                    strict_host_checking = False)
-
-        return (out, err), proc
+        return self.execute(cmd, with_lock = True)
 
     def execute(self, command,
             sudo = False,
@@ -850,4 +572,407 @@ class LinuxNode(ResourceManager):
                         )
 
         return (out, err), proc
+
+    def copy(self, src, dst):
+        if self.localhost:
+            (out, err), proc = execfuncs.lcopy(source, dest, 
+                    recursive = True,
+                    strict_host_checking = False)
+        else:
+            with self._lock:
+                (out, err), proc = sshfuncs.rcopy(
+                    src, dst, 
+                    port = self.get("port"),
+                    identity = self.get("identity"),
+                    server_key = self.get("serverKey"),
+                    recursive = True,
+                    strict_host_checking = False)
+
+        return (out, err), proc
+
+
+    def upload(self, src, dst, text = False, overwrite = True):
+        """ Copy content to destination
+
+           src  content to copy. Can be a local file, directory or a list of files
+
+           dst  destination path on the remote host (remote is always self.host)
+
+           text src is text input, it must be stored into a temp file before uploading
+        """
+        # If source is a string input 
+        f = None
+        if text and not os.path.isfile(src):
+            # src is text input that should be uploaded as file
+            # create a temporal file with the content to upload
+            f = tempfile.NamedTemporaryFile(delete=False)
+            f.write(src)
+            f.close()
+            src = f.name
+
+        # If dst files should not be overwritten, check that the files do not
+        # exits already 
+        if overwrite == False:
+            src = self.filter_existing_files(src, dst)
+            if not src:
+                return ("", ""), None 
+
+        if not self.localhost:
+            # Build destination as <user>@<server>:<path>
+            dst = "%s@%s:%s" % (self.get("username"), self.get("hostname"), dst)
+
+        result = self.copy(src, dst)
+
+        # clean up temp file
+        if f:
+            os.remove(f.name)
+
+        return result
+
+    def download(self, src, dst):
+        if not self.localhost:
+            # Build destination as <user>@<server>:<path>
+            src = "%s@%s:%s" % (self.get("username"), self.get("hostname"), src)
+        return self.copy(src, dst)
+
+    def install_packages(self, packages, home, run_home = None):
+        """ Install packages in the Linux host.
+
+        'home' is the directory to upload the package installation script.
+        'run_home' is the directory from where to execute the script.
+        """
+        command = ""
+        if self.use_rpm:
+            command = rpmfuncs.install_packages_command(self.os, packages)
+        elif self.use_deb:
+            command = debfuncs.install_packages_command(self.os, packages)
+        else:
+            msg = "Error installing packages ( OS not known ) "
+            self.error(msg, self.os)
+            raise RuntimeError, msg
+
+        run_home = run_home or home
+
+        (out, err), proc = self.run_and_wait(command, run_home, 
+            shfile = os.path.join(home, "instpkg.sh"),
+            pidfile = "instpkg_pidfile",
+            ecodefile = "instpkg_exitcode",
+            stdout = "instpkg_stdout", 
+            stderr = "instpkg_stderr",
+            overwrite = False,
+            raise_on_error = True)
+
+        return (out, err), proc 
+
+    def remove_packages(self, packages, home, run_home = None):
+        """ Uninstall packages from the Linux host.
+
+        'home' is the directory to upload the package un-installation script.
+        'run_home' is the directory from where to execute the script.
+        """
+        if self.use_rpm:
+            command = rpmfuncs.remove_packages_command(self.os, packages)
+        elif self.use_deb:
+            command = debfuncs.remove_packages_command(self.os, packages)
+        else:
+            msg = "Error removing packages ( OS not known ) "
+            self.error(msg)
+            raise RuntimeError, msg
+
+        run_home = run_home or home
+
+        (out, err), proc = self.run_and_wait(command, run_home, 
+            shfile = os.path.join(home, "rmpkg.sh"),
+            pidfile = "rmpkg_pidfile",
+            ecodefile = "rmpkg_exitcode",
+            stdout = "rmpkg_stdout", 
+            stderr = "rmpkg_stderr",
+            overwrite = False,
+            raise_on_error = True)
+         
+        return (out, err), proc 
+
+    def mkdir(self, path, clean = False):
+        if clean:
+            self.rmdir(path)
+
+        return self.execute("mkdir -p %s" % path, with_lock = True)
+
+    def rmdir(self, path):
+        return self.execute("rm -rf %s" % path, with_lock = True)
+        
+    def run_and_wait(self, command, home, 
+            shfile = "cmd.sh",
+            env = None,
+            overwrite = True,
+            pidfile = "pidfile", 
+            ecodefile = "exitcode", 
+            stdin = None, 
+            stdout = "stdout", 
+            stderr = "stderr", 
+            sudo = False,
+            tty = False,
+            raise_on_error = False):
+        """
+        Uploads the 'command' to a bash script in the host.
+        Then runs the script detached in background in the host, and
+        busy-waites until the script finishes executing.
+        """
+
+        if not shfile.startswith("/"):
+            shfile = os.path.join(home, shfile)
+
+        self.upload_command(command, 
+            shfile = shfile, 
+            ecodefile = ecodefile, 
+            env = env,
+            overwrite = overwrite)
+
+        command = "bash %s" % shfile
+        # run command in background in remote host
+        (out, err), proc = self.run(command, home, 
+                pidfile = pidfile,
+                stdin = stdin, 
+                stdout = stdout, 
+                stderr = stderr, 
+                sudo = sudo,
+                tty = tty)
+
+        # check no errors occurred
+        if proc.poll():
+            msg = " Failed to run command '%s' " % command
+            self.error(msg, out, err)
+            if raise_on_error:
+                raise RuntimeError, msg
+
+        # Wait for pid file to be generated
+        pid, ppid = self.wait_pid(
+                home = home, 
+                pidfile = pidfile, 
+                raise_on_error = raise_on_error)
+
+        # wait until command finishes to execute
+        self.wait_run(pid, ppid)
+      
+        (out, err), proc = self.check_errors(home,
+            ecodefile = ecodefile,
+            stdout = stdout,
+            stderr= stderr)
+
+        # Out is what was written in the stderr file
+        if err:
+            msg = " Failed to run command '%s' " % command
+            self.error(msg, out, err)
+
+            if raise_on_error:
+                raise RuntimeError, msg
+        
+        return (out, err), proc
+
+    def exitcode(self, home, ecodefile = "exitcode"):
+        """
+        Get the exit code of an application.
+        Returns an integer value with the exit code 
+        """
+        (out, err), proc = self.check_output(home, ecodefile)
+
+        # Succeeded to open file, return exit code in the file
+        if proc.wait() == 0:
+            try:
+                return int(out.strip())
+            except:
+                # Error in the content of the file!
+                return ExitCode.CORRUPTFILE
+
+        # No such file or directory
+        if proc.returncode == 1:
+            return ExitCode.FILENOTFOUND
+        
+        # Other error from 'cat'
+        return ExitCode.ERROR
+
+    def upload_command(self, command, 
+            shfile = "cmd.sh",
+            ecodefile = "exitcode",
+            overwrite = True,
+            env = None):
+        """ Saves the command as a bash script file in the remote host, and
+        forces to save the exit code of the command execution to the ecodefile
+        """
+
+        if not (command.strip().endswith(";") or command.strip().endswith("&")):
+            command += ";"
+      
+        # The exit code of the command will be stored in ecodefile
+        command = " { %(command)s } ; echo $? > %(ecodefile)s ;" % {
+                'command': command,
+                'ecodefile': ecodefile,
+                } 
+
+        # Export environment
+        environ = self.format_environment(env)
+
+        # Add environ to command
+        command = environ + command
+
+        return self.upload(command, shfile, text = True, overwrite = overwrite)
+
+    def format_environment(self, env, inline = False):
+        """Format environmental variables for command to be executed either
+        as an inline command
+        (i.e. export PYTHONPATH=src/..; export LALAL= ..;python script.py) or 
+        as a bash script (i.e. export PYTHONPATH=src/.. \n export LALA=.. \n)
+        """
+        if not env: return ""
+
+        # Remove extra white spaces
+        env = re.sub(r'\s+', ' ', env.strip())
+
+        sep = ";" if inline else "\n"
+        return sep.join(map(lambda e: " export %s" % e, env.split(" "))) + sep 
+
+    def check_errors(self, home, 
+            ecodefile = "exitcode", 
+            stdout = "stdout",
+            stderr = "stderr"):
+        """
+        Checks whether errors occurred while running a command.
+        It first checks the exit code for the command, and only if the
+        exit code is an error one it returns the error output.
+
+        """
+        proc = None
+        err = ""
+        # retrive standard output from the file
+        (out, oerr), oproc = self.check_output(home, stdout)
+
+        # get exit code saved in the 'exitcode' file
+        ecode = self.exitcode(home, ecodefile)
+
+        if ecode in [ ExitCode.CORRUPTFILE, ExitCode.ERROR ]:
+            err = "Error retrieving exit code status from file %s/%s" % (home, ecodefile)
+        elif ecode > 0 or ecode == ExitCode.FILENOTFOUND:
+            # The process returned an error code or didn't exist. 
+            # Check standard error.
+            (err, eerr), proc = self.check_output(home, stderr)
+
+            # If the stderr file was not found, assume nothing bad happened,
+            # and just ignore the error.
+            # (cat returns 1 for error "No such file or directory")
+            if ecode == ExitCode.FILENOTFOUND and proc.poll() == 1: 
+                err = "" 
+            
+        return (out, err), proc
+ 
+    def wait_pid(self, home, pidfile = "pidfile", raise_on_error = False):
+        """ Waits until the pid file for the command is generated, 
+            and returns the pid and ppid of the process """
+        pid = ppid = None
+        delay = 1.0
+
+        for i in xrange(4):
+            pidtuple = self.getpid(home = home, pidfile = pidfile)
+            
+            if pidtuple:
+                pid, ppid = pidtuple
+                break
+            else:
+                time.sleep(delay)
+                delay = delay * 1.5
+        else:
+            msg = " Failed to get pid for pidfile %s/%s " % (
+                    home, pidfile )
+            self.error(msg)
+            
+            if raise_on_error:
+                raise RuntimeError, msg
+
+        return pid, ppid
+
+    def wait_run(self, pid, ppid, trial = 0):
+        """ wait for a remote process to finish execution """
+        start_delay = 1.0
+
+        while True:
+            status = self.status(pid, ppid)
+            
+            if status is ProcStatus.FINISHED:
+                break
+            elif status is not ProcStatus.RUNNING:
+                delay = delay * 1.5
+                time.sleep(delay)
+                # If it takes more than 20 seconds to start, then
+                # asume something went wrong
+                if delay > 20:
+                    break
+            else:
+                # The app is running, just wait...
+                time.sleep(0.5)
+
+    def check_output(self, home, filename):
+        """ Retrives content of file """
+        (out, err), proc = self.execute("cat %s" % 
+            os.path.join(home, filename), retry = 1, with_lock = True)
+        return (out, err), proc
+
+    def is_alive(self):
+        """ Checks if host is responsive
+        """
+        if self.localhost:
+            return True
+
+        out = err = ""
+        try:
+            (out, err), proc = self.execute("echo 'ALIVE'",
+                    retry = 5, 
+                    with_lock = True)
+        except:
+            trace = traceback.format_exc()
+            msg = "Unresponsive host  %s " % err
+            self.error(msg, out, trace)
+            return False
+
+        if out.strip() == "ALIVE":
+            return True
+        else:
+            msg = "Unresponsive host "
+            self.error(msg, out, err)
+            return False
+
+    def find_home(self):
+        """ Retrieves host home directory
+        """
+        (out, err), proc = self.execute("echo ${HOME}", retry = 5, 
+                    with_lock = True)
+
+        if proc.poll():
+            msg = "Imposible to retrieve HOME directory"
+            self.error(msg, out, err)
+            raise RuntimeError, msg
+
+        self._home_dir =  out.strip()
+
+    def filter_existing_files(self, src, dst):
+        """ Removes files that already exist in the Linux host from src list
+        """
+        # construct a dictionary with { dst: src }
+        dests = dict(map(lambda x: ( os.path.join(dst, os.path.basename(x) ),  x ), 
+            src.strip().split(" ") ) ) if src.strip().find(" ") != -1 else dict({dst: src})
+
+        command = []
+        for d in dests.keys():
+            command.append(" [ -f %(dst)s ] && echo '%(dst)s' " % {'dst' : d} )
+
+        command = ";".join(command)
+
+        (out, err), proc = self.execute(command, retry = 1, with_lock = True)
+    
+        for d in dests.keys():
+            if out.find(d) > -1:
+                del dests[d]
+
+        if not dests:
+            return ""
+
+        return " ".join(dests.values())
 

@@ -51,7 +51,7 @@ class LinuxCCNApplication(LinuxApplication):
 
     @property
     def _environment(self):
-        env = "PATH=$PATH:${EXP_HOME}/ccnx/bin "
+        env = "PATH=$PATH:${STORE}/ccnx/bin "
         return env            
        
     def execute_command(self, command, env):
@@ -59,12 +59,7 @@ class LinuxCCNApplication(LinuxApplication):
         command = environ + command
         command = self.replace_paths(command)
 
-        (out, err), proc = self.node.execute(command)
-
-        if proc.poll():
-            self._state = ResourceState.FAILED
-            self.error(msg, out, err)
-            raise RuntimeError, msg
+        return self.node.execute(command)
 
     def valid_connection(self, guid):
         # TODO: Validate!

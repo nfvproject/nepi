@@ -294,7 +294,7 @@ def rexec(command, host, user,
             else:
                 out = err = ""
                 if proc.poll():
-                    err = self._proc.stderr.read()
+                    err = proc.stderr.read()
 
             msg = " rexec - host %s - command %s " % (host, " ".join(args))
             log(msg, logging.DEBUG, out, err)
@@ -857,7 +857,7 @@ fi
     return (out, err), proc
 
 # POSIX
-def _communicate(self, input, timeout=None, err_on_timeout=True):
+def _communicate(proc, input, timeout=None, err_on_timeout=True):
     read_set = []
     write_set = []
     stdout = None # Return
@@ -870,19 +870,21 @@ def _communicate(self, input, timeout=None, err_on_timeout=True):
         killtime = timelimit + 4
         bailtime = timelimit + 4
 
-    if self.stdin:
+    if proc.stdin:
         # Flush stdio buffer.  This might block, if the user has
         # been writing to .stdin in an uncontrolled fashion.
-        self.stdin.flush()
+        proc.stdin.flush()
         if input:
-            write_set.append(self.stdin)
+            write_set.append(proc.stdin)
         else:
-            self.stdin.close()
-    if self.stdout:
-        read_set.append(self.stdout)
+            proc.stdin.close()
+
+    if proc.stdout:
+        read_set.append(proc.stdout)
         stdout = []
-    if self.stderr:
-        read_set.append(self.stderr)
+
+    if proc.stderr:
+        read_set.append(proc.stderr)
         stderr = []
 
     input_offset = 0
@@ -897,7 +899,7 @@ def _communicate(self, input, timeout=None, err_on_timeout=True):
                 else:
                     signum = signal.SIGTERM
                 # Lets kill it
-                os.kill(self.pid, signum)
+                os.kill(proc.pid, signum)
                 select_timeout = 0.5
             else:
                 select_timeout = timelimit - curtime + 0.1
@@ -915,32 +917,34 @@ def _communicate(self, input, timeout=None, err_on_timeout=True):
             else:
                 continue
         
-        if not rlist and not wlist and not xlist and self.poll() is not None:
+        if not rlist and not wlist and not xlist and proc.poll() is not None:
             # timeout and process exited, say bye
             break
 
-        if self.stdin in wlist:
+        if proc.stdin in wlist:
             # When select has indicated that the file is writable,
             # we can write up to PIPE_BUF bytes without risk
             # blocking.  POSIX defines PIPE_BUF >= 512
-            bytes_written = os.write(self.stdin.fileno(), buffer(input, input_offset, 512))
+            bytes_written = os.write(proc.stdin.fileno(),
+                    buffer(input, input_offset, 512))
             input_offset += bytes_written
-            if input_offset >= len(input):
-                self.stdin.close()
-                write_set.remove(self.stdin)
 
-        if self.stdout in rlist:
-            data = os.read(self.stdout.fileno(), 1024)
+            if input_offset >= len(input):
+                proc.stdin.close()
+                write_set.remove(proc.stdin)
+
+        if proc.stdout in rlist:
+            data = os.read(proc.stdout.fileno(), 1024)
             if data == "":
-                self.stdout.close()
-                read_set.remove(self.stdout)
+                proc.stdout.close()
+                read_set.remove(proc.stdout)
             stdout.append(data)
 
-        if self.stderr in rlist:
-            data = os.read(self.stderr.fileno(), 1024)
+        if proc.stderr in rlist:
+            data = os.read(proc.stderr.fileno(), 1024)
             if data == "":
-                self.stderr.close()
-                read_set.remove(self.stderr)
+                proc.stderr.close()
+                read_set.remove(proc.stderr)
             stderr.append(data)
     
     # All data exchanged.  Translate lists into strings.
@@ -953,19 +957,19 @@ def _communicate(self, input, timeout=None, err_on_timeout=True):
     # object do the translation: It is based on stdio, which is
     # impossible to combine with select (unless forcing no
     # buffering).
-    if self.universal_newlines and hasattr(file, 'newlines'):
+    if proc.universal_newlines and hasattr(file, 'newlines'):
         if stdout:
-            stdout = self._translate_newlines(stdout)
+            stdout = proc._translate_newlines(stdout)
         if stderr:
-            stderr = self._translate_newlines(stderr)
+            stderr = proc._translate_newlines(stderr)
 
     if killed and err_on_timeout:
-        errcode = self.poll()
+        errcode = proc.poll()
         raise RuntimeError, ("Operation timed out", errcode, stdout, stderr)
     else:
         if killed:
-            self.poll()
+            proc.poll()
         else:
-            self.wait()
+            proc.wait()
         return (stdout, stderr)
 
