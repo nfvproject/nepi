@@ -126,6 +126,8 @@ class LinuxCCND(LinuxApplication):
     def __init__(self, ec, guid):
         super(LinuxCCND, self).__init__(ec, guid)
         self._home = "ccnd-%s" % self.guid
+        self._version = None
+        self._environment = None
 
     def deploy(self):
         if not self.node or self.node.state < ResourceState.READY:
@@ -294,15 +296,15 @@ class LinuxCCND(LinuxApplication):
         return (
             # Evaluate if ccnx binaries are already installed
             " ( "
-                " test -f ${EXP_HOME}/ccnx/bin/ccnd && "
+                " test -f ${STORE}/ccnx/bin/ccnd && "
                 " echo 'sources found, nothing to do' "
             " ) || ( "
             # If not, untar and build
                 " ( "
-                    " mkdir -p ${SOURCES}/ccnx && "
-                    " tar xf ${SOURCES}/%(sources)s --strip-components=1 -C ${SOURCES}/ccnx "
+                    " mkdir -p ${STORE}/ccnx && "
+                    " tar xf ${STORE}/%(sources)s --strip-components=1 -C ${STORE}/ccnx "
                  " ) && "
-                    "cd ${SOURCES}/ccnx && "
+                    "cd ${STORE}/ccnx && "
                     # Just execute and silence warnings...
                     " ( ./configure && make ) "
              " )") % ({ 'sources': sources })
@@ -312,12 +314,12 @@ class LinuxCCND(LinuxApplication):
         return (
             # Evaluate if ccnx binaries are already installed
             " ( "
-                " test -f ${EXP_HOME}/ccnx/bin/ccnd && "
+                " test -f ${SOURCES}/ccnx/bin/ccnd && "
                 " echo 'sources found, nothing to do' "
             " ) || ( "
             # If not, install
-                "  mkdir -p ${EXP_HOME}/ccnx/bin && "
-                "  cp -r ${SOURCES}/ccnx ${EXP_HOME}"
+                "  mkdir -p ${SOURCES}/ccnx/bin && "
+                "  cp -r ${}/ccnx ${STORE}"
             " )"
             )
 
@@ -339,7 +341,7 @@ class LinuxCCND(LinuxApplication):
             "prefix" : "CCND_PREFIX",
             })
 
-        env = "PATH=$PATH:${EXP_HOME}/ccnx/bin "
+        env = "PATH=$PATH:${SOURCES}/ccnx/bin "
         env += " ".join(map(lambda k: "%s=%s" % (envs.get(k), str(self.get(k))) \
             if self.get(k) else "", envs.keys()))
         

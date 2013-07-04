@@ -64,7 +64,7 @@ class LinuxApplicationTestCase(unittest.TestCase):
 
         ec.deploy()
 
-        ec.wait_finished([app])
+        ec.wait_finished(app)
 
         self.assertTrue(ec.state(node) == ResourceState.STARTED)
         self.assertTrue(ec.state(app) == ResourceState.FINISHED)
@@ -97,7 +97,7 @@ class LinuxApplicationTestCase(unittest.TestCase):
 
         ec.deploy()
 
-        ec.wait_finished([app])
+        ec.wait_finished(app)
 
         self.assertTrue(ec.state(node) == ResourceState.STARTED)
         self.assertTrue(ec.state(app) == ResourceState.FINISHED)
@@ -111,8 +111,51 @@ class LinuxApplicationTestCase(unittest.TestCase):
 
         path = ec.trace(app, "stdout", attr = TraceAttr.PATH)
         rm = ec.get_resource(app)
-        p = os.path.join(rm.app_home, "stdout")
+        p = os.path.join(rm.run_home, "stdout")
         self.assertEquals(path, p)
+
+        ec.shutdown()
+
+    @skipIfNotAlive
+    def t_code(self, host, user):
+        from nepi.execution.resource import ResourceFactory
+        
+        ResourceFactory.register_type(LinuxNode)
+        ResourceFactory.register_type(LinuxApplication)
+
+        ec = ExperimentController()
+        
+        node = ec.register_resource("LinuxNode")
+        ec.set(node, "hostname", host)
+        ec.set(node, "username", user)
+        ec.set(node, "cleanHome", True)
+        ec.set(node, "cleanProcesses", True)
+        
+        prog = """#include <stdio.h>
+
+int
+main (void)
+{
+    printf ("Hello, world!\\n");
+    return 0;
+}
+"""
+        cmd = "${RUN_HOME}/hello" 
+        build = "gcc -Wall -x c ${APP_HOME}/code -o hello" 
+
+        app = ec.register_resource("LinuxApplication")
+        ec.set(app, "command", cmd)
+        ec.set(app, "code", prog)
+        ec.set(app, "depends", "gcc")
+        ec.set(app, "build", build)
+        ec.register_connection(app, node)
+
+        ec.deploy()
+
+        ec.wait_finished(app)
+
+        out = ec.trace(app, 'stdout')
+        self.assertEquals(out, "Hello, world!\n")
 
         ec.shutdown()
 
@@ -159,7 +202,7 @@ class LinuxApplicationTestCase(unittest.TestCase):
 
             path = ec.trace(app, 'stdout', attr = TraceAttr.PATH)
             rm = ec.get_resource(app)
-            p = os.path.join(rm.app_home, 'stdout')
+            p = os.path.join(rm.run_home, 'stdout')
             self.assertEquals(path, p)
 
         ec.shutdown()
@@ -305,6 +348,12 @@ class LinuxApplicationTestCase(unittest.TestCase):
 
     def test_http_sources_ubuntu(self):
         self.t_http_sources(self.ubuntu_host, self.ubuntu_user)
+
+    def test_code_fedora(self):
+        self.t_code(self.fedora_host, self.fedora_user)
+
+    def test_code_ubuntu(self):
+        self.t_code(self.ubuntu_host, self.ubuntu_user)
 
     @skipInteractive
     def test_xterm_ubuntu(self):

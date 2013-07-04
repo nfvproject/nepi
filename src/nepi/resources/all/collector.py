@@ -22,7 +22,6 @@ from nepi.execution.trace import Trace, TraceAttr
 from nepi.execution.resource import ResourceManager, clsinit, ResourceState, \
         ResourceAction
 from nepi.util.sshfuncs import ProcStatus
-from nepi.util.timefuncs import tsformat
 
 import os
 import tempfile
@@ -73,8 +72,7 @@ class Collector(ResourceManager):
             raise RuntimeError, msg
 
         store_dir = self.get("storeDir")
-        timestamp = tsformat()
-        self._store_path = os.path.join(store_dir, self.ec.exp_id, timestamp)
+        self._store_path = os.path.join(store_dir, self.ec.exp_id, self.ec.run_id)
         
         msg = "Creating local directory at %s to store %s traces " % (
             store_dir, trace_name)

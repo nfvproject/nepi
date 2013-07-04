@@ -268,7 +268,7 @@ class LinuxCCNR(LinuxCCNApplication):
             "ccnsSyncScope": "CCNS_SYNC_SCOPE",
             })
 
-        env = "PATH=$PATH:${EXP_HOME}/ccnx/bin "
+        env = "PATH=$PATH:${STORE}/ccnx/bin "
         env += " ".join(map(lambda k: "%s=%s" % (envs.get(k), self.get(k)) \
             if self.get(k) else "", envs.keys()))
        

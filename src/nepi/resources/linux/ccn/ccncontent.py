@@ -87,7 +87,13 @@ class LinuxCCNContent(LinuxCCNApplication):
             # Run the command as a bash script in the background, 
             # in the host ( but wait until the command has
             # finished to continue )
-            self.execute_command(command, env)
+            (out, err), proc = self.execute_command(command, env)
+
+            if proc.poll():
+                self._state = ResourceState.FAILED
+                msg = "Failed to execute command"
+                self.error(msg, out, err)
+                raise RuntimeError, msg
 
             self.debug("----- READY ---- ")
             self._ready_time = tnow()
