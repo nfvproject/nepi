@@ -17,10 +17,11 @@
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
-from nepi.execution.resource import clsinit_copy, ResourceState, \
-    ResourceAction
+from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState, \
+    reschedule_delay
 from nepi.resources.linux.application import LinuxApplication
 from nepi.resources.linux.ccn.ccnd import LinuxCCND
+from nepi.util.timefuncs import tnow, tdiffsec
 
 import os
 
@@ -44,15 +45,31 @@ class LinuxCCNApplication(LinuxApplication):
         return None
 
     def deploy(self):
-        if not self.get("env"):
-            self.set("env", self._environment)
+        if not self.ccnd or self.ccnd.state < ResourceState.READY:
+            self.debug("---- RESCHEDULING DEPLOY ---- node state %s " % self.node.state )
+            self.ec.schedule(reschedule_delay, self.deploy)
+        else:
+            try:
+                command = self.get("command") or ""
 
-        super(LinuxCCNApplication, self).deploy()
+                self.info("Deploying command '%s' " % command)
+                
+                if not self.get("env"):
+                    self.set("env", self._environment)
+
+                self.discover()
+                self.provision()
+            except:
+                self._state = ResourceState.FAILED
+                raise
+ 
+            self.debug("----- READY ---- ")
+            self._ready_time = tnow()
+            self._state = ResourceState.READY
 
     @property
     def _environment(self):
-        env = "PATH=$PATH:${STORE}/ccnx/bin "
-        return env            
+        return self.ccnd.path
        
     def execute_command(self, command, env):
         environ = self.node.format_environment(env, inline = True)

@@ -20,14 +20,14 @@
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.resource import clsinit_copy, ResourceState, \
     ResourceAction, reschedule_delay
-from nepi.resources.linux.ccn.ccnapplication import LinuxCCNApplication
+from nepi.resources.linux.application import LinuxApplication
 from nepi.resources.linux.ccn.ccnr import LinuxCCNR
 from nepi.util.timefuncs import tnow
 
 import os
 
 @clsinit_copy
-class LinuxCCNContent(LinuxCCNApplication):
+class LinuxCCNContent(LinuxApplication):
     _rtype = "LinuxCCNContent"
 
     @classmethod
@@ -54,9 +54,15 @@ class LinuxCCNContent(LinuxCCNApplication):
         return None
 
     @property
+    def ccnd(self):
+        if self.ccnr: return self.ccnr.ccnd
+        return None
+
+    @property
     def node(self):
         if self.ccnr: return self.ccnr.node
         return None
+
 
     def deploy(self):
         if not self.ccnr or self.ccnr.state < ResourceState.READY:
@@ -77,7 +83,8 @@ class LinuxCCNContent(LinuxCCNApplication):
 
             self.info("Deploying command '%s' " % command)
 
-            self.node.mkdir(self.app_home)
+            # create run dir for application
+            self.node.mkdir(self.run_home)
 
             # upload content 
             self.upload_stdin()
@@ -120,6 +127,17 @@ class LinuxCCNContent(LinuxCCNApplication):
     def _start_command(self):
         return "ccnseqwriter -r %s < %s" % (self.get("contentName"),
                 os.path.join(self.app_home, 'stdin'))
+
+    @property
+    def _environment(self):
+        return self.ccnd.path
+       
+    def execute_command(self, command, env):
+        environ = self.node.format_environment(env, inline = True)
+        command = environ + command
+        command = self.replace_paths(command)
+
+        return self.node.execute(command)
 
     def valid_connection(self, guid):
         # TODO: Validate!

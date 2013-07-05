@@ -32,6 +32,8 @@ import subprocess
 # TODO: During provisioning, everything that is not scp could be
 #       uploaded to a same script, http_sources download, etc...
 #       and like that require performing less ssh connections!!!
+# TODO: Make stdin be a symlink to the original file in ${SHARE}
+#       - later use md5sum to check wether the file needs to be re-upload
 
 
 @clsinit
@@ -298,6 +300,13 @@ class LinuxApplication(ResourceManager):
 
             step()
 
+        self.upload_start_command()
+       
+        self.info("Provisioning finished")
+
+        super(LinuxApplication, self).provision()
+
+    def upload_start_command(self):
         # Upload command to remote bash script
         # - only if command can be executed in background and detached
         command = self.get("command")
@@ -312,15 +321,11 @@ class LinuxApplication(ResourceManager):
             env = self.get("env")
             env = env and self.replace_paths(env)
 
-            shfile = os.path.join(self.app_home, "app.sh")
+            shfile = os.path.join(self.app_home, "start.sh")
 
             self.node.upload_command(command, 
                     shfile = shfile,
                     env = env)
-       
-        self.info("Provisioning finished")
-
-        super(LinuxApplication, self).provision()
 
     def upload_sources(self):
         sources = self.get("sources")
@@ -542,7 +547,7 @@ class LinuxApplication(ResourceManager):
         # The command to run was previously uploaded to a bash script
         # during deployment, now we launch the remote script using 'run'
         # method from the node.
-        cmd = "bash %s" % os.path.join(self.app_home, "app.sh")
+        cmd = "bash %s" % os.path.join(self.app_home, "start.sh")
         (out, err), proc = self.node.run(cmd, self.run_home, 
             stdin = stdin, 
             stdout = stdout,

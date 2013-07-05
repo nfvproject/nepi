@@ -126,8 +126,15 @@ class LinuxCCND(LinuxApplication):
     def __init__(self, ec, guid):
         super(LinuxCCND, self).__init__(ec, guid)
         self._home = "ccnd-%s" % self.guid
-        self._version = None
-        self._environment = None
+        self._version = "ccnx"
+
+    @property
+    def version(self):
+        return self._version
+
+    @property
+    def path(self):
+        return "PATH=$PATH:${BIN}/%s/" % self.version 
 
     def deploy(self):
         if not self.node or self.node.state < ResourceState.READY:
@@ -145,6 +152,14 @@ class LinuxCCND(LinuxApplication):
             if not self.get("sources"):
                 self.set("sources", self._sources)
 
+            sources = self.get("sources")
+            source = sources.split(" ")[0]
+            basename = os.path.basename(source)
+            self._version = ( basename.strip().replace(".tar.gz", "")
+                    .replace(".tar","")
+                    .replace(".gz","")
+                    .replace(".zip","") )
+
             if not self.get("build"):
                 self.set("build", self._build)
 
@@ -160,7 +175,7 @@ class LinuxCCND(LinuxApplication):
             self.info("Deploying command '%s' " % command)
 
             # create home dir for application
-            self.node.mkdir(self.app_home)
+            self.node.mkdir(self.run_home)
 
             # upload sources
             self.upload_sources()
@@ -188,9 +203,11 @@ class LinuxCCND(LinuxApplication):
             env = self.replace_paths(env)
             command = self.replace_paths(command)
 
-            self.node.run_and_wait(command, self.app_home,
+            shfile = os.path.join(self.app_home, "start.sh")
+            self.node.run_and_wait(command, self.run_home,
+                    shfile = shfile,
+                    overwrite = False,
                     env = env,
-                    shfile = "app.sh",
                     raise_on_error = True)
     
             self.debug("----- READY ---- ")
@@ -225,8 +242,10 @@ class LinuxCCND(LinuxApplication):
             env = env and self.replace_paths(env)
 
             # Upload the command to a file, and execute asynchronously
-            self.node.run_and_wait(command, self.app_home,
-                        shfile = "ccndstop.sh",
+            shfile = os.path.join(self.app_home, "stop.sh")
+            self.node.run_and_wait(command, self.run_home,
+                        shfile = shfile,
+                        overwrite = False,
                         env = env,
                         pidfile = "ccndstop_pidfile", 
                         ecodefile = "ccndstop_exitcode", 
@@ -296,32 +315,35 @@ class LinuxCCND(LinuxApplication):
         return (
             # Evaluate if ccnx binaries are already installed
             " ( "
-                " test -f ${STORE}/ccnx/bin/ccnd && "
-                " echo 'sources found, nothing to do' "
+                " test -f ${BIN}/%(version)s/ccnd && "
+                " echo 'binaries found, nothing to do' "
             " ) || ( "
             # If not, untar and build
                 " ( "
-                    " mkdir -p ${STORE}/ccnx && "
-                    " tar xf ${STORE}/%(sources)s --strip-components=1 -C ${STORE}/ccnx "
+                    " mkdir -p ${SRC}/%(version)s && "
+                    " tar xf ${SRC}/%(sources)s --strip-components=1 -C ${SRC}/%(version)s "
                  " ) && "
-                    "cd ${STORE}/ccnx && "
+                    "cd ${SRC}/%(version)s && "
                     # Just execute and silence warnings...
                     " ( ./configure && make ) "
-             " )") % ({ 'sources': sources })
+             " )") % ({ 'sources': sources,
+                        'version': self.version
+                 })
 
     @property
     def _install(self):
         return (
             # Evaluate if ccnx binaries are already installed
             " ( "
-                " test -f ${SOURCES}/ccnx/bin/ccnd && "
-                " echo 'sources found, nothing to do' "
+                " test -f ${BIN}/%(version)s/ccnd && "
+                " echo 'binaries found, nothing to do' "
             " ) || ( "
             # If not, install
-                "  mkdir -p ${SOURCES}/ccnx/bin && "
-                "  cp -r ${}/ccnx ${STORE}"
+                "  mkdir -p ${BIN}/%(version)s && "
+                "  mv ${SRC}/%(version)s/bin/* ${BIN}/%(version)s/ "
             " )"
-            )
+            ) % ({ 'version': self.version
+                 })
 
     @property
     def _environment(self):
@@ -341,12 +363,12 @@ class LinuxCCND(LinuxApplication):
             "prefix" : "CCND_PREFIX",
             })
 
-        env = "PATH=$PATH:${SOURCES}/ccnx/bin "
+        env = self.path 
         env += " ".join(map(lambda k: "%s=%s" % (envs.get(k), str(self.get(k))) \
             if self.get(k) else "", envs.keys()))
         
         return env            
-        
+
     def valid_connection(self, guid):
         # TODO: Validate!
         return True
