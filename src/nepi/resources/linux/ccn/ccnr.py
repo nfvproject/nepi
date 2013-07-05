@@ -21,14 +21,14 @@ from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import Trace, TraceAttr
 from nepi.execution.resource import clsinit_copy, ResourceState, \
     ResourceAction, reschedule_delay
-from nepi.resources.linux.ccn.ccnapplication import LinuxCCNApplication
+from nepi.resources.linux.application import LinuxApplication
 from nepi.resources.linux.ccn.ccnd import LinuxCCND
 from nepi.util.timefuncs import tnow
 
 import os
 
 @clsinit_copy
-class LinuxCCNR(LinuxCCNApplication):
+class LinuxCCNR(LinuxApplication):
     _rtype = "LinuxCCNR"
 
     @classmethod
@@ -183,6 +183,17 @@ class LinuxCCNR(LinuxCCNApplication):
         super(LinuxCCNR, self).__init__(ec, guid)
         self._home = "ccnr-%s" % self.guid
 
+    @property
+    def ccnd(self):
+        ccnd = self.get_connected(LinuxCCND.rtype())
+        if ccnd: return ccnd[0]
+        return None
+
+    @property
+    def node(self):
+        if self.ccnd: return self.ccnd.node
+        return None
+
     def deploy(self):
         if not self.ccnd or self.ccnd.state < ResourceState.READY:
             self.debug("---- RESCHEDULING DEPLOY ---- CCND state %s " % self.ccnd.state )
@@ -198,7 +209,7 @@ class LinuxCCNR(LinuxCCNApplication):
 
             self.info("Deploying command '%s' " % command)
 
-            self.node.mkdir(self.app_home)
+            self.node.mkdir(self.run_home)
 
             # upload sources
             self.upload_sources()
@@ -211,11 +222,13 @@ class LinuxCCNR(LinuxCCNApplication):
             env = self.replace_paths(env)
             command = self.replace_paths(command)
 
-            self.node.run_and_wait(command, self.app_home,
+            shfile = os.path.join(self.app_home, "start.sh")
+            self.node.run_and_wait(command, self.run_home,
+                    shfile = shfile,
+                    overwrite = False,
                     env = env,
-                    shfile = "app.sh",
                     raise_on_error = True)
-
+ 
             self.debug("----- READY ---- ")
             self._ready_time = tnow()
             self._state = ResourceState.READY
@@ -268,7 +281,7 @@ class LinuxCCNR(LinuxCCNApplication):
             "ccnsSyncScope": "CCNS_SYNC_SCOPE",
             })
 
-        env = "PATH=$PATH:${STORE}/ccnx/bin "
+        env = self.ccnd.path
         env += " ".join(map(lambda k: "%s=%s" % (envs.get(k), self.get(k)) \
             if self.get(k) else "", envs.keys()))
        

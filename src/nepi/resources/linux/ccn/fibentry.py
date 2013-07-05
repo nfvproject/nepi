@@ -21,7 +21,8 @@ from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import Trace, TraceAttr
 from nepi.execution.resource import clsinit_copy, ResourceState, \
     ResourceAction, reschedule_delay
-from nepi.resources.linux.ccn.ccnapplication import LinuxCCNApplication
+from nepi.resources.linux.application import LinuxApplication
+from nepi.resources.linux.ccn.ccnd import LinuxCCND
 from nepi.util.timefuncs import tnow
 
 import os
@@ -31,7 +32,7 @@ import os
 #       Implement ENTRY DELETE!!
 
 @clsinit_copy
-class LinuxFIBEntry(LinuxCCNApplication):
+class LinuxFIBEntry(LinuxApplication):
     _rtype = "LinuxFIBEntry"
 
     @classmethod
@@ -67,6 +68,17 @@ class LinuxFIBEntry(LinuxCCNApplication):
         super(LinuxFIBEntry, self).__init__(ec, guid)
         self._home = "fib-%s" % self.guid
 
+    @property
+    def ccnd(self):
+        ccnd = self.get_connected(LinuxCCND.rtype())
+        if ccnd: return ccnd[0]
+        return None
+
+    @property
+    def node(self):
+        if self.ccnd: return self.ccnd.node
+        return None
+
     def deploy(self):
         # Wait until associated ccnd is provisioned
         if not self.ccnd or self.ccnd.state < ResourceState.READY:
@@ -80,8 +92,10 @@ class LinuxFIBEntry(LinuxCCNApplication):
             self.set("env", env)
 
             self.info("Deploying command '%s' " % command)
-
-            self.node.mkdir(self.app_home)
+    
+            # create run dir for application
+            self.node.mkdir(self.run_home)
+ 
             (out, err), proc = self.execute_command(command, env)
 
             if proc.poll():
@@ -89,7 +103,6 @@ class LinuxFIBEntry(LinuxCCNApplication):
                 msg = "Failed to execute command"
                 self.error(msg, out, err)
                 raise RuntimeError, msg
-
 
             self.debug("----- READY ---- ")
             self._ready_time = tnow()
@@ -157,6 +170,17 @@ class LinuxFIBEntry(LinuxCCNApplication):
             "host": host,
             "port": port
             })
+
+    @property
+    def _environment(self):
+        return self.ccnd.path
+       
+    def execute_command(self, command, env):
+        environ = self.node.format_environment(env, inline = True)
+        command = environ + command
+        command = self.replace_paths(command)
+
+        return self.node.execute(command)
 
     def valid_connection(self, guid):
         # TODO: Validate!
