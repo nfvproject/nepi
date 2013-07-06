@@ -29,12 +29,6 @@ import os
 import subprocess
 
 # TODO: Resolve wildcards in commands!!
-# TODO: During provisioning, everything that is not scp could be
-#       uploaded to a same script, http_sources download, etc...
-#       and like that require performing less ssh connections!!!
-# TODO: Make stdin be a symlink to the original file in ${SHARE}
-#       - later use md5sum to check wether the file needs to be re-upload
-
 
 @clsinit
 class LinuxApplication(ResourceManager):
@@ -430,8 +424,15 @@ class LinuxApplication(ResourceManager):
             # create dir for sources
             self.info("Uploading stdin")
             
-            dst = os.path.join(self.app_home, "stdin")
+            # upload stdin file to ${SHARE_DIR} directory
+            basename = os.path.basename(stdin)
+            dst = os.path.join(self.node.share_dir, basename)
             self.node.upload(stdin, dst, overwrite = False, text = True)
+
+            # create "stdin" symlink on ${APP_HOME} directory
+            command = "( cd %s ; ln -s %s stdin )" % ( self.app_home, dst)
+
+            return command
 
     def install_dependencies(self):
         depends = self.get("depends")
