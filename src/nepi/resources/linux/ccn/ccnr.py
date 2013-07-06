@@ -201,19 +201,32 @@ class LinuxCCNR(LinuxApplication):
             # ccnr needs to wait until ccnd is deployed and running
             self.ec.schedule(reschedule_delay, self.deploy)
         else:
-            command = self._start_command
-            env = self._environment
+            try:
+                if not self.get("command"):
+                    self.set("command", self._start_command)
 
-            self.set("command", command)
-            self.set("env", env)
+                if not self.get("env"):
+                    self.set("env", self._environment)
 
-            self.info("Deploying command '%s' " % command)
+                command = self.get("command")
 
-            self.node.mkdir(self.run_home)
+                self.info("Deploying command '%s' " % command)
 
-            # upload sources
-            self.upload_sources()
+                self.discover()
+                self.provision()
+            except:
+                self.fail()
+                raise
+ 
+            self.debug("----- READY ---- ")
+            self._ready_time = tnow()
+            self._state = ResourceState.READY
 
+    def upload_start_command(self):
+        command = self.get("command")
+        env = self.get("env")
+
+        if command:
             # We want to make sure the repository is running
             # before the experiment starts.
             # Run the command as a bash script in background,
@@ -229,10 +242,6 @@ class LinuxCCNR(LinuxApplication):
                     env = env,
                     raise_on_error = True)
  
-            self.debug("----- READY ---- ")
-            self._ready_time = tnow()
-            self._state = ResourceState.READY
-
     def start(self):
         if self._state == ResourceState.READY:
             command = self.get("command")

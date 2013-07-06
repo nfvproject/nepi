@@ -60,7 +60,7 @@ class LinuxCCNApplication(LinuxApplication):
                 self.discover()
                 self.provision()
             except:
-                self._state = ResourceState.FAILED
+                self.fail()
                 raise
  
             self.debug("----- READY ---- ")
