@@ -754,18 +754,19 @@ class LinuxNode(ResourceManager):
         # wait until command finishes to execute
         self.wait_run(pid, ppid)
       
-        (out, err), proc = self.check_errors(home,
+        (eout, err), proc = self.check_errors(home,
             ecodefile = ecodefile,
-            stdout = stdout,
-            stderr= stderr)
+            stderr = stderr)
 
         # Out is what was written in the stderr file
         if err:
             msg = " Failed to run command '%s' " % command
-            self.error(msg, out, err)
+            self.error(msg, eout, err)
 
             if raise_on_error:
                 raise RuntimeError, msg
+
+        (out, oerr), proc = self.check_output(home, stdout)
         
         return (out, err), proc
 
@@ -833,7 +834,6 @@ class LinuxNode(ResourceManager):
 
     def check_errors(self, home, 
             ecodefile = "exitcode", 
-            stdout = "stdout",
             stderr = "stderr"):
         """
         Checks whether errors occurred while running a command.
@@ -843,8 +843,6 @@ class LinuxNode(ResourceManager):
         """
         proc = None
         err = ""
-        # retrive standard output from the file
-        (out, oerr), oproc = self.check_output(home, stdout)
 
         # get exit code saved in the 'exitcode' file
         ecode = self.exitcode(home, ecodefile)
@@ -862,7 +860,7 @@ class LinuxNode(ResourceManager):
             if ecode == ExitCode.FILENOTFOUND and proc.poll() == 1: 
                 err = "" 
             
-        return (out, err), proc
+        return ("", err), proc
  
     def wait_pid(self, home, pidfile = "pidfile", raise_on_error = False):
         """ Waits until the pid file for the command is generated, 
