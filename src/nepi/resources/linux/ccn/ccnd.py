@@ -143,59 +143,53 @@ class LinuxCCND(LinuxApplication):
             # ccnd needs to wait until node is deployed and running
             self.ec.schedule(reschedule_delay, self.deploy)
         else:
-            if not self.get("command"):
-                self.set("command", self._start_command)
-            
-            if not self.get("depends"):
-                self.set("depends", self._dependencies)
+            try:
+                if not self.get("command"):
+                    self.set("command", self._start_command)
+                
+                if not self.get("depends"):
+                    self.set("depends", self._dependencies)
 
-            if not self.get("sources"):
-                self.set("sources", self._sources)
+                if not self.get("sources"):
+                    self.set("sources", self._sources)
 
-            sources = self.get("sources")
-            source = sources.split(" ")[0]
-            basename = os.path.basename(source)
-            self._version = ( basename.strip().replace(".tar.gz", "")
-                    .replace(".tar","")
-                    .replace(".gz","")
-                    .replace(".zip","") )
+                sources = self.get("sources")
+                source = sources.split(" ")[0]
+                basename = os.path.basename(source)
+                self._version = ( basename.strip().replace(".tar.gz", "")
+                        .replace(".tar","")
+                        .replace(".gz","")
+                        .replace(".zip","") )
 
-            if not self.get("build"):
-                self.set("build", self._build)
+                if not self.get("build"):
+                    self.set("build", self._build)
 
-            if not self.get("install"):
-                self.set("install", self._install)
+                if not self.get("install"):
+                    self.set("install", self._install)
 
-            if not self.get("env"):
-                self.set("env", self._environment)
+                if not self.get("env"):
+                    self.set("env", self._environment)
 
-            command = self.get("command")
-            env = self.get("env")
+                command = self.get("command")
 
-            self.info("Deploying command '%s' " % command)
+                self.info("Deploying command '%s' " % command)
 
-            # create home dir for application
-            self.node.mkdir(self.run_home)
+                self.discover()
+                self.provision()
+            except:
+                self.fail()
+                raise
+ 
+            self.debug("----- READY ---- ")
+            self._ready_time = tnow()
+            self._state = ResourceState.READY
 
-            # upload sources
-            self.upload_sources()
+    def upload_start_command(self):
+        command = self.get("command")
+        env = self.get("env")
 
-            # upload code
-            self.upload_code()
-
-            # upload stdin
-            self.upload_stdin()
-
-            # install dependencies
-            self.install_dependencies()
-
-            # build
-            self.build()
-
-            # Install
-            self.install()
-
-            # We want to make sure the repository is running
+        if command:
+            # We want to make sure the ccnd is running
             # before the experiment starts.
             # Run the command as a bash script in background,
             # in the host ( but wait until the command has
@@ -210,10 +204,6 @@ class LinuxCCND(LinuxApplication):
                     env = env,
                     raise_on_error = True)
     
-            self.debug("----- READY ---- ")
-            self._ready_time = tnow()
-            self._state = ResourceState.READY
-
     def start(self):
         if self._state == ResourceState.READY:
             command = self.get("command")

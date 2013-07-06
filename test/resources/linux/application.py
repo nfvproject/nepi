@@ -49,7 +49,7 @@ class LinuxApplicationTestCase(unittest.TestCase):
         ResourceFactory.register_type(LinuxNode)
         ResourceFactory.register_type(LinuxApplication)
 
-        ec = ExperimentController()
+        ec = ExperimentController(exp_id = "test-stdout")
         
         node = ec.register_resource("LinuxNode")
         ec.set(node, "hostname", host)
@@ -81,7 +81,7 @@ class LinuxApplicationTestCase(unittest.TestCase):
         ResourceFactory.register_type(LinuxNode)
         ResourceFactory.register_type(LinuxApplication)
 
-        ec = ExperimentController()
+        ec = ExperimentController(exp_id = "test-ping")
         
         node = ec.register_resource("LinuxNode")
         ec.set(node, "hostname", host)
@@ -123,7 +123,7 @@ class LinuxApplicationTestCase(unittest.TestCase):
         ResourceFactory.register_type(LinuxNode)
         ResourceFactory.register_type(LinuxApplication)
 
-        ec = ExperimentController()
+        ec = ExperimentController(exp_id = "tests-code")
         
         node = ec.register_resource("LinuxNode")
         ec.set(node, "hostname", host)
@@ -166,7 +166,7 @@ main (void)
         ResourceFactory.register_type(LinuxNode)
         ResourceFactory.register_type(LinuxApplication)
 
-        ec = ExperimentController()
+        ec = ExperimentController(exp_id="test-concurrency")
         
         node = ec.register_resource("LinuxNode")
         ec.set(node, "hostname", host)
@@ -214,7 +214,7 @@ main (void)
         ResourceFactory.register_type(LinuxNode)
         ResourceFactory.register_type(LinuxApplication)
 
-        ec = ExperimentController()
+        ec = ExperimentController(exp_id="test-condition")
         
         node = ec.register_resource("LinuxNode")
         ec.set(node, "hostname", host)
@@ -257,7 +257,7 @@ main (void)
         ResourceFactory.register_type(LinuxNode)
         ResourceFactory.register_type(LinuxApplication)
 
-        ec = ExperimentController()
+        ec = ExperimentController(exp_id="test-http-sources")
         
         node = ec.register_resource("LinuxNode")
         ec.set(node, "hostname", host)
@@ -280,10 +280,10 @@ main (void)
         self.assertTrue(ec.state(node) == ResourceState.STARTED)
         self.assertTrue(ec.state(app) == ResourceState.FINISHED)
 
-        exitcode = ec.trace(app, "http_sources_exitcode")
+        exitcode = ec.trace(app, "deploy_exitcode")
         self.assertTrue(exitcode.strip() == "0")
         
-        out = ec.trace(app, "http_sources_stdout")
+        out = ec.trace(app, "deploy_stdout")
         self.assertTrue(out.find("tip.tar.gz") > -1)
         self.assertTrue(out.find("connect.png") > -1)
 
@@ -296,7 +296,7 @@ main (void)
         ResourceFactory.register_type(LinuxNode)
         ResourceFactory.register_type(LinuxApplication)
 
-        ec = ExperimentController()
+        ec = ExperimentController(exp_id="test-xterm")
         
         node = ec.register_resource("LinuxNode")
         ec.set(node, "hostname", host)

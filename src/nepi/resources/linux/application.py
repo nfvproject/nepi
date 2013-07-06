@@ -271,7 +271,8 @@ class LinuxApplication(ResourceManager):
     def provision(self):
         # create run dir for application
         self.node.mkdir(self.run_home)
-    
+   
+        # List of all the provision methods to invoke
         steps = [
             # upload sources
             self.upload_sources,
@@ -292,14 +293,23 @@ class LinuxApplication(ResourceManager):
             # Install
             self.install]
 
+        command = []
+
         # Since provisioning takes a long time, before
         # each step we check that the EC is still 
         for step in steps:
             if self.ec.finished:
                 raise RuntimeError, "EC finished"
+            
+            ret = step()
+            if ret:
+                command.append(ret)
 
-            step()
+        # upload deploy script
+        deploy_command = ";".join(command)
+        self.execute_deploy_command(deploy_command)
 
+        # upload start script
         self.upload_start_command()
        
         self.info("Provisioning finished")
@@ -327,8 +337,24 @@ class LinuxApplication(ResourceManager):
                     shfile = shfile,
                     env = env)
 
+    def execute_deploy_command(self, command):
+        if command:
+            # Upload the command to a bash script and run it
+            # in background ( but wait until the command has
+            # finished to continue )
+            shfile = os.path.join(self.app_home, "deploy.sh")
+            self.node.run_and_wait(command, self.run_home,
+                    shfile = shfile, 
+                    overwrite = False,
+                    pidfile = "deploy_pidfile", 
+                    ecodefile = "deploy_exitcode", 
+                    stdout = "deploy_stdout", 
+                    stderr = "deploy_stderr")
+
     def upload_sources(self):
         sources = self.get("sources")
+   
+        command = ""
 
         if sources:
             self.info("Uploading sources ")
@@ -357,26 +383,16 @@ class LinuxApplication(ResourceManager):
                                 "source": source
                                 })
 
-            if command:
-                command = " && ".join(command)
+            command = " && ".join(command)
 
-                # replace application specific paths in the command
-                command = self.replace_paths(command)
-                
-                # Upload the command to a bash script and run it
-                # in background ( but wait until the command has
-                # finished to continue )
-                self.node.run_and_wait(command, self.run_home,
-                        shfile = os.path.join(self.app_home, "http_sources.sh"),
-                        overwrite = False,
-                        pidfile = "http_sources_pidfile", 
-                        ecodefile = "http_sources_exitcode", 
-                        stdout = "http_sources_stdout", 
-                        stderr = "http_sources_stderr")
-
+            # replace application specific paths in the command
+            command = self.replace_paths(command)
+       
             if sources:
                 sources = ' '.join(sources)
                 self.node.upload(sources, self.node.src_dir, overwrite = False)
+
+        return command
 
     def upload_files(self):
         files = self.get("files")
@@ -430,19 +446,8 @@ class LinuxApplication(ResourceManager):
             self.info("Building sources ")
             
             # replace application specific paths in the command
-            command = self.replace_paths(build)
+            return self.replace_paths(build)
 
-            # Upload the command to a bash script and run it
-            # in background ( but wait until the command has
-            # finished to continue )
-            self.node.run_and_wait(command, self.run_home,
-                    shfile = os.path.join(self.app_home, "build.sh"),
-                    overwrite = False,
-                    pidfile = "build_pidfile", 
-                    ecodefile = "build_exitcode", 
-                    stdout = "build_stdout", 
-                    stderr = "build_stderr")
- 
     def install(self):
         install = self.get("install")
 
@@ -450,18 +455,7 @@ class LinuxApplication(ResourceManager):
             self.info("Installing sources ")
 
             # replace application specific paths in the command
-            command = self.replace_paths(install)
-
-            # Upload the command to a bash script and run it
-            # in background ( but wait until the command has
-            # finished to continue )
-            self.node.run_and_wait(command, self.run_home,
-                    shfile = os.path.join(self.app_home, "install.sh"),
-                    overwrite = False,
-                    pidfile = "install_pidfile", 
-                    ecodefile = "install_exitcode", 
-                    stdout = "install_stdout", 
-                    stderr = "install_stderr")
+            return self.replace_paths(install)
 
     def deploy(self):
         # Wait until node is associated and deployed
@@ -476,7 +470,7 @@ class LinuxApplication(ResourceManager):
                 self.discover()
                 self.provision()
             except:
-                self._state = ResourceState.FAILED
+                self.fail()
                 raise
 
             super(LinuxApplication, self).deploy()
@@ -528,7 +522,7 @@ class LinuxApplication(ResourceManager):
                 blocking = False)
 
         if self._proc.poll():
-            self._state = ResourceState.FAILED
+            self.fail()
             self.error(msg, out, err)
             raise RuntimeError, msg
 
@@ -558,7 +552,7 @@ class LinuxApplication(ResourceManager):
         msg = " Failed to start command '%s' " % command
         
         if proc.poll():
-            self._state = ResourceState.FAILED
+            self.fail()
             self.error(msg, out, err)
             raise RuntimeError, msg
     
@@ -575,7 +569,7 @@ class LinuxApplication(ResourceManager):
 
             # Out is what was written in the stderr file
             if err:
-                self._state = ResourceState.FAILED
+                self.fail()
                 msg = " Failed to start command '%s' " % command
                 self.error(msg, out, err)
                 raise RuntimeError, msg
@@ -607,7 +601,7 @@ class LinuxApplication(ResourceManager):
                         # check if execution errors occurred
                         msg = " Failed to STOP command '%s' " % self.get("command")
                         self.error(msg, out, err)
-                        self._state = ResourceState.FAILED
+                        self.fail()
                         stopped = False
 
             if stopped:
@@ -643,7 +637,7 @@ class LinuxApplication(ResourceManager):
                     msg = " Failed to execute command '%s'" % self.get("command")
                     err = self._proc.stderr.read()
                     self.error(msg, out, err)
-                    self._state = ResourceState.FAILED
+                    self.fail()
                 elif retcode == 0:
                     self._state = ResourceState.FINISHED
 
@@ -660,7 +654,7 @@ class LinuxApplication(ResourceManager):
                     if err:
                         msg = " Failed to execute command '%s'" % self.get("command")
                         self.error(msg, out, err)
-                        self._state = ResourceState.FAILED
+                        self.fail()
 
                     elif self.pid and self.ppid:
                         # No execution errors occurred. Make sure the background

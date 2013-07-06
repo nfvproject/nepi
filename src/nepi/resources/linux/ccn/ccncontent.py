@@ -63,7 +63,6 @@ class LinuxCCNContent(LinuxApplication):
         if self.ccnr: return self.ccnr.node
         return None
 
-
     def deploy(self):
         if not self.ccnr or self.ccnr.state < ResourceState.READY:
             self.debug("---- RESCHEDULING DEPLOY ---- node state %s " % self.node.state )
@@ -71,40 +70,51 @@ class LinuxCCNContent(LinuxApplication):
             # ccnr needs to wait until ccnd is deployed and running
             self.ec.schedule(reschedule_delay, self.deploy)
         else:
-            command = self._start_command
-            env = self._environment
+            try:
+                if not self.get("command"):
+                    self.set("command", self._start_command)
 
-            self.set("command", command)
-            self.set("env", env)
+                if not self.get("env"):
+                    self.set("env", self._environment)
 
-            # set content to stdin, so the content will be
-            # uploaded during provision
-            self.set("stdin", self.get("content"))
+                # set content to stdin, so the content will be
+                # uploaded during provision
+                self.set("stdin", self.get("content"))
 
-            self.info("Deploying command '%s' " % command)
+                command = self.get("command")
 
-            # create run dir for application
-            self.node.mkdir(self.run_home)
+                self.info("Deploying command '%s' " % command)
 
-            # upload content 
-            self.upload_stdin()
+                self.discover()
+                self.provision()
+            except:
+                self.fail()
+                raise
+ 
+            self.debug("----- READY ---- ")
+            self._ready_time = tnow()
+            self._state = ResourceState.READY
 
+    def upload_start_command(self):
+        command = self.get("command")
+        env = self.get("env")
+
+        if command:
             # We want to make sure the content is published
             # before the experiment starts.
             # Run the command as a bash script in the background, 
             # in the host ( but wait until the command has
             # finished to continue )
+            env = self.replace_paths(env)
+            command = self.replace_paths(command)
+
             (out, err), proc = self.execute_command(command, env)
 
             if proc.poll():
-                self._state = ResourceState.FAILED
+                self.fail()
                 msg = "Failed to execute command"
                 self.error(msg, out, err)
                 raise RuntimeError, msg
-
-            self.debug("----- READY ---- ")
-            self._ready_time = tnow()
-            self._state = ResourceState.READY
 
     def start(self):
         if self._state == ResourceState.READY:

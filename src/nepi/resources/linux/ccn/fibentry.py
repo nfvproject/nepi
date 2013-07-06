@@ -85,17 +85,40 @@ class LinuxFIBEntry(LinuxApplication):
             # ccnr needs to wait until ccnd is deployed and running
             self.ec.schedule(reschedule_delay, self.deploy)
         else:
-            command = self._start_command
-            env = self._environment
+            try:
+                if not self.get("command"):
+                    self.set("command", self._start_command)
 
-            self.set("command", command)
-            self.set("env", env)
+                if not self.get("env"):
+                    self.set("env", self._environment)
 
-            self.info("Deploying command '%s' " % command)
-    
-            # create run dir for application
-            self.node.mkdir(self.run_home)
+                command = self.get("command")
+
+                self.info("Deploying command '%s' " % command)
+
+                self.discover()
+                self.provision()
+            except:
+                self.fail()
+                raise
  
+            self.debug("----- READY ---- ")
+            self._ready_time = tnow()
+            self._state = ResourceState.READY
+
+    def upload_start_command(self):
+        command = self.get("command")
+        env = self.get("env")
+
+        if command:
+            # We want to make sure the FIB entries are created
+            # before the experiment starts.
+            # Run the command as a bash script in the background, 
+            # in the host ( but wait until the command has
+            # finished to continue )
+            env = env and self.replace_paths(env)
+            command = self.replace_paths(command)
+
             (out, err), proc = self.execute_command(command, env)
 
             if proc.poll():
@@ -103,10 +126,6 @@ class LinuxFIBEntry(LinuxApplication):
                 msg = "Failed to execute command"
                 self.error(msg, out, err)
                 raise RuntimeError, msg
-
-            self.debug("----- READY ---- ")
-            self._ready_time = tnow()
-            self._state = ResourceState.READY
 
     def start(self):
         if self._state in [ResourceState.READY, ResourceState.STARTED]:
