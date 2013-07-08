@@ -240,7 +240,7 @@ class LinuxInterface(ResourceManager):
                 self.discover()
                 self.provision()
             except:
-                self._state = ResourceState.FAILED
+                self.fail()
                 raise
 
             super(LinuxInterface, self).deploy()
