@@ -21,10 +21,10 @@ COVERAGE = $(or $(shell which coverage), $(shell which python-coverage), \
 	   coverage)
 
 all:
-	./setup.py build
+	PYTHONPATH="$(PYTHONPATH):$(SRCDIR)" ./setup.py build
 
 install: all
-	./setup.py install
+	PYTHONPATH="$(PYTHONPATH):$(SRCDIR)" ./setup.py install
 
 test: all
 	retval=0; \
