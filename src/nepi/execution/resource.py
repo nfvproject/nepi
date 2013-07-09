@@ -467,7 +467,7 @@ class ResourceManager(Logger):
                     newgrp.difference_update(intsec)
                     conditions[idx] = (newgrp, state, time)
                  
-    def get_connected(self, rtype = None):
+    def get_connected(self, rclass = None):
         """ Returns the list of RM with the type 'rtype'
 
         :param rtype: Type of the RM we look for
@@ -477,7 +477,7 @@ class ResourceManager(Logger):
         connected = []
         for guid in self.connections:
             rm = self.ec.get_resource(guid)
-            if not rtype or rm.rtype() == rtype:
+            if not rclass or isinstance(rm, rclass):
                 connected.append(rm)
         return connected
 

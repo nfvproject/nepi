@@ -171,7 +171,12 @@ class LinuxApplication(ResourceManager):
         self._pid = None
         self._ppid = None
         self._home = "app-%s" % self.guid
+        # whether the command should run in foreground attached
+        # to a terminal
         self._in_foreground = False
+
+        # whether to use sudo to kill the application process
+        self._sudo_kill = False
 
         # keep a reference to the running process handler when 
         # the command is not executed as remote daemon in background
@@ -186,7 +191,7 @@ class LinuxApplication(ResourceManager):
 
     @property
     def node(self):
-        node = self.get_connected(LinuxNode.rtype())
+        node = self.get_connected(LinuxNode)
         if node: return node[0]
         return None
 
@@ -238,7 +243,7 @@ class LinuxApplication(ResourceManager):
         if attr == TraceAttr.ALL:
             (out, err), proc = self.node.check_output(self.run_home, name)
             
-            if err and proc.poll():
+            if proc.poll():
                 msg = " Couldn't read trace %s " % name
                 self.error(msg, out, err)
                 return None
@@ -252,7 +257,7 @@ class LinuxApplication(ResourceManager):
 
         (out, err), proc = self.node.execute(cmd)
 
-        if err and proc.poll():
+        if proc.poll():
             msg = " Couldn't find trace %s " % name
             self.error(msg, out, err)
             return None
@@ -488,13 +493,13 @@ class LinuxApplication(ResourceManager):
         else:
 
             if self.in_foreground:
-                self._start_in_foreground()
+                self._run_in_foreground()
             else:
-                self._start_in_background()
+                self._run_in_background()
 
             super(LinuxApplication, self).start()
 
-    def _start_in_foreground(self):
+    def _run_in_foreground(self):
         command = self.get("command")
         sudo = self.get("sudo") or False
         x11 = self.get("forwardX11")
@@ -506,17 +511,12 @@ class LinuxApplication(ResourceManager):
         # Command will be launched in foreground and attached to the
         # terminal using the node 'execute' in non blocking mode.
 
-        # Export environment
-        env = self.get("env")
-        environ = self.node.format_environment(env, inline = True)
-        command = environ + command
-        command = self.replace_paths(command)
-
         # We save the reference to the process in self._proc 
         # to be able to kill the process from the stop method.
         # We also set blocking = False, since we don't want the
         # thread to block until the execution finishes.
-        (out, err), self._proc = self.node.execute(command,
+        (out, err), self._proc = self.execute_command(self, command, 
+                env = env,
                 sudo = sudo,
                 stdin = stdin,
                 forward_x11 = x11,
@@ -527,7 +527,7 @@ class LinuxApplication(ResourceManager):
             self.error(msg, out, err)
             raise RuntimeError, msg
 
-    def _start_in_background(self):
+    def _run_in_background(self):
         command = self.get("command")
         env = self.get("env")
         sudo = self.get("sudo") or False
@@ -581,6 +581,7 @@ class LinuxApplication(ResourceManager):
         command = self.get('command') or ''
 
         if self.state == ResourceState.STARTED:
+        
             stopped = True
 
             self.info("Stopping command '%s'" % command)
@@ -596,7 +597,8 @@ class LinuxApplication(ResourceManager):
                 # Only try to kill the process if the pid and ppid
                 # were retrieved
                 if self.pid and self.ppid:
-                    (out, err), proc = self.node.kill(self.pid, self.ppid)
+                    (out, err), proc = self.node.kill(self.pid, self.ppid, sudo = 
+                            self._sudo_kill)
 
                     if out or err:
                         # check if execution errors occurred
@@ -668,6 +670,25 @@ class LinuxApplication(ResourceManager):
                     self._last_state_check = tnow()
 
         return self._state
+
+    def execute_command(self, command, 
+            env = None,
+            sudo = False,
+            stdin = None,
+            forward_x11 = False,
+            blocking = False):
+
+        environ = ""
+        if env:
+            environ = self.node.format_environment(env, inline = True)
+        command = environ + command
+        command = self.replace_paths(command)
+
+        return self.node.execute(command,
+                sudo = sudo,
+                stdin = stdin,
+                forward_x11 = forward_x11,
+                blocking = blocking)
 
     def replace_paths(self, command):
         """

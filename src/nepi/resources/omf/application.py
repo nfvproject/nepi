@@ -21,6 +21,7 @@
 from nepi.execution.resource import ResourceManager, clsinit, ResourceState, \
         reschedule_delay
 from nepi.execution.attribute import Attribute, Flags 
+from nepi.resources.omf.node import OMFNode
 from nepi.resources.omf.omf_api import OMFAPIFactory
 
 
@@ -134,7 +135,7 @@ class OMFApplication(ResourceManager):
                 self.get('appid') + " : " + self.get('path') + " : " + \
                 self.get('args') + " : " + self.get('env')
             self.info(msg)
-            rm_list = self.get_connected("OMFNode")
+            rm_list = self.get_connected(OMFNode)
             try:
                 for rm_node in rm_list:
                     if rm_node.get('hostname') :

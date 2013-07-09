@@ -30,13 +30,8 @@ class PlanetlabNode(LinuxNode):
 
     @classmethod
     def _register_attributes(cls):
-        cls._remove_attribute("username")
-
         ip = Attribute("ip", "PlanetLab host public IP address",
                 flags = Flags.ReadOnly)
-
-        slicename = Attribute("slice", "PlanetLab slice name",
-                flags = Flags.Credential)
 
         pl_url = Attribute("plcApiUrl", "URL of PlanetLab PLCAPI host (e.g. www.planet-lab.eu or www.planet-lab.org) ",
                 default = "www.planet-lab.eu",
@@ -142,7 +137,6 @@ class PlanetlabNode(LinuxNode):
                  flags = Flags.Filter)
 
         cls._register_attribute(ip)
-        cls._register_attribute(slicename)
         cls._register_attribute(pl_url)
         cls._register_attribute(pl_ptn)
         cls._register_attribute(city)
@@ -161,14 +155,14 @@ class PlanetlabNode(LinuxNode):
         cls._register_attribute(timeframe)
 
     def __init__(self, ec, guid):
-        super(PLanetlabNode, self).__init__(ec, guid)
+        super(PlanetlabNode, self).__init__(ec, guid)
 
         self._plapi = None
     
     @property
     def plapi(self):
         if not self._plapi:
-            slicename = self.get("slice")
+            slicename = self.get("username")
             pl_pass = self.get("password")
             pl_url = self.get("plcApiUrl")
             pl_ptn = self.get("plcApiPattern")
@@ -178,83 +172,10 @@ class PlanetlabNode(LinuxNode):
             
         return self._plapi
 
-    @property
-    def os(self):
-        if self._os:
-            return self._os
-
-        if (not self.get("hostname") or not self.get("username")):
-            msg = "Can't resolve OS, insufficient data "
-            self.error(msg)
-            raise RuntimeError, msg
-
-        (out, err), proc = self.execute("cat /etc/issue", with_lock = True)
-
-        if err and proc.poll():
-            msg = "Error detecting OS "
-            self.error(msg, out, err)
-            raise RuntimeError, "%s - %s - %s" %( msg, out, err )
-
-        if out.find("Fedora release 12") == 0:
-            self._os = "f12"
-        elif out.find("Fedora release 14") == 0:
-            self._os = "f14"
-        else:
-            msg = "Unsupported OS"
-            self.error(msg, out)
-            raise RuntimeError, "%s - %s " %( msg, out )
-
-        return self._os
-
-    def provision(self):
-        if not self.is_alive():
-            self._state = ResourceState.FAILED
-            msg = "Deploy failed. Unresponsive node %s" % self.get("hostname")
-            self.error(msg)
-            raise RuntimeError, msg
-
-        if self.get("cleanProcesses"):
-            self.clean_processes()
-
-        if self.get("cleanHome"):
-            self.clean_home()
-       
-        self.mkdir(self.node_home)
-
-        super(PlanetlabNode, self).provision()
-
-    def deploy(self):
-        if self.state == ResourceState.NEW:
-            try:
-               self.discover()
-               if self.state == ResourceState.DISCOVERED:
-                   self.provision()
-            except:
-                self._state = ResourceState.FAILED
-                raise
-
-        if self.state != ResourceState.PROVISIONED:
-           self.ec.schedule(reschedule_delay, self.deploy)
-
-        super(PlanetlabNode, self).deploy()
-
     def valid_connection(self, guid):
         # TODO: Validate!
         return True
 
-    def clean_processes(self, killer = False):
-        self.info("Cleaning up processes")
-    
-        # Hardcore kill
-        cmd = ("sudo -S killall python tcpdump || /bin/true ; " +
-            "sudo -S killall python tcpdump || /bin/true ; " +
-            "sudo -S kill $(ps -N -T -o pid --no-heading | grep -v $PPID | sort) || /bin/true ; " +
-            "sudo -S killall -u root || /bin/true ; " +
-            "sudo -S killall -u root || /bin/true ; ")
-
-        out = err = ""
-        (out, err), proc = self.execute(cmd, retry = 1, with_lock = True) 
-            
     def blacklist(self):
         # TODO!!!!
         self.warn(" Blacklisting malfunctioning node ")
