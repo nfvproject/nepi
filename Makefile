@@ -1,5 +1,6 @@
 SRCDIR      = $(CURDIR)/src
 TESTDIR     = $(CURDIR)/test
+TESTLIB  = $(TESTDIR)/lib
 BUILDDIR    = $(CURDIR)/build
 DISTDIR     = $(CURDIR)/dist
 
@@ -16,7 +17,7 @@ else
 BUILDDIR := $(BUILDDIR)/lib
 endif
 
-PYPATH = $(BUILDDIR):$(PYTHONPATH)
+PYPATH = $(BUILDDIR):$(TESTLIB):$(PYTHONPATH)
 COVERAGE = $(or $(shell which coverage), $(shell which python-coverage), \
 	   coverage)
 
@@ -29,9 +30,13 @@ install: all
 test: all
 	retval=0; \
 	       for i in `find "$(TESTDIR)" -iname '*.py' -perm -u+x -type f`; do \
-	       echo $$i; \
+	       @echo $$i; \
 	       PYTHONPATH="$(PYPATH)" $$i -v || retval=$$?; \
 	       done; exit $$retval
+
+test-one: all
+	@echo $(file) $(case)
+	PYTHONPATH="$(PYPATH)" python $(file) $(case)
 
 coverage: all
 	rm -f .coverage

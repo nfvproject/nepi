@@ -66,8 +66,8 @@ class Interface(ResourceManager):
         super(Interface, self).__init__(ec, guid)
 
     def deploy(self):
-        node = self.get_connected(Node.rtype())[0]
-        chan = self.get_connected(Channel.rtype())[0]
+        node = self.get_connected(Node)[0]
+        chan = self.get_connected(Channel)[0]
 
         if node.state < ResourceState.PROVISIONED:
             self.ec.schedule("0.5s", self.deploy)
@@ -91,7 +91,7 @@ class Node(ResourceManager):
             self.logger.debug(" -------- PROVISIONED ------- ")
             self.ec.schedule("3s", self.deploy)
         elif self.state == ResourceState.PROVISIONED:
-            ifaces = self.get_connected(Interface.rtype())
+            ifaces = self.get_connected(Interface)
             for rm in ifaces:
                 if rm.state < ResourceState.READY:
                     self.ec.schedule("0.5s", self.deploy)
@@ -107,7 +107,7 @@ class Application(ResourceManager):
         super(Application, self).__init__(ec, guid)
 
     def deploy(self):
-        node = self.get_connected(Node.rtype())[0]
+        node = self.get_connected(Node)[0]
         if node.state < ResourceState.READY:
             self.ec.schedule("0.5s", self.deploy)
         else:

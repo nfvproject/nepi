@@ -336,7 +336,7 @@ class LinuxNode(ResourceManager):
         # Node needs to wait until all associated interfaces are 
         # ready before it can finalize deployment
         from nepi.resources.linux.interface import LinuxInterface
-        ifaces = self.get_connected(LinuxInterface.rtype())
+        ifaces = self.get_connected(LinuxInterface)
         for iface in ifaces:
             if iface.state < ResourceState.READY:
                 self.ec.schedule(reschedule_delay, self.deploy)
@@ -819,8 +819,8 @@ class LinuxNode(ResourceManager):
         return self.upload(command, shfile, text = True, overwrite = overwrite)
 
     def format_environment(self, env, inline = False):
-        """Format environmental variables for command to be executed either
-        as an inline command
+        """ Formats the environment variables for a command to be executed
+        either as an inline command
         (i.e. export PYTHONPATH=src/..; export LALAL= ..;python script.py) or 
         as a bash script (i.e. export PYTHONPATH=src/.. \n export LALA=.. \n)
         """
@@ -835,8 +835,7 @@ class LinuxNode(ResourceManager):
     def check_errors(self, home, 
             ecodefile = "exitcode", 
             stderr = "stderr"):
-        """
-        Checks whether errors occurred while running a command.
+        """ Checks whether errors occurred while running a command.
         It first checks the exit code for the command, and only if the
         exit code is an error one it returns the error output.
 

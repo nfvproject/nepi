@@ -22,6 +22,7 @@ from nepi.execution.resource import ResourceManager, clsinit, ResourceState, \
         reschedule_delay
 from nepi.execution.attribute import Attribute, Flags 
 
+from nepi.resources.omf.node import OMFNode
 from nepi.resources.omf.omf_api import OMFAPIFactory
 
 
@@ -117,7 +118,7 @@ class OMFWifiInterface(ResourceManager):
             self.debug(" " + self.rtype() + " ( Guid : " + str(self._guid) +") : " + \
                 self.get('mode') + " : " + self.get('type') + " : " + \
                 self.get('essid') + " : " + self.get('ip'))
-            rm_list = self.get_connected("OMFNode") 
+            rm_list = self.get_connected(OMFNode) 
             for rm_node in rm_list:
                 if rm_node.state < ResourceState.READY:
                     self.ec.schedule(reschedule_delay, self.deploy)

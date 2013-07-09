@@ -49,7 +49,7 @@ class LinuxCCNContent(LinuxApplication):
         
     @property
     def ccnr(self):
-        ccnr = self.get_connected(LinuxCCNR.rtype())
+        ccnr = self.get_connected(LinuxCCNR)
         if ccnr: return ccnr[0]
         return None
 
@@ -142,13 +142,6 @@ class LinuxCCNContent(LinuxApplication):
     def _environment(self):
         return self.ccnd.path
        
-    def execute_command(self, command, env):
-        environ = self.node.format_environment(env, inline = True)
-        command = environ + command
-        command = self.replace_paths(command)
-
-        return self.node.execute(command)
-
     def valid_connection(self, guid):
         # TODO: Validate!
         return True

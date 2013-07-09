@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 #
 #    NEPI, a framework to manage network experiments
 #    Copyright (C) 2013 INRIA
@@ -18,31 +17,19 @@
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
+from nepi.execution.resource import clsinit_copy
+from nepi.resources.planetlab.tap import PlanetlabTap
 
-from nepi.resources.planetlab.plcapi import PLCAPIFactory
+@clsinit_copy
+class PlanetlabTun(PlanetlabTap):
+    _rtype = "PlanetlabTun"
 
-import os
-import unittest
+    def __init__(self, ec, guid):
+        super(PlanetlabTun, self).__init__(ec, guid)
+        self._home = "tun-%s" % self.guid
 
-class PlanetlabAPITestCase(unittest.TestCase):
-    def setUp(self):
-        self.slicename = 'inria_nepi'
-        self.host1 = 'nepi2.pl.sophia.inria.fr'
-        self.host2 = 'nepi5.pl.sophia.inria.fr'
+    @property
+    def _vif_type(self):
+        return "IFF_TUN"
 
-    def test_list_hosts(self):
-        slicename = os.environ.get('PL_USER')
-        pl_pass = os.environ.get('PL_PASS')
-        pl_url = "nepiplc.pl.sophia.inria.fr"
-
-        plapi =  PLCAPIFactory.get_api(slicename, pl_pass, pl_url)
-
-        plapi.test()
-
-        nodes = plapi.get_nodes()
-        self.assertTrue(len(nodes)>0)
-
-
-if __name__ == '__main__':
-    unittest.main()
 
