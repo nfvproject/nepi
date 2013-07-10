@@ -64,13 +64,19 @@ class LinuxFIBEntry(LinuxApplication):
         cls._register_attribute(host)
         cls._register_attribute(port)
 
+    @classmethod
+    def _register_traces(cls):
+        ping = Trace("ping", "Continuous ping to the peer end")
+
+        cls._register_trace(ping)
+
     def __init__(self, ec, guid):
         super(LinuxFIBEntry, self).__init__(ec, guid)
         self._home = "fib-%s" % self.guid
 
     @property
     def ccnd(self):
-        ccnd = self.get_connected(LinuxCCND)
+        ccnd = self.get_connected(LinuxCCND.rtype())
         if ccnd: return ccnd[0]
         return None
 
@@ -98,6 +104,7 @@ class LinuxFIBEntry(LinuxApplication):
 
                 self.discover()
                 self.provision()
+                self.configure()
             except:
                 self.fail()
                 raise
@@ -127,6 +134,32 @@ class LinuxFIBEntry(LinuxApplication):
                 self.error(msg, out, err)
                 raise RuntimeError, msg
 
+    def configure(self):
+        if not self.trace_enabled("ping"):
+            return
+
+        command = """ping %s""" % self.get("host")
+        (out, err), proc = self.node.run(command, self.run_home, 
+            stdout = "ping",
+            stderr = "ping_stderr",
+            pidfile = "ping_pidfile")
+
+        # Wait for pid file to be generated
+        pid, ppid = self.node.wait_pid(self.run_home, "ping_pidfile")
+
+        # If the process is not running, check for error information
+        # on the remote machine
+        if not pid or not ppid:
+            (out, err), proc = self.node.check_errors(self.run_home,
+                    stderr = "ping_pidfile") 
+
+            # Out is what was written in the stderr file
+            if err:
+                self.fail()
+                msg = " Failed to deploy ping trace command '%s' " % command
+                self.error(msg, out, err)
+                raise RuntimeError, msg
+ 
     def start(self):
         if self._state in [ResourceState.READY, ResourceState.STARTED]:
             command = self.get("command")
@@ -152,6 +185,11 @@ class LinuxFIBEntry(LinuxApplication):
 
             if proc.poll():
                 pass
+
+            # now stop the ping trace
+            if self.trace_enabled("ping"):
+               pid, ppid = self.node.wait_pid(self.run_home, "ping_pidfile")
+               (out, err), proc = self.node.kill(pid, ppid)
 
             self._stop_time = tnow()
             self._state = ResourceState.STOPPED

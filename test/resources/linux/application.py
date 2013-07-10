@@ -18,12 +18,9 @@
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
-
 from nepi.execution.ec import ExperimentController 
 from nepi.execution.resource import ResourceState, ResourceAction
 from nepi.execution.trace import TraceAttr
-from nepi.resources.linux.node import LinuxNode
-from nepi.resources.linux.application import LinuxApplication
 
 from test_utils import skipIfNotAlive, skipInteractive
 
@@ -44,10 +41,6 @@ class LinuxApplicationTestCase(unittest.TestCase):
 
     @skipIfNotAlive
     def t_stdout(self, host, user):
-        from nepi.execution.resource import ResourceFactory
-        
-        ResourceFactory.register_type(LinuxNode)
-        ResourceFactory.register_type(LinuxApplication)
 
         ec = ExperimentController(exp_id = "test-stdout")
         
@@ -76,10 +69,6 @@ class LinuxApplicationTestCase(unittest.TestCase):
 
     @skipIfNotAlive
     def t_ping(self, host, user):
-        from nepi.execution.resource import ResourceFactory
-        
-        ResourceFactory.register_type(LinuxNode)
-        ResourceFactory.register_type(LinuxApplication)
 
         ec = ExperimentController(exp_id = "test-ping")
         
@@ -118,10 +107,6 @@ class LinuxApplicationTestCase(unittest.TestCase):
 
     @skipIfNotAlive
     def t_code(self, host, user):
-        from nepi.execution.resource import ResourceFactory
-        
-        ResourceFactory.register_type(LinuxNode)
-        ResourceFactory.register_type(LinuxApplication)
 
         ec = ExperimentController(exp_id = "tests-code")
         
@@ -161,10 +146,6 @@ main (void)
 
     @skipIfNotAlive
     def t_concurrency(self, host, user):
-        from nepi.execution.resource import ResourceFactory
-        
-        ResourceFactory.register_type(LinuxNode)
-        ResourceFactory.register_type(LinuxApplication)
 
         ec = ExperimentController(exp_id="test-concurrency")
         
@@ -209,10 +190,6 @@ main (void)
 
     @skipIfNotAlive
     def t_condition(self, host, user, depends):
-        from nepi.execution.resource import ResourceFactory
-        
-        ResourceFactory.register_type(LinuxNode)
-        ResourceFactory.register_type(LinuxApplication)
 
         ec = ExperimentController(exp_id="test-condition")
         
@@ -252,10 +229,6 @@ main (void)
 
     @skipIfNotAlive
     def t_http_sources(self, host, user):
-        from nepi.execution.resource import ResourceFactory
-        
-        ResourceFactory.register_type(LinuxNode)
-        ResourceFactory.register_type(LinuxApplication)
 
         ec = ExperimentController(exp_id="test-http-sources")
         
@@ -291,10 +264,6 @@ main (void)
 
     @skipIfNotAlive
     def t_xterm(self, host, user):
-        from nepi.execution.resource import ResourceFactory
-        
-        ResourceFactory.register_type(LinuxNode)
-        ResourceFactory.register_type(LinuxApplication)
 
         ec = ExperimentController(exp_id="test-xterm")
         
@@ -359,7 +328,6 @@ main (void)
     def test_xterm_ubuntu(self):
         """ Interactive test. Should not run automatically """
         self.t_xterm(self.ubuntu_host, self.ubuntu_user)
-
 
 
 if __name__ == '__main__':

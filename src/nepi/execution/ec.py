@@ -352,14 +352,23 @@ class ExperimentController(object):
             rm = self.get_resource(guid1)
             rm.register_condition(action, group2, state, time)
 
-    def register_trace(self, guid, name):
+    def enable_trace(self, guid, name):
         """ Enable trace
 
         :param name: Name of the trace
         :type name: str
         """
         rm = self.get_resource(guid)
-        rm.register_trace(name)
+        rm.enable_trace(name)
+
+    def trace_enabled(self, guid, name):
+        """ Returns True if trace is enabled
+
+        :param name: Name of the trace
+        :type name: str
+        """
+        rm = self.get_resource(guid)
+        return rm.trace_enabled(name)
 
     def trace(self, guid, name, attr = TraceAttr.ALL, block = 512, offset = 0):
         """ Get information on collected trace

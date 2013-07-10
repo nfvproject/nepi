@@ -19,8 +19,7 @@
 # Author: Lucia Guevgeozian <lucia.guevgeozian_odizzio@inria.fr>
 
 from nepi.execution.ec import ExperimentController
-from nepi.execution.resource import ResourceAction, ResourceState, populate_factory
-
+from nepi.execution.resource import ResourceAction, ResourceState
 
 def add_node(ec, host, user):
     node = ec.register_resource("LinuxNode")
@@ -46,8 +45,6 @@ def add_app(ec, command, node, sudo=None, video=None, depends=None, forward_x11=
     ec.set(app, "command", command)
     ec.register_connection(app, node)
     return app
-
-populate_factory()
 
 exp_id = "transfer_file"
 

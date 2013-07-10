@@ -50,9 +50,12 @@ class Collector(ResourceManager):
         store_dir = Attribute("storeDir", "Path to local directory to store trace results", 
                 default = tempfile.gettempdir(),
                 flags = Flags.ExecReadOnly)
+        sub_dir = Attribute("subDir", "Sub directory to collect traces into", 
+                flags = Flags.ExecReadOnly)
 
         cls._register_attribute(trace_name)
         cls._register_attribute(store_dir)
+        cls._register_attribute(sub_dir)
 
     def __init__(self, ec, guid):
         super(Collector, self).__init__(ec, guid)
@@ -73,6 +76,10 @@ class Collector(ResourceManager):
 
         store_dir = self.get("storeDir")
         self._store_path = os.path.join(store_dir, self.ec.exp_id, self.ec.run_id)
+
+        subdir = self.get("subDir")
+        if subdir:
+            self._store_path = os.path.join(self._store_path, subdir)
         
         msg = "Creating local directory at %s to store %s traces " % (
             store_dir, trace_name)

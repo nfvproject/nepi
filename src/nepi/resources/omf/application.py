@@ -135,7 +135,7 @@ class OMFApplication(ResourceManager):
                 self.get('appid') + " : " + self.get('path') + " : " + \
                 self.get('args') + " : " + self.get('env')
             self.info(msg)
-            rm_list = self.get_connected(OMFNode)
+            rm_list = self.get_connected(OMFNode.rtype())
             try:
                 for rm_node in rm_list:
                     if rm_node.get('hostname') :

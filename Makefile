@@ -30,12 +30,12 @@ install: all
 test: all
 	retval=0; \
 	       for i in `find "$(TESTDIR)" -iname '*.py' -perm -u+x -type f`; do \
-	       @echo $$i; \
+	       echo $$i; \
 	       PYTHONPATH="$(PYPATH)" $$i -v || retval=$$?; \
 	       done; exit $$retval
 
 test-one: all
-	@echo $(file) $(case)
+	echo $(file) $(case)
 	PYTHONPATH="$(PYPATH)" python $(file) $(case)
 
 coverage: all

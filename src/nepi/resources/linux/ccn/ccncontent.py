@@ -49,7 +49,7 @@ class LinuxCCNContent(LinuxApplication):
         
     @property
     def ccnr(self):
-        ccnr = self.get_connected(LinuxCCNR)
+        ccnr = self.get_connected(LinuxCCNR.rtype())
         if ccnr: return ccnr[0]
         return None
 

@@ -376,7 +376,7 @@ class ResourceManager(Logger):
         attr = self._attrs[name]
         return attr.value
 
-    def register_trace(self, name):
+    def enable_trace(self, name):
         """ Explicitly enable trace generation
 
         :param name: Name of the trace
@@ -384,7 +384,16 @@ class ResourceManager(Logger):
         """
         trace = self._trcs[name]
         trace.enabled = True
+    
+    def trace_enabled(self, name):
+        """Returns True if trace is enables 
 
+        :param name: Name of the trace
+        :type name: str
+        """
+        trace = self._trcs[name]
+        return trace.enabled
+ 
     def trace(self, name, attr = TraceAttr.ALL, block = 512, offset = 0):
         """ Get information on collected trace
 
@@ -467,7 +476,7 @@ class ResourceManager(Logger):
                     newgrp.difference_update(intsec)
                     conditions[idx] = (newgrp, state, time)
                  
-    def get_connected(self, rclass = None):
+    def get_connected(self, rtype = None):
         """ Returns the list of RM with the type 'rtype'
 
         :param rtype: Type of the RM we look for
@@ -475,9 +484,10 @@ class ResourceManager(Logger):
         :return: list of guid
         """
         connected = []
+        rclass = ResourceFactory.get_resource_type(rtype)
         for guid in self.connections:
             rm = self.ec.get_resource(guid)
-            if not rclass or isinstance(rm, rclass):
+            if not rtype or isinstance(rm, rclass):
                 connected.append(rm)
         return connected
 
@@ -710,6 +720,11 @@ class ResourceFactory(object):
         return cls._resource_types
 
     @classmethod
+    def get_resource_type(cls, rtype):
+        """Return the type of the Class"""
+        return cls._resource_types.get(rtype)
+
+    @classmethod
     def register_type(cls, rclass):
         """Register a new Ressource Manager"""
         cls._resource_types[rclass.rtype()] = rclass
@@ -723,13 +738,14 @@ class ResourceFactory(object):
 def populate_factory():
     """Register all the possible RM that exists in the current version of Nepi.
     """
-    for rclass in find_types():
-        ResourceFactory.register_type(rclass)
+    # Once the factory is populated, don't repopulate
+    if not ResourceFactory.resource_types():
+        for rclass in find_types():
+            ResourceFactory.register_type(rclass)
 
 def find_types():
     """Look into the different folders to find all the 
     availables Resources Managers
-
     """
     search_path = os.environ.get("NEPI_SEARCH_PATH", "")
     search_path = set(search_path.split(" "))
@@ -741,10 +757,15 @@ def find_types():
 
     types = []
 
-    for importer, modname, ispkg in pkgutil.walk_packages(search_path):
+    for importer, modname, ispkg in pkgutil.walk_packages(search_path, 
+            prefix = "nepi.resources."):
+
         loader = importer.find_module(modname)
+        
         try:
-            module = loader.load_module(loader.fullname)
+            # Notice: Repeated calls to load_module will act as a reload of teh module
+            module = loader.load_module(modname)
+
             for attrname in dir(module):
                 if attrname.startswith("_"):
                     continue

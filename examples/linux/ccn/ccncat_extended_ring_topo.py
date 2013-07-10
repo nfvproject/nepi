@@ -39,8 +39,7 @@
 #
 
 from nepi.execution.ec import ExperimentController, ECState 
-from nepi.execution.resource import ResourceState, ResourceAction, \
-        populate_factory
+from nepi.execution.resource import ResourceState, ResourceAction 
 from nepi.execution.trace import TraceAttr
 
 import subprocess
@@ -137,9 +136,6 @@ if __name__ == '__main__':
     
     ( pl_user, movie, exp_id, pl_ssh_key, results_dir ) = get_options()
 
-    # Search for available RMs
-    populate_factory()
-    
     ec = ExperimentController(exp_id = exp_id)
     
     # hosts in Europe

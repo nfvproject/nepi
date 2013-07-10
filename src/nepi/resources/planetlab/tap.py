@@ -86,7 +86,7 @@ class PlanetlabTap(LinuxApplication):
 
     @property
     def node(self):
-        node = self.get_connected(PlanetlabNode)
+        node = self.get_connected(PlanetlabNode.rtype())
         if node: return node[0]
         return None
 

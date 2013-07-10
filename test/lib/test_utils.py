@@ -17,7 +17,6 @@
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
-
 from nepi.resources.linux.node import LinuxNode
 
 import os

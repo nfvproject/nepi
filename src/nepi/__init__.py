@@ -49,3 +49,10 @@ else:
     # components
     logging.basicConfig(format = FORMAT, level = LOGLEVEL)
 
+
+# Add RMs to ResourceFactory. Use NEPI_SEARCH_PATH to 
+# override the default path to search for RMs
+from nepi.execution.resource import populate_factory
+populate_factory()
+
+
