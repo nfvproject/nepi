@@ -19,8 +19,7 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 from nepi.execution.ec import ExperimentController, ECState 
-from nepi.execution.resource import ResourceState, ResourceAction, \
-        populate_factory
+from nepi.execution.resource import ResourceState, ResourceAction
 
 from optparse import OptionParser, SUPPRESS_HELP
 
@@ -58,9 +57,6 @@ def get_options():
 if __name__ == '__main__':
     ( pl_slice, exp_id ) = get_options()
 
-    # Search for available RMs
-    populate_factory()
-    
     apps = []
   
     hostnames = [

@@ -38,8 +38,7 @@
 #           
 
 from nepi.execution.ec import ExperimentController, ECState 
-from nepi.execution.resource import ResourceState, ResourceAction, \
-        populate_factory
+from nepi.execution.resource import ResourceState, ResourceAction 
 from nepi.resources.linux.node import OSType
 
 from optparse import OptionParser, SUPPRESS_HELP
@@ -188,9 +187,6 @@ if __name__ == '__main__':
     ( pl_host, pl_user, linux_host, linux_user, movie, exp_id, pl_ssh_key 
             ) = get_options()
 
-    # Search for available RMs
-    populate_factory()
-    
     # Create the ExperimentController instance
     ec = ExperimentController(exp_id = exp_id)
 

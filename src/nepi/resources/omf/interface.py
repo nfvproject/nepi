@@ -118,7 +118,7 @@ class OMFWifiInterface(ResourceManager):
             self.debug(" " + self.rtype() + " ( Guid : " + str(self._guid) +") : " + \
                 self.get('mode') + " : " + self.get('type') + " : " + \
                 self.get('essid') + " : " + self.get('ip'))
-            rm_list = self.get_connected(OMFNode) 
+            rm_list = self.get_connected(OMFNode.rtype()) 
             for rm_node in rm_list:
                 if rm_node.state < ResourceState.READY:
                     self.ec.schedule(reschedule_delay, self.deploy)

@@ -191,7 +191,7 @@ class LinuxApplication(ResourceManager):
 
     @property
     def node(self):
-        node = self.get_connected(LinuxNode)
+        node = self.get_connected(LinuxNode.rtype())
         if node: return node[0]
         return None
 

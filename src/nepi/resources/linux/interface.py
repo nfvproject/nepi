@@ -90,13 +90,13 @@ class LinuxInterface(ResourceManager):
 
     @property
     def node(self):
-        node = self.get_connected(LinuxNode)
+        node = self.get_connected(LinuxNode.rtype())
         if node: return node[0]
         return None
 
     @property
     def channel(self):
-        chan = self.get_connected(LinuxChannel)
+        chan = self.get_connected(LinuxChannel.rtype())
         if chan: return chan[0]
         return None
 

@@ -18,7 +18,7 @@
 #
 # Author: Julien Tribino <julien.tribino@inria.fr>
 
-from nepi.execution.resource import ResourceFactory, ResourceAction, ResourceState, populate_factory
+from nepi.execution.resource import ResourceFactory, ResourceAction, ResourceState
 from nepi.execution.ec import ExperimentController
 
 from nepi.resources.omf.node import OMFNode
@@ -33,9 +33,6 @@ logging.basicConfig()
 
 # Create the EC
 ec = ExperimentController()
-
-# Register the different RM that will be used
-populate_factory()
 
 # Create and Configure the Nodes
 node1 = ec.register_resource("OMFNode")

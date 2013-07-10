@@ -185,7 +185,7 @@ class LinuxCCNR(LinuxApplication):
 
     @property
     def ccnd(self):
-        ccnd = self.get_connected(LinuxCCND)
+        ccnd = self.get_connected(LinuxCCND.rtype())
         if ccnd: return ccnd[0]
         return None
 

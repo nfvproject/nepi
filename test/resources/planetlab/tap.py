@@ -19,9 +19,6 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 from nepi.execution.ec import ExperimentController 
-from nepi.resources.planetlab.node import PlanetlabNode
-from nepi.resources.planetlab.tap import PlanetlabTap
-from nepi.resources.linux.application import LinuxApplication
 
 from test_utils import skipIfNotAlive, skipInteractive
 
@@ -36,11 +33,6 @@ class PlanetlabTapTestCase(unittest.TestCase):
 
     @skipIfNotAlive
     def t_tap_create(self, host, user):
-        from nepi.execution.resource import ResourceFactory
-        
-        ResourceFactory.register_type(PlanetlabNode)
-        ResourceFactory.register_type(PlanetlabTap)
-        ResourceFactory.register_type(LinuxApplication)
 
         ec = ExperimentController(exp_id = "test-tap-create")
         
