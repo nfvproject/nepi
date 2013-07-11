@@ -29,8 +29,6 @@ import time
 
 # TODO: - routes!!!
 #       - Make base clase 'virtual device' and redefine vif_type
-#       - write the name of the device (if_name) to a file and allow the 
-#           RM to read it and set the 'deviceName' attribute
 #       - Instead of doing an infinite loop, open a port for communication allowing
 #           to pass the fd to another process
 

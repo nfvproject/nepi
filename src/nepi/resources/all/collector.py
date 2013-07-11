@@ -52,10 +52,13 @@ class Collector(ResourceManager):
                 flags = Flags.ExecReadOnly)
         sub_dir = Attribute("subDir", "Sub directory to collect traces into", 
                 flags = Flags.ExecReadOnly)
+        rename = Attribute("rename", "Name to give to the collected trace file", 
+                flags = Flags.ExecReadOnly)
 
         cls._register_attribute(trace_name)
         cls._register_attribute(store_dir)
         cls._register_attribute(sub_dir)
+        cls._register_attribute(rename)
 
     def __init__(self, ec, guid):
         super(Collector, self).__init__(ec, guid)
@@ -104,6 +107,7 @@ class Collector(ResourceManager):
 
     def release(self):
         trace_name = self.get("traceName")
+        rename = self.get("rename") or trace_name
 
         msg = "Collecting '%s' traces to local directory %s" % (
             trace_name, self.store_path)
@@ -113,7 +117,7 @@ class Collector(ResourceManager):
         for rm in rms:
             result = self.ec.trace(rm.guid, trace_name)
             fpath = os.path.join(self.store_path, "%d.%s" % (rm.guid, 
-                trace_name))
+                rename))
             f = open(fpath, "w")
             f.write(result)
             f.close()
