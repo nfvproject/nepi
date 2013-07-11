@@ -138,7 +138,15 @@ class LinuxFIBEntry(LinuxApplication):
         if not self.trace_enabled("ping"):
             return
 
-        command = """ping %s""" % self.get("host")
+        ping_script = """echo "Staring PING %(host)s at date `date +'%Y%m%d%H%M%S'`"; ping %(host)s""" % ({
+            "host": self.get("host")}) 
+        ping_file = os.path.join(self.run_home, "ping.sh")
+        self.node.upload(ping_script,
+                ping_file,
+                text = True, 
+                overwrite = False)
+
+        command = """bash %s""" % ping_file
         (out, err), proc = self.node.run(command, self.run_home, 
             stdout = "ping",
             stderr = "ping_stderr",
@@ -159,6 +167,8 @@ class LinuxFIBEntry(LinuxApplication):
                 msg = " Failed to deploy ping trace command '%s' " % command
                 self.error(msg, out, err)
                 raise RuntimeError, msg
+
+            #while true; do echo `date +'%Y%m%d%H%M%S'`; mtr --no-dns --report -c 1 roseval.pl.sophia.inria.fr;sleep 2;done
  
     def start(self):
         if self._state in [ResourceState.READY, ResourceState.STARTED]:
