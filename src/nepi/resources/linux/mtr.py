@@ -54,6 +54,18 @@ class LinuxMtr(LinuxApplication):
             "between ICMP ECHO requests. Default value is one second ",
             flags = Flags.ExecReadOnly)
 
+        countinuous = Attribute("continuous",
+            "Run mtr in a while loop",
+            type = Types.Bool,
+            default = False,
+            flags = Flags.ExecReadOnly)
+
+        print_timestamp = Attribute("printTimestamp",
+            "Print timestamp before running mtr",
+            type = Types.Bool,
+            default = False,
+            flags = Flags.ExecReadOnly)
+
         target = Attribute("target",
             "mtr target host (host that will be pinged)",
             flags = Flags.ExecReadOnly)
@@ -62,11 +74,14 @@ class LinuxMtr(LinuxApplication):
         cls._register_attribute(no_dns)
         cls._register_attribute(address)
         cls._register_attribute(interval)
+        cls._register_attribute(countinuous)
+        cls._register_attribute(print_timestamp)
         cls._register_attribute(target)
 
     def __init__(self, ec, guid):
         super(LinuxMtr, self).__init__(ec, guid)
         self._home = "mtr-%s" % self.guid
+        self._sudo_kill = True
 
     def deploy(self):
         if not self.get("command"):
@@ -80,6 +95,11 @@ class LinuxMtr(LinuxApplication):
     @property
     def _start_command(self):
         args = []
+        if self.get("continuous") == True:
+            args.append("while true; do ")
+        if self.get("printTimestamp") == True:
+            args.append("""echo "`date +'%Y%m%d%H%M%S'`";""")
+        args.append("sudo -S mtr --report")
         if self.get("reportCycles"):
             args.append("-c %s" % self.get("reportCycles"))
         if self.get("noDns") == True:
@@ -87,10 +107,10 @@ class LinuxMtr(LinuxApplication):
         if self.get("address"):
             args.append("-a %s" % self.get("address"))
         args.append(self.get("target"))
+        if self.get("continuous") == True:
+            args.append("; done ")
 
-        command = """echo "Starting mtr `date +'%Y%m%d%H%M%S'`"; """
-        command += " sudo -S mtr --report "
-        command += " ".join(args)
+        command = " ".join(args)
 
         return command
 

@@ -67,12 +67,16 @@ class LinuxFIBEntry(LinuxApplication):
     @classmethod
     def _register_traces(cls):
         ping = Trace("ping", "Continuous ping to the peer end")
+        mtr = Trace("mtr", "Continuous mtr to the peer end")
 
         cls._register_trace(ping)
+        cls._register_trace(mtr)
 
     def __init__(self, ec, guid):
         super(LinuxFIBEntry, self).__init__(ec, guid)
         self._home = "fib-%s" % self.guid
+        self._ping = None
+        self._mtr = None
 
     @property
     def ccnd(self):
@@ -85,6 +89,14 @@ class LinuxFIBEntry(LinuxApplication):
         if self.ccnd: return self.ccnd.node
         return None
 
+    def trace(self, name, attr = TraceAttr.ALL, block = 512, offset = 0):
+        if name == "ping":
+            return self.ec.trace(self._ping, "stdout", attr, block, offset)
+        if name == "mtr":
+            return self.ec.trace(self._mtr, "stdout", attr, block, offset)
+
+        return super(LinuxFIBEntry, self).trace(name, attr, block, offset)
+        
     def deploy(self):
         # Wait until associated ccnd is provisioned
         if not self.ccnd or self.ccnd.state < ResourceState.READY:
@@ -135,41 +147,36 @@ class LinuxFIBEntry(LinuxApplication):
                 raise RuntimeError, msg
 
     def configure(self):
-        if not self.trace_enabled("ping"):
-            return
+        if self.trace_enabled("ping"):
+            self.info("Configuring PING trace")
+            self._ping = self.ec.register_resource("LinuxPing")
+            self.ec.set(self._ping, "printTimestamp", True)
+            self.ec.set(self._ping, "target", self.get("host"))
+            self.ec.register_connection(self._ping, self.node.guid)
+            # force waiting until ping is READY before we starting the FIB
+            self.ec.register_condition(self.guid, ResourceAction.START, 
+                    self._ping, ResourceState.READY)
+            # schedule ping deploy and start
+            self.ec.deploy(group=[self._ping])
+            self.ec.start_with_conditions(self._ping)
 
-        ping_script = """echo "Staring PING %(host)s at date `date +'%Y%m%d%H%M%S'`"; ping %(host)s""" % ({
-            "host": self.get("host")}) 
-        ping_file = os.path.join(self.run_home, "ping.sh")
-        self.node.upload(ping_script,
-                ping_file,
-                text = True, 
-                overwrite = False)
+        if self.trace_enabled("mtr"):
+            self.info("Configuring TRACE trace")
+            self._mtr = self.ec.register_resource("LinuxMtr")
+            self.ec.set(self._mtr, "noDns", True)
+            self.ec.set(self._mtr, "printTimestamp", True)
+            self.ec.set(self._mtr, "continuous", True)
+            self.ec.set(self._mtr, "target", self.get("host"))
+            self.ec.register_connection(self._mtr, self.node.guid)
+            self.ec.deploy(group=[self._mtr])
+            # force waiting until mtr is READY before we starting the FIB
+            self.ec.register_condition(self.guid, ResourceAction.START, 
+                    self._mtr, ResourceState.READY)
+            # schedule mtr deploy and start
+            self.ec.deploy(group=[self._mtr])
+            self.ec.start_with_conditions(self._mtr)
 
-        command = """bash %s""" % ping_file
-        (out, err), proc = self.node.run(command, self.run_home, 
-            stdout = "ping",
-            stderr = "ping_stderr",
-            pidfile = "ping_pidfile")
-
-        # Wait for pid file to be generated
-        pid, ppid = self.node.wait_pid(self.run_home, "ping_pidfile")
-
-        # If the process is not running, check for error information
-        # on the remote machine
-        if not pid or not ppid:
-            (out, err), proc = self.node.check_errors(self.run_home,
-                    stderr = "ping_pidfile") 
-
-            # Out is what was written in the stderr file
-            if err:
-                self.fail()
-                msg = " Failed to deploy ping trace command '%s' " % command
-                self.error(msg, out, err)
-                raise RuntimeError, msg
-
-            #while true; do echo `date +'%Y%m%d%H%M%S'`; mtr --no-dns --report -c 1 roseval.pl.sophia.inria.fr;sleep 2;done
- 
+    
     def start(self):
         if self._state in [ResourceState.READY, ResourceState.STARTED]:
             command = self.get("command")
@@ -195,11 +202,6 @@ class LinuxFIBEntry(LinuxApplication):
 
             if proc.poll():
                 pass
-
-            # now stop the ping trace
-            if self.trace_enabled("ping"):
-               pid, ppid = self.node.wait_pid(self.run_home, "ping_pidfile")
-               (out, err), proc = self.node.kill(pid, ppid)
 
             self._stop_time = tnow()
             self._state = ResourceState.STOPPED
