@@ -56,7 +56,7 @@ class LinuxPing(LinuxApplication):
 
         numeric = Attribute("numeric",
             "Sets ping -n option. Disables resolution of host addresses into "
-            "symbolic names ",
+            "symbolic names. ",
             type = Types.Bool,
             default = False,
             flags = Flags.ExecReadOnly)
@@ -193,6 +193,11 @@ class LinuxPing(LinuxApplication):
     def _start_command(self):
         args = []
 
+        if self.get("printTimestamp") == True:
+            args.append("""echo "`date +'%Y%m%d%H%M%S'`";""")
+
+        args.append("ping ")
+        
         if self.get("count"):
             args.append("-c %s" % self.get("count"))
         if self.get("mark"):
@@ -207,8 +212,6 @@ class LinuxPing(LinuxApplication):
             args.append("-n")
         if self.get("pattern"):
             args.append("-p %s" % self.get("pattern"))
-        if self.get("printTimestamp") == True:
-            args.append("-D")
         if self.get("tos"):
             args.append("-Q %s" % self.get("tos"))
         if self.get("quiet"):
@@ -239,8 +242,7 @@ class LinuxPing(LinuxApplication):
             args.append("-W %s" % self.get("timeout"))
         args.append(self.get("target"))
 
-        command = " sudo -S ping "
-        command += " ".join(args)
+        command = " ".join(args)
 
         return command
 

@@ -537,7 +537,7 @@ class ExperimentController(object):
 
         """
         rm = self.get_resource(guid)
-        return rm.start_with_condition()
+        return rm.start_with_conditions()
 
     def deploy(self, group = None, wait_all_ready = True):
         """ Deploy all resource manager in group
