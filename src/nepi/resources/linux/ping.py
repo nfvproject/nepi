@@ -193,6 +193,8 @@ class LinuxPing(LinuxApplication):
     def _start_command(self):
         args = []
 
+        args.append("echo 'Starting PING to %s' ;" % self.get("target"))
+
         if self.get("printTimestamp") == True:
             args.append("""echo "`date +'%Y%m%d%H%M%S'`";""")
 

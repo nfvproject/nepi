@@ -435,7 +435,9 @@ class LinuxApplication(ResourceManager):
             self.node.upload(stdin, dst, overwrite = False, text = True)
 
             # create "stdin" symlink on ${APP_HOME} directory
-            command = "( cd %s ; ln -s %s stdin )" % ( self.app_home, dst)
+            command = "( cd %(app_home)s ; [ ! -f stdin ] &&  ln -s %(stdin)s stdin )" % ({
+                "app_home": self.app_home, 
+                "stdin": dst })
 
             return command
 
