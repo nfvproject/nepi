@@ -100,6 +100,8 @@ class LinuxCCNContent(LinuxApplication):
         env = self.get("env")
 
         if command:
+            self.info("Uploading command '%s'" % command)
+
             # We want to make sure the content is published
             # before the experiment starts.
             # Run the command as a bash script in the background, 
@@ -108,7 +110,8 @@ class LinuxCCNContent(LinuxApplication):
             env = self.replace_paths(env)
             command = self.replace_paths(command)
 
-            (out, err), proc = self.execute_command(command, env)
+            (out, err), proc = self.execute_command(command, env, 
+                    blocking = True)
 
             if proc.poll():
                 self.fail()

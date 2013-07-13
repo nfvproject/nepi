@@ -87,6 +87,9 @@ class LinuxMtr(LinuxApplication):
         if not self.get("command"):
             self.set("command", self._start_command)
 
+        if not self.get("env"):
+            self.set("env", "PATH=$PATH:/usr/sbin/")
+
         if not self.get("depends"):
             self.set("depends", "mtr")
 

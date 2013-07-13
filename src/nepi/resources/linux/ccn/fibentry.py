@@ -156,9 +156,8 @@ class LinuxFIBEntry(LinuxApplication):
             # force waiting until ping is READY before we starting the FIB
             self.ec.register_condition(self.guid, ResourceAction.START, 
                     self._ping, ResourceState.READY)
-            # schedule ping deploy and start
+            # schedule ping deploy
             self.ec.deploy(group=[self._ping])
-            self.ec.start_with_conditions(self._ping)
 
         if self.trace_enabled("mtr"):
             self.info("Configuring TRACE trace")
@@ -172,10 +171,8 @@ class LinuxFIBEntry(LinuxApplication):
             # force waiting until mtr is READY before we starting the FIB
             self.ec.register_condition(self.guid, ResourceAction.START, 
                     self._mtr, ResourceState.READY)
-            # schedule mtr deploy and start
+            # schedule mtr deploy
             self.ec.deploy(group=[self._mtr])
-            self.ec.start_with_conditions(self._mtr)
-
     
     def start(self):
         if self._state in [ResourceState.READY, ResourceState.STARTED]:
