@@ -24,11 +24,6 @@ from nepi.util.timefuncs import tnow
 
 import os
 
-nping_sources = dict({
-    "i686": "http://nmap.org/dist/nping-0.6.25-1.i386.rpm",
-    "amd64": "http://nmap.org/dist/nping-0.6.25-1.x86_64.rpm",
-    })
-
 @clsinit_copy
 class LinuxNPing(LinuxApplication):
     _rtype = "LinuxNPing"
@@ -219,7 +214,7 @@ class LinuxNPing(LinuxApplication):
                 " )"
                 " && %s && sudo alien -i nping.rpm ) " % install_alien)
 
-        return ("( nping || %s )" % install)
+        return ("( nping --version || %s )" % install)
 
     def valid_connection(self, guid):
         # TODO: Validate!
