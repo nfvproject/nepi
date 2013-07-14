@@ -33,6 +33,7 @@ class LinuxPing(LinuxApplication):
         count = Attribute("count",
             "Sets ping -c option. Determines the number of ECHO_REQUEST "
             "packates to send before stopping.",
+            type = Types.Integer,
             flags = Flags.ExecReadOnly)
 
         mark = Attribute("mark",
