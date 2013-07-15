@@ -44,7 +44,7 @@ class PlanetlabTunTestCase(unittest.TestCase):
 
         tun = ec.register_resource("PlanetlabTun")
         ec.set(tun, "ip4", "192.168.1.1")
-        ec.set(tun, "prefix4", "24")
+        ec.set(tun, "prefix4", 24)
         ec.register_connection(tun, node)
 
         app = ec.register_resource("LinuxApplication")

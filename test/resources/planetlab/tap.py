@@ -44,11 +44,11 @@ class PlanetlabTapTestCase(unittest.TestCase):
 
         tap = ec.register_resource("PlanetlabTap")
         ec.set(tap, "ip4", "192.168.1.1")
-        ec.set(tap, "prefix4", "24")
+        ec.set(tap, "prefix4", 24)
         ec.register_connection(tap, node)
 
         app = ec.register_resource("LinuxApplication")
-        cmd = "ping -c3 192.168.1.1" 
+        cmd = "ping -c3 192.168.1.1"
         ec.set(app, "command", cmd)
         ec.register_connection(app, node)
 

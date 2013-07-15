@@ -24,7 +24,7 @@ setup(
             "nepi.resources.ns3",
             "nepi.resources.omf",
             "nepi.resources.planetlab",
-            "nepi.resources.planetlab",
             "nepi.util"],
         package_dir = {"": "src"},
+        package_data = {"nepi.resources.planetlab" : [ "scripts/*.py" ]}
     )

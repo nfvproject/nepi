@@ -28,7 +28,6 @@ import os
 import time
 
 # TODO: - routes!!!
-#       - Make base clase 'virtual device' and redefine vif_type
 #       - Instead of doing an infinite loop, open a port for communication allowing
 #           to pass the fd to another process
 
@@ -47,6 +46,7 @@ class PlanetlabTap(LinuxApplication):
                 flags = Flags.ExecReadOnly)
 
         prefix4 = Attribute("prefix4", "IPv4 network prefix",
+                type = Types.Integer,
                 flags = Flags.ExecReadOnly)
 
         mtu = Attribute("mtu", "Maximum transmition unit for device",
@@ -110,25 +110,41 @@ class PlanetlabTap(LinuxApplication):
 
     def upload_start_command(self):
         # upload tap-creation python script
-        start_script = self.replace_paths(self._start_script)
-        self.node.upload(start_script,
-                os.path.join(self.app_home, "tap_create.py"),
-                text = True, 
+        pl_tap_create = os.path.join(os.path.dirname(__file__), "scripts",
+                "pl-tap-create.py")
+        self.node.upload(pl_tap_create,
+                os.path.join(self.app_home, "pl-vif-create.py"),
                 overwrite = False)
 
         # upload start.sh
         start_command = self.replace_paths(self._start_command)
-
+        
         self.info("Uploading command '%s'" % start_command)
         
         self.set("command", start_command)
+
         self.node.upload(start_command,
                 os.path.join(self.app_home, "start.sh"),
                 text = True, 
                 overwrite = False)
 
+        # upload tap-stop python script
+        pl_tap_stop = os.path.join(os.path.dirname(__file__), "scripts",
+                "pl-tap-stop.py")
+        self.node.upload(pl_tap_stop,
+                os.path.join(self.app_home, "pl-vif-stop.py"),
+                overwrite = False)
+
+        # upload stop.sh script
+        stop_command = self.replace_paths(self._stop_command)
+        self.node.upload(stop_command,
+                os.path.join(self.app_home, "stop.sh"),
+                text = True, 
+                overwrite = False)
+
         # We want to make sure the device is up and running
-        # before the experiment starts.
+        # before the deploy finishes (so things will be ready
+        # before other stuff starts running).
         # Run the command as a bash script in background,
         # in the host ( but wait until the command has
         # finished to continue )
@@ -174,8 +190,9 @@ class PlanetlabTap(LinuxApplication):
         if state == ResourceState.STARTED:
             self.info("Stopping command '%s'" % command)
 
-            command = "rm %s" % os.path.join(self.run_home, "if_stop")
-            (out, err), proc = self.execute_command(command)
+            command = "bash %s" % os.path.join(self.app_home, "stop.sh")
+            (out, err), proc = self.execute_command(command,
+                    blocking = True)
 
             self._stop_time = tnow()
             self._state = ResourceState.STOPPED
@@ -223,34 +240,38 @@ class PlanetlabTap(LinuxApplication):
 
     @property
     def _start_command(self):
-        return "sudo -S python ${APP_HOME}/tap_create.py" 
+        command = ["sudo -S python ${APP_HOME}/pl-vif-create.py"]
+        
+        command.append("-t %s" % self.vif_type)
+        command.append("-a %s" % self.get("ip4"))
+        command.append("-n %d" % self.get("prefix4"))
+        command.append("-f %s " % self.if_name_file)
+        command.append("-S %s " % self.sock_name)
+        if self.get("snat") == True:
+            command.append("-s")
+        if self.get("pointopoint"):
+            command.append("-p %s" % self.get("pointopoint"))
+
+        return " ".join(command)
 
     @property
-    def _start_script(self):
-        return ( "import vsys, time, os \n"
-                 "(fd, if_name) = vsys.fd_tuntap(vsys.%(devtype)s)\n"
-                 "vsys.vif_up(if_name, '%(ip)s', %(prefix)s%(snat)s%(pointopoint)s)\n"
-                 "f = open('%(if_name_file)s', 'w')\n"
-                 "f.write(if_name)\n"
-                 "f.close()\n\n"
-                 "f = open('%(if_stop_file)s', 'w')\n"
-                 "f.close()\n\n"
-                 "while os.path.exists('%(if_stop_file)s'):\n"
-                 "    time.sleep(2)\n"
-               ) % ({
-                   "devtype": self._vif_type,
-                   "ip": self.get("ip4"),
-                   "prefix": self.get("prefix4"),
-                   "snat": ", snat=True" if self.get("snat") else "",
-                   "pointopoint": ", pointopoint=%s" % self.get("pointopoint") \
-                           if self.get("pointopoint") else "",
-                    "if_name_file": os.path.join(self.run_home, "if_name"),
-                    "if_stop_file": os.path.join(self.run_home, "if_stop"),
-                   })
+    def _stop_command(self):
+        command = ["sudo -S python ${APP_HOME}/pl-vif-stop.py"]
+        
+        command.append("-S %s " % self.sock_name)
+        return " ".join(command)
 
     @property
-    def _vif_type(self):
+    def vif_type(self):
         return "IFF_TAP"
+
+    @property
+    def if_name_file(self):
+        return os.path.join(self.run_home, "if_name")
+
+    @property
+    def sock_name(self):
+        return os.path.join(self.run_home, "tap.sock")
 
     def valid_connection(self, guid):
         # TODO: Validate!

@@ -17,25 +17,40 @@
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
-from nepi.execution.resource import clsinit_copy
-from nepi.resources.planetlab.tap import PlanetlabTap
+import base64
+import errno
+import vsys
+import socket
+from optparse import OptionParser, SUPPRESS_HELP
 
-import os
+STOP_MSG = "STOP"
 
-@clsinit_copy
-class PlanetlabTun(PlanetlabTap):
-    _rtype = "PlanetlabTun"
-
-    def __init__(self, ec, guid):
-        super(PlanetlabTun, self).__init__(ec, guid)
-        self._home = "tun-%s" % self.guid
-
-    @property
-    def sock_name(self):
-        return os.path.join(self.run_home, "tun.sock")
+def get_options():
+    usage = ("usage: %prog -S <socket-name>")
     
-    @property
-    def vif_type(self):
-        return "IFF_TUN"
+    parser = OptionParser(usage = usage)
+
+    parser.add_option("-S", "--socket-name", dest="socket_name",
+        help = "Name for the unix socket used to interact with this process", 
+        default = "tap.sock", type="str")
+
+    (options, args) = parser.parse_args()
+    
+    return (options.socket_name)
+
+if __name__ == '__main__':
+
+    (socket_name) = get_options()
+
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    sock.connect(socket_name)
+    encoded = base64.b64encode(STOP_MSG)
+    sock.send("%s\n" % encoded)
+    reply = sock.recv(1024)
+    reply = base64.b64decode(reply)
+
+    print reply
+
+
 
 
