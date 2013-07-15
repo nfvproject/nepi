@@ -28,8 +28,6 @@ import os
 import time
 
 # TODO: - routes!!!
-#       - Instead of doing an infinite loop, open a port for communication allowing
-#           to pass the fd to another process
 
 PYTHON_VSYS_VERSION = "1.0"
 
@@ -89,50 +87,36 @@ class PlanetlabTap(LinuxApplication):
         return None
 
     def upload_sources(self):
-        depends = "mercurial make gcc"
-        self.set("depends", depends)
+        # upload vif-creation python script
+        pl_vif_create = os.path.join(os.path.dirname(__file__), "scripts",
+                "pl-vif-create.py")
 
-        install = ( " ( "
-                    "   python -c 'import vsys, os;  vsys.__version__ == \"%(version)s\" or os._exit(1)' "
-                    " ) "
-                    " ||"
-                    " ( "
-                    "   cd ${SRC} ; "
-                    "   hg clone http://nepi.inria.fr/code/python-vsys ; "
-                    "   cd python-vsys ; "
-                    "   make all ; "
-                    "   sudo -S make install "
-                    " )" ) % ({
-                        "version": PYTHON_VSYS_VERSION
-                        })
-
-        self.set("install", install)
-
-    def upload_start_command(self):
-        # upload tap-creation python script
-        pl_tap_create = os.path.join(os.path.dirname(__file__), "scripts",
-                "pl-tap-create.py")
-        self.node.upload(pl_tap_create,
+        self.node.upload(pl_vif_create,
                 os.path.join(self.app_home, "pl-vif-create.py"),
                 overwrite = False)
 
-        # upload start.sh
-        start_command = self.replace_paths(self._start_command)
-        
-        self.info("Uploading command '%s'" % start_command)
-        
-        self.set("command", start_command)
+        # upload vif-stop python script
+        pl_vif_stop = os.path.join(os.path.dirname(__file__), "scripts",
+                "pl-vif-stop.py")
 
-        self.node.upload(start_command,
-                os.path.join(self.app_home, "start.sh"),
-                text = True, 
+        self.node.upload(pl_vif_stop,
+                os.path.join(self.app_home, "pl-vif-stop.py"),
                 overwrite = False)
 
-        # upload tap-stop python script
-        pl_tap_stop = os.path.join(os.path.dirname(__file__), "scripts",
-                "pl-tap-stop.py")
-        self.node.upload(pl_tap_stop,
-                os.path.join(self.app_home, "pl-vif-stop.py"),
+        # upload vif-connect python script
+        pl_vif_connect = os.path.join(os.path.dirname(__file__), "scripts",
+                "pl-vif-tunconnect.py")
+
+        self.node.upload(pl_vif_connect,
+                os.path.join(self.app_home, "pl-vif-connect.py"),
+                overwrite = False)
+
+        # upload tun-connect python script
+        tunchannel = os.path.join(os.path.dirname(__file__), "..", "all", "scripts",
+                "tunchannel.py")
+
+        self.node.upload(tunchannel,
+                os.path.join(self.app_home, "tunchannel.py"),
                 overwrite = False)
 
         # upload stop.sh script
@@ -141,6 +125,9 @@ class PlanetlabTap(LinuxApplication):
                 os.path.join(self.app_home, "stop.sh"),
                 text = True, 
                 overwrite = False)
+
+    def upload_start_command(self):
+        super(PlanetlabTap, self).upload_start_command()
 
         # We want to make sure the device is up and running
         # before the deploy finishes (so things will be ready
@@ -158,6 +145,14 @@ class PlanetlabTap(LinuxApplication):
         if not self.node or self.node.state < ResourceState.PROVISIONED:
             self.ec.schedule(reschedule_delay, self.deploy)
         else:
+            if not self.get("command"):
+                self.set("command", self._start_command)
+
+            if not self.get("depends"):
+                self.set("depends", self._dependencies)
+
+            if not self.get("install"):
+                self.set("install", self._install)
 
             try:
                 self.discover()
@@ -272,6 +267,38 @@ class PlanetlabTap(LinuxApplication):
     @property
     def sock_name(self):
         return os.path.join(self.run_home, "tap.sock")
+
+    @property
+    def _dependencies(self):
+        return "mercurial make gcc"
+
+    @property
+    def _install(self):
+        install_vsys = ( " ( "
+                    "   python -c 'import vsys, os;  vsys.__version__ == \"%(version)s\" or os._exit(1)' "
+                    " ) "
+                    " || "
+                    " ( "
+                    "   cd ${SRC} ; "
+                    "   hg clone http://nepi.inria.fr/code/python-vsys ; "
+                    "   cd python-vsys ; "
+                    "   make all ; "
+                    "   sudo -S make install "
+                    " )" ) % ({
+                        "version": PYTHON_VSYS_VERSION
+                        })
+
+        install_passfd = ( " ( python -c 'import passfd' ) "
+                    " || "
+                    " ( "
+                    "   cd ${SRC} ; "
+                    "   hg clone http://nepi.inria.fr/code/python-passfd ; "
+                    "   cd python-passfd ; "
+                    "   make all ; "
+                    "   sudo -S make install "
+                    " )" )
+
+        return "%s ; %s" % ( install_vsys, install_passfd )
 
     def valid_connection(self, guid):
         # TODO: Validate!
