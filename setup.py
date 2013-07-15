@@ -26,5 +26,8 @@ setup(
             "nepi.resources.planetlab",
             "nepi.util"],
         package_dir = {"": "src"},
-        package_data = {"nepi.resources.planetlab" : [ "scripts/*.py" ]}
+        package_data = {
+            "nepi.resources.planetlab" : [ "scripts/*.py" ],
+            "nepi.resources.all" : [ "scripts/*.py" ]
+            }
     )

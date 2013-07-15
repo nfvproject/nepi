@@ -28,7 +28,7 @@ import unittest
 
 class PlanetlabTapTestCase(unittest.TestCase):
     def setUp(self):
-        self.host = "nepi2.pl.sophia.inria.fr"
+        self.host = "nepi5.pl.sophia.inria.fr"
         self.user = "inria_nepi"
 
     @skipIfNotAlive

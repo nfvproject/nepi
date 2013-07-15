@@ -334,7 +334,8 @@ class LinuxApplication(ResourceManager):
 
             self.node.upload_command(command, 
                     shfile = shfile,
-                    env = env)
+                    env = env,
+                    overwrite = False)
 
     def execute_deploy_command(self, command):
         if command:

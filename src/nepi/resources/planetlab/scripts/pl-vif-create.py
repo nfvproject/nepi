@@ -19,13 +19,15 @@
 
 import base64
 import errno
-import vsys
+import passfd
 import socket
+import vsys
 from optparse import OptionParser, SUPPRESS_HELP
 
 # TODO: GRE OPTION!! CONFIGURE THE VIF-UP IN GRE MODE!!
 
 STOP_MSG = "STOP"
+PASSFD_MSG = "PASSFD"
 
 def create_socket(socket_name):
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -52,8 +54,18 @@ def recv_msg(conn):
             break
 
     msg = ''.join(msg).split('\n')[0]
-    decoded = base64.b64decode(msg)
-    return decoded.rstrip()
+    # The message might have arguments that will be appended
+    # as a '|' separated list after the message type
+    args = msg.split("|")
+    msg = args.pop(0)
+
+    dmsg = base64.b64decode(msg)
+    dargs = []
+    for arg in args:
+        darg = base64.b64decode(arg)
+        dargs.append(darg.rstrip())
+
+    return (dmsg.rstrip(), dargs)
 
 def send_reply(conn, reply):
     encoded = base64.b64encode(reply)
@@ -62,8 +74,13 @@ def send_reply(conn, reply):
 def stop_action():
     return "STOP-ACK"
 
-def reply_action(msg):
-    return "Reply to: %s" % msg
+def passfd_action(fd, args):
+    address = args.pop(0)
+    print address
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    sock.connect(address)
+    passfd.sendfd(sock, fd, '0')
+    return "PASSFD-ACK"
 
 def get_options():
     usage = ("usage: %prog -t <vif-type> -a <ip4-address> -n <net-prefix> "
@@ -135,7 +152,7 @@ if __name__ == '__main__':
 
         while not stop:
             try:
-                msg = recv_msg(conn)
+                (msg, args) = recv_msg(conn)
             except socket.timeout, e:
                 # Ingore time-out
                 continue
@@ -147,8 +164,8 @@ if __name__ == '__main__':
             if msg == STOP_MSG:
                 stop = True
                 reply = stop_action()
-            else:
-                reply = reply_action(msg)
+            elif msg == PASSFD_MSG:
+                reply = passfd_action(fd, args)
 
             try:
                 send_reply(conn, reply)

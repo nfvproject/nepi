@@ -125,6 +125,7 @@ class ResourceFactoryTestCase(unittest.TestCase):
     def test_add_resource_factory(self):
         from nepi.execution.resource import ResourceFactory
 
+        ResourceFactory._resource_types = dict()
         ResourceFactory.register_type(MyResource)
         ResourceFactory.register_type(AnotherResource)
 
@@ -138,6 +139,11 @@ class ResourceFactoryTestCase(unittest.TestCase):
         self.assertEquals(len(AnotherResource._attributes), 0)
 
         self.assertEquals(len(ResourceFactory.resource_types()), 2)
+        
+        # restore factory state for other tests
+        from nepi.execution.resource import populate_factory
+        ResourceFactory._resource_types = dict()
+        populate_factory()
 
 class ResourceManagerTestCase(unittest.TestCase):
     def test_register_condition(self):
