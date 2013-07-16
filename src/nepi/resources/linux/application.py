@@ -654,21 +654,23 @@ class LinuxApplication(ResourceManager):
                 # requested every 'state_check_delay' seconds.
                 state_check_delay = 0.5
                 if tdiffsec(tnow(), self._last_state_check) > state_check_delay:
-                    # check if execution errors occurred
-                    (out, err), proc = self.node.check_errors(self.run_home)
-
-                    if err:
-                        msg = " Failed to execute command '%s'" % self.get("command")
-                        self.error(msg, out, err)
-                        self.fail()
-
-                    elif self.pid and self.ppid:
-                        # No execution errors occurred. Make sure the background
-                        # process with the recorded pid is still running.
+                    if self.pid and self.ppid:
+                        # Make sure the process is still running in background
                         status = self.node.status(self.pid, self.ppid)
 
                         if status == ProcStatus.FINISHED:
-                            self._state = ResourceState.FINISHED
+                            # If the program finished, check if execution
+                            # errors occurred
+                            (out, err), proc = self.node.check_errors(
+                                    self.run_home)
+
+                            if err:
+                                msg = " Failed to execute command '%s'" % \
+                                        self.get("command")
+                                self.error(msg, out, err)
+                                self.fail()
+                            else:
+                               self._state = ResourceState.FINISHED
 
                     self._last_state_check = tnow()
 

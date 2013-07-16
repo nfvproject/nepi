@@ -238,7 +238,8 @@ class PlanetlabTap(LinuxApplication):
         return if_name
 
     def udp_connect_command(self, remote_ip, local_port_file, 
-            remote_port_file, ret_file):
+            remote_port_file, ret_file, cipher, cipher_key,
+            bwlimit, txqueuelen):
         command = ["sudo -S "]
         command.append("PYTHONPATH=$PYTHONPATH:${SRC}")
         command.append("python ${SRC}/pl-vif-udp-connect.py")
@@ -248,6 +249,14 @@ class PlanetlabTap(LinuxApplication):
         command.append("-r %s " % remote_port_file)
         command.append("-H %s " % remote_ip)
         command.append("-R %s " % ret_file)
+        if cipher:
+            command.append("-c %s " % cipher)
+        if cipher_key:
+            command.append("-k %s " % cipher_key)
+        if txqueuelen:
+            command.append("-q %s " % txqueuelen)
+        if bwlimit:
+            command.append("-b %s " % bwlimit)
 
         command = " ".join(command)
         command = self.replace_paths(command)

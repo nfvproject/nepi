@@ -176,9 +176,3 @@ class PlanetlabNode(LinuxNode):
         # TODO: Validate!
         return True
 
-    def blacklist(self):
-        # TODO!!!!
-        self.warn(" Blacklisting malfunctioning node ")
-        #import util
-        #util.appendBlacklist(self.hostname)
-
