@@ -197,6 +197,18 @@ class ExperimentController(object):
             ResourceState.FAILED,
             ResourceState.FINISHED])
 
+    def wait_released(self, guids):
+        """ Blocking method that wait until all the RM from the 'guid' list 
+            reached the state RELEASED
+
+        :param guids: List of guids
+        :type guids: list
+        """
+        return self.wait(guids, states = [ResourceState.RELEASED,
+            ResourceState.STOPPED,
+            ResourceState.FAILED,
+            ResourceState.FINISHED])
+
     def wait(self, guids, states = [ResourceState.FINISHED, 
             ResourceState.FAILED,
             ResourceState.STOPPED]):
@@ -623,20 +635,11 @@ class ExperimentController(object):
         if not group:
             group = self.resources
 
-        threads = []
         for guid in group:
             rm = self.get_resource(guid)
-            thread = threading.Thread(target=rm.release)
-            threads.append(thread)
-            thread.setDaemon(True)
-            thread.start()
+            self.schedule("0s", rm.release)
 
-        while list(threads) and not self.finished:
-            thread = threads[0]
-            # Time out after 5 seconds to check EC not terminated
-            thread.join(5)
-            if not thread.is_alive():
-                threads.remove(thread)
+        self.wait_released(group)
         
     def shutdown(self):
         """ Shutdown the Experiment Controller. 
