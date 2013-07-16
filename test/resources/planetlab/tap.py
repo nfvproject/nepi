@@ -20,7 +20,7 @@
 
 from nepi.execution.ec import ExperimentController 
 
-from test_utils import skipIfNotAlive, skipInteractive
+from test_utils import skipIfNotAlive
 
 import os
 import time

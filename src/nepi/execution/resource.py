@@ -785,7 +785,7 @@ def find_types():
             import logging
             err = traceback.format_exc()
             logger = logging.getLogger("Resource.find_types()")
-            logger.error("Error while lading Resource Managers %s" % err)
+            logger.error("Error while loading Resource Managers %s" % err)
 
     return types
 

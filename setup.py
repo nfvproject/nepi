@@ -28,6 +28,6 @@ setup(
         package_dir = {"": "src"},
         package_data = {
             "nepi.resources.planetlab" : [ "scripts/*.py" ],
-            "nepi.resources.all" : [ "scripts/*.py" ]
+            "nepi.resources.linux" : [ "scripts/*.py" ]
             }
     )
