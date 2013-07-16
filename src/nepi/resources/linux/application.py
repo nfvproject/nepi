@@ -600,10 +600,10 @@ class LinuxApplication(ResourceManager):
                 # Only try to kill the process if the pid and ppid
                 # were retrieved
                 if self.pid and self.ppid:
-                    (out, err), proc = self.node.kill(self.pid, self.ppid, sudo = 
-                            self._sudo_kill)
+                    (out, err), proc = self.node.kill(self.pid, self.ppid,
+                            sudo = self._sudo_kill)
 
-                    if out or err:
+                    if proc.poll() or err:
                         # check if execution errors occurred
                         msg = " Failed to STOP command '%s' " % self.get("command")
                         self.error(msg, out, err)
@@ -649,7 +649,7 @@ class LinuxApplication(ResourceManager):
 
             else:
                 # We need to query the status of the command we launched in 
-                # background. In oredr to avoid overwhelming the remote host and
+                # background. In order to avoid overwhelming the remote host and
                 # the local processor with too many ssh queries, the state is only
                 # requested every 'state_check_delay' seconds.
                 state_check_delay = 0.5

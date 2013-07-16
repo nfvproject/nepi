@@ -51,6 +51,25 @@ def skipIfNotAlive(func):
     
     return wrapped
 
+def skipIfAnyNotAlive(func):
+    name = func.__name__
+    def wrapped(*args, **kwargs):
+        argss = list(args)
+        argss.pop(0)
+        username = argss.pop(0)
+
+        for hostname in argss:
+            node, ec = create_node(hostname, username)
+
+            if not node.is_alive():
+                print "*** WARNING: Skipping test %s: Node %s is not alive\n" % (
+                    name, node.get("hostname"))
+                return
+
+        return func(*args, **kwargs)
+    
+    return wrapped
+
 def skipInteractive(func):
     name = func.__name__
     def wrapped(*args, **kwargs):

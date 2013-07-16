@@ -21,7 +21,7 @@ PYPATH = $(BUILDDIR):$(TESTLIB):$(PYTHONPATH)
 COVERAGE = $(or $(shell which coverage), $(shell which python-coverage), \
 	   coverage)
 
-all:
+all: clean
 	PYTHONPATH="$(PYTHONPATH):$(SRCDIR)" ./setup.py build
 
 install: all
@@ -49,8 +49,8 @@ coverage: all
 	rm -f .coverage
 
 clean:
-	./setup.py clean
 	rm -f `find -name \*.pyc` .coverage *.pcap
+	rm -rf "$(BUILDDIR)"
 
 distclean: clean
 	rm -rf "$(DISTDIR)"

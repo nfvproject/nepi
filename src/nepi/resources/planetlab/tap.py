@@ -28,6 +28,8 @@ import os
 import time
 
 # TODO: - routes!!!
+#       - CREATE GRE - PlanetlabGRE - it only needs to set the gre and remote
+#               properties when configuring the vif_up
 
 PYTHON_VSYS_VERSION = "1.0"
 
@@ -54,13 +56,15 @@ class PlanetlabTap(LinuxApplication):
                 "Name of the network interface (e.g. eth0, wlan0, etc)",
                 flags = Flags.ReadOnly)
 
-        up = Attribute("up", "Link up", type = Types.Bool)
+        up = Attribute("up", "Link up", 
+                type = Types.Bool)
         
-        snat = Attribute("snat", "Set SNAT=1", type = Types.Bool,
-                flags = Flags.ReadOnly)
+        snat = Attribute("snat", "Set SNAT=1", 
+                type = Types.Bool,
+                flags = Flags.ExecReadOnly)
         
         pointopoint = Attribute("pointopoint", "Peer IP address", 
-                flags = Flags.ReadOnly)
+                flags = Flags.ExecReadOnly)
 
         tear_down = Attribute("tearDown", "Bash script to be executed before " + \
                 "releasing the resource",
@@ -92,7 +96,7 @@ class PlanetlabTap(LinuxApplication):
                 "pl-vif-create.py")
 
         self.node.upload(pl_vif_create,
-                os.path.join(self.app_home, "pl-vif-create.py"),
+                os.path.join(self.node.src_dir, "pl-vif-create.py"),
                 overwrite = False)
 
         # upload vif-stop python script
@@ -100,23 +104,23 @@ class PlanetlabTap(LinuxApplication):
                 "pl-vif-stop.py")
 
         self.node.upload(pl_vif_stop,
-                os.path.join(self.app_home, "pl-vif-stop.py"),
+                os.path.join(self.node.src_dir, "pl-vif-stop.py"),
                 overwrite = False)
 
         # upload vif-connect python script
         pl_vif_connect = os.path.join(os.path.dirname(__file__), "scripts",
-                "pl-vif-tunconnect.py")
+                "pl-vif-udp-connect.py")
 
         self.node.upload(pl_vif_connect,
-                os.path.join(self.app_home, "pl-vif-connect.py"),
+                os.path.join(self.node.src_dir, "pl-vif-udp-connect.py"),
                 overwrite = False)
 
         # upload tun-connect python script
-        tunchannel = os.path.join(os.path.dirname(__file__), "..", "all", "scripts",
-                "tunchannel.py")
+        tunchannel = os.path.join(os.path.dirname(__file__), "..", "linux",
+                "scripts", "tunchannel.py")
 
         self.node.upload(tunchannel,
-                os.path.join(self.app_home, "tunchannel.py"),
+                os.path.join(self.node.src_dir, "tunchannel.py"),
                 overwrite = False)
 
         # upload stop.sh script
@@ -138,7 +142,7 @@ class PlanetlabTap(LinuxApplication):
         self._run_in_background()
         
         # Retrive if_name
-        if_name = self.wait_if_name()
+        if_name = self._wait_if_name()
         self.set("deviceName", if_name) 
 
     def deploy(self):
@@ -210,9 +214,9 @@ class PlanetlabTap(LinuxApplication):
 
         return self._state
 
-    def wait_if_name(self):
+    def _wait_if_name(self):
         """ Waits until the if_name file for the command is generated, 
-            and returns the if_name for the devide """
+            and returns the if_name for the device """
         if_name = None
         delay = 1.0
 
@@ -233,9 +237,25 @@ class PlanetlabTap(LinuxApplication):
 
         return if_name
 
+    def udp_connect_command(self, remote_ip, local_port_file, 
+            remote_port_file, ret_file):
+        command = ["sudo -S "]
+        command.append("PYTHONPATH=$PYTHONPATH:${SRC}")
+        command.append("python ${SRC}/pl-vif-udp-connect.py")
+        command.append("-t %s" % self.vif_type)
+        command.append("-S %s " % self.sock_name)
+        command.append("-l %s " % local_port_file)
+        command.append("-r %s " % remote_port_file)
+        command.append("-H %s " % remote_ip)
+        command.append("-R %s " % ret_file)
+
+        command = " ".join(command)
+        command = self.replace_paths(command)
+        return command
+
     @property
     def _start_command(self):
-        command = ["sudo -S python ${APP_HOME}/pl-vif-create.py"]
+        command = ["sudo -S python ${SRC}/pl-vif-create.py"]
         
         command.append("-t %s" % self.vif_type)
         command.append("-a %s" % self.get("ip4"))
@@ -251,7 +271,7 @@ class PlanetlabTap(LinuxApplication):
 
     @property
     def _stop_command(self):
-        command = ["sudo -S python ${APP_HOME}/pl-vif-stop.py"]
+        command = ["sudo -S python ${SRC}/pl-vif-stop.py"]
         
         command.append("-S %s " % self.sock_name)
         return " ".join(command)
@@ -274,6 +294,7 @@ class PlanetlabTap(LinuxApplication):
 
     @property
     def _install(self):
+        # Install python-vsys and python-passfd
         install_vsys = ( " ( "
                     "   python -c 'import vsys, os;  vsys.__version__ == \"%(version)s\" or os._exit(1)' "
                     " ) "
