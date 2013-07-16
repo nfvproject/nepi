@@ -142,7 +142,7 @@ class PlanetlabTap(LinuxApplication):
         self._run_in_background()
         
         # Retrive if_name
-        if_name = self._wait_if_name()
+        if_name = self.wait_if_name()
         self.set("deviceName", if_name) 
 
     def deploy(self):
@@ -214,7 +214,19 @@ class PlanetlabTap(LinuxApplication):
 
         return self._state
 
-    def _wait_if_name(self):
+    def release(self):
+        # Node needs to wait until all associated RMs are released
+        # to be released
+        from nepi.resources.linux.udptunnel import UdpTunnel
+        rms = self.get_connected(UdpTunnel.rtype())
+        for rm in rms:
+            if rm.state < ResourceState.STOPPED:
+                self.ec.schedule(reschedule_delay, self.release)
+                return 
+
+        super(PlanetlabTap, self).release()
+
+    def wait_if_name(self):
         """ Waits until the if_name file for the command is generated, 
             and returns the if_name for the device """
         if_name = None
