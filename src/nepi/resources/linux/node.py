@@ -345,6 +345,14 @@ class LinuxNode(ResourceManager):
         super(LinuxNode, self).deploy()
 
     def release(self):
+        # Node needs to wait until all associated RMs are released
+        # to be released
+        rms = self.get_connected()
+        for rm in rms:
+            if rm.state < ResourceState.STOPPED:
+                self.ec.schedule(reschedule_delay, self.release)
+                return 
+
         tear_down = self.get("tearDown")
         if tear_down:
             self.execute(tear_down)

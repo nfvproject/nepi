@@ -61,8 +61,9 @@ def get_fd(socket_name):
 
 def get_options():
     usage = ("usage: %prog -t <vif-type> -S <fd-socket-name> "
-        "-l <local-port-file> -r <remote-port-file> -H <remote-host> "
-        "-R <ret-file> ")
+            "-b <bwlimit> -c <cipher> -k <cipher-key> -q <txqueuelen> " 
+            "-l <local-port-file> -r <remote-port-file> -H <remote-host> "
+            "-R <ret-file> ")
     
     parser = OptionParser(usage = usage)
 
@@ -72,6 +73,23 @@ def get_options():
     parser.add_option("-S", "--fd-socket-name", dest="fd_socket_name",
         help = "Name for the unix socket to request the TAP file descriptor", 
         default = "tap.sock", type="str")
+
+    parser.add_option("-b", "--bwlimit", dest="bwlimit",
+        help = "Specifies the interface's emulated bandwidth in bytes ",
+        default = None, type="int")
+    parser.add_option("-q", "--txqueuelen", dest="txqueuelen",
+        help = "Specifies the interface's transmission queue length. ",
+        default = 1000, type="int")
+    parser.add_option("-c", "--cipher", dest="cipher",
+        help = "Cipher to encript communication. "
+            "One of PLAIN, AES, Blowfish, DES, DES3. ",
+        default = None, type="str")
+    parser.add_option("-k", "--cipher-key", dest="cipher_key",
+        help = "Specify a symmetric encryption key with which to protect "
+            "packets across the tunnel. python-crypto must be installed "
+            "on the system." ,
+        default = None, type="str")
+
     parser.add_option("-l", "--local-port-file", dest="local_port_file",
         help = "File where to store the local binded UDP port number ", 
         default = "local_port_file", type="str")
@@ -92,13 +110,15 @@ def get_options():
         vif_type = vsys.IFF_TUN
 
     return ( vif_type, options.fd_socket_name, options.local_port_file,
-            options.remote_port_file, options.remote_host,
-            options.ret_file )
+            options.remote_port_file, options.remote_host, options.ret_file, 
+            options.bwlimit, options.cipher, options.cipher_key,
+            options.txqueuelen )
 
 if __name__ == '__main__':
 
     ( vif_type, socket_name, local_port_file, remote_port_file,
-            remote_host, ret_file ) = get_options()
+      remote_host, ret_file, bwlimit, cipher, cipher_key, txqueuelen 
+         ) = get_options()
    
     # Get the file descriptor of the TAP device from the process
     # that created it
@@ -120,10 +140,22 @@ if __name__ == '__main__':
     while not os.path.exists(remote_port_file):
         time.sleep(2)
 
+    remote_port = ''
     # Read remote port from file
-    f = open(remote_port_file, 'r')
-    remote_port = f.read()
-    f.close()
+    # Try until something is read...
+    # xxx: There seems to be a weird behavior where
+    #       even if the file exists and had the port number,
+    #       the read operation returns empty string!
+    #       Maybe a raise condition?
+    for i in xrange(10):
+        f = open(remote_port_file, 'r')
+        remote_port = f.read()
+        f.close()
+
+        if remote_port:
+            break
+        
+        time.sleep(2)
     
     remote_port = remote_port.strip()
     remote_port = int(remote_port)
@@ -140,17 +172,17 @@ if __name__ == '__main__':
     f.close()
 
     # Establish tunnel
-    # TODO: ADD parameters tunqueue, tunkqueue, cipher_key
     tunchannel.tun_fwd(tun, remote,
-        # Planetlab TAP devices add PI headers 
-        with_pi = True,
+        with_pi = True, # Planetlab TAP devices add PI headers 
         ether_mode = (vif_type == vsys.IFF_TAP),
-        cipher_key = None,
         udp = True,
+        cipher_key = cipher_key,
+        cipher = cipher,
         TERMINATE = TERMINATE,
         SUSPEND = SUSPEND,
-        tunqueue = 1000,
+        tunqueue = txqueuelen,
         tunkqueue = 500,
+        bwlimit = bwlimit
     ) 
  
 

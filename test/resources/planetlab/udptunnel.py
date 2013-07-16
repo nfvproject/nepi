@@ -84,11 +84,67 @@ class UdpTunnelTestCase(unittest.TestCase):
         if_name = ec.get(tap2, "deviceName")
         self.assertTrue(if_name.startswith("tap"))
 
+        ec.shutdown()
+
+    @skipIfAnyNotAlive
+    def t_tun_udp_tunnel(self, user, host1, host2):
+
+        ec = ExperimentController(exp_id = "test-tap-udp-tunnel")
+        
+        node1 = ec.register_resource("PlanetlabNode")
+        ec.set(node1, "hostname", host1)
+        ec.set(node1, "username", user)
+        ec.set(node1, "cleanHome", True)
+        ec.set(node1, "cleanProcesses", True)
+
+        tun1 = ec.register_resource("PlanetlabTun")
+        ec.set(tun1, "ip4", "192.168.1.1")
+        ec.set(tun1, "pointopoint", "192.168.1.2")
+        ec.set(tun1, "prefix4", 24)
+        ec.register_connection(tun1, node1)
+
+        node2 = ec.register_resource("PlanetlabNode")
+        ec.set(node2, "hostname", host2)
+        ec.set(node2, "username", user)
+        ec.set(node2, "cleanHome", True)
+        ec.set(node2, "cleanProcesses", True)
+
+        tun2 = ec.register_resource("PlanetlabTun")
+        ec.set(tun2, "ip4", "192.168.1.2")
+        ec.set(tun2, "pointopoint", "192.168.1.1")
+        ec.set(tun2, "prefix4", 24)
+        ec.register_connection(tun2, node2)
+
+        udptun = ec.register_resource("UdpTunnel")
+        ec.register_connection(tun1, udptun)
+        ec.register_connection(tun2, udptun)
+
+        app = ec.register_resource("LinuxApplication")
+        cmd = "ping -c3 192.168.1.2"
+        ec.set(app, "command", cmd)
+        ec.register_connection(app, node1)
+
+        ec.deploy()
+
+        ec.wait_finished(app)
+
+        ping = ec.trace(app, 'stdout')
+        expected = """3 packets transmitted, 3 received, 0% packet loss"""
+        self.assertTrue(ping.find(expected) > -1)
+        
+        if_name = ec.get(tun1, "deviceName")
+        self.assertTrue(if_name.startswith("tun"))
+        
+        if_name = ec.get(tun2, "deviceName")
+        self.assertTrue(if_name.startswith("tun"))
 
         ec.shutdown()
 
     def test_tap_udp_tunnel(self):
         self.t_tap_udp_tunnel(self.user, self.host1, self.host2)
+
+    def test_tun_udp_tunnel(self):
+        self.t_tun_udp_tunnel(self.user, self.host1, self.host2)
 
 if __name__ == '__main__':
     unittest.main()

@@ -21,6 +21,7 @@ from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState, \
         reschedule_delay
 from nepi.resources.linux.application import LinuxApplication
+from nepi.util.sshfuncs import ProcStatus
 from nepi.util.timefuncs import tnow, tdiffsec
 
 import os
@@ -30,6 +31,39 @@ import time
 @clsinit_copy
 class UdpTunnel(LinuxApplication):
     _rtype = "UdpTunnel"
+
+    @classmethod
+    def _register_attributes(cls):
+        cipher = Attribute("cipher",
+               "Cipher to encript communication. "
+                "One of PLAIN, AES, Blowfish, DES, DES3. ",
+                default = None,
+                allowed = ["PLAIN", "AES", "Blowfish", "DES", "DES3"],
+                type = Types.Enumerate, 
+                flags = Flags.ExecReadOnly)
+
+        cipher_key = Attribute("cipherKey",
+                "Specify a symmetric encryption key with which to protect "
+                "packets across the tunnel. python-crypto must be installed "
+                "on the system." ,
+                flags = Flags.ExecReadOnly)
+
+        txqueuelen = Attribute("txQueueLen",
+                "Specifies the interface's transmission queue length. "
+                "Defaults to 1000. ", 
+                type = Types.Integer, 
+                flags = Flags.ExecReadOnly)
+
+        bwlimit = Attribute("bwLimit",
+                "Specifies the interface's emulated bandwidth in bytes "
+                "per second.",
+                type = Types.Integer, 
+                flags = Flags.ExecReadOnly)
+
+        cls._register_attribute(cipher)
+        cls._register_attribute(cipher_key)
+        cls._register_attribute(txqueuelen)
+        cls._register_attribute(bwlimit)
 
     def __init__(self, ec, guid):
         super(UdpTunnel, self).__init__(ec, guid)
@@ -81,9 +115,13 @@ class UdpTunnel(LinuxApplication):
                 "remote_port")
         ret_file = os.path.join(self.run_home(endpoint), 
                 "ret_file")
+        cipher = self.get("cipher")
+        cipher_key = self.get("cipherKey")
+        bwlimit = self.get("bwLimit")
+        txqueuelen = self.get("txQueueLen")
         udp_connect_command = endpoint.udp_connect_command(
                 remote_ip, local_port_file, remote_port_file,
-                ret_file)
+                ret_file, cipher, cipher_key, bwlimit, txqueuelen)
 
         # upload command to connect.sh script
         shfile = os.path.join(self.app_home(endpoint), "udp-connect.sh")
@@ -182,20 +220,8 @@ class UdpTunnel(LinuxApplication):
             self._state = ResourceState.FAILED
             raise RuntimeError, msg
 
-    def stop(self):
-        command = self.get('command') or ''
-        state = self.state
-        
-        if state == ResourceState.STARTED:
-            self.info("Stopping command '%s'" % command)
-
-            command = "bash %s" % os.path.join(self.app_home, "stop.sh")
-            (out, err), proc = self.execute_command(command,
-                    blocking = True)
-
-            self._stop_time = tnow()
-            self._state = ResourceState.STOPPED
-
+    # XXX: Leaves process unkilled!! 
+    #       Implement another mechanism to kill the tunnel!
     def stop(self):
         """ Stops application execution
         """
@@ -214,7 +240,7 @@ class UdpTunnel(LinuxApplication):
                 if err1 or err2 or pro1.poll() or proc2.poll():
                     # check if execution errors occurred
                     msg = " Failed to STOP tunnel"
-                    self.error(msg, out, err)
+                    self.error(msg, err1, err2)
                     self.fail()
                     stopped = False
 
@@ -232,27 +258,29 @@ class UdpTunnel(LinuxApplication):
             # requested every 'state_check_delay' seconds.
             state_check_delay = 0.5
             if tdiffsec(tnow(), self._last_state_check) > state_check_delay:
-                # check if execution errors occurred
-                (out1, err1), proc1 = self.endpoint1.node.check_errors(
-                        self.run_home(self.endpoint1))
-
-                (out2, err2), proc2 = self.endpoint2.node.check_errors(
-                        self.run_home(self.endpoint2))
-
-                if err1 or err2:
-                    msg = " Failed to connect endpoints "
-                    self.error(msg, err1, err2)
-                    self.fail()
-
-                elif self._pid1 and self._ppid1 and self._pid2 and self._ppid2:
+                if self._pid1 and self._ppid1 and self._pid2 and self._ppid2:
+                    # Make sure the process is still running in background
                     # No execution errors occurred. Make sure the background
                     # process with the recorded pid is still running.
-                    status1 = self.node.status(self._pid1, self._ppid1)
-                    status2 = self.node.status(self._pid2, self._ppid2)
+                    status1 = self.endpoint1.node.status(self._pid1, self._ppid1)
+                    status2 = self.endpoint2.node.status(self._pid2, self._ppid2)
 
                     if status1 == ProcStatus.FINISHED and \
-                            satus2 == ProcStatus.FINISHED:
-                        self._state = ResourceState.FINISHED
+                            status2 == ProcStatus.FINISHED:
+
+                        # check if execution errors occurred
+                        (out1, err1), proc1 = self.endpoint1.node.check_errors(
+                                self.run_home(self.endpoint1))
+
+                        (out2, err2), proc2 = self.endpoint2.node.check_errors(
+                                self.run_home(self.endpoint2))
+
+                        if err1 or err2: 
+                            msg = "Error occurred in tunnel"
+                            self.error(msg, err1, err2)
+                            self.fail()
+                        else:
+                            self._state = ResourceState.FINISHED
 
                 self._last_state_check = tnow()
 
