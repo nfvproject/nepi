@@ -33,13 +33,13 @@ class UdpTunnelTestCase(unittest.TestCase):
         self.user = "inria_nepi"
 
     @skipIfAnyNotAlive
-    def t_tap_udp_tunnel(self, user, host1, host2):
+    def t_tap_udp_tunnel(self, user1, host1, user2, host2):
 
         ec = ExperimentController(exp_id = "test-tap-udp-tunnel")
         
         node1 = ec.register_resource("PlanetlabNode")
         ec.set(node1, "hostname", host1)
-        ec.set(node1, "username", user)
+        ec.set(node1, "username", user1)
         ec.set(node1, "cleanHome", True)
         ec.set(node1, "cleanProcesses", True)
 
@@ -51,7 +51,7 @@ class UdpTunnelTestCase(unittest.TestCase):
 
         node2 = ec.register_resource("PlanetlabNode")
         ec.set(node2, "hostname", host2)
-        ec.set(node2, "username", user)
+        ec.set(node2, "username", user2)
         ec.set(node2, "cleanHome", True)
         ec.set(node2, "cleanProcesses", True)
 
@@ -87,13 +87,13 @@ class UdpTunnelTestCase(unittest.TestCase):
         ec.shutdown()
 
     @skipIfAnyNotAlive
-    def t_tun_udp_tunnel(self, user, host1, host2):
+    def t_tun_udp_tunnel(self, user1, host1, user2, host2):
 
         ec = ExperimentController(exp_id = "test-tap-udp-tunnel")
         
         node1 = ec.register_resource("PlanetlabNode")
         ec.set(node1, "hostname", host1)
-        ec.set(node1, "username", user)
+        ec.set(node1, "username", user1)
         ec.set(node1, "cleanHome", True)
         ec.set(node1, "cleanProcesses", True)
 
@@ -105,7 +105,7 @@ class UdpTunnelTestCase(unittest.TestCase):
 
         node2 = ec.register_resource("PlanetlabNode")
         ec.set(node2, "hostname", host2)
-        ec.set(node2, "username", user)
+        ec.set(node2, "username", user2)
         ec.set(node2, "cleanHome", True)
         ec.set(node2, "cleanProcesses", True)
 
@@ -141,10 +141,10 @@ class UdpTunnelTestCase(unittest.TestCase):
         ec.shutdown()
 
     def test_tap_udp_tunnel(self):
-        self.t_tap_udp_tunnel(self.user, self.host1, self.host2)
+        self.t_tap_udp_tunnel(self.user, self.host1, self.user, self.host2)
 
     def test_tun_udp_tunnel(self):
-        self.t_tun_udp_tunnel(self.user, self.host1, self.host2)
+        self.t_tun_udp_tunnel(self.user, self.host1, self.user, self.host2)
 
 if __name__ == '__main__':
     unittest.main()

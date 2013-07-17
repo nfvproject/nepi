@@ -56,9 +56,9 @@ def skipIfAnyNotAlive(func):
     def wrapped(*args, **kwargs):
         argss = list(args)
         argss.pop(0)
-        username = argss.pop(0)
-
-        for hostname in argss:
+        for i in xrange(len(argss)/2):
+            username = argss[i*2]
+            hostname = argss[i*2+1]
             node, ec = create_node(hostname, username)
 
             if not node.is_alive():
