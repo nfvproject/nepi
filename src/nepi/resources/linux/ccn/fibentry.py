@@ -66,17 +66,20 @@ class LinuxFIBEntry(LinuxApplication):
 
     @classmethod
     def _register_traces(cls):
-        ping = Trace("ping", "Continuous ping to the peer end")
-        mtr = Trace("mtr", "Continuous mtr to the peer end")
+        ping = Trace("ping", "Ping to the peer end")
+        mtr = Trace("mtr", "Mtr to the peer end")
+        traceroute = Trace("traceroute", "Tracerout to the peer end")
 
         cls._register_trace(ping)
         cls._register_trace(mtr)
+        cls._register_trace(traceroute)
 
     def __init__(self, ec, guid):
         super(LinuxFIBEntry, self).__init__(ec, guid)
         self._home = "fib-%s" % self.guid
         self._ping = None
         self._mtr = None
+        self._traceroute = None
 
     @property
     def ccnd(self):
@@ -94,6 +97,8 @@ class LinuxFIBEntry(LinuxApplication):
             return self.ec.trace(self._ping, "stdout", attr, block, offset)
         if name == "mtr":
             return self.ec.trace(self._mtr, "stdout", attr, block, offset)
+        if name == "traceroute":
+            return self.ec.trace(self._traceroute, "stdout", attr, block, offset)
 
         return super(LinuxFIBEntry, self).trace(name, attr, block, offset)
         
@@ -160,20 +165,32 @@ class LinuxFIBEntry(LinuxApplication):
             self.ec.deploy(group=[self._ping])
 
         if self.trace_enabled("mtr"):
-            self.info("Configuring TRACE trace")
+            self.info("Configuring MTR trace")
             self._mtr = self.ec.register_resource("LinuxMtr")
             self.ec.set(self._mtr, "noDns", True)
             self.ec.set(self._mtr, "printTimestamp", True)
             self.ec.set(self._mtr, "continuous", True)
             self.ec.set(self._mtr, "target", self.get("host"))
             self.ec.register_connection(self._mtr, self.node.guid)
-            self.ec.deploy(group=[self._mtr])
             # force waiting until mtr is READY before we starting the FIB
             self.ec.register_condition(self.guid, ResourceAction.START, 
                     self._mtr, ResourceState.READY)
             # schedule mtr deploy
             self.ec.deploy(group=[self._mtr])
-    
+
+        if self.trace_enabled("traceroute"):
+            self.info("Configuring TRACEROUTE trace")
+            self._traceroute = self.ec.register_resource("LinuxTraceroute")
+            self.ec.set(self._traceroute, "printTimestamp", True)
+            self.ec.set(self._traceroute, "continuous", True)
+            self.ec.set(self._traceroute, "target", self.get("host"))
+            self.ec.register_connection(self._traceroute, self.node.guid)
+            # force waiting until mtr is READY before we starting the FIB
+            self.ec.register_condition(self.guid, ResourceAction.START, 
+                    self._traceroute, ResourceState.READY)
+            # schedule mtr deploy
+            self.ec.deploy(group=[self._traceroute])
+
     def start(self):
         if self._state in [ResourceState.READY, ResourceState.STARTED]:
             command = self.get("command")
