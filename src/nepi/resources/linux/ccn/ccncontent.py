@@ -40,8 +40,17 @@ class LinuxCCNContent(LinuxApplication):
                 "The content to publish. It can be a path to a file or plain text ",
                 flags = Flags.ExecReadOnly)
 
+        scope = Attribute("scope",
+                "Use the given scope on the start-write request (if -r specified). "
+                "scope can be 1 (local), 2 (neighborhood), or 3 (unlimited). "
+                "Note that a scope of 3 is encoded as the absence of any scope in the interest. ",
+                type = Types.Integer,
+                default = 1,
+                flags = Flags.ExecReadOnly)
+
         cls._register_attribute(content_name)
         cls._register_attribute(content)
+        cls._register_attribute(scope)
 
     def __init__(self, ec, guid):
         super(LinuxCCNContent, self).__init__(ec, guid)
@@ -138,8 +147,13 @@ class LinuxCCNContent(LinuxApplication):
 
     @property
     def _start_command(self):
-        return "ccnseqwriter -r %s < %s" % (self.get("contentName"),
-                os.path.join(self.app_home, 'stdin'))
+        command = ["ccnseqwriter"]
+        command.append("-r %s" % self.get("contentName"))
+        command.append("-s %d" % self.get("scope"))
+        command.append("< %s" % os.path.join(self.app_home, 'stdin'))
+
+        command = " ".join(command)
+        return command
 
     @property
     def _environment(self):

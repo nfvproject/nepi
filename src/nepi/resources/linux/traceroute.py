@@ -73,7 +73,7 @@ class LinuxTraceroute(LinuxApplication):
         args.append("traceroute")
         args.append(self.get("target"))
         if self.get("continuous") == True:
-            args.append("; done ")
+            args.append("; sleep 5 ; done ")
 
         command = " ".join(args)
 
