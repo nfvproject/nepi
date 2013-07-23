@@ -40,6 +40,12 @@ class PlanetlabNode(LinuxNode):
         pl_ptn = Attribute("plcApiPattern", "PLC API service regexp pattern (e.g. https://%(hostname)s:443/PLCAPI/ ) ",
                 default = "https://%(hostname)s:443/PLCAPI/",
                 flags = Flags.ExecReadOnly)
+    
+        pl_user = Attribute("pluser", "PlanetLab account user, as the one to authenticate in the website) ",
+                flags = Flags.Credential)
+
+        pl_password = Attribute("password", "PlanetLab account password, as the one to authenticate in the website) ",
+                flags = Flags.Credential)
 
         city = Attribute("city",
                 "Constrain location (city) during resource discovery. May use wildcards.",
@@ -139,6 +145,9 @@ class PlanetlabNode(LinuxNode):
         cls._register_attribute(ip)
         cls._register_attribute(pl_url)
         cls._register_attribute(pl_ptn)
+        cls._register_attribute(pl_user)
+        cls._register_attribute(pl_password)
+        cls._register_attribute(site)
         cls._register_attribute(city)
         cls._register_attribute(country)
         cls._register_attribute(region)
@@ -162,17 +171,111 @@ class PlanetlabNode(LinuxNode):
     @property
     def plapi(self):
         if not self._plapi:
-            slicename = self.get("username")
+            pl_user = self.get("pluser")
             pl_pass = self.get("password")
             pl_url = self.get("plcApiUrl")
             pl_ptn = self.get("plcApiPattern")
 
-            self._plapi =  PLCAPIFactory.get_api(slicename, pl_pass, pl_url,
+            self._plapi =  PLCAPIFactory.get_api(pl_user, pl_pass, pl_url,
                     pl_ptn)
             
         return self._plapi
 
+    #def discover(self):
+        #if self.get("hostname") or self.get("ip"):
+            #pass
+            #return node_id de hostname para que provision haga add_node_slice, check que ip coincide con hostname
+
+    def filter_based_on_attributes(self):
+        # Map attributes with tagnames of PL
+        timeframe = self.get("timeframe")[0]
+        attr_to_tags = {
+            'city' : 'city',
+            'country' : 'country',
+            'region' : 'region',
+            'architecture' : 'arch',
+            'operatingSystem' : 'fcdistro',
+            #'site' : 'pldistro',
+            'minReliability' : 'reliability%s' % timeframe,
+            'maxReliability' : 'reliability%s' % timeframe,
+            'minBandwidth' : 'bw%s' % timeframe,
+            'maxBandwidth' : 'bw%s' % timeframe,
+            'minLoad' : 'load%s' % timeframe,
+            'maxLoad' : 'load%s' % timeframe,
+            'minCpu' : 'cpu%s' % timeframe,
+            'maxCpu' : 'cpu%s' % timeframe,
+        }
+        
+        nodes_id = []
+        filters = {}
+        for attr_name, attr_obj in self._attrs.iteritems():
+            attr_value = self.get(attr_name)
+            print nodes_id
+            if attr_value is not None and attr_obj.flags == 8 and not 'min' in attr_name \
+                and not 'max'in attr_name and attr_name != 'timeframe':
+                attr_tag = attr_to_tags[attr_name]
+                filters['tagname'] = attr_tag
+                filters['value'] = attr_value
+                node_tags = self.plapi.get_node_tags(filters)
+                if node_tags is not None:
+                    if len(nodes_id) == 0:
+                        for node_tag in node_tags:
+                            nodes_id.append(node_tag['node_id'])
+                    else:
+                        nodes_id_tmp = []
+                        for node_tag in node_tags:
+                            if node_tag['node_id'] in nodes_id:
+                                nodes_id_tmp.append(node_tag['node_id'])
+                        if len(nodes_id_tmp):
+                            nodes_id = set(nodes_id) & set(nodes_id_tmp)
+                        else:
+                            return "No node matching your filters 1"
+                else:
+                    return "No node matching your filters 2"
+            elif attr_value is not None and attr_obj.flags == 8 and ('min' or 'max') in attr_name:
+                attr_tag = attr_to_tags[attr_name]
+                filters['tagname'] = attr_tag
+                node_tags = self.plapi.get_node_tags(filters)
+                if node_tags is not None:
+                    if len(nodes_id) == 0:
+                        for node_tag in node_tags:
+                            if 'min' in attr_name and node_tag['value'] != 'n/a' and \
+                                float(node_tag['value']) > attr_value:
+                                nodes_id.append(node_tag['node_id'])
+                            elif 'max' in attr_name and node_tag['value'] != 'n/a' and \
+                                float(node_tag['value']) < attr_value:
+                                nodes_id.append(node_tag['node_id'])
+                    else:
+                        nodes_id_tmp = []
+                        for node_tag in node_tags:
+                            if 'min' in attr_name and node_tag['value'] != 'n/a' and \
+                                float(node_tag['value']) > attr_value and \
+                                node_tag['node_id'] in nodes_id:
+                                nodes_id_tmp.append(node_tag['node_id'])
+                            elif 'max' in attr_name and node_tag['value'] != 'n/a' and \
+                                float(node_tag['value']) < attr_value and \
+                                node_tag['node_id'] in nodes_id:
+                                nodes_id_tmp.append(node_tag['node_id'])
+                        if len(nodes_id_tmp):
+                            nodes_id = set(nodes_id) & set(nodes_id_tmp)
+                        else:
+                            return "No node matching your filters 3"
+
+        return nodes_id
+                    
+    #def check_alive_and_active(self, nodes_id):
+           
+                        
+
+
+
     def valid_connection(self, guid):
         # TODO: Validate!
         return True
+
+#    def blacklist(self):
+#        # TODO!!!!
+#        self.warn(" Blacklisting malfunctioning node ")
+#        #import util
+#        #util.appendBlacklist(self.hostname)
 
