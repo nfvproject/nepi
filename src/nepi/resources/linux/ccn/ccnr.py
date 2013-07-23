@@ -146,6 +146,11 @@ class LinuxCCNR(LinuxApplication):
             "Sets the CCNS_SYNC_SCOPE environmental variable. ",
             flags = Flags.ExecReadOnly)
 
+        repo_file = Attribute("repoFile1",
+            "The Repository uses $CCNR_DIRECTORY/repoFile1 for "
+            "persistent storage of CCN Content Objects",
+            flags = Flags.ExecReadOnly)
+
         cls._register_attribute(max_fanout)
         cls._register_attribute(max_leaf_entries)
         cls._register_attribute(max_node_bytes)
@@ -172,6 +177,7 @@ class LinuxCCNR(LinuxApplication):
         cls._register_attribute(ccns_root_advise_lifetime)
         cls._register_attribute(ccns_stable_enabled)
         cls._register_attribute(ccns_sync_scope)
+        cls._register_attribute(repo_file)
 
     @classmethod
     def _register_traces(cls):
@@ -226,22 +232,30 @@ class LinuxCCNR(LinuxApplication):
         command = self.get("command")
         env = self.get("env")
 
-        if command:
-            # We want to make sure the repository is running
-            # before the experiment starts.
-            # Run the command as a bash script in background,
-            # in the host ( but wait until the command has
-            # finished to continue )
-            env = self.replace_paths(env)
-            command = self.replace_paths(command)
+        if self.get("repoFile1"):
+            # upload repoFile1
+            local_file = self.get("repoFile1")
+            remote_file = "${RUN_HOME}/repoFile1"
+            remote_file = self.replace_paths(remote_file)
+            self.node.upload(local_file,
+                    remote_file,
+                    overwrite = False)
 
-            shfile = os.path.join(self.app_home, "start.sh")
-            self.node.run_and_wait(command, self.run_home,
-                    shfile = shfile,
-                    overwrite = False,
-                    env = env,
-                    raise_on_error = True)
- 
+        # We want to make sure the repository is running
+        # before the experiment starts.
+        # Run the command as a bash script in background,
+        # in the host ( but wait until the command has
+        # finished to continue )
+        env = self.replace_paths(env)
+        command = self.replace_paths(command)
+
+        shfile = os.path.join(self.app_home, "start.sh")
+        self.node.run_and_wait(command, self.run_home,
+                shfile = shfile,
+                overwrite = False,
+                env = env,
+                raise_on_error = True)
+
     def start(self):
         if self._state == ResourceState.READY:
             command = self.get("command")
