@@ -229,9 +229,9 @@ class PlanetlabNode(LinuxNode):
                         if len(nodes_id_tmp):
                             nodes_id = set(nodes_id) & set(nodes_id_tmp)
                         else:
-                            return "No node matching your filters 1"
+                            self.fail()
                 else:
-                    return "No node matching your filters 2"
+                    self.fail()
             elif attr_value is not None and attr_obj.flags == 8 and ('min' or 'max') in attr_name:
                 attr_tag = attr_to_tags[attr_name]
                 filters['tagname'] = attr_tag
@@ -259,16 +259,40 @@ class PlanetlabNode(LinuxNode):
                         if len(nodes_id_tmp):
                             nodes_id = set(nodes_id) & set(nodes_id_tmp)
                         else:
-                            return "No node matching your filters 3"
+                            self.fail()
 
         return nodes_id
                     
-    #def check_alive_and_active(self, nodes_id):
+    def check_alive_and_active(self, nodes_id):
+        # check node alive
+        import time
+        filters = dict()
+        filters['run_level'] = 'boot'
+        filters['boot_state'] = 'boot'
+        filters['node_type'] = 'regular' 
+        filters['>last_contact'] =  int(time.time()) - 2*3600
+        filters['node_id'] = list(nodes_id)
+        print filters
+        alive_nodes_id = self.plapi.get_nodes(filters, fields=['node_id'])
+        if len(alive_nodes_id) == 0:
+            self.fail()
+        else:
+            nodes_id = list()
+            for node_id in alive_nodes_id:
+                nid = node_id['node_id']
+                nodes_id.append(nid)
+            return nodes_id
+
+# ip = self.plapi.get_interfaces({'node_id':nid}, fields=['ip'])
+# self.set('ip', ip[0]['ip'])
+
+
+    def fail(self):
+        msg = "Discovery failed. No candidates found for node"
+        self.error(msg)
+        raise RuntimeError, msg
            
                         
-
-
-
     def valid_connection(self, guid):
         # TODO: Validate!
         return True
