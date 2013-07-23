@@ -181,9 +181,9 @@ class PlanetlabNode(LinuxNode):
             
         return self._plapi
 
-    #def discover(self):
-        #if self.get("hostname") or self.get("ip"):
-            #pass
+    def discover(self):
+        if self.get("hostname") or self.get("ip"):
+            self.check_active_and_alive() 
             #return node_id de hostname para que provision haga add_node_slice, check que ip coincide con hostname
 
     def filter_based_on_attributes(self):
@@ -263,7 +263,14 @@ class PlanetlabNode(LinuxNode):
 
         return nodes_id
                     
-    def check_alive_and_active(self, nodes_id):
+    def check_alive_and_active(self, nodes_id=None, hostname=None):
+        if nodes_id is None and hostname is None:
+            msg = "Specify nodes_id or hostname"
+            raise RuntimeError, msg
+        if nodes_id is not None and hostname is not None:
+            msg = "Specify either nodes_id or hostname"
+            raise RuntimeError, msg
+
         # check node alive
         import time
         filters = dict()
@@ -271,9 +278,12 @@ class PlanetlabNode(LinuxNode):
         filters['boot_state'] = 'boot'
         filters['node_type'] = 'regular' 
         filters['>last_contact'] =  int(time.time()) - 2*3600
-        filters['node_id'] = list(nodes_id)
-        print filters
-        alive_nodes_id = self.plapi.get_nodes(filters, fields=['node_id'])
+        if nodes_id:
+            filters['node_id'] = list(nodes_id)
+            alive_nodes_id = self.plapi.get_nodes(filters, fields=['node_id'])
+        elif hostname:
+            filters['hostname'] = hostname
+            alive_nodes_id = self.plapi.get_nodes(filters, fields=['node_id'])
         if len(alive_nodes_id) == 0:
             self.fail()
         else:
