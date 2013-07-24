@@ -106,7 +106,8 @@ class ExperimentController(object):
 
     def __init__(self, exp_id = None): 
         super(ExperimentController, self).__init__()
-        # root directory to store files
+        # Logging
+        self._logger = logging.getLogger("ExperimentController")
 
         # Run identifier. It identifies a concrete instance (run) of an experiment.
         # Since a same experiment (same configuration) can be run many times,
@@ -142,9 +143,6 @@ class ExperimentController(object):
 
         # EC state
         self._state = ECState.RUNNING
-
-        # Logging
-        self._logger = logging.getLogger("ExperimentController")
 
     @property
     def logger(self):
@@ -791,6 +789,7 @@ class ExperimentController(object):
         finally:   
             self.logger.debug("Exiting the task processing loop ... ")
             runner.sync()
+            runner.destroy()
 
     def _execute(self, task):
         """ Executes a single task. 
