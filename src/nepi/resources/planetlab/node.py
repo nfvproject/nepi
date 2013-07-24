@@ -22,6 +22,7 @@ from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState
         reschedule_delay
 from nepi.resources.linux.node import LinuxNode
 from nepi.resources.planetlab.plcapi import PLCAPIFactory 
+from nepi.util.timefuncs import tnow, tdiff, tdiffsec, stabsformat
 
 
 @clsinit_copy
@@ -181,10 +182,23 @@ class PlanetlabNode(LinuxNode):
             
         return self._plapi
 
-    def discover(self):
-        if self.get("hostname") or self.get("ip"):
-            self.check_active_and_alive() 
-            #return node_id de hostname para que provision haga add_node_slice, check que ip coincide con hostname
+    #def discover(self):
+    #    hostname = self.get("hostname")
+    #    if hostname: 
+    #        node_id = self.check_alive_and_active(hostname=hostname)
+    #    else:
+    #        from random import choice
+    #        nodes = self.filter_based_on_attributes()
+    #        nodes_alive = self.check_alive_and_active(nodes)
+    #        while in_blkl:
+    #            node_id = choice(nodes_alive)
+                
+
+    #    self._discover_time = tnow()
+    #    self._state = ResourceState.DISCOVERED
+    #    return node_id
+
+    #def provision(self):
 
     def filter_based_on_attributes(self):
         # Map attributes with tagnames of PL
@@ -212,7 +226,7 @@ class PlanetlabNode(LinuxNode):
             attr_value = self.get(attr_name)
             print nodes_id
             if attr_value is not None and attr_obj.flags == 8 and not 'min' in attr_name \
-                and not 'max'in attr_name and attr_name != 'timeframe':
+                and not 'max' in attr_name and attr_name != 'timeframe':
                 attr_tag = attr_to_tags[attr_name]
                 filters['tagname'] = attr_tag
                 filters['value'] = attr_value
@@ -295,6 +309,7 @@ class PlanetlabNode(LinuxNode):
 
 # ip = self.plapi.get_interfaces({'node_id':nid}, fields=['ip'])
 # self.set('ip', ip[0]['ip'])
+#de hostname para que provision haga add_node_slice, check que ip coincide con hostname
 
 
     def fail(self):
