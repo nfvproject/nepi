@@ -158,7 +158,7 @@ class LinuxFIBEntry(LinuxApplication):
             self.ec.set(self._ping, "target", self.get("host"))
             self.ec.register_connection(self._ping, self.node.guid)
             # schedule ping deploy
-            self.ec.deploy(group=[self._ping])
+            self.ec.deploy(guids=[self._ping], group = self.deployment_group)
 
         if self.trace_enabled("mtr"):
             self.info("Configuring MTR trace")
@@ -169,7 +169,7 @@ class LinuxFIBEntry(LinuxApplication):
             self.ec.set(self._mtr, "target", self.get("host"))
             self.ec.register_connection(self._mtr, self.node.guid)
             # schedule mtr deploy
-            self.ec.deploy(group=[self._mtr])
+            self.ec.deploy(guids=[self._mtr], group = self.deployment_group)
 
         if self.trace_enabled("traceroute"):
             self.info("Configuring TRACEROUTE trace")
@@ -179,7 +179,7 @@ class LinuxFIBEntry(LinuxApplication):
             self.ec.set(self._traceroute, "target", self.get("host"))
             self.ec.register_connection(self._traceroute, self.node.guid)
             # schedule mtr deploy
-            self.ec.deploy(group=[self._traceroute])
+            self.ec.deploy(guids=[self._traceroute], group = self.deployment_group)
 
     def start(self):
         if self._state in [ResourceState.READY, ResourceState.STARTED]:
