@@ -134,22 +134,21 @@ class LinuxFIBEntry(LinuxApplication):
         command = self.get("command")
         env = self.get("env")
 
-        if command:
-            # We want to make sure the FIB entries are created
-            # before the experiment starts.
-            # Run the command as a bash script in the background, 
-            # in the host ( but wait until the command has
-            # finished to continue )
-            env = env and self.replace_paths(env)
-            command = self.replace_paths(command)
+        # We want to make sure the FIB entries are created
+        # before the experiment starts.
+        # Run the command as a bash script in the background, 
+        # in the host ( but wait until the command has
+        # finished to continue )
+        env = env and self.replace_paths(env)
+        command = self.replace_paths(command)
 
-            (out, err), proc = self.execute_command(command, env)
+        (out, err), proc = self.execute_command(command, env)
 
-            if proc.poll():
-                self._state = ResourceState.FAILED
-                msg = "Failed to execute command"
-                self.error(msg, out, err)
-                raise RuntimeError, msg
+        if proc.poll():
+            self._state = ResourceState.FAILED
+            msg = "Failed to execute command"
+            self.error(msg, out, err)
+            raise RuntimeError, msg
 
     def configure(self):
         if self.trace_enabled("ping"):
@@ -158,11 +157,8 @@ class LinuxFIBEntry(LinuxApplication):
             self.ec.set(self._ping, "printTimestamp", True)
             self.ec.set(self._ping, "target", self.get("host"))
             self.ec.register_connection(self._ping, self.node.guid)
-            # force waiting until ping is READY before we starting the FIB
-            self.ec.register_condition(self.guid, ResourceAction.START, 
-                    self._ping, ResourceState.READY)
             # schedule ping deploy
-            self.ec.deploy(group=[self._ping])
+            self.ec.deploy(guids=[self._ping], group = self.deployment_group)
 
         if self.trace_enabled("mtr"):
             self.info("Configuring MTR trace")
@@ -172,11 +168,8 @@ class LinuxFIBEntry(LinuxApplication):
             self.ec.set(self._mtr, "continuous", True)
             self.ec.set(self._mtr, "target", self.get("host"))
             self.ec.register_connection(self._mtr, self.node.guid)
-            # force waiting until mtr is READY before we starting the FIB
-            self.ec.register_condition(self.guid, ResourceAction.START, 
-                    self._mtr, ResourceState.READY)
             # schedule mtr deploy
-            self.ec.deploy(group=[self._mtr])
+            self.ec.deploy(guids=[self._mtr], group = self.deployment_group)
 
         if self.trace_enabled("traceroute"):
             self.info("Configuring TRACEROUTE trace")
@@ -185,11 +178,8 @@ class LinuxFIBEntry(LinuxApplication):
             self.ec.set(self._traceroute, "continuous", True)
             self.ec.set(self._traceroute, "target", self.get("host"))
             self.ec.register_connection(self._traceroute, self.node.guid)
-            # force waiting until mtr is READY before we starting the FIB
-            self.ec.register_condition(self.guid, ResourceAction.START, 
-                    self._traceroute, ResourceState.READY)
             # schedule mtr deploy
-            self.ec.deploy(group=[self._traceroute])
+            self.ec.deploy(guids=[self._traceroute], group = self.deployment_group)
 
     def start(self):
         if self._state in [ResourceState.READY, ResourceState.STARTED]:

@@ -202,6 +202,8 @@ class ResourceManager(Logger):
 
         self._state = ResourceState.NEW
 
+        self.deployment_group = None
+
         self._start_time = None
         self._stop_time = None
         self._discover_time = None
