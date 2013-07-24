@@ -585,14 +585,13 @@ class LinuxApplication(ResourceManager):
 
         if self.state == ResourceState.STARTED:
         
-            stopped = True
-
             self.info("Stopping command '%s'" % command)
         
             # If the command is running in foreground (it was launched using
             # the node 'execute' method), then we use the handler to the Popen
             # process to kill it. Else we send a kill signal using the pid and ppid
             # retrieved after running the command with the node 'run' method
+            stopped = True
 
             if self._proc:
                 self._proc.kill()
@@ -608,10 +607,9 @@ class LinuxApplication(ResourceManager):
                         msg = " Failed to STOP command '%s' " % self.get("command")
                         self.error(msg, out, err)
                         self.fail()
-                        stopped = False
 
-            if stopped:
-                super(LinuxApplication, self).stop()
+        if self.state == ResourceState.STARTED:
+            super(LinuxApplication, self).stop()
 
     def release(self):
         self.info("Releasing resource")
@@ -623,6 +621,8 @@ class LinuxApplication(ResourceManager):
         self.stop()
 
         if self.state == ResourceState.STOPPED:
+            self.info("Resource released")
+
             super(LinuxApplication, self).release()
     
     @property

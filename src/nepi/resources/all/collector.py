@@ -118,9 +118,15 @@ class Collector(ResourceManager):
             result = self.ec.trace(rm.guid, trace_name)
             fpath = os.path.join(self.store_path, "%d.%s" % (rm.guid, 
                 rename))
-            f = open(fpath, "w")
-            f.write(result)
-            f.close()
+            try:
+                f = open(fpath, "w")
+                f.write(result)
+                f.close()
+            except:
+                msg = "Couldn't retrieve trace %s for %d at %s " % (trace_name, 
+                        rm.guid, fpath)
+                self.error(msg)
+                continue
 
         super(Collector, self).release()
 

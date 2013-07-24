@@ -108,25 +108,24 @@ class LinuxCCNContent(LinuxApplication):
         command = self.get("command")
         env = self.get("env")
 
-        if command:
-            self.info("Uploading command '%s'" % command)
+        self.info("Uploading command '%s'" % command)
 
-            # We want to make sure the content is published
-            # before the experiment starts.
-            # Run the command as a bash script in the background, 
-            # in the host ( but wait until the command has
-            # finished to continue )
-            env = self.replace_paths(env)
-            command = self.replace_paths(command)
+        # We want to make sure the content is published
+        # before the experiment starts.
+        # Run the command as a bash script in the background, 
+        # in the host ( but wait until the command has
+        # finished to continue )
+        env = self.replace_paths(env)
+        command = self.replace_paths(command)
 
-            (out, err), proc = self.execute_command(command, env, 
-                    blocking = True)
+        (out, err), proc = self.execute_command(command, env, 
+                blocking = True)
 
-            if proc.poll():
-                self.fail()
-                msg = "Failed to execute command"
-                self.error(msg, out, err)
-                raise RuntimeError, msg
+        if proc.poll():
+            self.fail()
+            msg = "Failed to execute command"
+            self.error(msg, out, err)
+            raise RuntimeError, msg
 
     def start(self):
         if self._state == ResourceState.READY:
