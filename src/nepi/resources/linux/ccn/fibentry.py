@@ -26,6 +26,8 @@ from nepi.resources.linux.ccn.ccnd import LinuxCCND
 from nepi.util.timefuncs import tnow
 
 import os
+import socket
+import time
 
 
 # TODO: Add rest of options for ccndc!!!
@@ -51,7 +53,7 @@ class LinuxFIBEntry(LinuxApplication):
                 flags = Flags.ExecReadOnly)
 
         host = Attribute("host",
-                "Peer host used in network connection for this FIB entry. ",
+                "Peer hostname used in network connection for this FIB entry. ",
                 flags = Flags.ExecReadOnly)
 
         port = Attribute("port",
@@ -59,10 +61,15 @@ class LinuxFIBEntry(LinuxApplication):
                 "for this FIB entry.",
                 flags = Flags.ExecReadOnly)
 
+        ip = Attribute("ip",
+                "Peer host public IP used in network connection for this FIB entry. ",
+                flags = Flags.ReadOnly)
+
         cls._register_attribute(uri)
         cls._register_attribute(protocol)
         cls._register_attribute(host)
         cls._register_attribute(port)
+        cls._register_attribute(ip)
 
     @classmethod
     def _register_traces(cls):
@@ -109,6 +116,11 @@ class LinuxFIBEntry(LinuxApplication):
             self.ec.schedule(reschedule_delay, self.deploy)
         else:
             try:
+                if not self.get("ip"):
+                    host = self.get("host")
+                    ip = socket.gethostbyname(host)
+                    self.set("ip", ip)
+
                 if not self.get("command"):
                     self.set("command", self._start_command)
 
@@ -142,14 +154,17 @@ class LinuxFIBEntry(LinuxApplication):
         env = env and self.replace_paths(env)
         command = self.replace_paths(command)
 
-        (out, err), proc = self.execute_command(command, env)
+        # ccndc seems to return exitcode OK even if a (dns) error
+        # occurred, so we need to account for this case here. 
+        (out, err), proc = self.execute_command(command, 
+                env, blocking = True)
 
         if proc.poll():
             self._state = ResourceState.FAILED
             msg = "Failed to execute command"
             self.error(msg, out, err)
             raise RuntimeError, msg
-
+        
     def configure(self):
         if self.trace_enabled("ping"):
             self.info("Configuring PING trace")
@@ -218,14 +233,14 @@ class LinuxFIBEntry(LinuxApplication):
     def _start_command(self):
         uri = self.get("uri") or ""
         protocol = self.get("protocol") or ""
-        host = self.get("host") or ""
+        ip = self.get("ip") or "" 
         port = self.get("port") or ""
 
         # add ccnx:/example.com/ udp 224.0.0.204 52428
         return "ccndc add %(uri)s %(protocol)s %(host)s %(port)s" % ({
             "uri" : uri,
             "protocol": protocol,
-            "host": host,
+            "host": ip,
             "port": port
             })
 
@@ -233,14 +248,14 @@ class LinuxFIBEntry(LinuxApplication):
     def _stop_command(self):
         uri = self.get("uri") or ""
         protocol = self.get("protocol") or ""
-        host = self.get("host") or ""
+        ip = self.get("ip") or ""
         port = self.get("port") or ""
 
         # add ccnx:/example.com/ udp 224.0.0.204 52428
         return "ccndc del %(uri)s %(protocol)s %(host)s %(port)s" % ({
             "uri" : uri,
             "protocol": protocol,
-            "host": host,
+            "host": ip,
             "port": port
             })
 

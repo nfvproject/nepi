@@ -118,8 +118,8 @@ class LinuxCCNContent(LinuxApplication):
         env = self.replace_paths(env)
         command = self.replace_paths(command)
 
-        (out, err), proc = self.execute_command(command, env, 
-                blocking = True)
+        (out, err), proc = self.execute_command(command, 
+                env, blocking = True)
 
         if proc.poll():
             self.fail()
