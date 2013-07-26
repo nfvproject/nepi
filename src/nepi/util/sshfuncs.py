@@ -292,9 +292,8 @@ def rexec(command, host, user,
             if blocking:
                 out, err = _communicate(proc, stdin, timeout, err_on_timeout)
             else:
-                out = err = ""
-                if proc.poll():
-                    err = proc.stderr.read()
+                err = proc.stderr.read()
+                out = proc.stdout.read()
 
             msg = " rexec - host %s - command %s " % (host, " ".join(args))
             log(msg, logging.DEBUG, out, err)
