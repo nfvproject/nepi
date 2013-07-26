@@ -188,22 +188,21 @@ class LinuxCCND(LinuxApplication):
         command = self.get("command")
         env = self.get("env")
 
-        if command:
-            # We want to make sure the ccnd is running
-            # before the experiment starts.
-            # Run the command as a bash script in background,
-            # in the host ( but wait until the command has
-            # finished to continue )
-            env = self.replace_paths(env)
-            command = self.replace_paths(command)
+        # We want to make sure the ccnd is running
+        # before the experiment starts.
+        # Run the command as a bash script in background,
+        # in the host ( but wait until the command has
+        # finished to continue )
+        env = self.replace_paths(env)
+        command = self.replace_paths(command)
 
-            shfile = os.path.join(self.app_home, "start.sh")
-            self.node.run_and_wait(command, self.run_home,
-                    shfile = shfile,
-                    overwrite = False,
-                    env = env,
-                    raise_on_error = True)
-    
+        shfile = os.path.join(self.app_home, "start.sh")
+        self.node.run_and_wait(command, self.run_home,
+                shfile = shfile,
+                overwrite = False,
+                env = env,
+                raise_on_error = True)
+
     def start(self):
         if self._state == ResourceState.READY:
             command = self.get("command")
