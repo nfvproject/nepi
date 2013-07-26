@@ -28,8 +28,6 @@ from nepi.resources.omf.interface import OMFWifiInterface
 from nepi.resources.omf.channel import OMFChannel
 from nepi.resources.omf.omf_api import OMFAPIFactory
 
-from nepi.util.timefuncs import tdiffsec
-
 from nepi.util.timefuncs import *
 
 import time
@@ -45,10 +43,6 @@ class DummyRM(ResourceManager):
 class OMFResourceFactoryTestCase(unittest.TestCase):
 
     def test_creation_phase(self):
-        ResourceFactory.register_type(OMFNode)
-        ResourceFactory.register_type(OMFWifiInterface)
-        ResourceFactory.register_type(OMFChannel)
-        ResourceFactory.register_type(OMFApplication)
 
         self.assertEquals(OMFNode.rtype(), "OMFNode")
         self.assertEquals(len(OMFNode._attributes), 11)
@@ -62,17 +56,11 @@ class OMFResourceFactoryTestCase(unittest.TestCase):
         self.assertEquals(OMFApplication.rtype(), "OMFApplication")
         self.assertEquals(len(OMFApplication._attributes), 8)
 
-        self.assertEquals(len(ResourceFactory.resource_types()), 4)
 
-
-class OMFVLCTestCase(unittest.TestCase):
+class OMFEachTestCase(unittest.TestCase):
 
     def setUp(self):
-        self.ec = DummyEC()
-        ResourceFactory.register_type(OMFNode)
-        ResourceFactory.register_type(OMFWifiInterface)
-        ResourceFactory.register_type(OMFChannel)
-        ResourceFactory.register_type(OMFApplication)
+        self.ec = DummyEC(exp_id = "99999")
 
         self.node1 = self.ec.register_resource("OMFNode")
         self.ec.set(self.node1, 'hostname', 'omf.plexus.wlab17')
@@ -80,8 +68,6 @@ class OMFVLCTestCase(unittest.TestCase):
         self.ec.set(self.node1, 'xmppHost', "xmpp-plexus.onelab.eu")
         self.ec.set(self.node1, 'xmppPort', "5222")
         self.ec.set(self.node1, 'xmppPassword', "1234")
-
-        self.node2 = self.ec.register_resource("OMFNode")
         
         self.iface1 = self.ec.register_resource("OMFWifiInterface")
         self.ec.set(self.iface1, 'alias', "w0")
@@ -93,8 +79,6 @@ class OMFVLCTestCase(unittest.TestCase):
         self.ec.set(self.iface1, 'xmppHost', "xmpp-plexus.onelab.eu")
         self.ec.set(self.iface1, 'xmppPort', "5222")
         self.ec.set(self.iface1, 'xmppPassword', "1234")
-
-        self.iface2 = self.ec.register_resource("OMFWifiInterface")
         
         self.channel = self.ec.register_resource("OMFChannel")
         self.ec.set(self.channel, 'channel', "6")
@@ -114,28 +98,10 @@ class OMFVLCTestCase(unittest.TestCase):
         self.ec.set(self.app1, 'xmppPassword', "1234")
 
         self.app2 = self.ec.register_resource("OMFApplication")
-        self.ec.set(self.app2, 'xmppSlice', "nepi")
-        self.ec.set(self.app2, 'xmppHost', "xmpp-plexus.onelab.eu")
-        self.ec.set(self.app2, 'xmppPort', "5222")
-        self.ec.set(self.app2, 'xmppPassword', "1234")
 
         self.app3 = self.ec.register_resource("OMFApplication")
-        self.ec.set(self.app3, 'appid', 'Kill#2')
-        self.ec.set(self.app3, 'path', "/usr/bin/killall")
-        self.ec.set(self.app3, 'args', "vlc")
-        self.ec.set(self.app3, 'env', " ")
-
         self.app4 = self.ec.register_resource("OMFApplication")
-
         self.app5 = self.ec.register_resource("OMFApplication")
-        self.ec.set(self.app5, 'appid', 'Kill#2')
-        self.ec.set(self.app5, 'path', "/usr/bin/killall")
-        self.ec.set(self.app5, 'args', "vlc")
-        self.ec.set(self.app5, 'env', " ")
-        self.ec.set(self.app5, 'xmppSlice', "nepi")
-        self.ec.set(self.app5, 'xmppHost', "xmpp-plexus.onelab.eu")
-        self.ec.set(self.app5, 'xmppPort', "5222")
-        self.ec.set(self.app5, 'xmppPassword', "1234")
 
         self.ec.register_connection(self.app1, self.node1)
         self.ec.register_connection(self.app2, self.node1)
@@ -144,8 +110,6 @@ class OMFVLCTestCase(unittest.TestCase):
         self.ec.register_connection(self.app5, self.node1)
         self.ec.register_connection(self.node1, self.iface1)
         self.ec.register_connection(self.iface1, self.channel)
-        self.ec.register_connection(self.node2, self.iface2)
-        self.ec.register_connection(self.iface2, self.channel)
 
         self.ec.register_condition(self.app2, ResourceAction.START, self.app1, ResourceState.STARTED , "3s")
         self.ec.register_condition(self.app3, ResourceAction.START, self.app2, ResourceState.STARTED , "2s")
@@ -153,8 +117,7 @@ class OMFVLCTestCase(unittest.TestCase):
         self.ec.register_condition(self.app5, ResourceAction.START, [self.app3, self.app2], ResourceState.STARTED , "2s")
         self.ec.register_condition(self.app5, ResourceAction.START, self.app1, ResourceState.STARTED , "25s")
 
-        self.ec.register_condition([self.app1, self.app2, self.app3,self.app4, self.app5], 
-                ResourceAction.STOP, self.app5, ResourceState.STARTED , "1s")
+        self.ec.register_condition([self.app1, self.app2, self.app3,self.app4, self.app5], ResourceAction.STOP, self.app5, ResourceState.STARTED , "1s")
 
     def tearDown(self):
         self.ec.shutdown()
@@ -197,7 +160,7 @@ class OMFVLCTestCase(unittest.TestCase):
     def test_connection(self):
         self.assertEquals(len(self.ec.get_resource(self.node1).connections), 6)
         self.assertEquals(len(self.ec.get_resource(self.iface1).connections), 2)
-        self.assertEquals(len(self.ec.get_resource(self.channel).connections), 2)
+        self.assertEquals(len(self.ec.get_resource(self.channel).connections), 1)
         self.assertEquals(len(self.ec.get_resource(self.app1).connections), 1)
         self.assertEquals(len(self.ec.get_resource(self.app2).connections), 1)
 
@@ -208,29 +171,239 @@ class OMFVLCTestCase(unittest.TestCase):
         self.assertEquals(len(self.ec.get_resource(self.app4).conditions[ResourceAction.STOP]), 1)
         self.assertEquals(len(self.ec.get_resource(self.app5).conditions[ResourceAction.START]), 2)
 
+
+
+class OMFVLCTestCaseComplete(unittest.TestCase):
+
     def test_deploy(self):
+        ec = DummyEC(exp_id = "5421" )
+
+        self.node1 = ec.register_resource("OMFNode")
+        ec.set(self.node1, 'hostname', 'omf.plexus.wlab17')
+        ec.set(self.node1, 'xmppSlice', "nepi")
+        ec.set(self.node1, 'xmppHost', "xmpp-plexus.onelab.eu")
+        ec.set(self.node1, 'xmppPort', "5222")
+        ec.set(self.node1, 'xmppPassword', "1234")
         
-        self.ec.deploy()
+        self.iface1 = ec.register_resource("OMFWifiInterface")
+        ec.set(self.iface1, 'alias', "w0")
+        ec.set(self.iface1, 'mode', "adhoc")
+        ec.set(self.iface1, 'type', "g")
+        ec.set(self.iface1, 'essid', "vlcexp")
+        ec.set(self.iface1, 'ip', "10.0.0.17")
+        ec.set(self.iface1, 'xmppSlice', "nepi")
+        ec.set(self.iface1, 'xmppHost', "xmpp-plexus.onelab.eu")
+        ec.set(self.iface1, 'xmppPort', "5222")
+        ec.set(self.iface1, 'xmppPassword', "1234")
+        
+        self.channel = ec.register_resource("OMFChannel")
+        ec.set(self.channel, 'channel', "6")
+        ec.set(self.channel, 'xmppSlice', "nepi")
+        ec.set(self.channel, 'xmppHost', "xmpp-plexus.onelab.eu")
+        ec.set(self.channel, 'xmppPort', "5222")
+        ec.set(self.channel, 'xmppPassword', "1234")
+        
+        self.app1 = ec.register_resource("OMFApplication")
+        ec.set(self.app1, 'appid', 'Vlc#1')
+        ec.set(self.app1, 'path', "/opt/vlc-1.1.13/cvlc")
+        ec.set(self.app1, 'args', "/opt/10-by-p0d.avi --sout '#rtp{dst=10.0.0.37,port=1234,mux=ts}'")
+        ec.set(self.app1, 'env', "DISPLAY=localhost:10.0 XAUTHORITY=/root/.Xauthority")
+        ec.set(self.app1, 'xmppSlice', "nepi")
+        ec.set(self.app1, 'xmppHost', "xmpp-plexus.onelab.eu")
+        ec.set(self.app1, 'xmppPort', "5222")
+        ec.set(self.app1, 'xmppPassword', "1234")
 
-        self.ec.wait_finished([self.app1, self.app2, self.app3,self.app4, self.app5])
+        self.app2 = ec.register_resource("OMFApplication")
+        ec.set(self.app2, 'appid', 'Test#1')
+        ec.set(self.app2, 'path', "/usr/bin/test")
+        ec.set(self.app2, 'args', "-1")
+        ec.set(self.app2, 'env', " ")
+        ec.set(self.app2, 'xmppSlice', "nepi")
+        ec.set(self.app2, 'xmppHost', "xmpp-plexus.onelab.eu")
+        ec.set(self.app2, 'xmppPort', "5222")
+        ec.set(self.app2, 'xmppPassword', "1234")
 
-        print " HOLA ", self.ec.get_resource(self.app2).start_time, self.ec.get_resource(self.app1).start_time
+        self.app3 = ec.register_resource("OMFApplication")
+        ec.set(self.app3, 'appid', 'Test#2')
+        ec.set(self.app3, 'path', "/usr/bin/test")
+        ec.set(self.app3, 'args', "-2")
+        ec.set(self.app3, 'env', " ")
+        ec.set(self.app3, 'xmppSlice', "nepi")
+        ec.set(self.app3, 'xmppHost', "xmpp-plexus.onelab.eu")
+        ec.set(self.app3, 'xmppPort', "5222")
+        ec.set(self.app3, 'xmppPassword', "1234")
 
-        self.assertEquals(round(tdiffsec(self.ec.get_resource(self.app2).start_time, 
-            self.ec.get_resource(self.app1).start_time),1), 3.0)
-        self.assertEquals(round(tdiffsec(self.ec.get_resource(self.app3).start_time, 
-            self.ec.get_resource(self.app2).start_time),1), 2.0)
-        self.assertEquals(round(tdiffsec(self.ec.get_resource(self.app4).start_time, 
-            self.ec.get_resource(self.app3).start_time),1), 3.0)
-        self.assertEquals(round(tdiffsec(self.ec.get_resource(self.app5).start_time, 
-            self.ec.get_resource(self.app3).start_time),1), 20.0)
-        self.assertEquals(round(tdiffsec(self.ec.get_resource(self.app5).start_time, 
-            self.ec.get_resource(self.app1).start_time),1), 25.0)
-        # Precision is at 1/10. So this one returns an error 7.03 != 7.0
-        #self.assertEquals(tdiffsec(self.ec.get_resource(self.app5).start_time, self.ec.get_resource(self.app1).start_time), 7)
-        #In order to release everythings
+        self.app4 = ec.register_resource("OMFApplication")
+        ec.set(self.app4, 'appid', 'Test#3')
+        ec.set(self.app4, 'path', "/usr/bin/test")
+        ec.set(self.app4, 'args', "-3")
+        ec.set(self.app4, 'env', " ")
+        ec.set(self.app4, 'xmppSlice', "nepi")
+        ec.set(self.app4, 'xmppHost', "xmpp-plexus.onelab.eu")
+        ec.set(self.app4, 'xmppPort', "5222")
+        ec.set(self.app4, 'xmppPassword', "1234")
+
+        self.app5 = ec.register_resource("OMFApplication")
+        ec.set(self.app5, 'appid', 'Kill#2')
+        ec.set(self.app5, 'path', "/usr/bin/killall")
+        ec.set(self.app5, 'args', "vlc")
+        ec.set(self.app5, 'env', " ")
+        ec.set(self.app5, 'xmppSlice', "nepi")
+        ec.set(self.app5, 'xmppHost', "xmpp-plexus.onelab.eu")
+        ec.set(self.app5, 'xmppPort', "5222")
+        ec.set(self.app5, 'xmppPassword', "1234")
+
+        ec.register_connection(self.app1, self.node1)
+        ec.register_connection(self.app2, self.node1)
+        ec.register_connection(self.app3, self.node1)
+        ec.register_connection(self.app4, self.node1)
+        ec.register_connection(self.app5, self.node1)
+        ec.register_connection(self.node1, self.iface1)
+        ec.register_connection(self.iface1, self.channel)
+
+        ec.register_condition(self.app2, ResourceAction.START, self.app1, ResourceState.STARTED , "3s")
+        ec.register_condition(self.app3, ResourceAction.START, self.app2, ResourceState.STARTED , "2s")
+        ec.register_condition(self.app4, ResourceAction.START, self.app3, ResourceState.STARTED , "3s")
+        ec.register_condition(self.app5, ResourceAction.START, [self.app3, self.app2], ResourceState.STARTED , "2s")
+        ec.register_condition(self.app5, ResourceAction.START, self.app1, ResourceState.STARTED , "25s")
+
+        ec.register_condition([self.app1, self.app2, self.app3,self.app4, self.app5], ResourceAction.STOP, self.app5, ResourceState.STARTED , "1s")
+
+        ec.deploy()
+
+        ec.wait_finished([self.app1, self.app2, self.app3,self.app4, self.app5])
+
+        time.sleep(2)
+
+        self.assertEquals(round(tdiffsec(ec.get_resource(self.app2).start_time, ec.get_resource(self.app1).start_time),0), 3.0)
+        self.assertEquals(round(tdiffsec(ec.get_resource(self.app3).start_time, ec.get_resource(self.app2).start_time),0), 2.0)
+        self.assertEquals(round(tdiffsec(ec.get_resource(self.app4).start_time, ec.get_resource(self.app3).start_time),0), 3.0)
+        self.assertEquals(round(tdiffsec(ec.get_resource(self.app5).start_time, ec.get_resource(self.app3).start_time),0), 20.0)
+        self.assertEquals(round(tdiffsec(ec.get_resource(self.app5).start_time, ec.get_resource(self.app1).start_time),0), 25.0)
+
+        self.assertEquals(ec.get_resource(self.node1).state, ResourceState.STARTED)
+        self.assertEquals(ec.get_resource(self.iface1).state, ResourceState.STARTED)
+        self.assertEquals(ec.get_resource(self.channel).state, ResourceState.STARTED)
+        self.assertEquals(ec.get_resource(self.app1).state, ResourceState.FINISHED)
+        self.assertEquals(ec.get_resource(self.app2).state, ResourceState.FINISHED)
+        self.assertEquals(ec.get_resource(self.app3).state, ResourceState.FINISHED)
+        self.assertEquals(ec.get_resource(self.app4).state, ResourceState.FINISHED)
+        self.assertEquals(ec.get_resource(self.app5).state, ResourceState.FINISHED)
+
+        ec.shutdown()
+        time.sleep(2)
+
+        self.assertEquals(ec.get_resource(self.node1).state, ResourceState.RELEASED)
+        self.assertEquals(ec.get_resource(self.iface1).state, ResourceState.RELEASED)
+        self.assertEquals(ec.get_resource(self.channel).state, ResourceState.RELEASED)
+        self.assertEquals(ec.get_resource(self.app1).state, ResourceState.RELEASED)
+        self.assertEquals(ec.get_resource(self.app2).state, ResourceState.RELEASED)
+        self.assertEquals(ec.get_resource(self.app3).state, ResourceState.RELEASED)
+        self.assertEquals(ec.get_resource(self.app4).state, ResourceState.RELEASED)
+        self.assertEquals(ec.get_resource(self.app5).state, ResourceState.RELEASED)
+
+
+
+class OMFVLCTestCaseNoComplete(unittest.TestCase):
+    def test_deploy(self):
+
+        ec = DummyEC(exp_id = "1245" )
+
+        self.node1 = ec.register_resource("OMFNode")
+        ec.set(self.node1, 'hostname', 'omf.plexus.wlab17')
+        ec.set(self.node1, 'xmppSlice', "nepi")
+        ec.set(self.node1, 'xmppHost', "xmpp-plexus.onelab.eu")
+        ec.set(self.node1, 'xmppPort', "5222")
+        ec.set(self.node1, 'xmppPassword', "1234")
+
+        self.node2 = ec.register_resource("OMFNode")
+        
+        self.iface1 = ec.register_resource("OMFWifiInterface")
+        ec.set(self.iface1, 'alias', "w0")
+        ec.set(self.iface1, 'mode', "adhoc")
+        ec.set(self.iface1, 'type', "g")
+        ec.set(self.iface1, 'essid', "vlcexp")
+        ec.set(self.iface1, 'ip', "10.0.0.17")
+        ec.set(self.iface1, 'xmppSlice', "nepi")
+        ec.set(self.iface1, 'xmppHost', "xmpp-plexus.onelab.eu")
+        ec.set(self.iface1, 'xmppPort', "5222")
+        ec.set(self.iface1, 'xmppPassword', "1234")
+
+        self.iface2 = ec.register_resource("OMFWifiInterface")
+        
+        self.channel = ec.register_resource("OMFChannel")
+        ec.set(self.channel, 'channel', "6")
+        ec.set(self.channel, 'xmppSlice', "nepi")
+        ec.set(self.channel, 'xmppHost', "xmpp-plexus.onelab.eu")
+        ec.set(self.channel, 'xmppPort', "5222")
+        ec.set(self.channel, 'xmppPassword', "1234")
+        
+        self.app1 = ec.register_resource("OMFApplication")
+        ec.set(self.app1, 'appid', 'Vlc#1')
+        ec.set(self.app1, 'path', "/opt/vlc-1.1.13/cvlc")
+        ec.set(self.app1, 'args', "/opt/10-by-p0d.avi --sout '#rtp{dst=10.0.0.37,port=1234,mux=ts}'")
+        ec.set(self.app1, 'env', "DISPLAY=localhost:10.0 XAUTHORITY=/root/.Xauthority")
+        ec.set(self.app1, 'xmppSlice', "nepi")
+        ec.set(self.app1, 'xmppHost', "xmpp-plexus.onelab.eu")
+        ec.set(self.app1, 'xmppPort', "5222")
+        ec.set(self.app1, 'xmppPassword', "1234")
+
+        self.app2 = ec.register_resource("OMFApplication")
+        ec.set(self.app2, 'xmppSlice', "nepi")
+        ec.set(self.app2, 'xmppHost', "xmpp-plexus.onelab.eu")
+        ec.set(self.app2, 'xmppPort', "5222")
+        ec.set(self.app2, 'xmppPassword', "1234")
+
+        self.app3 = ec.register_resource("OMFApplication")
+        ec.set(self.app3, 'appid', 'Kill#2')
+        ec.set(self.app3, 'path', "/usr/bin/killall")
+        ec.set(self.app3, 'args', "vlc")
+        ec.set(self.app3, 'env', " ")
+
+        self.app4 = ec.register_resource("OMFApplication")
+
+        ec.register_connection(self.app1, self.node1)
+        ec.register_connection(self.app2, self.node1)
+        ec.register_connection(self.app3, self.node1)
+        ec.register_connection(self.app4, self.node1)
+        ec.register_connection(self.node1, self.iface1)
+        ec.register_connection(self.iface1, self.channel)
+        ec.register_connection(self.node2, self.iface2)
+        ec.register_connection(self.iface2, self.channel)
+
+        ec.register_condition(self.app2, ResourceAction.START, self.app1, ResourceState.STARTED , "2s")
+        ec.register_condition(self.app3, ResourceAction.START, self.app2, ResourceState.STARTED , "2s")
+        ec.register_condition(self.app4, ResourceAction.START, [self.app3, self.app2], ResourceState.STARTED , "2s")
+
+        ec.register_condition([self.app1, self.app2, self.app3], ResourceAction.STOP, self.app1, ResourceState.STARTED , "8s")
+
+        ec.deploy()
+
+        ec.wait_finished([self.app1, self.app2, self.app3,self.app4])
+
+        self.assertEquals(ec.get_resource(self.node1).state, ResourceState.STARTED)
+        self.assertEquals(ec.get_resource(self.node2).state, ResourceState.FAILED)
+        self.assertEquals(ec.get_resource(self.iface1).state, ResourceState.STARTED)
+        self.assertEquals(ec.get_resource(self.iface2).state, ResourceState.FAILED)
+        self.assertEquals(ec.get_resource(self.channel).state, ResourceState.STARTED)
+        self.assertEquals(ec.get_resource(self.app1).state, ResourceState.FINISHED)
+        self.assertEquals(ec.get_resource(self.app2).state, ResourceState.FAILED)
+        self.assertEquals(ec.get_resource(self.app3).state, ResourceState.FAILED)
+        self.assertEquals(ec.get_resource(self.app4).state, ResourceState.FAILED)
+
         time.sleep(1)
 
+        ec.shutdown()
+
+        self.assertEquals(ec.get_resource(self.node1).state, ResourceState.RELEASED)
+        self.assertEquals(ec.get_resource(self.node2).state, ResourceState.RELEASED)
+        self.assertEquals(ec.get_resource(self.iface1).state, ResourceState.RELEASED)
+        self.assertEquals(ec.get_resource(self.iface2).state, ResourceState.RELEASED)
+        self.assertEquals(ec.get_resource(self.channel).state, ResourceState.RELEASED)
+        self.assertEquals(ec.get_resource(self.app1).state, ResourceState.RELEASED)
+        self.assertEquals(ec.get_resource(self.app2).state, ResourceState.RELEASED)
+        self.assertEquals(ec.get_resource(self.app3).state, ResourceState.RELEASED)
+        self.assertEquals(ec.get_resource(self.app4).state, ResourceState.RELEASED)
 
 if __name__ == '__main__':
     unittest.main()

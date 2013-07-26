@@ -51,7 +51,7 @@ class OMFAPI(Logger):
        This class is the implementation of an OMF 5.4 API. Since the version 5.4.1, the Topic Architecture start with OMF_5.4 instead of OMF used for OMF5.3
 
     """
-    def __init__(self, slice, host, port, password, xmpp_root = None):
+    def __init__(self, slice, host, port, password, xmpp_root = None, exp_id = None):
         """
     
         :param slice: Xmpp Slice
@@ -67,11 +67,11 @@ class OMFAPI(Logger):
 
         """
         super(OMFAPI, self).__init__("OMFAPI")
-        
         date = tsformat()
         tz = -time.altzone if time.daylight != 0 else -time.timezone
         date += "%+06.2f" % (tz / 3600) # timezone difference is in seconds
-        self._user = "%s-%s" % (slice, date)
+        self._exp_id = exp_id or date
+        self._user = "%s-%s" % (slice, self._exp_id)
         self._slice = slice
         self._host = host
         self._port = port
@@ -304,7 +304,7 @@ class OMFAPIFactory(object):
     _apis = dict()
 
     @classmethod 
-    def get_api(cls, slice, host, port, password):
+    def get_api(cls, slice, host, port, password, exp_id = None):
         """ Get an OMF Api
 
         :param slice: Xmpp Slice Name
@@ -318,7 +318,7 @@ class OMFAPIFactory(object):
 
         """
         if slice and host and port and password:
-            key = cls._make_key(slice, host, port, password)
+            key = cls._make_key(slice, host, port, password, exp_id)
             cls.lock.acquire()
             if key in cls._apis:
                 #print "Api Counter : " + str(cls._apis[key]['cnt'])
@@ -326,13 +326,13 @@ class OMFAPIFactory(object):
                 cls.lock.release()
                 return cls._apis[key]['api']
             else :
-                omf_api = cls.create_api(slice, host, port, password)
+                omf_api = cls.create_api(slice, host, port, password, exp_id)
                 cls.lock.release()
                 return omf_api
         return None
 
     @classmethod 
-    def create_api(cls, slice, host, port, password):
+    def create_api(cls, slice, host, port, password, exp_id):
         """ Create an OMF API if this one doesn't exist yet with this credentials
 
         :param slice: Xmpp Slice Name
@@ -345,15 +345,15 @@ class OMFAPIFactory(object):
         :type password: str
 
         """
-        omf_api = OMFAPI(slice, host, port, password)
-        key = cls._make_key(slice, host, port, password)
+        omf_api = OMFAPI(slice, host, port, password, exp_id = exp_id)
+        key = cls._make_key(slice, host, port, password, exp_id)
         cls._apis[key] = {}
         cls._apis[key]['api'] = omf_api
         cls._apis[key]['cnt'] = 1
         return omf_api
 
     @classmethod 
-    def release_api(cls, slice, host, port, password):
+    def release_api(cls, slice, host, port, password, exp_id = None):
         """ Release an OMF API with this credentials
 
         :param slice: Xmpp Slice Name
@@ -367,7 +367,7 @@ class OMFAPIFactory(object):
 
         """
         if slice and host and port and password:
-            key = cls._make_key(slice, host, port, password)
+            key = cls._make_key(slice, host, port, password, exp_id)
             if key in cls._apis:
                 cls._apis[key]['cnt'] -= 1
                 #print "Api Counter : " + str(cls._apis[key]['cnt'])
