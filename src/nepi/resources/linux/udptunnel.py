@@ -237,7 +237,7 @@ class UdpTunnel(LinuxApplication):
                 (out2, err2), proc2 = self.endpoint2.node.kill(self._pid2, 
                         self._ppid2, sudo = True) 
 
-                if err1 or err2 or pro1.poll() or proc2.poll():
+                if err1 or err2 or proc1.poll() or proc2.poll():
                     # check if execution errors occurred
                     msg = " Failed to STOP tunnel"
                     self.error(msg, err1, err2)
