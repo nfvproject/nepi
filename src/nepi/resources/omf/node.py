@@ -101,6 +101,12 @@ class OMFNode(ResourceManager):
 
         self._omf_api = None 
 
+    @property
+    def exp_id(self):
+        if self.ec.exp_id.startswith('exp-'):
+            return None
+        return self.ec.exp_id
+
     def valid_connection(self, guid):
         """Check if the connection with the guid in parameter is possible. Only meaningful connections are allowed.
 
@@ -125,16 +131,27 @@ class OMFNode(ResourceManager):
         """ 
         if not self._omf_api :
             self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
-               self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
+                self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'), exp_id = self.exp_id)
 
-        if self.get('hostname') :
-            try:
-                self._omf_api.enroll_host(self.get('hostname'))
-            except AttributeError:
-                self._state = ResourceState.FAILED
-                msg = "Credentials are not initialzed. XMPP Connections impossible"
-                self.debug(msg)
-                raise AttributeError, msg
+        if not self._omf_api :
+            self._state = ResourceState.FAILED
+            msg = "Credentials are not initialzed. XMPP Connections impossible"
+            self.error(msg)
+            return
+
+        if not self.get('hostname') :
+            self._state = ResourceState.FAILED
+            msg = "Hostname's value is not initialized"
+            self.error(msg)
+            return False
+
+        try:
+            self._omf_api.enroll_host(self.get('hostname'))
+        except AttributeError:
+            self._state = ResourceState.FAILED
+            msg = "Credentials are not initialzed. XMPP Connections impossible"
+            self.debug(msg)
+            #raise AttributeError, msg
 
         super(OMFNode, self).deploy()
 
@@ -172,5 +189,7 @@ class OMFNode(ResourceManager):
         if self._omf_api :
             self._omf_api.release(self.get('hostname'))
             OMFAPIFactory.release_api(self.get('xmppSlice'), 
-                self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'))
+                self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'), exp_id = self.exp_id)
+
+        super(OMFNode, self).release()
 
