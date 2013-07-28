@@ -446,7 +446,7 @@ class LinuxApplication(ResourceManager):
         depends = self.get("depends")
         if depends:
             self.info("Installing dependencies %s" % depends)
-            self.node.install_packages(depends, self.app_home, self.run_home)
+            return self.node.install_packages_command(depends)
 
     def build(self):
         build = self.get("build")
