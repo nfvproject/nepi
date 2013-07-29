@@ -581,8 +581,10 @@ class ExperimentController(object):
         if isinstance(guids, int):
             guids = [guids]
 
-        # Create deployment group 
+        # Create deployment group
+        new_group = False
         if not group:
+            new_group = True
             group = self._group_id_generator.next(guid)
 
         if group not in self._groups:
@@ -623,7 +625,7 @@ class ExperimentController(object):
                     rm = self.get_resource(guid)
                     self.schedule("0s", rm.start_with_conditions)
 
-        if wait_all_ready:
+        if wait_all_ready and new_group:
             # Schedule a function to check that all resources are
             # READY, and only then schedule the start.
             # This aimes at reducing the number of tasks looping in the 
