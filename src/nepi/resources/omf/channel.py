@@ -115,7 +115,7 @@ class OMFChannel(ResourceManager):
             for conn in rm_iface.connections:
                 rm_node = self.ec.get_resource(conn)
                 if rm_node.rtype() == "OMFNode" and rm_node.get('hostname'):
-                    if rm_iface.state < ResourceState.READY or rm_node.state < ResourceState.READY:
+                    if rm_iface.state < ResourceState.PROVISIONED or rm_node.state < ResourceState.READY:
                         return "reschedule"
                     couple = [rm_node.get('hostname'), rm_iface.get('alias')]
                     #print couple
