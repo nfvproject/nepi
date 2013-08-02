@@ -24,6 +24,7 @@ from nepi.resources.linux.node import LinuxNode
 from nepi.resources.planetlab.plcapi import PLCAPIFactory 
 from nepi.util.timefuncs import tnow, tdiff, tdiffsec, stabsformat
 import threading
+import subprocess
 
 @clsinit_copy
 class PlanetlabNode(LinuxNode):
@@ -204,6 +205,7 @@ class PlanetlabNode(LinuxNode):
         super(PlanetlabNode, self).__init__(ec, guid)
 
         self._plapi = None
+        self._node_to_provision = None
     
     @property
     def plapi(self):
@@ -218,7 +220,7 @@ class PlanetlabNode(LinuxNode):
             
         return self._plapi
 
-    def discoveri(self):
+    def discoverl(self):
         bl = PlanetlabNode.blacklist()
         inpro = PlanetlabNode.in_provision()
         lockbl = PlanetlabNode.lock_bl()
@@ -235,8 +237,10 @@ class PlanetlabNode(LinuxNode):
                     msg = "Node %s not alive, pick another node" % hostname
                     raise RuntimeError, msg
                 else:
-                    self._discover_time = tnow()
-                    self._state = ResourceState.DISCOVERED
+                    self._node_to_provision = node_id
+                    super(PlanetlabNode, self).discover()
+                    #self._discover_time = tnow()
+                    #self._state = ResourceState.DISCOVERED
                     return node_id
             else:
                 msg = "Node %s not available for provisioning, pick another node" % hostname
@@ -246,6 +250,7 @@ class PlanetlabNode(LinuxNode):
             from random import randint
             nodes = self.filter_based_on_attributes()
             nodes_alive = self.check_alive_and_active(nodes)
+            print nodes, nodes_alive
             nodes_inslice = self.check_if_in_slice(nodes_alive)
             nodes_not_inslice = list(set(nodes_alive) - set(nodes_inslice))
             if nodes_inslice:
@@ -261,8 +266,11 @@ class PlanetlabNode(LinuxNode):
                             lockinpro.acquire()
                             inpro.append(node_id)
                             lockinpro.release()
-                            self._discover_time = tnow()
-                            self._state = ResourceState.DISCOVERED
+                            self._node_to_provision = node_id
+
+                            super(PlanetlabNode, self).discover()
+                            #self._discover_time = tnow()
+                            #self._state = ResourceState.DISCOVERED
                             return node_id
                         else:
                             lockbl.acquire()
@@ -282,8 +290,11 @@ class PlanetlabNode(LinuxNode):
                             lockinpro.acquire()
                             inpro.append(node_id)
                             lockinpro.release()
-                            self._discover_time = tnow()
-                            self._state = ResourceState.DISCOVERED
+                            self._node_to_provision = node_id
+                            
+                            super(PlanetlabNode, self).discover()
+                            #self._discover_time = tnow()
+                            #self._state = ResourceState.DISCOVERED
                             return node_id
                         else:
                             lockbl.acquire()
@@ -294,12 +305,72 @@ class PlanetlabNode(LinuxNode):
 
                     
 
-    #def provision(self):
-        #de hostname para que provision haga add_node_slice, check que ip coincide con hostname
-        #command = "ssh %s@%s -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no 'echo \'GOOD NODE\''" % (pl_slice, hostname p = subprocess.Popen(command, shell=True, stdout = subprocess.PIPE, stderr = subprocess.PIPE) stdout, stderr = p.communicate() if stdout.find("GOOD NODE") < 0: continue
+    def provisionl(self):
+        import time
+        bl = PlanetlabNode.blacklist()
+        lockbl = PlanetlabNode.lock_bl()
+        provision_ok = False
+        ssh_ok = False
+        proc_ok = False
+        timeout = 1200
+        while not provision_ok:
+            slicename = self.get("username")
+            node = self._node_to_provision
+            ip = self.plapi.get_interfaces({'node_id':node}, fields=['ip'])
+            ip = ip[0]['ip']
+            print ip
 
+            self.plapi.add_slice_nodes(slicename, [node])
+            
+            t = 0 
+            while t < timeout and not ssh_ok:
+                # check ssh connection
+                command = "ssh %s@%s -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no 'echo \'GOOD NODE\''" % (slicename, ip)
+                p = subprocess.Popen(command, shell=True, stdout = subprocess.PIPE, stderr = subprocess.PIPE) 
+                stdout, stderr = p.communicate()
+                if stdout.find("GOOD NODE") < 0:
+                    print t
+                    t = t + 60
+                    time.sleep(60)
+                    continue
+                else:
+                    ssh_ok = True
+                    continue
 
+            if not ssh_ok:
+                with lockbl:
+                    bl.append(node)
+                    print bl
+                    self.plapi.delete_slice_node(slicename, [node])
+                    self.discover()
+                continue
+            
+            # check /proc directory
+            else: # ssh_ok:
+                command = "ssh %s@%s -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no 'mount |grep proc'" % (slicename, ip)
+                p = subprocess.Popen(command, shell=True, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+                stdout, stderr = p.communicate()
+                if stdout.find("/proc type proc") < 0:
+                    lockbl.acquire()
+                    bl.append(node)
+                    lockbl.release()
+                    self.plapi.delete_slice_node(slicename, [node])
+                    self.discover()
+                    continue
+            
+                else:
+                    provision_ok = True
+                    # set attributes ip, hostname
+                    self.set("ip", ip)
+ 
+                    hostname = self.plapi.get_nodes(node, ['hostname'])
+                    self.set("hostname", hostname[0]['hostname'])
+                    print self.get("hostname")
+            
+        # call provision de linux node?
+        super(PlanetlabNode, self).provision()
 
+        
     def filter_based_on_attributes(self):
         # Map attributes with tagnames of PL
         timeframe = self.get("timeframe")[0]
@@ -342,9 +413,9 @@ class PlanetlabNode(LinuxNode):
                         if len(nodes_id_tmp):
                             nodes_id = set(nodes_id) & set(nodes_id_tmp)
                         else:
-                            self.fail()
+                            self.fail2()
                 else:
-                    self.fail()
+                    self.fail2()
             elif attr_value is not None and attr_obj.flags == 8 and ('min' or 'max') in attr_name:
                 attr_tag = attr_to_tags[attr_name]
                 filters['tagname'] = attr_tag
@@ -372,7 +443,7 @@ class PlanetlabNode(LinuxNode):
                         if len(nodes_id_tmp):
                             nodes_id = set(nodes_id) & set(nodes_id_tmp)
                         else:
-                            self.fail()
+                            self.fail2()
 
         return nodes_id
                     
@@ -398,7 +469,7 @@ class PlanetlabNode(LinuxNode):
             filters['hostname'] = hostname
             alive_nodes_id = self.plapi.get_nodes(filters, fields=['node_id'])
         if len(alive_nodes_id) == 0:
-            self.fail()
+            self.fail2()
         else:
             nodes_id = list()
             for node_id in alive_nodes_id:
@@ -416,7 +487,6 @@ class PlanetlabNode(LinuxNode):
     def do_ping(self, node_id):
         ip = self.plapi.get_interfaces({'node_id':node_id}, fields=['ip'])
         ip = ip[0]['ip']
-        import subprocess
         result = subprocess.call(["ping","-c","2",ip],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
         if result == 0:
             return False
@@ -424,7 +494,8 @@ class PlanetlabNode(LinuxNode):
             return True
 
 
-    def fail(self):
+    def fail2(self):
+        self.fail()
         msg = "Discovery failed. No candidates found for node"
         self.error(msg)
         raise RuntimeError, msg
