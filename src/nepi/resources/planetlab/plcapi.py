@@ -409,6 +409,9 @@ class PLCAPI(object):
     def update_slice(self, slice_id_or_name, **kw):
         return _retry(self.mcapi.UpdateSlice)(self.auth, slice_id_or_name, kw)
 
+    def delete_slice_node(self, slice_id_or_name, node_id_or_hostname):
+        return _retry(self.mcapi.DeleteSliceFromNodes)(self.auth, slice_id_or_name, node_id_or_hostname)
+
     def start_multicall(self):
         self.threadlocal.mc = xmlrpclib.MultiCall(self.mcapi)
     
