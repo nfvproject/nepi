@@ -18,7 +18,7 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 from nepi.execution.attribute import Attribute, Flags, Types
-from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState, \
+from nepi.execution.resource import clsinit_copy, ResourceState, \
         reschedule_delay
 from nepi.resources.linux.application import LinuxApplication
 from nepi.resources.planetlab.node import PlanetlabNode
@@ -166,35 +166,31 @@ class PlanetlabTap(LinuxApplication):
                 raise
  
             self.debug("----- READY ---- ")
-            self._ready_time = tnow()
-            self._state = ResourceState.READY
+            self.set_ready()
 
     def start(self):
-        if self._state == ResourceState.READY:
+        if self.state == ResourceState.READY:
             command = self.get("command")
             self.info("Starting command '%s'" % command)
 
-            self._start_time = tnow()
-            self._state = ResourceState.STARTED
+            self.set_started()
         else:
             msg = " Failed to execute command '%s'" % command
             self.error(msg, out, err)
-            self._state = ResourceState.FAILED
+            self.fail()
             raise RuntimeError, msg
 
     def stop(self):
         command = self.get('command') or ''
-        state = self.state
         
-        if state == ResourceState.STARTED:
+        if self.state == ResourceState.STARTED:
             self.info("Stopping command '%s'" % command)
 
             command = "bash %s" % os.path.join(self.app_home, "stop.sh")
             (out, err), proc = self.execute_command(command,
                     blocking = True)
 
-            self._stop_time = tnow()
-            self._state = ResourceState.STOPPED
+            self.set_stopped()
 
     @property
     def state(self):
@@ -208,6 +204,7 @@ class PlanetlabTap(LinuxApplication):
 
                 if out.strip().find(self.get("deviceName")) == -1: 
                     # tap is not running is not running (socket not found)
+                    self._finish_time = tnow()
                     self._state = ResourceState.FINISHED
 
             self._last_state_check = tnow()

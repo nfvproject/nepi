@@ -18,7 +18,7 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 from nepi.execution.attribute import Attribute, Flags, Types
-from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState, \
+from nepi.execution.resource import clsinit_copy, ResourceState, \
         reschedule_delay
 from nepi.execution.resource import clsinit_copy 
 from nepi.resources.linux.application import LinuxApplication
@@ -250,16 +250,15 @@ class LinuxUdpTest(LinuxApplication):
     def start(self):
         if self.get("s") == True:
             # Server is already running
-            if self._state == ResourceState.READY:
+            if self.state == ResourceState.READY:
                 command = self.get("command")
                 self.info("Starting command '%s'" % command)
 
-                self._start_time = tnow()
-                self._state = ResourceState.STARTED
+                self.set_started()
             else:
                 msg = " Failed to execute command '%s'" % command
                 self.error(msg, out, err)
-                self._state = ResourceState.FAILED
+                self.fail()
                 raise RuntimeError, msg
         else:
             super(LinuxUdpTest, self).start()

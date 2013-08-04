@@ -23,8 +23,18 @@ from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState
 from nepi.resources.linux.node import LinuxNode
 from nepi.resources.planetlab.plcapi import PLCAPIFactory 
 from nepi.util.timefuncs import tnow, tdiff, tdiffsec, stabsformat
-import threading
+
 import subprocess
+import threading
+
+# A.Q. GENERAL COMMENTS: This module needs major cleaning up
+#     - Lines should be 80 characters
+#     - Most methods have too many lines and there are no comments or spaces
+#     - There should be only two line breaks between two methods
+#     - Code is too compressed. Hard to read. Add spaces when needed
+#     - In general the code needs to be more subdivided. Use more methods 
+#       with clear names to divide operations (even if you don't reuse the 
+#       methods else where, this will make the code more readable)
 
 @clsinit_copy
 class PlanetlabNode(LinuxNode):
@@ -43,6 +53,7 @@ class PlanetlabNode(LinuxNode):
         """
         return cls._blacklist
 
+    ### A.Q. COMMENT: Why did you wrapped the locks inside methods ?
     @classmethod
     def in_provision(cls):
         """ Returns the nodes that anohter RM is trying to provision
@@ -221,6 +232,8 @@ class PlanetlabNode(LinuxNode):
         return self._plapi
 
     def discoverl(self):
+        #### A.Q. COMMENT: no need to have methods for the locks and 
+        ##                 other attributes. Please remove.
         bl = PlanetlabNode.blacklist()
         inpro = PlanetlabNode.in_provision()
         lockbl = PlanetlabNode.lock_bl()
@@ -231,6 +244,12 @@ class PlanetlabNode(LinuxNode):
             if node_id not in bl and node_id not in inpro:
                 try_other = self.do_ping(node_id)
                 if try_other:
+                    # A.Q. COMMENT: Here you could do 
+                    #
+                    #   with self._lockbl:
+                    #       ...
+                    #
+                    #  Class attributes can still be accesed with 'self'
                     lockbl.acquire()
                     bl.append(node_id)
                     lockbl.release()
@@ -306,6 +325,7 @@ class PlanetlabNode(LinuxNode):
                     
 
     def provisionl(self):
+        # A.Q. COMMENT: you can import time on the top
         import time
         bl = PlanetlabNode.blacklist()
         lockbl = PlanetlabNode.lock_bl()
@@ -325,6 +345,9 @@ class PlanetlabNode(LinuxNode):
             t = 0 
             while t < timeout and not ssh_ok:
                 # check ssh connection
+
+                # A.Q. COMMENT IMPORTANT! Instead of issuing SSH commands directly use the
+                #    "execute" method inherithed from LinuxNode with blocking = True
                 command = "ssh %s@%s -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no 'echo \'GOOD NODE\''" % (slicename, ip)
                 p = subprocess.Popen(command, shell=True, stdout = subprocess.PIPE, stderr = subprocess.PIPE) 
                 stdout, stderr = p.communicate()
@@ -341,6 +364,9 @@ class PlanetlabNode(LinuxNode):
                 with lockbl:
                     bl.append(node)
                     print bl
+                    # A.Q. COMMENT: Make method "delete_slice_node" and there 
+                    #               put this code. Repeat this for all calls to plapi.
+                    #               This will make the code cleaner.
                     self.plapi.delete_slice_node(slicename, [node])
                     self.discover()
                 continue
@@ -351,6 +377,8 @@ class PlanetlabNode(LinuxNode):
                 p = subprocess.Popen(command, shell=True, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
                 stdout, stderr = p.communicate()
                 if stdout.find("/proc type proc") < 0:
+                    # A.Q. COMMENT: lines 382-384 should go to a method
+                    #       "blacklist_node()"
                     lockbl.acquire()
                     bl.append(node)
                     lockbl.release()
@@ -370,7 +398,6 @@ class PlanetlabNode(LinuxNode):
         # call provision de linux node?
         super(PlanetlabNode, self).provision()
 
-        
     def filter_based_on_attributes(self):
         # Map attributes with tagnames of PL
         timeframe = self.get("timeframe")[0]
@@ -485,6 +512,8 @@ class PlanetlabNode(LinuxNode):
         return nodes_inslice
 
     def do_ping(self, node_id):
+        # A.Q. COMMENT: the execfuncs module in utils will do the local ping for you
+        #               code reuse is good...
         ip = self.plapi.get_interfaces({'node_id':node_id}, fields=['ip'])
         ip = ip[0]['ip']
         result = subprocess.call(["ping","-c","2",ip],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
@@ -493,7 +522,7 @@ class PlanetlabNode(LinuxNode):
         elif result == 1 or result == 2:
             return True
 
-
+    # A.Q. Unclear name for method "fail2"
     def fail2(self):
         self.fail()
         msg = "Discovery failed. No candidates found for node"

@@ -19,8 +19,8 @@
 
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import Trace, TraceAttr
-from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState, \
-    reschedule_delay
+from nepi.execution.resource import ResourceManager, clsinit_copy, \
+        ResourceState, reschedule_delay
 from nepi.resources.linux.application import LinuxApplication
 from nepi.resources.linux.node import OSType
 from nepi.util.timefuncs import tnow, tdiffsec
@@ -181,8 +181,7 @@ class LinuxCCND(LinuxApplication):
                 raise
  
             self.debug("----- READY ---- ")
-            self._ready_time = tnow()
-            self._state = ResourceState.READY
+            self.set_ready()
 
     def upload_start_command(self):
         command = self.get("command")
@@ -204,23 +203,21 @@ class LinuxCCND(LinuxApplication):
                 raise_on_error = True)
 
     def start(self):
-        if self._state == ResourceState.READY:
+        if self.state == ResourceState.READY:
             command = self.get("command")
             self.info("Starting command '%s'" % command)
 
-            self._start_time = tnow()
-            self._state = ResourceState.STARTED
+            self.set_started()
         else:
             msg = " Failed to execute command '%s'" % command
             self.error(msg, out, err)
-            self._state = ResourceState.FAILED
+            self.set_failed()
             raise RuntimeError, msg
 
     def stop(self):
         command = self.get('command') or ''
-        state = self.state
         
-        if state == ResourceState.STARTED:
+        if self.state == ResourceState.STARTED:
             self.info("Stopping command '%s'" % command)
 
             command = "ccndstop"
@@ -241,8 +238,7 @@ class LinuxCCND(LinuxApplication):
                         stdout = "ccndstop_stdout", 
                         stderr = "ccndstop_stderr")
 
-            self._stop_time = tnow()
-            self._state = ResourceState.STOPPED
+            self.set_stopped()
     
     @property
     def state(self):
@@ -256,12 +252,12 @@ class LinuxCCND(LinuxApplication):
 
             if retcode == 1 and err.find("No such file or directory") > -1:
                 # ccnd is not running (socket not found)
-                self._state = ResourceState.FINISHED
+                self.set_finished()
             elif retcode:
                 # other errors ...
                 msg = " Failed to execute command '%s'" % self.get("command")
                 self.error(msg, out, err)
-                self._state = ResourceState.FAILED
+                self.fail()
 
             self._last_state_check = tnow()
 

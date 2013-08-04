@@ -101,14 +101,9 @@ class OMFNode(ResourceManager):
 
         self._omf_api = None 
 
-    @property
-    def exp_id(self):
-        if self.ec.exp_id.startswith('exp-'):
-            return None
-        return self.ec.exp_id
-
     def valid_connection(self, guid):
-        """Check if the connection with the guid in parameter is possible. Only meaningful connections are allowed.
+        """ Check if the connection with the guid in parameter is possible. 
+        Only meaningful connections are allowed.
 
         :param guid: Guid of the current RM
         :type guid: int
@@ -117,40 +112,47 @@ class OMFNode(ResourceManager):
         """
         rm = self.ec.get_resource(guid)
         if rm.rtype() in self._authorized_connections:
-            msg = "Connection between %s %s and %s %s accepted" % (self.rtype(), self._guid, rm.rtype(), guid)
+            msg = "Connection between %s %s and %s %s accepted" % (
+                    self.rtype(), self._guid, rm.rtype(), guid)
             self.debug(msg)
+
             return True
-        msg = "Connection between %s %s and %s %s refused" % (self.rtype(), self._guid, rm.rtype(), guid)
+
+        msg = "Connection between %s %s and %s %s refused" % (
+                self.rtype(), self._guid, rm.rtype(), guid)
         self.debug(msg)
+
         return False
 
     def deploy(self):
-        """Deploy the RM. It means : Send Xmpp Message Using OMF protocol to enroll the node into the experiment
-           It becomes DEPLOYED after sending messages to enroll the node
+        """ Deploy the RM. It means : Send Xmpp Message Using OMF protocol 
+            to enroll the node into the experiment.
+            It becomes DEPLOYED after sending messages to enroll the node
 
         """ 
         if not self._omf_api :
             self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
-                self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'), exp_id = self.exp_id)
+                self.get('xmppHost'), self.get('xmppPort'), 
+                self.get('xmppPassword'), exp_id = self.ec.exp_id)
 
         if not self._omf_api :
-            self._state = ResourceState.FAILED
             msg = "Credentials are not initialzed. XMPP Connections impossible"
             self.error(msg)
+            self.fail()
             return
 
         if not self.get('hostname') :
-            self._state = ResourceState.FAILED
             msg = "Hostname's value is not initialized"
             self.error(msg)
+            self.fail()
             return False
 
         try:
             self._omf_api.enroll_host(self.get('hostname'))
         except AttributeError:
-            self._state = ResourceState.FAILED
             msg = "Credentials are not initialzed. XMPP Connections impossible"
-            self.debug(msg)
+            self.error(msg)
+            self.fail()
             #raise AttributeError, msg
 
         super(OMFNode, self).deploy()
@@ -188,8 +190,10 @@ class OMFNode(ResourceManager):
         """
         if self._omf_api :
             self._omf_api.release(self.get('hostname'))
+
             OMFAPIFactory.release_api(self.get('xmppSlice'), 
-                self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'), exp_id = self.exp_id)
+                self.get('xmppHost'), self.get('xmppPort'), 
+                self.get('xmppPassword'), exp_id = self.ec.exp_id)
 
         super(OMFNode, self).release()
 

@@ -18,7 +18,7 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 from nepi.execution.attribute import Attribute, Flags, Types
-from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState, \
+from nepi.execution.resource import clsinit_copy, ResourceState, \
         reschedule_delay
 from nepi.resources.linux.application import LinuxApplication
 from nepi.util.sshfuncs import ProcStatus
@@ -187,9 +187,7 @@ class UdpTunnel(LinuxApplication):
        
         self.info("Provisioning finished")
  
-        self.debug("----- READY ---- ")
-        self._provision_time = tnow()
-        self._state = ResourceState.PROVISIONED
+        self.set_provisioned()
 
     def deploy(self):
         if (not self.endpoint1 or self.endpoint1.state < ResourceState.READY) or \
@@ -204,29 +202,24 @@ class UdpTunnel(LinuxApplication):
                 raise
  
             self.debug("----- READY ---- ")
-            self._ready_time = tnow()
-            self._state = ResourceState.READY
+            self.set_ready()
 
     def start(self):
-        if self._state == ResourceState.READY:
+        if self.state == ResourceState.READY:
             command = self.get("command")
             self.info("Starting command '%s'" % command)
-
-            self._start_time = tnow()
-            self._state = ResourceState.STARTED
+            
+            self.set_started()
         else:
             msg = " Failed to execute command '%s'" % command
             self.error(msg, out, err)
-            self._state = ResourceState.FAILED
+            self.fail()
             raise RuntimeError, msg
 
-    # XXX: Leaves process unkilled!! 
-    #       Implement another mechanism to kill the tunnel!
     def stop(self):
         """ Stops application execution
         """
         if self.state == ResourceState.STARTED:
-            stopped = True
             self.info("Stopping tunnel")
     
             # Only try to kill the process if the pid and ppid
@@ -242,11 +235,9 @@ class UdpTunnel(LinuxApplication):
                     msg = " Failed to STOP tunnel"
                     self.error(msg, err1, err2)
                     self.fail()
-                    stopped = False
 
-            if stopped:
-                self._stop_time = tnow()
-                self._state = ResourceState.STOPPED
+        if self.state == ResourceState.STARTED:
+            self.set_stopped()
 
     @property
     def state(self):
@@ -280,7 +271,7 @@ class UdpTunnel(LinuxApplication):
                             self.error(msg, err1, err2)
                             self.fail()
                         else:
-                            self._state = ResourceState.FINISHED
+                            self.set_finished()
 
                 self._last_state_check = tnow()
 
@@ -288,11 +279,15 @@ class UdpTunnel(LinuxApplication):
 
     def wait_local_port(self, endpoint):
         """ Waits until the local_port file for the endpoint is generated, 
-            and returns the port number """
+        and returns the port number 
+        
+        """
         return self.wait_file(endpoint, "local_port")
 
     def wait_result(self, endpoint):
-        """ Waits until the return code file for the endpoint is generated """ 
+        """ Waits until the return code file for the endpoint is generated 
+        
+        """ 
         return self.wait_file(endpoint, "ret_file")
  
     def wait_file(self, endpoint, filename):

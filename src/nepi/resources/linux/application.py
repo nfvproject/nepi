@@ -20,7 +20,7 @@
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import Trace, TraceAttr
 from nepi.execution.resource import ResourceManager, clsinit, ResourceState, \
-    reschedule_delay
+        reschedule_delay
 from nepi.resources.linux.node import LinuxNode
 from nepi.util.sshfuncs import ProcStatus
 from nepi.util.timefuncs import tnow, tdiffsec
@@ -29,6 +29,7 @@ import os
 import subprocess
 
 # TODO: Resolve wildcards in commands!!
+# TODO: When a failure occurs during deployment, scp and ssh processes are left running behind!!
 
 @clsinit
 class LinuxApplication(ResourceManager):
@@ -483,7 +484,7 @@ class LinuxApplication(ResourceManager):
                 raise
 
             super(LinuxApplication, self).deploy()
-
+    
     def start(self):
         command = self.get("command")
 
@@ -492,7 +493,7 @@ class LinuxApplication(ResourceManager):
         if not command:
             # If no command was given (i.e. Application was used for dependency
             # installation), then the application is directly marked as FINISHED
-            self._state = ResourceState.FINISHED
+            self.set_finished()
         else:
 
             if self.in_foreground:
@@ -585,14 +586,12 @@ class LinuxApplication(ResourceManager):
 
         if self.state == ResourceState.STARTED:
         
-            self.info("Stopping command '%s'" % command)
+            self.info("Stopping command '%s' " % command)
         
             # If the command is running in foreground (it was launched using
             # the node 'execute' method), then we use the handler to the Popen
             # process to kill it. Else we send a kill signal using the pid and ppid
             # retrieved after running the command with the node 'run' method
-            stopped = True
-
             if self._proc:
                 self._proc.kill()
             else:
@@ -602,12 +601,12 @@ class LinuxApplication(ResourceManager):
                     (out, err), proc = self.node.kill(self.pid, self.ppid,
                             sudo = self._sudo_kill)
 
+                    # TODO: check if execution errors occurred
                     if proc.poll() or err:
-                        # check if execution errors occurred
                         msg = " Failed to STOP command '%s' " % self.get("command")
                         self.error(msg, out, err)
                         self.fail()
-
+        
         if self.state == ResourceState.STARTED:
             super(LinuxApplication, self).stop()
 
@@ -620,11 +619,11 @@ class LinuxApplication(ResourceManager):
 
         self.stop()
 
-        if self.state == ResourceState.STOPPED:
+        if self.state != ResourceState.FAILED:
             self.info("Resource released")
 
             super(LinuxApplication, self).release()
-    
+   
     @property
     def state(self):
         """ Returns the state of the application
@@ -644,9 +643,9 @@ class LinuxApplication(ResourceManager):
                     err = self._proc.stderr.read()
                     self.error(msg, out, err)
                     self.fail()
-                elif retcode == 0:
-                    self._state = ResourceState.FINISHED
 
+                elif retcode == 0:
+                    self.finish()
             else:
                 # We need to query the status of the command we launched in 
                 # background. In order to avoid overwhelming the remote host and
@@ -665,12 +664,12 @@ class LinuxApplication(ResourceManager):
                                     self.run_home)
 
                             if err:
-                                msg = " Failed to execute command '%s'" % \
+                                msg = "Failed to execute command '%s'" % \
                                         self.get("command")
                                 self.error(msg, out, err)
                                 self.fail()
                             else:
-                               self._state = ResourceState.FINISHED
+                                self.finish()
 
                     self._last_state_check = tnow()
 
