@@ -139,8 +139,7 @@ class LinuxFIBEntry(LinuxApplication):
                 raise
  
             self.debug("----- READY ---- ")
-            self._ready_time = tnow()
-            self._state = ResourceState.READY
+            self.set_ready()
 
     def upload_start_command(self):
         command = self.get("command")
@@ -160,9 +159,9 @@ class LinuxFIBEntry(LinuxApplication):
                 env, blocking = True)
 
         if proc.poll():
-            self._state = ResourceState.FAILED
             msg = "Failed to execute command"
             self.error(msg, out, err)
+            self.fail()
             raise RuntimeError, msg
         
     def configure(self):
@@ -197,16 +196,15 @@ class LinuxFIBEntry(LinuxApplication):
             self.ec.deploy(guids=[self._traceroute], group = self.deployment_group)
 
     def start(self):
-        if self._state in [ResourceState.READY, ResourceState.STARTED]:
+        if self.state == ResourceState.READY:
             command = self.get("command")
             self.info("Starting command '%s'" % command)
 
-            self._start_time = tnow()
-            self._state = ResourceState.STARTED
+            self.set_started()
         else:
             msg = " Failed to execute command '%s'" % command
             self.error(msg, out, err)
-            self._state = ResourceState.FAILED
+            self.fail()
             raise RuntimeError, msg
 
     def stop(self):
@@ -222,12 +220,7 @@ class LinuxFIBEntry(LinuxApplication):
             if proc.poll():
                 pass
 
-            self._stop_time = tnow()
-            self._state = ResourceState.STOPPED
-
-    @property
-    def state(self):
-        return self._state
+            self.set_stopped()
 
     @property
     def _start_command(self):

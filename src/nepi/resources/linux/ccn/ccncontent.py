@@ -101,8 +101,7 @@ class LinuxCCNContent(LinuxApplication):
                 raise
  
             self.debug("----- READY ---- ")
-            self._ready_time = tnow()
-            self._state = ResourceState.READY
+            self.set_ready()
 
     def upload_start_command(self):
         command = self.get("command")
@@ -128,21 +127,16 @@ class LinuxCCNContent(LinuxApplication):
             raise RuntimeError, msg
 
     def start(self):
-        if self._state == ResourceState.READY:
+        if self.state == ResourceState.READY:
             command = self.get("command")
             self.info("Starting command '%s'" % command)
 
-            self._start_time = tnow()
-            self._state = ResourceState.STARTED
+            self.set_started()
         else:
             msg = " Failed to execute command '%s'" % command
             self.error(msg, out, err)
-            self._state = ResourceState.FAILED
+            sef.fail()
             raise RuntimeError, msg
-
-    @property
-    def state(self):
-        return self._state
 
     @property
     def _start_command(self):

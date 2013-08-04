@@ -23,6 +23,7 @@ from nepi.resources.linux.application import LinuxApplication
 from nepi.util.timefuncs import tnow
 
 import os
+import socket
 
 @clsinit_copy
 class LinuxTraceroute(LinuxApplication):
@@ -42,12 +43,21 @@ class LinuxTraceroute(LinuxApplication):
             default = False,
             flags = Flags.ExecReadOnly)
 
+        use_ip = Attribute("useIP",
+            "Use the IP address instead of the host domain name. "
+            "Useful for environments were dns resolution problems occur "
+            "frequently",
+            type = Types.Bool,
+            default = False,
+            flags = Flags.ExecReadOnly)
+
         target = Attribute("target",
             "Traceroute target host (host that will be pinged)",
             flags = Flags.ExecReadOnly)
 
         cls._register_attribute(countinuous)
         cls._register_attribute(print_timestamp)
+        cls._register_attribute(use_ip)
         cls._register_attribute(target)
 
     def __init__(self, ec, guid):
@@ -71,7 +81,12 @@ class LinuxTraceroute(LinuxApplication):
         if self.get("printTimestamp") == True:
             args.append("""echo "`date +'%Y%m%d%H%M%S'`";""")
         args.append("traceroute")
-        args.append(self.get("target"))
+
+        target = self.get("target")
+        if self.get("useIP") == True:
+            target = socket.gethostbyname(target)
+        args.append(target)
+        
         if self.get("continuous") == True:
             args.append("; sleep 2 ; done ")
 

@@ -48,10 +48,13 @@ class OMFAPI(Logger):
 
     .. note::
 
-       This class is the implementation of an OMF 5.4 API. Since the version 5.4.1, the Topic Architecture start with OMF_5.4 instead of OMF used for OMF5.3
+       This class is the implementation of an OMF 5.4 API. 
+       Since the version 5.4.1, the Topic Architecture start with OMF_5.4 
+       instead of OMF used for OMF5.3
 
     """
-    def __init__(self, slice, host, port, password, xmpp_root = None, exp_id = None):
+    def __init__(self, slice, host, port, password, xmpp_root = None, 
+            exp_id = None):
         """
     
         :param slice: Xmpp Slice
@@ -81,6 +84,7 @@ class OMFAPI(Logger):
 
         # OMF xmpp client
         self._client = None
+
         # message handler
         self._message = None
 
@@ -133,7 +137,8 @@ class OMFAPI(Logger):
         """ Publish New Experiment Message
 
         """
-        address = "/%s/%s/%s/%s" % (self._host, self._xmpp_root, self._slice, self._user)
+        address = "/%s/%s/%s/%s" % (self._host, self._xmpp_root, self._slice,
+                self._user)
         #print address
         payload = self._message.newexp_function(self._user, address)
         slice_sid = "/%s/%s" % (self._xmpp_root, self._slice)
@@ -160,7 +165,8 @@ class OMFAPI(Logger):
         :type hostname: str
 
         """
-        return "/%s/%s/%s/%s" % (self._xmpp_root, self._slice, self._user, hostname)
+        return "/%s/%s/%s/%s" % (self._xmpp_root, self._slice, self._user, 
+                hostname)
 
     def _host_resource_id(self, hostname):
         """ Return the Topic Name as /xmpp_root/slice/resources/hostname
@@ -201,7 +207,8 @@ class OMFAPI(Logger):
         self._client.delete(xmpp_node)
 
     def enroll_host(self, hostname):
-        """ Create and Subscribe to the session topic and the resources corresponding to the hostname
+        """ Create and Subscribe to the session topic and the resources
+            corresponding to the hostname
 
         :param hostname: Full hrn of the node
         :type hostname: str
@@ -227,7 +234,8 @@ class OMFAPI(Logger):
 
         :param hostname: Full hrn of the node
         :type hostname: str
-        :param attribute: Attribute that need to be configured (often written as /net/wX/attribute, with X the interface number)
+        :param attribute: Attribute that need to be configured (
+            often written as /net/wX/attribute, with X the interface number)
         :type attribute: str
         :param value: Value of the attribute
         :type value: str
@@ -242,7 +250,8 @@ class OMFAPI(Logger):
 
         :param hostname: Full hrn of the node
         :type hostname: str
-        :param app_id: Application Id (Any id that represents in a unique way the application)
+        :param app_id: Application Id (Any id that represents in a unique 
+            way the application)
         :type app_id: str
         :param arguments: Arguments of the application
         :type arguments: str
@@ -252,7 +261,8 @@ class OMFAPI(Logger):
         :type env: str
 
         """
-        payload = self._message.execute_function(hostname, app_id, arguments, path, env)
+        payload = self._message.execute_function(hostname, app_id, arguments, 
+                path, env)
         xmpp_node =  self._host_session_id(hostname)
         self._client.publish(payload, xmpp_node)
 
@@ -295,11 +305,12 @@ class OMFAPIFactory(object):
     """ 
     .. note::
 
-        It allows the different RM to use the same xmpp client if they use the same credentials. 
-        For the moment, it is focused on Xmpp.
+        It allows the different RM to use the same xmpp client if they use 
+        the same credentials.  For the moment, it is focused on XMPP.
 
     """
-    # use lock to avoid concurrent access to the Api list at the same times by 2 different threads
+    # use lock to avoid concurrent access to the Api list at the same times by 2 
+    # different threads
     lock = threading.Lock()
     _apis = dict()
 

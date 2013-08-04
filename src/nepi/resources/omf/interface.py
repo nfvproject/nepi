@@ -26,7 +26,6 @@ from nepi.resources.omf.node import OMFNode
 from nepi.resources.omf.channel import OMFChannel
 from nepi.resources.omf.omf_api import OMFAPIFactory
 
-
 @clsinit
 class OMFWifiInterface(ResourceManager):
     """
@@ -41,7 +40,8 @@ class OMFWifiInterface(ResourceManager):
 
     .. note::
 
-       This class is used only by the Experiment Controller through the Resource Factory
+       This class is used only by the Experiment Controller through the Resource 
+       Factory
 
     """
     _rtype = "OMFWifiInterface"
@@ -88,14 +88,9 @@ class OMFWifiInterface(ResourceManager):
         self._omf_api = None
         self._alias = self.get('alias')
 
-    @property
-    def exp_id(self):
-        if self.ec.exp_id.startswith('exp-'):
-            return None
-        return self.ec.exp_id
-
     def valid_connection(self, guid):
-        """ Check if the connection with the guid in parameter is possible. Only meaningful connections are allowed.
+        """ Check if the connection with the guid in parameter is possible. 
+        Only meaningful connections are allowed.
 
         :param guid: Guid of the current RM
         :type guid: int
@@ -107,10 +102,13 @@ class OMFWifiInterface(ResourceManager):
             msg = "Connection between %s %s and %s %s accepted" % \
                 (self.rtype(), self._guid, rm.rtype(), guid)
             self.debug(msg)
+
             return True
+
         msg = "Connection between %s %s and %s %s refused" % \
              (self.rtype(), self._guid, rm.rtype(), guid)
         self.debug(msg)
+
         return False
 
     @property
@@ -138,7 +136,8 @@ class OMFWifiInterface(ResourceManager):
             for attrname in ["mode", "type", "essid"]:
                 attrval = self.get(attrname)
                 attrname = "net/%s/%s" % (self._alias, attrname)
-                self._omf_api.configure(self.node.get('hostname'), attrname, attrval)
+                self._omf_api.configure(self.node.get('hostname'), attrname, 
+                        attrval)
         except AttributeError:
             self._state = ResourceState.FAILED
             msg = "Credentials are not initialzed. XMPP Connections impossible"
@@ -152,7 +151,6 @@ class OMFWifiInterface(ResourceManager):
         """ Configure the ip of the interface
 
         """
-
         if self.channel.state < ResourceState.READY:
             self.ec.schedule(reschedule_delay, self.deploy)
             return False
@@ -160,39 +158,43 @@ class OMFWifiInterface(ResourceManager):
         try :
             attrval = self.get("ip")
             attrname = "net/%s/%s" % (self._alias, "ip")
-            self._omf_api.configure(self.node.get('hostname'), attrname, attrval)
+            self._omf_api.configure(self.node.get('hostname'), attrname, 
+                    attrval)
         except AttributeError:
-            self._state = ResourceState.FAILED
             msg = "Credentials are not initialzed. XMPP Connections impossible"
             self.debug(msg)
+            self.fail()
             #raise
 
         return True
 
-
     def deploy(self):
-        """Deploy the RM. It means : Get the xmpp client and send messages using OMF 5.4 protocol to configure the interface
-           It becomes DEPLOYED after sending messages to configure the interface
+        """ Deploy the RM. It means : Get the xmpp client and send messages 
+        using OMF 5.4 protocol to configure the interface.
+        It becomes DEPLOYED after sending messages to configure the interface
         """
         if not self._omf_api :
             self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
-                self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'), exp_id = self.exp_id)
+                self.get('xmppHost'), self.get('xmppPort'), 
+                self.get('xmppPassword'), exp_id = self.ec.exp_id)
 
         if not self._omf_api :
-            self._state = ResourceState.FAILED
             msg = "Credentials are not initialzed. XMPP Connections impossible"
             self.error(msg)
+            self.fail()
             return
 
-        if not (self.get('mode') and self.get('type') and self.get('essid') and self.get('ip')):
-            self._state = ResourceState.FAILED
+        if not (self.get('mode') and self.get('type') and self.get('essid') \
+                and self.get('ip')):
             msg = "Interface's variable are not initialized"
             self.error(msg)
+            self.fail()
             return False
 
         if not self.node.get('hostname') :
             msg = "The channel is connected with an undefined node"
             self.error(msg)
+            self.fail()
             return False
 
         # Just for information
@@ -213,28 +215,14 @@ class OMFWifiInterface(ResourceManager):
         super(OMFWifiInterface, self).deploy()
         return True
 
-    def start(self):
-        """Start the RM. It means nothing special for an interface for now
-           It becomes STARTED as soon as this method starts.
-
-        """
-
-        super(OMFWifiInterface, self).start()
-
-    def stop(self):
-        """Stop the RM. It means nothing special for an interface for now
-           It becomes STOPPED as soon as this method stops
-
-        """
-        super(OMFWifiInterface, self).stop()
-
     def release(self):
-        """Clean the RM at the end of the experiment and release the API
+        """ Clean the RM at the end of the experiment and release the API
 
         """
         if self._omf_api :
             OMFAPIFactory.release_api(self.get('xmppSlice'), 
-                self.get('xmppHost'), self.get('xmppPort'), self.get('xmppPassword'), exp_id = self.exp_id)
+                self.get('xmppHost'), self.get('xmppPort'), 
+                self.get('xmppPassword'), exp_id = self.ec.exp_id)
 
         super(OMFWifiInterface, self).release()
 

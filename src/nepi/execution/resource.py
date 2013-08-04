@@ -200,8 +200,8 @@ class ResourceManager(Logger):
         # the resource instance gets a copy of all traces
         self._trcs = copy.deepcopy(self._traces)
 
-        self._state = ResourceState.NEW
-
+        # Each resource is placed on a deployment group by the EC
+        # during deployment
         self.deployment_group = None
 
         self._start_time = None
@@ -212,6 +212,8 @@ class ResourceManager(Logger):
         self._release_time = None
         self._finish_time = None
         self._failed_time = None
+
+        self._state = ResourceState.NEW
 
     @property
     def guid(self):
@@ -316,9 +318,8 @@ class ResourceManager(Logger):
         This  method is resposible for selecting an individual resource
         matching user requirements.
         This method should be redefined when necessary in child classes.
-        """ 
-        self._discover_time = tnow()
-        self._state = ResourceState.DISCOVERED
+        """
+        self.set_discovered()
 
     def provision(self):
         """ Performs resource provisioning.
@@ -327,9 +328,8 @@ class ResourceManager(Logger):
         After this method has been successfully invoked, the resource
         should be acccesible/controllable by the RM.
         This method should be redefined when necessary in child classes.
-        """ 
-        self._provision_time = tnow()
-        self._state = ResourceState.PROVISIONED
+        """
+        self.set_provisioned()
 
     def start(self):
         """ Starts the resource.
@@ -337,12 +337,11 @@ class ResourceManager(Logger):
         There is no generic start behavior for all resources.
         This method should be redefined when necessary in child classes.
         """
-        if not self._state in [ResourceState.READY, ResourceState.STOPPED]:
+        if not self.state in [ResourceState.READY, ResourceState.STOPPED]:
             self.error("Wrong state %s for start" % self.state)
             return
 
-        self._start_time = tnow()
-        self._state = ResourceState.STARTED
+        self.set_started()
 
     def stop(self):
         """ Stops the resource.
@@ -350,12 +349,31 @@ class ResourceManager(Logger):
         There is no generic stop behavior for all resources.
         This method should be redefined when necessary in child classes.
         """
-        if not self._state in [ResourceState.STARTED]:
+        if not self.state in [ResourceState.STARTED]:
             self.error("Wrong state %s for stop" % self.state)
             return
+        
+        self.set_stopped()
 
-        self._stop_time = tnow()
-        self._state = ResourceState.STOPPED
+    def deploy(self):
+        """ Execute all steps required for the RM to reach the state READY
+
+        """
+        if self.state > ResourceState.READY:
+            self.error("Wrong state %s for deploy" % self.state)
+            return
+
+        self.debug("----- READY ---- ")
+        self.set_ready()
+
+    def release(self):
+        self.set_released()
+
+    def finish(self):
+        self.set_finished()
+ 
+    def fail(self):
+        self.set_failed()
 
     def set(self, name, value):
         """ Set the value of the attribute
@@ -655,39 +673,6 @@ class ResourceManager(Logger):
             self.debug(" ----- STOPPING ---- ") 
             self.stop()
 
-    def deploy(self):
-        """ Execute all steps required for the RM to reach the state READY
-
-        """
-        if self._state > ResourceState.READY:
-            self.error("Wrong state %s for deploy" % self.state)
-            return
-
-        self.debug("----- READY ---- ")
-        self._ready_time = tnow()
-        self._state = ResourceState.READY
-
-    def release(self):
-        """Release any resources used by this RM
-
-        """
-        self._release_time = tnow()
-        self._state = ResourceState.RELEASED
-
-    def finish(self):
-        """ Mark ResourceManager as FINISHED
-
-        """
-        self._finish_time = tnow()
-        self._state = ResourceState.FINISHED
-
-    def fail(self):
-        """ Mark ResourceManager as FAILED
-
-        """
-        self._failed_time = tnow()
-        self._state = ResourceState.FAILED
-
     def connect(self, guid):
         """ Performs actions that need to be taken upon associating RMs.
         This method should be redefined when necessary in child classes.
@@ -712,6 +697,46 @@ class ResourceManager(Logger):
         """
         # TODO: Validate!
         return True
+    
+    def set_started(self):
+        """ Mark ResourceManager as STARTED """
+        self._start_time = tnow()
+        self._state = ResourceState.STARTED
+        
+    def set_stopped(self):
+        """ Mark ResourceManager as STOPPED """
+        self._stop_time = tnow()
+        self._state = ResourceState.STOPPED
+
+    def set_ready(self):
+        """ Mark ResourceManager as READY """
+        self._ready_time = tnow()
+        self._state = ResourceState.READY
+
+    def set_released(self):
+        """ Mark ResourceManager as REALEASED """
+        self._release_time = tnow()
+        self._state = ResourceState.RELEASED
+
+    def set_finished(self):
+        """ Mark ResourceManager as FINISHED """
+        self._finish_time = tnow()
+        self._state = ResourceState.FINISHED
+
+    def set_failed(self):
+        """ Mark ResourceManager as FAILED """
+        self._failed_time = tnow()
+        self._state = ResourceState.FAILED
+
+    def set_discovered(self):
+        """ Mark ResourceManager as DISCOVERED """
+        self._discover_time = tnow()
+        self._state = ResourceState.DISCOVERED
+
+    def set_provisioned(self):
+        """ Mark ResourceManager as PROVISIONED """
+        self._provision_time = tnow()
+        self._state = ResourceState.PROVISIONED
 
 class ResourceFactory(object):
     _resource_types = dict()
