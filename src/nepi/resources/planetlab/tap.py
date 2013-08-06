@@ -185,7 +185,7 @@ class PlanetlabTap(LinuxApplication):
         
         if self.state == ResourceState.STARTED:
             self.info("Stopping command '%s'" % command)
-            self.info("STOOOOOOOOOOOOOOOOOOOOOOOOOOOOOPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP")
+
             command = "bash %s" % os.path.join(self.app_home, "stop.sh")
             (out, err), proc = self.execute_command(command,
                     blocking = True)
@@ -204,7 +204,6 @@ class PlanetlabTap(LinuxApplication):
 
                 if out.strip().find(self.get("deviceName")) == -1: 
                     # tap is not running is not running (socket not found)
-                    print "HEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY"
                     self._finish_time = tnow()
                     self._state = ResourceState.FINISHED
 
