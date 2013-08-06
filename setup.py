@@ -24,6 +24,7 @@ setup(
             "nepi.resources.ns3",
             "nepi.resources.omf",
             "nepi.resources.planetlab",
+            "nepi.resources.planetlab.openvswitch",
             "nepi.util"],
         package_dir = {"": "src"},
         package_data = {
