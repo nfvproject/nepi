@@ -227,7 +227,7 @@ class OVSPort(LinuxApplication):
         # to be released
         from nepi.resources.planetlab.openvswitch.tunnel import Tunnel
         rm = self.get_connected(Tunnel.rtype())
-        if rm[0].state < ResourceState.FINISHED:
+        if rm and rm[0].state < ResourceState.FINISHED:
             self.ec.schedule(reschedule_delay, self.release)
             return 
             
