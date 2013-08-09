@@ -26,6 +26,7 @@ import functools
 import logging
 import os
 import pkgutil
+import sys
 import weakref
 
 reschedule_delay = "1s"
@@ -791,7 +792,10 @@ def find_types():
         
         try:
             # Notice: Repeated calls to load_module will act as a reload of teh module
-            module = loader.load_module(modname)
+            if modname in sys.modules:
+                module = sys.modules.get(modname)
+            else:
+                module = loader.load_module(modname)
 
             for attrname in dir(module):
                 if attrname.startswith("_"):
@@ -807,6 +811,10 @@ def find_types():
 
                 if issubclass(attr, ResourceManager):
                     types.append(attr)
+
+                    if not modname in sys.modules:
+                        sys.modules[modname] = module
+
         except:
             import traceback
             import logging
