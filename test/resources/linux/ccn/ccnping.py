@@ -26,7 +26,7 @@ import time
 import tempfile
 import unittest
 
-class LinuxUdpTestTestCase(unittest.TestCase):
+class LinuxCCNPingTestCase(unittest.TestCase):
     def setUp(self):
         self.fedora_host = "nepi2.pl.sophia.inria.fr"
         self.fedora_user = "inria_nepi"
@@ -37,9 +37,9 @@ class LinuxUdpTestTestCase(unittest.TestCase):
         self.target = "nepi5.pl.sophia.inria.fr"
 
     @skipIfAnyNotAlive
-    def t_rtt(self, user1, host1, user2, host2):
+    def t_count(self, user1, host1, user2, host2):
 
-        ec = ExperimentController(exp_id = "test-udptest-rtt")
+        ec = ExperimentController(exp_id = "test-ccn-ping-count")
         
         node1 = ec.register_resource("LinuxNode")
         ec.set(node1, "hostname", host1)
@@ -47,9 +47,16 @@ class LinuxUdpTestTestCase(unittest.TestCase):
         ec.set(node1, "cleanHome", True)
         ec.set(node1, "cleanProcesses", True)
 
-        server = ec.register_resource("LinuxUdpTest")
-        ec.set(server, "s", True)
-        ec.register_connection(server, node1)
+        ccnd1 = ec.register_resource("LinuxCCND")
+        ec.register_connection(ccnd1, node1)
+
+        entry1 = ec.register_resource("LinuxFIBEntry")
+        ec.set(entry1, "host", host2)
+        ec.register_connection(entry1, ccnd1)
+ 
+        server = ec.register_resource("LinuxCCNPingServer")
+        ec.set(server, "prefix", "ccnx:/test")
+        ec.register_connection(server, ccnd1)
  
         node2 = ec.register_resource("LinuxNode")
         ec.set(node2, "hostname", host2)
@@ -57,26 +64,35 @@ class LinuxUdpTestTestCase(unittest.TestCase):
         ec.set(node2, "cleanHome", True)
         ec.set(node2, "cleanProcesses", True)
 
-        client = ec.register_resource("LinuxUdpTest")
-        ec.set(client, "a", True)
-        ec.set(client, "target", host1)
-        ec.register_connection(client, node2)
+        ccnd2 = ec.register_resource("LinuxCCND")
+        ec.register_connection(ccnd2, node2)
+
+        entry2 = ec.register_resource("LinuxFIBEntry")
+        ec.set(entry2, "host", host1)
+        ec.register_connection(entry2, ccnd2)
+ 
+        client = ec.register_resource("LinuxCCNPing")
+        ec.set(client, "c", 15)
+        ec.set(client, "prefix", "ccnx:/test")
+        ec.register_connection(client, ccnd2)
+        ec.register_connection(client, server)
 
         ec.deploy()
 
         ec.wait_finished(client)
 
-        stdout = ec.trace(client, "stderr")
-        self.assertTrue(stdout.find("10 trials with message size 64 Bytes.") > -1)
+        stdout = ec.trace(client, "stdout")
+        expected = "15 Interests transmitted"
+        self.assertTrue(stdout.find(expected) > -1)
 
         ec.shutdown()
 
-    def test_rtt_fedora(self):
-        self.t_rtt(self.fedora_user, self.fedora_host, self.fedora_user, 
+    def test_count_fedora(self):
+        self.t_count(self.fedora_user, self.fedora_host, self.fedora_user, 
                 self.target)
 
-    def test_rtt_ubuntu(self):
-        self.t_rtt(self.ubuntu_user, self.ubuntu_host, self.fedora_user,
+    def test_count_ubuntu(self):
+        self.t_count(self.ubuntu_user, self.ubuntu_host, self.fedora_user,
                 self.target)
 
 if __name__ == '__main__':
