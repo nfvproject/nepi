@@ -40,13 +40,14 @@ def lexec(command,
     elif user:
         command = "su %s ; %s " % (user, command)
 
-    p = subprocess.Popen(command, 
+
+    p = subprocess.Popen(command, shell=True, 
             stdout = subprocess.PIPE, 
-            stderr = subprocess.PIPE,
-            stdin  = stdin)
+            stderr = subprocess.PIPE)
+            #stdin  = stdin)
 
     out, err = p.communicate()
-    return ((out, err), proc)
+    return (out, err)
 
 def lcopy(source, dest, recursive = False):
     """
