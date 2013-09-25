@@ -447,7 +447,7 @@ class ResourceManager(Logger):
         :type action: str
         :param group: Group of RMs to wait for (list of guids)
         :type group: int or list of int
-        :param state: State to wait for on all RM in group. (either 'STARTED' or 'STOPPED')
+        :param state: State to wait for on all RM in group. (either 'STARTED', 'STOPPED' or 'READY')
         :type state: str
         :param time: Time to wait after 'state' is reached on all RMs in group. (e.g. '2s')
         :type time: str
@@ -469,7 +469,7 @@ class ResourceManager(Logger):
     def unregister_condition(self, group, action = None):
         """ Removed conditions for a certain group of guids
 
-        :param action: Action to restrict to condition (either 'START' or 'STOP')
+        :param action: Action to restrict to condition (either 'START', 'STOP' or 'READY')
         :type action: str
 
         :param group: Group of RMs to wait for (list of guids)
@@ -518,7 +518,7 @@ class ResourceManager(Logger):
 
         :param group: Group of RMs to wait for (list of guids)
         :type group: int or list of int
-        :param state: State to wait for on all RM in group. (either 'STARTED' or 'STOPPED')
+        :param state: State to wait for on all RM in group. (either 'STARTED', 'STOPPED' or 'READY')
         :type state: str
         :param time: Time to wait after 'state' is reached on all RMs in group. (e.g. '2s')
         :type time: str
@@ -554,7 +554,6 @@ class ResourceManager(Logger):
                 elif state == ResourceState.STOPPED:
                     t = rm.stop_time
                 else:
-                    # Only keep time information for START and STOP
                     break
 
                 # time already elapsed since RM changed state
@@ -673,6 +672,47 @@ class ResourceManager(Logger):
         else:
             self.debug(" ----- STOPPING ---- ") 
             self.stop()
+
+    def deploy_with_conditions(self):
+        """ Deploy RM when all the conditions in self.conditions for
+        action 'READY' are satisfied.
+
+        """
+        reschedule = False
+        delay = reschedule_delay 
+
+        ## evaluate if set conditions are met
+
+        # only can deploy when RM is either NEW, DISCOVERED or PROVISIONED 
+        if self.state not in [ResourceState.NEW, ResourceState.DISCOVERED, 
+                ResourceState.PROVISIONED]:
+            reschedule = True
+            self.debug("---- RESCHEDULING DEPLOY ---- state %s " % self.state )
+        else:
+            deploy_conditions = self.conditions.get(ResourceAction.DEPLOY, [])
+            
+            self.debug("---- DEPLOY CONDITIONS ---- %s" % deploy_conditions) 
+            
+            # Verify all start conditions are met
+            for (group, state, time) in deploy_conditions:
+                # Uncomment for debug
+                #unmet = []
+                #for guid in group:
+                #    rm = self.ec.get_resource(guid)
+                #    unmet.append((guid, rm._state))
+                #
+                #self.debug("---- WAITED STATES ---- %s" % unmet )
+
+                reschedule, delay = self._needs_reschedule(group, state, time)
+                if reschedule:
+                    break
+
+        if reschedule:
+            self.ec.schedule(delay, self.deploy_with_conditions)
+        else:
+            self.debug("----- STARTING ---- ")
+            self.deploy()
+
 
     def connect(self, guid):
         """ Performs actions that need to be taken upon associating RMs.
