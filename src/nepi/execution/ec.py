@@ -587,7 +587,7 @@ class ExperimentController(object):
         new_group = False
         if not group:
             new_group = True
-            group = self._group_id_generator.next(guid)
+            group = self._group_id_generator.next()
 
         if group not in self._groups:
             self._groups[group] = []
@@ -640,7 +640,7 @@ class ExperimentController(object):
         for guid in guids:
             rm = self.get_resource(guid)
             rm.deployment_group = group
-            self.schedule("0s", rm.deploy)
+            self.schedule("0s", rm.deploy_with_conditions)
 
             if not wait_all_ready:
                 self.schedule("1s", rm.start_with_conditions)

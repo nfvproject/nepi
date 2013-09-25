@@ -38,7 +38,7 @@ class LinuxCCNPing(LinuxCCNPingServer):
 
         count = Attribute("c",
             "Total number of pings",
-            type = Types.Integer,
+            type = Types.Double,
             flags = Flags.ExecReadOnly)
 
         number = Attribute("n",
@@ -84,7 +84,7 @@ class LinuxCCNPing(LinuxCCNPingServer):
         if self.get("n"):
             args.append("-n %d" % self.get("n"))
         if self.get("i"):
-            args.append("-i %d" % self.get("i"))
+            args.append("-i %.2f" % self.get("i"))
 
         command = " ".join(args)
 

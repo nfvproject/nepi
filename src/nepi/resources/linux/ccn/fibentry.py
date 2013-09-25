@@ -215,12 +215,16 @@ class LinuxFIBEntry(LinuxApplication):
             self.info("Stopping command '%s'" % command)
 
             command = self._stop_command
-            (out, err), proc = self.execute_command(command, env)
-
-            if proc.poll():
-                pass
+            (out, err), proc = self.execute_command(command, env,
+                    blocking = True)
 
             self.set_stopped()
+
+            if err:
+                msg = " Failed to execute command '%s'" % command
+                self.error(msg, out, err)
+                self.fail()
+                raise RuntimeError, msg
 
     @property
     def _start_command(self):
