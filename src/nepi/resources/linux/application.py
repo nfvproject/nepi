@@ -82,6 +82,9 @@ class LinuxApplication(ResourceManager):
     """
 
     _rtype = "LinuxApplication"
+    _help = "Runs an application on a Linux host with a BASH command "
+    _backend_type = "linux"
+
 
     @classmethod
     def _register_attributes(cls):

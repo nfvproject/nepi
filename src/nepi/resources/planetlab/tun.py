@@ -25,6 +25,8 @@ import os
 @clsinit_copy
 class PlanetlabTun(PlanetlabTap):
     _rtype = "PlanetlabTun"
+    _help = "Creates a TUN device on a PlanetLab host"
+    _backend = "planetlab"
 
     def __init__(self, ec, guid):
         super(PlanetlabTun, self).__init__(ec, guid)

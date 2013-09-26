@@ -37,11 +37,13 @@ class Collector(ResourceManager):
         :type ec: ExperimentController
         :param guid: guid of the RM
         :type guid: int
-        :param creds: Credentials to communicate with the rm (XmppClient)
-        :type creds: dict
 
     """
     _rtype = "Collector"
+    _help = "A Collector can be attached to a trace name on another " \
+        "ResourceManager and will retrieve and store the trace content " \
+        "in a local file at the end of the experiment"
+    _backend_type = "all"
 
     @classmethod
     def _register_attributes(cls):
