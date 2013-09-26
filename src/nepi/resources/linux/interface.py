@@ -36,6 +36,8 @@ import time
 @clsinit
 class LinuxInterface(ResourceManager):
     _rtype = "LinuxInterface"
+    _help = "Controls network devices on Linux hosts through the ifconfig tool"
+    _backend = "linux"
 
     @classmethod
     def _register_attributes(cls):

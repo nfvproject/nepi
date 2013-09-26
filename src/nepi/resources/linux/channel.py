@@ -23,6 +23,8 @@ from nepi.execution.resource import ResourceManager, clsinit, ResourceState
 @clsinit
 class LinuxChannel(ResourceManager):
     _rtype = "LinuxChannel"
+    _help = "Represents a wireless channel on a network of Linux hosts"
+    _backend = "linux"
 
     def __init__(self, ec, guid):
         super(LinuxChannel, self).__init__(ec, guid)

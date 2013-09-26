@@ -36,6 +36,8 @@ PYTHON_VSYS_VERSION = "1.0"
 @clsinit_copy
 class PlanetlabTap(LinuxApplication):
     _rtype = "PlanetlabTap"
+    _help = "Creates a TAP device on a PlanetLab host"
+    _backend = "planetlab"
 
     @classmethod
     def _register_attributes(cls):

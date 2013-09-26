@@ -31,6 +31,9 @@ import time
 @clsinit_copy
 class UdpTunnel(LinuxApplication):
     _rtype = "UdpTunnel"
+    _help = "Constructs a tunnel between two Linux endpoints using a UDP connection "
+    _backend = "linux"
+
 
     @classmethod
     def _register_attributes(cls):

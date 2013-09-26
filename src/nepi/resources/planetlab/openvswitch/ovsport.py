@@ -35,12 +35,13 @@ class OVSPort(LinuxApplication):
         :type ec: ExperimentController
         :param guid: guid of the RM
         :type guid: int
-        :param creds: Credentials to communicate with the rm 
-        :type creds: dict
 
     """
     
     _rtype = "OVSPort"
+    _help = "Runs an OpenVSwitch on a PlanetLab host"
+    _backend = "planetlab"
+
     _authorized_connections = ["OVSWitch", "Tunnel"]      
 
     @classmethod

@@ -32,6 +32,9 @@ import threading
 @clsinit_copy
 class PlanetlabNode(LinuxNode):
     _rtype = "PlanetlabNode"
+    _help = "Controls a PlanetLab host accessible using a SSH key " \
+            "associated to a PlanetLab user account"
+    _backend = "planetlab"
 
     blacklist = list()
     provisionlist = list()

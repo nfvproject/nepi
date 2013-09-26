@@ -83,9 +83,22 @@ def clsinit_copy(cls):
 # Decorator to invoke class initialization method
 @clsinit
 class ResourceManager(Logger):
+    """ Base clase for all ResourceManagers. 
+    
+    A ResourceManger is specific to a resource type (e.g. Node, 
+    Switch, Application, etc) on a specific backend (e.g. PlanetLab, 
+    OMF, etc).
+
+    The ResourceManager instances are responsible for interacting with
+    and controlling concrete (physical or virtual) resources in the 
+    experimental backends.
+    
+    """
     _rtype = "Resource"
     _attributes = None
     _traces = None
+    _help = None
+    _backend = None
 
     @classmethod
     def _register_attribute(cls, attr):
@@ -186,6 +199,21 @@ class ResourceManager(Logger):
 
         """
         return copy.deepcopy(cls._traces.values())
+
+    @classmethod
+    def get_help(cls):
+        """ Returns the description of the type of Resource
+
+        """
+        return cls._help
+
+    @classmethod
+    def get_backend(cls):
+        """ Returns the identified of the backend (i.e. testbed, environment)
+        for the Resource
+
+        """
+        return cls._backend
 
     def __init__(self, ec, guid):
         super(ResourceManager, self).__init__(self.rtype())

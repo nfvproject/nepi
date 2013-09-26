@@ -31,6 +31,9 @@ reschedule_delay = "0.5s"
 class OVSWitch(LinuxApplication):
     
     _rtype = "OVSWitch"
+    _help = "Runs an OpenVSwitch on a PlanetLab host"
+    _backend = "planetlab"
+
     _authorized_connections = ["PlanetlabNode", "OVSPort", "LinuxNode"]       
 
     @classmethod
@@ -58,8 +61,6 @@ class OVSWitch(LinuxApplication):
         :type ec: ExperimentController
         :param guid: guid of the RM
         :type guid: int
-        :param creds: Credentials to communicate with the rm 
-        :type creds: dict
     
         """
         super(OVSWitch, self).__init__(ec, guid)
