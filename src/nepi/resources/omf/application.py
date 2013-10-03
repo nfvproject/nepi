@@ -48,10 +48,6 @@ class OMFApplication(OMFResource):
     _authorized_connections = ["OMFNode"]
 
     @classmethod
-    def stdin_send(cls, old_value, new_value):
-        print "AAHHHHHHHH"
-
-    @classmethod
     def _register_attributes(cls):
         """ Register the attributes of an OMF application
 
@@ -60,7 +56,7 @@ class OMFApplication(OMFResource):
         path = Attribute("path", "Path of the application")
         args = Attribute("args", "Argument of the application")
         env = Attribute("env", "Environnement variable of the application")
-        stdin = Attribute("stdin", "Input of the application", default = "", set_hook = cls.stdin_send )
+        stdin = Attribute("stdin", "Input of the application", default = "")
         cls._register_attribute(appid)
         cls._register_attribute(path)
         cls._register_attribute(args)
@@ -88,6 +84,8 @@ class OMFApplication(OMFResource):
 
         self._omf_api = None
 
+        self.add_set_hook()
+
     @property
     def exp_id(self):
         if self.ec.exp_id.startswith('exp-'):
@@ -100,6 +98,13 @@ class OMFApplication(OMFResource):
         if rm_list: return rm_list[0]
         return None
 
+    def stdin_hook(self, old_value, new_value):
+        self._omf_api.send_stdin(self.node.get('hostname'), new_value, self.get('appid'))
+        return new_value
+
+    def add_set_hook(self):
+        attr = self._attrs["stdin"]
+        attr.set_hook = self.stdin_hook
 
 
     def valid_connection(self, guid):

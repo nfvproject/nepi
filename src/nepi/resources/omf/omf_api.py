@@ -245,6 +245,7 @@ class OMFAPI(Logger):
         xmpp_node =  self._host_session_id(hostname)
         self._client.publish(payload, xmpp_node)
 
+    
     def send_stdin(self, hostname, value, app_id):
         """ Send to the stdin of the application the value
 
