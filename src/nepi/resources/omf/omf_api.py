@@ -29,8 +29,6 @@ from nepi.util.logger import Logger
 from nepi.resources.omf.omf_client import OMFClient
 from nepi.resources.omf.messages_5_4 import MessageHandler
 
-from nepi.util.timefuncs import tsformat 
-
 class OMFAPI(Logger):
     """
     .. class:: Class Args :
@@ -70,10 +68,7 @@ class OMFAPI(Logger):
 
         """
         super(OMFAPI, self).__init__("OMFAPI")
-        date = tsformat()
-        tz = -time.altzone if time.daylight != 0 else -time.timezone
-        date += "%+06.2f" % (tz / 3600) # timezone difference is in seconds
-        self._exp_id = exp_id or date
+        self._exp_id = exp_id 
         self._user = "%s-%s" % (slice, self._exp_id)
         self._slice = slice
         self._host = host
