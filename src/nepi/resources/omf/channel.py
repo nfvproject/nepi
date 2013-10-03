@@ -72,8 +72,6 @@ class OMFChannel(OMFResource):
 
     @property
     def exp_id(self):
-        if self.ec.exp_id.startswith('exp-'):
-            return None
         return self.ec.exp_id
 
     def valid_connection(self, guid):

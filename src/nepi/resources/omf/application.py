@@ -88,8 +88,6 @@ class OMFApplication(OMFResource):
 
     @property
     def exp_id(self):
-        if self.ec.exp_id.startswith('exp-'):
-            return None
         return self.ec.exp_id
 
     @property
