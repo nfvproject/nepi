@@ -102,6 +102,26 @@ class MessageHandler():
         path = self._attr_element(execute,"PATH",path)
         return payload
 
+    def stdin_function(self, target, value, appid):
+        """ Build an Execute Message
+
+        :param value: parameter that go in the stdin
+        :type value: str
+        :param target: Hrn of the target node (ex : omf.plexus.wlab17)
+        :type target: str
+        :param appid: Application id
+        :type appid: str
+
+        """
+        payload = ET.Element("omf-message")
+        stdin = self._id_element(payload,"STDIN")
+        value = self._attr_element(stdin,"TARGET",target)
+        sliceid = self._attr_element(stdin,"SLICEID",self._slice_id)
+        expid = self._attr_element(stdin,"EXPID",self._exp_id)
+        target = self._attr_element(stdin,"TARGET",target)
+        appid = self._attr_element(stdin,"APPID",appid)
+        return payload
+
     def exit_function(self, target, appid):
         """ Build an Exit Message
 

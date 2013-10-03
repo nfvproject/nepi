@@ -18,15 +18,16 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 #         Julien Tribino <julien.tribino@inria.fr>
 
-from nepi.execution.resource import ResourceManager, clsinit, ResourceState, \
+from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState, \
         reschedule_delay
 from nepi.execution.attribute import Attribute, Flags 
 
+from nepi.resources.omf.omf_resource import ResourceGateway, OMFResource
 from nepi.resources.omf.omf_api import OMFAPIFactory
 
 
-@clsinit
-class OMFChannel(ResourceManager):
+@clsinit_copy
+class OMFChannel(OMFResource):
     """
     .. class:: Class Args :
       
@@ -51,15 +52,7 @@ class OMFChannel(ResourceManager):
         
         """
         channel = Attribute("channel", "Name of the application")
-        xmppSlice = Attribute("xmppSlice","Name of the slice", flags = Flags.Credential)
-        xmppHost = Attribute("xmppHost", "Xmpp Server",flags = Flags.Credential)
-        xmppPort = Attribute("xmppPort", "Xmpp Port",flags = Flags.Credential)
-        xmppPassword = Attribute("xmppPassword", "Xmpp Port",flags = Flags.Credential)
         cls._register_attribute(channel)
-        cls._register_attribute(xmppSlice)
-        cls._register_attribute(xmppHost)
-        cls._register_attribute(xmppPort)
-        cls._register_attribute(xmppPassword)
 
     def __init__(self, ec, guid):
         """

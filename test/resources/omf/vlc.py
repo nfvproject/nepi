@@ -172,7 +172,6 @@ class OMFEachTestCase(unittest.TestCase):
         self.assertEquals(len(self.ec.get_resource(self.app5).conditions[ResourceAction.START]), 2)
 
 
-
 class OMFVLCTestCaseComplete(unittest.TestCase):
 
     def test_deploy(self):

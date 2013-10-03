@@ -18,16 +18,17 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 #         Julien Tribino <julien.tribino@inria.fr>
 
-from nepi.execution.resource import ResourceManager, clsinit, ResourceState, \
+from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState, \
         reschedule_delay
 from nepi.execution.attribute import Attribute, Flags 
 
 from nepi.resources.omf.node import OMFNode
+from nepi.resources.omf.omf_resource import ResourceGateway, OMFResource
 from nepi.resources.omf.channel import OMFChannel
 from nepi.resources.omf.omf_api import OMFAPIFactory
 
-@clsinit
-class OMFWifiInterface(ResourceManager):
+@clsinit_copy
+class OMFWifiInterface(OMFResource):
     """
     .. class:: Class Args :
       
@@ -59,15 +60,7 @@ class OMFWifiInterface(ResourceManager):
         type = Attribute("type","Type of the interface")
         essid = Attribute("essid","Essid of the interface")
         ip = Attribute("ip","IP of the interface")
-        xmppSlice = Attribute("xmppSlice","Name of the slice", flags = Flags.Credential)
-        xmppHost = Attribute("xmppHost", "Xmpp Server",flags = Flags.Credential)
-        xmppPort = Attribute("xmppPort", "Xmpp Port",flags = Flags.Credential)
-        xmppPassword = Attribute("xmppPassword", "Xmpp Port",flags = Flags.Credential)
         cls._register_attribute(alias)
-        cls._register_attribute(xmppSlice)
-        cls._register_attribute(xmppHost)
-        cls._register_attribute(xmppPort)
-        cls._register_attribute(xmppPassword)
         cls._register_attribute(mode)
         cls._register_attribute(type)
         cls._register_attribute(essid)
@@ -110,6 +103,12 @@ class OMFWifiInterface(ResourceManager):
         self.debug(msg)
 
         return False
+
+    @property
+    def exp_id(self):
+        if self.ec.exp_id.startswith('exp-'):
+            return None
+        return self.ec.exp_id
 
     @property
     def node(self):
@@ -176,7 +175,7 @@ class OMFWifiInterface(ResourceManager):
         if not self._omf_api :
             self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
                 self.get('xmppHost'), self.get('xmppPort'), 
-                self.get('xmppPassword'), exp_id = self.ec.exp_id)
+                self.get('xmppPassword'), exp_id = self.exp_id)
 
         if not self._omf_api :
             msg = "Credentials are not initialzed. XMPP Connections impossible"
@@ -222,7 +221,7 @@ class OMFWifiInterface(ResourceManager):
         if self._omf_api :
             OMFAPIFactory.release_api(self.get('xmppSlice'), 
                 self.get('xmppHost'), self.get('xmppPort'), 
-                self.get('xmppPassword'), exp_id = self.ec.exp_id)
+                self.get('xmppPassword'), exp_id = self.exp_id)
 
         super(OMFWifiInterface, self).release()
 

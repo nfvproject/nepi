@@ -19,7 +19,7 @@
 #         Julien Tribino <julien.tribino@inria.fr>
 
 
-from nepi.execution.resource import ResourceManager, clsinit, ResourceState, \
+from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState, \
         reschedule_delay
 from nepi.execution.attribute import Attribute, Flags 
 from nepi.resources.omf.omf_resource import ResourceGateway, OMFResource
@@ -28,7 +28,7 @@ from nepi.resources.omf.omf_api import OMFAPIFactory
 import time
 
 
-@clsinit
+@clsinit_copy
 class OMFNode(OMFResource):
     """
     .. class:: Class Args :
@@ -71,6 +71,12 @@ class OMFNode(OMFResource):
 
         self._omf_api = None 
 
+    @property
+    def exp_id(self):
+        if self.ec.exp_id.startswith('exp-'):
+            return None
+        return self.ec.exp_id
+
     def valid_connection(self, guid):
         """ Check if the connection with the guid in parameter is possible. 
         Only meaningful connections are allowed.
@@ -103,7 +109,7 @@ class OMFNode(OMFResource):
         if not self._omf_api :
             self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
                 self.get('xmppHost'), self.get('xmppPort'), 
-                self.get('xmppPassword'), exp_id = self.ec.exp_id)
+                self.get('xmppPassword'), exp_id = self.exp_id)
 
         if not self._omf_api :
             msg = "Credentials are not initialzed. XMPP Connections impossible"
@@ -163,7 +169,7 @@ class OMFNode(OMFResource):
 
             OMFAPIFactory.release_api(self.get('xmppSlice'), 
                 self.get('xmppHost'), self.get('xmppPort'), 
-                self.get('xmppPassword'), exp_id = self.ec.exp_id)
+                self.get('xmppPassword'), exp_id = self.exp_id)
 
         super(OMFNode, self).release()
 

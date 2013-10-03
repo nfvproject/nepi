@@ -137,14 +137,6 @@ if __name__ == '__main__':
     ( pl_user, movie, exp_id, pl_ssh_key, results_dir ) = get_options()
 
     ec = ExperimentController(exp_id = exp_id)
-    
-    # hosts in Europe
-    #host1 = "planetlab2.u-strasbg.fr"
-    #host2 = "planet1.servers.ua.pt"
-    #host3 = "planetlab1.cs.uoi.gr"
-    #host4 = "planetlab1.aston.ac.uk"
-    #host5 = "planetlab2.willab.fi"
-    #host6 = "planetlab-1.fokus.fraunhofer.de"
 
     # host in the US
     host1 = "planetlab4.wail.wisc.edu"
@@ -154,7 +146,7 @@ if __name__ == '__main__':
     host5 = "earth.cs.brown.edu"
     host6 = "planetlab2.engr.uconn.edu"
 
-    # describe nodes in the central ring
+    # describe nodes in the central ring 
     ring_hosts = [host1, host2, host3, host4]
     ccnds = dict()
 

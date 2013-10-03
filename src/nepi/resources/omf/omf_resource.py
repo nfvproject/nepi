@@ -19,7 +19,7 @@
 #         Lucia Guevgeozian <lucia.guevgeozian_odizzio@inria.fr>
 
 from nepi.execution.attribute import Attribute, Flags, Types
-from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState, \
+from nepi.execution.resource import ResourceManager, clsinit, ResourceState, \
         reschedule_delay
 
 class ResourceGateway:
@@ -28,11 +28,12 @@ class ResourceGateway:
     """
     TestbedtoGateway = dict({
         "wilabt" : "ops.wilab2.ilabt.iminds.be",
-        "nitos" : "??.??.??",
+        "nitos" : "nitlab.inf.uth.gr",
         "nicta" : "??.??.??",
+
     })
 
-@clsinit_copy
+@clsinit
 class OMFResource(ResourceManager):
     """
     Generic resource gathering XMPP credential information and common methods

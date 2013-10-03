@@ -18,15 +18,16 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 #         Julien Tribino <julien.tribino@inria.fr>
 
-from nepi.execution.resource import ResourceManager, clsinit, ResourceState, \
+from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState, \
         reschedule_delay
 from nepi.execution.attribute import Attribute, Flags 
+from nepi.resources.omf.omf_resource import ResourceGateway, OMFResource
 from nepi.resources.omf.node import OMFNode
 from nepi.resources.omf.omf_api import OMFAPIFactory
 
 
-@clsinit
-class OMFApplication(ResourceManager):
+@clsinit_copy
+class OMFApplication(OMFResource):
     """
     .. class:: Class Args :
       
@@ -47,28 +48,24 @@ class OMFApplication(ResourceManager):
     _authorized_connections = ["OMFNode"]
 
     @classmethod
+    def stdin_send(cls, old_value, new_value):
+        print "AAHHHHHHHH"
+
+    @classmethod
     def _register_attributes(cls):
         """ Register the attributes of an OMF application
 
         """
-
         appid = Attribute("appid", "Name of the application")
         path = Attribute("path", "Path of the application")
         args = Attribute("args", "Argument of the application")
         env = Attribute("env", "Environnement variable of the application")
-        xmppSlice = Attribute("xmppSlice","Name of the slice", flags = Flags.Credential)
-        xmppHost = Attribute("xmppHost", "Xmpp Server",flags = Flags.Credential)
-        xmppPort = Attribute("xmppPort", "Xmpp Port",flags = Flags.Credential)
-        xmppPassword = Attribute("xmppPassword", "Xmpp Port",flags = Flags.Credential)
+        stdin = Attribute("stdin", "Input of the application", default = "", set_hook = cls.stdin_send )
         cls._register_attribute(appid)
         cls._register_attribute(path)
         cls._register_attribute(args)
         cls._register_attribute(env)
-        cls._register_attribute(xmppSlice)
-        cls._register_attribute(xmppHost)
-        cls._register_attribute(xmppPort)
-        cls._register_attribute(xmppPassword)
-
+        cls._register_attribute(stdin)
 
     def __init__(self, ec, guid):
         """
@@ -92,10 +89,18 @@ class OMFApplication(ResourceManager):
         self._omf_api = None
 
     @property
+    def exp_id(self):
+        if self.ec.exp_id.startswith('exp-'):
+            return None
+        return self.ec.exp_id
+
+    @property
     def node(self):
         rm_list = self.get_connected(OMFNode.rtype())
         if rm_list: return rm_list[0]
         return None
+
+
 
     def valid_connection(self, guid):
         """ Check if the connection with the guid in parameter is possible. 
@@ -139,7 +144,7 @@ class OMFApplication(ResourceManager):
         if not self._omf_api :
             self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
                 self.get('xmppHost'), self.get('xmppPort'), 
-                self.get('xmppPassword'), exp_id = self.ec.exp_id)
+                self.get('xmppPassword'), exp_id = self.exp_id)
 
         if not self._omf_api :
             msg = "Credentials are not initialzed. XMPP Connections impossible"
@@ -206,7 +211,7 @@ class OMFApplication(ResourceManager):
         if self._omf_api :
             OMFAPIFactory.release_api(self.get('xmppSlice'), 
                 self.get('xmppHost'), self.get('xmppPort'), 
-                self.get('xmppPassword'), exp_id = self.ec.exp_id)
+                self.get('xmppPassword'), exp_id = self.exp_id)
 
         super(OMFApplication, self).release()
 
