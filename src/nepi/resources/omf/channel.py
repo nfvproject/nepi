@@ -189,6 +189,7 @@ class OMFChannel(OMFResource):
 
         """
         super(OMFChannel, self).stop()
+        self.set_finished()
 
     def release(self):
         """ Clean the RM at the end of the experiment and release the API

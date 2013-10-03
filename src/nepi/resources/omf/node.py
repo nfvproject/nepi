@@ -157,6 +157,7 @@ class OMFNode(OMFResource):
 
         """
         super(OMFNode, self).stop()
+        self.set_finished()
 
     def release(self):
         """Clean the RM at the end of the experiment

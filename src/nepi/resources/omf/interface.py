@@ -212,6 +212,23 @@ class OMFWifiInterface(OMFResource):
         super(OMFWifiInterface, self).deploy()
         return True
 
+
+    def start(self):
+        """ Start the RM. It means nothing special for a channel for now
+        It becomes STARTED as soon as this method starts.
+
+        """
+
+        super(OMFWifiInterface, self).start()
+
+    def stop(self):
+        """ Stop the RM. It means nothing special for a channel for now
+        It becomes STOPPED as soon as this method is called
+
+        """
+        super(OMFWifiInterface, self).stop()
+        self.set_finished()
+
     def release(self):
         """ Clean the RM at the end of the experiment and release the API
 
