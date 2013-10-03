@@ -245,6 +245,23 @@ class OMFAPI(Logger):
         xmpp_node =  self._host_session_id(hostname)
         self._client.publish(payload, xmpp_node)
 
+    def send_stdin(self, hostname, value, app_id):
+        """ Send to the stdin of the application the value
+
+        :param hostname: Full hrn of the node
+        :type hostname: str
+        :param appid: Application Id (Any id that represents in a unique 
+            way the application)
+        :type appid: str
+        :param value: parameter to execute in the stdin of the application
+        :type value: str
+
+        """
+        payload = self._message.stdin_function(hostname, value, app_id)
+        xmpp_node =  self._host_session_id(hostname)
+        self._client.publish(payload, xmpp_node)
+
+
     def execute(self, hostname, app_id, arguments, path, env):
         """ Execute command on the node
 

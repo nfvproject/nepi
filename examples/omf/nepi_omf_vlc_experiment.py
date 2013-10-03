@@ -18,14 +18,11 @@
 """
 
 #!/usr/bin/env python
-from nepi.execution.resource import ResourceFactory, ResourceAction, ResourceState, populate_factory
+from nepi.execution.resource import ResourceFactory, ResourceAction, ResourceState
 from nepi.execution.ec import ExperimentController
 
 # Create the EC
 ec = ExperimentController()
-
-# Register the different RM that will be used
-populate_factory()
 
 # Create and Configure the Nodes
 node1 = ec.register_resource("OMFNode")
