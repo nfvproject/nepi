@@ -178,8 +178,8 @@ class LinuxCCND(LinuxApplication):
                 self.provision()
             except:
                 self.fail()
-                raise
- 
+                return
+
             self.debug("----- READY ---- ")
             self.set_ready()
 
@@ -211,8 +211,7 @@ class LinuxCCND(LinuxApplication):
         else:
             msg = " Failed to execute command '%s'" % command
             self.error(msg, out, err)
-            self.set_failed()
-            raise RuntimeError, msg
+            self.fail()
 
     def stop(self):
         command = self.get('command') or ''

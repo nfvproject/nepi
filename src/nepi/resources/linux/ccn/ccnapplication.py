@@ -61,7 +61,7 @@ class LinuxCCNApplication(LinuxApplication):
                 self.provision()
             except:
                 self.fail()
-                raise
+                return
  
             self.debug("----- READY ---- ")
             self.set_ready()

@@ -193,7 +193,6 @@ class PlanetlabNode(LinuxNode):
         cls._register_attribute(min_cpu)
         cls._register_attribute(max_cpu)
         cls._register_attribute(timeframe)
-        
 
     def __init__(self, ec, guid):
         super(PlanetlabNode, self).__init__(ec, guid)

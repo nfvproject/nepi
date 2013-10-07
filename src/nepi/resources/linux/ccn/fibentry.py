@@ -136,8 +136,8 @@ class LinuxFIBEntry(LinuxApplication):
                 self.configure()
             except:
                 self.fail()
-                raise
- 
+                return
+
             self.debug("----- READY ---- ")
             self.set_ready()
 
@@ -161,7 +161,6 @@ class LinuxFIBEntry(LinuxApplication):
         if proc.poll():
             msg = "Failed to execute command"
             self.error(msg, out, err)
-            self.fail()
             raise RuntimeError, msg
         
     def configure(self):
@@ -205,7 +204,6 @@ class LinuxFIBEntry(LinuxApplication):
             msg = " Failed to execute command '%s'" % command
             self.error(msg, out, err)
             self.fail()
-            raise RuntimeError, msg
 
     def stop(self):
         command = self.get('command')
@@ -224,7 +222,6 @@ class LinuxFIBEntry(LinuxApplication):
                 msg = " Failed to execute command '%s'" % command
                 self.error(msg, out, err)
                 self.fail()
-                raise RuntimeError, msg
 
     @property
     def _start_command(self):

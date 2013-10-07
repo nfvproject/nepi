@@ -195,7 +195,7 @@ class OMFApplication(ResourceManager):
             msg = "Credentials were not initialzed. XMPP Connections impossible"
             self.error(msg)
             self.fail()
-            #raise
+            return
 
         super(OMFApplication, self).stop()
 

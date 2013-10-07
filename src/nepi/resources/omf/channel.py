@@ -163,7 +163,7 @@ class OMFChannel(ResourceManager):
             msg = "Channel's value is not initialized"
             self.error(msg)
             self.fail()
-            raise
+            return
 
         self._nodes_guid = self._get_target(self._connections) 
         if self._nodes_guid == "reschedule" :
@@ -180,7 +180,7 @@ class OMFChannel(ResourceManager):
             msg = "Credentials are not initialzed. XMPP Connections impossible"
             self.error(msg)
             self.fail()
-            raise
+            return
 
         super(OMFChannel, self).deploy()
 

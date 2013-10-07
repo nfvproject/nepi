@@ -130,22 +130,22 @@ class OMFNode(ResourceManager):
             It becomes DEPLOYED after sending messages to enroll the node
 
         """ 
-        if not self._omf_api :
+        if not self._omf_api:
             self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
                 self.get('xmppHost'), self.get('xmppPort'), 
                 self.get('xmppPassword'), exp_id = self.ec.exp_id)
 
-        if not self._omf_api :
+        if not self._omf_api:
             msg = "Credentials are not initialzed. XMPP Connections impossible"
             self.error(msg)
             self.fail()
             return
 
-        if not self.get('hostname') :
+        if not self.get('hostname'):
             msg = "Hostname's value is not initialized"
             self.error(msg)
             self.fail()
-            return False
+            return
 
         try:
             self._omf_api.enroll_host(self.get('hostname'))
@@ -153,7 +153,7 @@ class OMFNode(ResourceManager):
             msg = "Credentials are not initialzed. XMPP Connections impossible"
             self.error(msg)
             self.fail()
-            #raise AttributeError, msg
+            return
 
         super(OMFNode, self).deploy()
 
@@ -174,7 +174,6 @@ class OMFNode(ResourceManager):
            It becomes STARTED as soon as this method starts.
 
         """
-
         super(OMFNode, self).start()
 
     def stop(self):
@@ -188,7 +187,7 @@ class OMFNode(ResourceManager):
         """Clean the RM at the end of the experiment
 
         """
-        if self._omf_api :
+        if self._omf_api:
             self._omf_api.release(self.get('hostname'))
 
             OMFAPIFactory.release_api(self.get('xmppSlice'), 
