@@ -243,7 +243,7 @@ class LinuxInterface(ResourceManager):
                 self.provision()
             except:
                 self.fail()
-                raise
+                return 
 
             super(LinuxInterface, self).deploy()
 

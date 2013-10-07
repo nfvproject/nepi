@@ -102,7 +102,6 @@ class OMFWifiInterface(ResourceManager):
             msg = "Connection between %s %s and %s %s accepted" % \
                 (self.rtype(), self._guid, rm.rtype(), guid)
             self.debug(msg)
-
             return True
 
         msg = "Connection between %s %s and %s %s refused" % \
@@ -123,7 +122,6 @@ class OMFWifiInterface(ResourceManager):
         if rm_list: return rm_list[0]
         return None
 
-
     def configure_iface(self):
         """ Configure the interface without the ip
 
@@ -139,13 +137,11 @@ class OMFWifiInterface(ResourceManager):
                 self._omf_api.configure(self.node.get('hostname'), attrname, 
                         attrval)
         except AttributeError:
-            self._state = ResourceState.FAILED
             msg = "Credentials are not initialzed. XMPP Connections impossible"
-            self.debug(msg)
-            #raise
+            self.error(msg)
+            raise
         
         super(OMFWifiInterface, self).provision()
-        return True
 
     def configure_ip(self):
         """ Configure the ip of the interface
@@ -162,23 +158,21 @@ class OMFWifiInterface(ResourceManager):
                     attrval)
         except AttributeError:
             msg = "Credentials are not initialzed. XMPP Connections impossible"
-            self.debug(msg)
-            self.fail()
-            #raise
+            self.error(msg)
+            raise
 
-        return True
 
     def deploy(self):
         """ Deploy the RM. It means : Get the xmpp client and send messages 
         using OMF 5.4 protocol to configure the interface.
         It becomes DEPLOYED after sending messages to configure the interface
         """
-        if not self._omf_api :
+        if not self._omf_api:
             self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
                 self.get('xmppHost'), self.get('xmppPort'), 
                 self.get('xmppPassword'), exp_id = self.ec.exp_id)
 
-        if not self._omf_api :
+        if not self._omf_api:
             msg = "Credentials are not initialzed. XMPP Connections impossible"
             self.error(msg)
             self.fail()
@@ -189,13 +183,13 @@ class OMFWifiInterface(ResourceManager):
             msg = "Interface's variable are not initialized"
             self.error(msg)
             self.fail()
-            return False
+            return
 
         if not self.node.get('hostname') :
             msg = "The channel is connected with an undefined node"
             self.error(msg)
             self.fail()
-            return False
+            return
 
         # Just for information
         self.debug(" " + self.rtype() + " ( Guid : " + str(self._guid) +") : " + \
@@ -203,23 +197,21 @@ class OMFWifiInterface(ResourceManager):
             self.get('essid') + " : " + self.get('ip'))
     
         # Check if the node is already deployed
-        chk1 = True
-        if self.state < ResourceState.PROVISIONED:
-            chk1 = self.configure_iface()
-        if chk1:
-            chk2 = self.configure_ip()
+        try:
+            if self.state < ResourceState.PROVISIONED:
+                if self.configure_iface():
+                    self.configure_ip()
+        except:
+            self.fail()
+            return
 
-        if not (chk1 and chk2) :
-            return False
-            
         super(OMFWifiInterface, self).deploy()
-        return True
 
     def release(self):
         """ Clean the RM at the end of the experiment and release the API
 
         """
-        if self._omf_api :
+        if self._omf_api:
             OMFAPIFactory.release_api(self.get('xmppSlice'), 
                 self.get('xmppHost'), self.get('xmppPort'), 
                 self.get('xmppPassword'), exp_id = self.ec.exp_id)

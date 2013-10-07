@@ -326,7 +326,6 @@ class LinuxNode(ResourceManager):
     def provision(self):
         # check if host is alive
         if not self.is_alive():
-            self.fail()
             
             msg = "Deploy failed. Unresponsive node %s" % self.get("hostname")
             self.error(msg)
@@ -361,7 +360,7 @@ class LinuxNode(ResourceManager):
                 self.provision()
             except:
                 self.fail()
-                raise
+                return
 
         # Node needs to wait until all associated interfaces are 
         # ready before it can finalize deployment

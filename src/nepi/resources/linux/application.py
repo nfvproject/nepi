@@ -301,7 +301,7 @@ class LinuxApplication(ResourceManager):
         # Since provisioning takes a long time, before
         # each step we check that the EC is still 
         for step in steps:
-            if self.ec.finished:
+            if self.ec.abort:
                 raise RuntimeError, "EC finished"
             
             ret = step()
@@ -484,7 +484,7 @@ class LinuxApplication(ResourceManager):
                 self.provision()
             except:
                 self.fail()
-                raise
+                return
 
             super(LinuxApplication, self).deploy()
     
@@ -499,10 +499,14 @@ class LinuxApplication(ResourceManager):
             self.set_finished()
         else:
 
-            if self.in_foreground:
-                self._run_in_foreground()
-            else:
-                self._run_in_background()
+            try:
+                if self.in_foreground:
+                    self._run_in_foreground()
+                else:
+                    self._run_in_background()
+            except:
+                self.fail()
+                return
 
             super(LinuxApplication, self).start()
 
@@ -530,7 +534,6 @@ class LinuxApplication(ResourceManager):
                 blocking = False)
 
         if self._proc.poll():
-            self.fail()
             self.error(msg, out, err)
             raise RuntimeError, msg
 
@@ -560,7 +563,6 @@ class LinuxApplication(ResourceManager):
         msg = " Failed to start command '%s' " % command
         
         if proc.poll():
-            self.fail()
             self.error(msg, out, err)
             raise RuntimeError, msg
     
@@ -577,7 +579,6 @@ class LinuxApplication(ResourceManager):
 
             # Out is what was written in the stderr file
             if err:
-                self.fail()
                 msg = " Failed to start command '%s' " % command
                 self.error(msg, out, err)
                 raise RuntimeError, msg
@@ -609,8 +610,8 @@ class LinuxApplication(ResourceManager):
                         msg = " Failed to STOP command '%s' " % self.get("command")
                         self.error(msg, out, err)
                         self.fail()
+                        return
         
-        if self.state == ResourceState.STARTED:
             super(LinuxApplication, self).stop()
 
     def release(self):
@@ -622,10 +623,7 @@ class LinuxApplication(ResourceManager):
 
         self.stop()
 
-        if self.state != ResourceState.FAILED:
-            self.info("Resource released")
-
-            super(LinuxApplication, self).release()
+        super(LinuxApplication, self).release()
    
     @property
     def state(self):

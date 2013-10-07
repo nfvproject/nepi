@@ -98,8 +98,8 @@ class LinuxCCNContent(LinuxApplication):
                 self.provision()
             except:
                 self.fail()
-                raise
- 
+                return 
+
             self.debug("----- READY ---- ")
             self.set_ready()
 
@@ -121,7 +121,6 @@ class LinuxCCNContent(LinuxApplication):
                 env, blocking = True)
 
         if proc.poll():
-            self.fail()
             msg = "Failed to execute command"
             self.error(msg, out, err)
             raise RuntimeError, msg
@@ -136,7 +135,6 @@ class LinuxCCNContent(LinuxApplication):
             msg = " Failed to execute command '%s'" % command
             self.error(msg, out, err)
             sef.fail()
-            raise RuntimeError, msg
 
     @property
     def _start_command(self):

@@ -222,8 +222,8 @@ class LinuxCCNR(LinuxApplication):
                 self.provision()
             except:
                 self.fail()
-                raise
- 
+                return 
+
             self.debug("----- READY ---- ")
             self.set_ready()
 
@@ -265,7 +265,6 @@ class LinuxCCNR(LinuxApplication):
             msg = " Failed to execute command '%s'" % command
             self.error(msg, out, err)
             self.fail()
-            raise RuntimeError, msg
 
     @property
     def _start_command(self):

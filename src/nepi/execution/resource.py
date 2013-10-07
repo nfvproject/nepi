@@ -403,6 +403,7 @@ class ResourceManager(Logger):
  
     def fail(self):
         self.set_failed()
+        self.ec.set_rm_failure()
 
     def set(self, name, value):
         """ Set the value of the attribute
@@ -740,7 +741,6 @@ class ResourceManager(Logger):
         else:
             self.debug("----- STARTING ---- ")
             self.deploy()
-
 
     def connect(self, guid):
         """ Performs actions that need to be taken upon associating RMs.

@@ -165,8 +165,8 @@ class PlanetlabTap(LinuxApplication):
                 self.provision()
             except:
                 self.fail()
-                raise
- 
+                return
+
             self.debug("----- READY ---- ")
             self.set_ready()
 
@@ -180,7 +180,6 @@ class PlanetlabTap(LinuxApplication):
             msg = " Failed to execute command '%s'" % command
             self.error(msg, out, err)
             self.fail()
-            raise RuntimeError, msg
 
     def stop(self):
         command = self.get('command') or ''
@@ -206,8 +205,7 @@ class PlanetlabTap(LinuxApplication):
 
                 if out.strip().find(self.get("deviceName")) == -1: 
                     # tap is not running is not running (socket not found)
-                    self._finish_time = tnow()
-                    self._state = ResourceState.FINISHED
+                    self.finish()
 
             self._last_state_check = tnow()
 
@@ -243,7 +241,6 @@ class PlanetlabTap(LinuxApplication):
         else:
             msg = "Couldn't retrieve if_name"
             self.error(msg, out, err)
-            self.fail()
             raise RuntimeError, msg
 
         return if_name

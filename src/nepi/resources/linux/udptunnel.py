@@ -141,7 +141,6 @@ class UdpTunnel(LinuxApplication):
         msg = " Failed to connect endpoints "
         
         if proc.poll():
-            self.fail()
             self.error(msg, out, err)
             raise RuntimeError, msg
     
@@ -154,7 +153,6 @@ class UdpTunnel(LinuxApplication):
             (out, err), proc = endpoint.node.check_errors(self.run_home(endpoint))
             # Out is what was written in the stderr file
             if err:
-                self.fail()
                 msg = " Failed to start command '%s' " % command
                 self.error(msg, out, err)
                 raise RuntimeError, msg
@@ -202,7 +200,7 @@ class UdpTunnel(LinuxApplication):
                 self.provision()
             except:
                 self.fail()
-                raise
+                return
  
             self.debug("----- READY ---- ")
             self.set_ready()
@@ -217,7 +215,6 @@ class UdpTunnel(LinuxApplication):
             msg = " Failed to execute command '%s'" % command
             self.error(msg, out, err)
             self.fail()
-            raise RuntimeError, msg
 
     def stop(self):
         """ Stops application execution
@@ -238,8 +235,8 @@ class UdpTunnel(LinuxApplication):
                     msg = " Failed to STOP tunnel"
                     self.error(msg, err1, err2)
                     self.fail()
+                    return
 
-        if self.state == ResourceState.STARTED:
             self.set_stopped()
 
     @property
@@ -311,7 +308,6 @@ class UdpTunnel(LinuxApplication):
         else:
             msg = "Couldn't retrieve %s" % filename
             self.error(msg, out, err)
-            self.fail()
             raise RuntimeError, msg
 
         return result

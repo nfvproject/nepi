@@ -259,7 +259,6 @@ class LinuxUdpTest(LinuxApplication):
                 msg = " Failed to execute command '%s'" % command
                 self.error(msg, out, err)
                 self.fail()
-                raise RuntimeError, msg
         else:
             super(LinuxUdpTest, self).start()
  
