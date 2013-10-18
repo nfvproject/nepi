@@ -291,7 +291,7 @@ class LinuxNode(ResourceManager):
         # until the result is not empty string
         out = ""
         retrydelay = 1.0
-        for i in xrange(10):
+        for i in xrange(2):
             try:
                 (out, err), proc = self.execute("cat /etc/issue", 
                         retry = 5,
@@ -910,7 +910,7 @@ class LinuxNode(ResourceManager):
         pid = ppid = None
         delay = 1.0
 
-        for i in xrange(4):
+        for i in xrange(2):
             pidtuple = self.getpid(home = home, pidfile = pidfile)
             
             if pidtuple:
@@ -967,7 +967,7 @@ class LinuxNode(ResourceManager):
         # To work arround this, repeat the operation N times or
         # until the result is not empty string
         retrydelay = 1.0
-        for i in xrange(10):
+        for i in xrange(2):
             try:
                 (out, err), proc = self.execute("echo 'ALIVE'",
                         retry = 5,
@@ -1000,7 +1000,7 @@ class LinuxNode(ResourceManager):
         # To work arround this, repeat the operation N times or
         # until the result is not empty string
         retrydelay = 1.0
-        for i in xrange(10):
+        for i in xrange(2):
             try:
                 (out, err), proc = self.execute("echo ${HOME}",
                         retry = 5,

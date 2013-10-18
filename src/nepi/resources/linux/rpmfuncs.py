@@ -19,6 +19,8 @@
 
 RPM_FUSION_URL = 'http://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-stable.noarch.rpm'
 RPM_FUSION_URL_F12 = 'http://download1.rpmfusion.org/free/fedora/releases/12/Everything/x86_64/os/rpmfusion-free-release-12-1.noarch.rpm'
+RPM_FUSION_URL_F14 = 'http://download1.rpmfusion.org/free/fedora/releases/14/Everything/i386/os/rpmfusion-free-release-14-0.4.noarch.rpm'
+
 
 # TODO: Investigate using http://nixos.org/nix/
 
@@ -27,7 +29,7 @@ def install_packages_command(os, packages):
         packages = [packages]
 
     cmd = install_rpmfusion_command(os)
-    if cmd: cmd += " && "
+    if cmd: cmd += " ; "
     cmd += " && ".join(map(lambda p: 
             " { rpm -q %(package)s || sudo -S yum -y install %(package)s ; } " % {
                     'package': p}, packages))
@@ -56,7 +58,7 @@ def install_rpmfusion_command(os):
         cmd =  cmd %  {'package': RPM_FUSION_URL_F12}
     elif os == OSType.FEDORA_14:
         # For f13+
-        cmd = cmd %  {'package': RPM_FUSION_URL}
+        cmd = cmd %  {'package': RPM_FUSION_URL_F14}
     else:
         # Fedora 8 is unmaintained 
         cmd = ""
