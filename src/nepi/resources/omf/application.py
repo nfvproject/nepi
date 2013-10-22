@@ -18,15 +18,19 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 #         Julien Tribino <julien.tribino@inria.fr>
 
-from nepi.execution.resource import ResourceManager, clsinit, ResourceState, \
+from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState, \
         reschedule_delay
 from nepi.execution.attribute import Attribute, Flags 
+from nepi.resources.omf.omf_resource import ResourceGateway, OMFResource
 from nepi.resources.omf.node import OMFNode
 from nepi.resources.omf.omf_api import OMFAPIFactory
 
+#from nepi.util.sshfuncs import ProcStatus
+from nepi.util import sshfuncs
 
-@clsinit
-class OMFApplication(ResourceManager):
+
+@clsinit_copy
+class OMFApplication(OMFResource):
     """
     .. class:: Class Args :
       
@@ -51,24 +55,25 @@ class OMFApplication(ResourceManager):
         """ Register the attributes of an OMF application
 
         """
-
         appid = Attribute("appid", "Name of the application")
         path = Attribute("path", "Path of the application")
         args = Attribute("args", "Argument of the application")
         env = Attribute("env", "Environnement variable of the application")
-        xmppSlice = Attribute("xmppSlice","Name of the slice", flags = Flags.Credential)
-        xmppHost = Attribute("xmppHost", "Xmpp Server",flags = Flags.Credential)
-        xmppPort = Attribute("xmppPort", "Xmpp Port",flags = Flags.Credential)
-        xmppPassword = Attribute("xmppPassword", "Xmpp Port",flags = Flags.Credential)
+        stdin = Attribute("stdin", "Input of the application", default = "")
+        sources = Attribute("sources", "Sources of the application", 
+                     flags = Flags.ExecReadOnly)
+        sshuser = Attribute("sshUser", "user to connect with ssh", 
+                     flags = Flags.ExecReadOnly)
+        sshkey = Attribute("sshKey", "key to use for ssh", 
+                     flags = Flags.ExecReadOnly)
         cls._register_attribute(appid)
         cls._register_attribute(path)
         cls._register_attribute(args)
         cls._register_attribute(env)
-        cls._register_attribute(xmppSlice)
-        cls._register_attribute(xmppHost)
-        cls._register_attribute(xmppPort)
-        cls._register_attribute(xmppPassword)
-
+        cls._register_attribute(stdin)
+        cls._register_attribute(sources)
+        cls._register_attribute(sshuser)
+        cls._register_attribute(sshkey)
 
     def __init__(self, ec, guid):
         """
@@ -91,11 +96,25 @@ class OMFApplication(ResourceManager):
 
         self._omf_api = None
 
+        self.add_set_hook()
+
+    @property
+    def exp_id(self):
+        return self.ec.exp_id
+
     @property
     def node(self):
         rm_list = self.get_connected(OMFNode.rtype())
         if rm_list: return rm_list[0]
         return None
+
+    def stdin_hook(self, old_value, new_value):
+        self._omf_api.send_stdin(self.node.get('hostname'), new_value, self.get('appid'))
+        return new_value
+
+    def add_set_hook(self):
+        attr = self._attrs["stdin"]
+        attr.set_hook = self.stdin_hook
 
     def valid_connection(self, guid):
         """ Check if the connection with the guid in parameter is possible. 
@@ -120,9 +139,7 @@ class OMFApplication(ResourceManager):
                     "This Application is already connected" ) % \
                 (self.rtype(), self._guid, rm.rtype(), guid)
             self.debug(msg)
-
             return False
-
         else :
             msg = "Connection between %s %s and %s %s accepted" % (
                     self.rtype(), self._guid, rm.rtype(), guid)
@@ -136,10 +153,15 @@ class OMFApplication(ResourceManager):
         It becomes DEPLOYED after getting the xmpp client.
 
         """
+        self.set('xmppSlice', self.node.get('xmppSlice'))
+        self.set('xmppHost', self.node.get('xmppHost'))
+        self.set('xmppPort', self.node.get('xmppPort'))
+        self.set('xmppPassword', self.node.get('xmppPassword'))
+
         if not self._omf_api :
             self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
                 self.get('xmppHost'), self.get('xmppPort'), 
-                self.get('xmppPassword'), exp_id = self.ec.exp_id)
+                self.get('xmppPassword'), exp_id = self.exp_id)
 
         if not self._omf_api :
             msg = "Credentials are not initialzed. XMPP Connections impossible"
@@ -147,7 +169,14 @@ class OMFApplication(ResourceManager):
             self.fail()
             return
 
+        if self.get('sources'):
+            gateway = ResourceGateway.AMtoGateway[self.get('xmppHost')]
+            user = self.get('sshUser') or self.get('xmppSlice')
+            dst = user + "@"+ gateway + ":"
+            (out, err), proc = sshfuncs.rcopy(self.get('sources'), dst)
+
         super(OMFApplication, self).deploy()
+
 
     def start(self):
         """ Start the RM. It means : Send Xmpp Message Using OMF protocol 
@@ -198,6 +227,7 @@ class OMFApplication(ResourceManager):
             return
 
         super(OMFApplication, self).stop()
+        self.set_finished()
 
     def release(self):
         """ Clean the RM at the end of the experiment and release the API.
@@ -206,7 +236,7 @@ class OMFApplication(ResourceManager):
         if self._omf_api :
             OMFAPIFactory.release_api(self.get('xmppSlice'), 
                 self.get('xmppHost'), self.get('xmppPort'), 
-                self.get('xmppPassword'), exp_id = self.ec.exp_id)
+                self.get('xmppPassword'), exp_id = self.exp_id)
 
         super(OMFApplication, self).release()
 
