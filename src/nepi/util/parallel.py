@@ -16,9 +16,8 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Author: Claudio Freire <claudio-daniel.freire@inria.fr>
+#         Alina Quereilhac <alina.quereilhac@inria.fr>
 #
-
-# A.Q. TODO: BUG FIX THREADCACHE. Not needed!! remove it completely!
 
 import threading
 import Queue
