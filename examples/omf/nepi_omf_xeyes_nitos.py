@@ -18,6 +18,25 @@
     Author: Alina Quereilhac <alina.quereilhac@inria.fr>
             Julien Tribino <julien.tribino@inria.fr>
 
+    Example :
+      - Testbed : Nitos
+      - Explanation :
+
+       VLC Streaming on VLC
+                   
+     Node
+     omf.nitos.node0xx 
+     0
+     |
+     |
+     0
+     xEyes
+   
+      - Experiment:
+        - t0 : Deployment
+        - t1 : xEeyes Start
+        - t2 (t1 + 10s) : xEyes stop
+        - t3 (t2 + 2s) : Kill the application
 """
 
 #!/usr/bin/env python

@@ -15,6 +15,30 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+    Author: Alina Quereilhac <alina.quereilhac@inria.fr>
+            Julien Tribino <julien.tribino@inria.fr>
+
+    Example :
+      - Testbed : Plexus
+      - Explanation :
+
+       VLC Streaming on VLC
+                   
+     Node                                               Node   
+     omf.plexus.wlab17                                  omf.plexus.wlab37
+     0--------------------------------------------------0
+     |                                                  |
+     |                                                  |
+     0                                                  0
+     VLC Server                                         VLC Client
+   
+      - Experiment:
+        - t0 : Deployment
+        - t1 : VLC Server start
+        - t2 (t1 + 4s) : VLC Client start
+        - t3 (t2 + 22s) : Client and Server Stop
+        - t4 (t3 + 3s): Kill all the applications
+
 """
 
 #!/usr/bin/env python
@@ -46,10 +70,6 @@ ec.set(iface1, 'mode', "adhoc")
 ec.set(iface1, 'type', "g")
 ec.set(iface1, 'essid', "vlcexp")
 ec.set(iface1, 'ip', "10.0.0.17")
-ec.set(iface1, 'xmppSlice', "nepi")
-ec.set(iface1, 'xmppHost', "xmpp-plexus.onelab.eu")
-ec.set(iface1, 'xmppPort', "5222")
-ec.set(iface1, 'xmppPassword', "1234")
 
 iface2 = ec.register_resource("OMFWifiInterface")
 ec.set(iface2, 'alias', "w0")
@@ -57,10 +77,6 @@ ec.set(iface2, 'mode', "adhoc")
 ec.set(iface2, 'type', 'g')
 ec.set(iface2, 'essid', "vlcexp")
 ec.set(iface2, 'ip', "10.0.0.37")
-ec.set(iface2, 'xmppSlice', "nepi")
-ec.set(iface2, 'xmppHost', "xmpp-plexus.onelab.eu")
-ec.set(iface2, 'xmppPort', "5222")
-ec.set(iface2, 'xmppPassword', "1234")
 
 # Create and Configure the Channel
 channel = ec.register_resource("OMFChannel")

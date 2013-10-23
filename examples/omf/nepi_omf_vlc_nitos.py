@@ -18,6 +18,27 @@
     Author: Alina Quereilhac <alina.quereilhac@inria.fr>
             Julien Tribino <julien.tribino@inria.fr>
 
+    Example :
+      - Testbed : Nitos
+      - Explanation :
+
+       VLC Streaming on VLC
+                   
+     Node                                               Node   
+     omf.nitos.node0xx                                  omf.nitos.node0xx
+     0--------------------------------------------------0
+     |                                                  |
+     |                                                  |
+     0                                                  0
+     VLC Server                                         VLC Client
+   
+      - Experiment:
+        - t0 : Deployment
+        - t1 : VLC Server start
+        - t2 (t1 + 4s) : VLC Client start
+        - t3 (t2 + 22s) : Client and Server Stop
+        - t4 (t3 + 3s): Kill all the applications
+
 """
 
 #!/usr/bin/env python
@@ -26,7 +47,6 @@ from nepi.execution.ec import ExperimentController
 
 # Create the EC
 ec = ExperimentController()
-
 
 # Create and Configure the Nodes
 node1 = ec.register_resource("OMFNode")
@@ -50,10 +70,6 @@ ec.set(iface1, 'mode', "adhoc")
 ec.set(iface1, 'type', "g")
 ec.set(iface1, 'essid', "vlcexp")
 ec.set(iface1, 'ip', "192.168.0.XX")
-ec.set(iface1, 'xmppSlice', "ZZZ")
-ec.set(iface1, 'xmppHost', "nitlab.inf.uth.gr")
-ec.set(iface1, 'xmppPort', "5222")
-ec.set(iface1, 'xmppPassword', "1234")
 
 iface2 = ec.register_resource("OMFWifiInterface")
 ec.set(iface2, 'alias', "w0")
@@ -61,10 +77,6 @@ ec.set(iface2, 'mode', "adhoc")
 ec.set(iface2, 'type', 'g')
 ec.set(iface2, 'essid', "vlcexp")
 ec.set(iface2, 'ip', "192.168.0.YY")
-ec.set(iface2, 'xmppSlice', "ZZZ")
-ec.set(iface2, 'xmppHost', "nitlab.inf.uth.gr")
-ec.set(iface2, 'xmppPort', "5222")
-ec.set(iface2, 'xmppPassword', "1234")
 
 # Create and Configure the Channel
 channel = ec.register_resource("OMFChannel")
