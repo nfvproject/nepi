@@ -170,6 +170,11 @@ class OMFWifiInterface(OMFResource):
         using OMF 5.4 protocol to configure the interface.
         It becomes DEPLOYED after sending messages to configure the interface
         """
+        self.set('xmppSlice', self.node.get('xmppSlice'))
+        self.set('xmppHost', self.node.get('xmppHost'))
+        self.set('xmppPort', self.node.get('xmppPort'))
+        self.set('xmppPassword', self.node.get('xmppPassword'))
+
         if not self._omf_api :
             self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
                 self.get('xmppHost'), self.get('xmppPort'), 

@@ -695,7 +695,7 @@ class ExperimentController(object):
 
         # Remove all pending tasks from the scheduler queue
         for tis in self._scheduler.pending:
-            self._scheduler.remove(tid)
+            self._scheduler.remove(tis)
 
         for guid in guids:
             rm = self.get_resource(guid)
