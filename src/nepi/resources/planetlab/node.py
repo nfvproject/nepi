@@ -36,14 +36,7 @@ class PlanetlabNode(LinuxNode):
             "associated to a PlanetLab user account"
     _backend = "planetlab"
 
-    blacklist = list()
-    provisionlist = list()
-
-    lock_blist = threading.Lock()
-    lock_plist = threading.Lock()
-
-    lock_slice = threading.Lock()
-
+    lock = threading.Lock()
 
     @classmethod
     def _register_attributes(cls):
@@ -64,7 +57,7 @@ class PlanetlabNode(LinuxNode):
                     authenticate in the website) ",
                     flags = Flags.Credential)
 
-        pl_password = Attribute("password", 
+        pl_password = Attribute("plpassword", 
                         "PlanetLab account password, as \
                         the one to authenticate in the website) ",
                         flags = Flags.Credential)
@@ -98,13 +91,13 @@ class PlanetlabNode(LinuxNode):
                                         "other"],
                             flags = Flags.Filter)
 
-        site = Attribute("site", "Constrain the PlanetLab site this node \
-                should reside on.",
-                type = Types.Enumerate,
-                allowed = ["PLE",
-                            "PLC",
-                            "PLJ"],
-                flags = Flags.Filter)
+        #site = Attribute("site", "Constrain the PlanetLab site this node \
+        #        should reside on.",
+        #        type = Types.Enumerate,
+        #        allowed = ["PLE",
+        #                    "PLC",
+        #                    "PLJ"],
+        #        flags = Flags.Filter)
 
         min_reliability = Attribute("minReliability", "Constrain reliability \
                             while picking PlanetLab nodes. Specifies a lower \
@@ -178,7 +171,7 @@ class PlanetlabNode(LinuxNode):
         cls._register_attribute(pl_ptn)
         cls._register_attribute(pl_user)
         cls._register_attribute(pl_password)
-        cls._register_attribute(site)
+        #cls._register_attribute(site)
         cls._register_attribute(city)
         cls._register_attribute(country)
         cls._register_attribute(region)
@@ -205,7 +198,7 @@ class PlanetlabNode(LinuxNode):
     def plapi(self):
         if not self._plapi:
             pl_user = self.get("pluser")
-            pl_pass = self.get("password")
+            pl_pass = self.get("plpassword")
             pl_url = self.get("plcApiUrl")
             pl_ptn = self.get("plcApiPattern")
 
@@ -214,7 +207,7 @@ class PlanetlabNode(LinuxNode):
             
         return self._plapi
 
-    def discoverl(self):
+    def discover(self):
         """
         Based on the attributes defined by the user, discover the suitable nodes
         """
@@ -225,24 +218,25 @@ class PlanetlabNode(LinuxNode):
             node_id = self._query_if_alive(hostname=hostname)
             node_id = node_id.pop()
 
-            # check that the node is not blacklisted or already being provision 
+            # check that the node is not blacklisted or being provisioned
             # by other RM
-            blist = PlanetlabNode.blacklist
-            plist = PlanetlabNode.provisionlist
-            if node_id not in blist and node_id not in plist:
+            with PlanetlabNode.lock:
+                plist = self.plapi.reserved()
+                blist = self.plapi.blacklisted()
+                if node_id not in blist and node_id not in plist:
                 
-                # check that is really alive, by performing ping
-                ping_ok = self._do_ping(node_id)
-                if not ping_ok:
-                    self._blacklist_node(node_id)
-                    self.fail_node_not_alive(hostname)
+                    # check that is really alive, by performing ping
+                    ping_ok = self._do_ping(node_id)
+                    if not ping_ok:
+                        self._blacklist_node(node_id)
+                        self.fail_node_not_alive(hostname)
+                    else:
+                        self._put_node_in_provision(node_id)
+                        self._node_to_provision = node_id
+                        super(PlanetlabNode, self).discover()
+                
                 else:
-                    self._node_to_provision = node_id
-                    self._put_node_in_provision(node_id)
-                    super(PlanetlabNode, self).discover()
-                
-            else:
-                self.fail_node_not_available(hostname)                
+                    self.fail_node_not_available(hostname)
         
         else:
             # the user specifies constraints based on attributes, zero, one or 
@@ -259,18 +253,19 @@ class PlanetlabNode(LinuxNode):
             if nodes_inslice:
                 node_id = self._choose_random_node(nodes_inslice)
                 
-            if not node_id and nodes_not_inslice:
+            if not node_id:
                 # Either there were no matching nodes in the user's slice, or
                 # the nodes in the slice  were blacklisted or being provisioned
                 # by other RM. Note nodes_not_inslice is never empty
                 node_id = self._choose_random_node(nodes_not_inslice)
-            if not node_id:
-                self.fail_not_enough_nodes()
 
-            self._node_to_provision = node_id
-            super(PlanetlabNode, self).discover()
+            if node_id:
+                self._node_to_provision = node_id
+                super(PlanetlabNode, self).discover()
+            else:
+               self.fail_not_enough_nodes() 
             
-    def provisionl(self):
+    def provision(self):
         """
         Add node to user's slice after verifing that the node is functioning
         correctly
@@ -282,7 +277,12 @@ class PlanetlabNode(LinuxNode):
 
         while not provision_ok:
             node = self._node_to_provision
-            self._set_hostname_attr(node)
+            # Adding try catch to set hostname because sometimes MyPLC fails
+            # when trying to retrive node's hostname
+            try:
+                self._set_hostname_attr(node)
+            except:
+                self.discover()
             self._add_node_to_slice(node)
             
             # check ssh connection
@@ -303,8 +303,9 @@ class PlanetlabNode(LinuxNode):
                 # the timeout was reach without establishing ssh connection
                 # the node is blacklisted, deleted from the slice, and a new
                 # node to provision is discovered
-                self._blacklist_node(node)
-                self._delete_node_from_slice(node)
+                with PlanetlabNode.lock:
+                    self._blacklist_node(node)
+                    self._delete_node_from_slice(node)
                 self.discover()
                 continue
             
@@ -313,8 +314,9 @@ class PlanetlabNode(LinuxNode):
                 cmd = 'mount |grep proc'
                 ((out, err), proc) = self.execute(cmd)
                 if out.find("/proc type proc") < 0:
-                    self._blacklist_node(node)
-                    self._delete_node_from_slice(node)
+                    with PlanetlabNode.lock:
+                        self._blacklist_node(node)
+                        self._delete_node_from_slice(node)
                     self.discover()
                     continue
             
@@ -369,6 +371,11 @@ class PlanetlabNode(LinuxNode):
                 # filter nodes by range constraints e.g. max bandwidth
                 elif ('min' or 'max') in attr_name:
                     nodes_id = self._filter_by_range_attr(attr_name, attr_value, filters, nodes_id)
+
+        if not filters:
+            nodes = self.plapi.get_nodes()
+            for node in nodes:
+                nodes_id.append(node['node_id'])
                 
         return nodes_id
                     
@@ -500,9 +507,6 @@ class PlanetlabNode(LinuxNode):
         From the possible nodes for provision, choose randomly to decrese the
         probability of different RMs choosing the same node for provision
         """
-        blist = PlanetlabNode.blacklist
-        plist = PlanetlabNode.provisionlist
-
         size = len(nodes)
         while size:
             size = size - 1
@@ -512,22 +516,26 @@ class PlanetlabNode(LinuxNode):
 
             # check the node is not blacklisted or being provision by other RM
             # and perform ping to check that is really alive
-            if node_id not in blist and node_id not in plist:
-                ping_ok = self._do_ping(node_id)
-                if not ping_ok:
-                    self._blacklist_node(node_id)
-                else:
-                    # discovered node for provision, added to provision list
-                    self._put_node_in_provision(node_id)
-                    return node_id
+            with PlanetlabNode.lock:
+
+                blist = self.plapi.blacklisted()
+                plist = self.plapi.reserved()
+                if node_id not in blist and node_id not in plist:
+                    ping_ok = self._do_ping(node_id)
+                    if not ping_ok:
+                        self._blacklist_node(node_id)
+                    else:
+                        # discovered node for provision, added to provision list
+                        self._put_node_in_provision(node_id)
+                        return node_id
 
     def _get_nodes_id(self, filters):
         return self.plapi.get_nodes(filters, fields=['node_id'])
 
     def _add_node_to_slice(self, node_id):
-        self.warn(" Adding node to slice ")
+        self.info(" Selecting node ... ")
         slicename = self.get("username")
-        with PlanetlabNode.lock_slice:
+        with PlanetlabNode.lock:
             slice_nodes = self.plapi.get_slice_nodes(slicename)
             slice_nodes.append(node_id)
             self.plapi.add_slice_nodes(slicename, slice_nodes)
@@ -553,7 +561,6 @@ class PlanetlabNode(LinuxNode):
         slicename = self.get("username")
         slice_nodes = self.plapi.get_slice_nodes(slicename)
         nodes_inslice = list(set(nodes_id) & set(slice_nodes))
-
         return nodes_inslice
 
     def _do_ping(self, node_id):
@@ -574,22 +581,15 @@ class PlanetlabNode(LinuxNode):
         """
         Add node mal functioning node to blacklist
         """
-        blist = PlanetlabNode.blacklist
-
         self.warn(" Blacklisting malfunctioning node ")
-        with PlanetlabNode.lock_blist:
-            blist.append(node)
+        self._plapi.blacklist_host(node)
 
     def _put_node_in_provision(self, node):
         """
         Add node to the list of nodes being provisioned, in order for other RMs
         to not try to provision the same one again
         """
-        plist = PlanetlabNode.provisionlist
-
-        self.warn(" Provisioning node ")
-        with PlanetlabNode.lock_plist:
-            plist.append(node)
+        self._plapi.reserve_host(node)
 
     def _get_ip(self, node_id):
         """
