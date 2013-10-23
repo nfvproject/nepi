@@ -485,13 +485,13 @@ class PLCAPIFactory(object):
     _apis = dict()
 
     @classmethod 
-    def get_api(cls, slicename, pl_pass, pl_host,
+    def get_api(cls, pl_user, pl_pass, pl_host,
             pl_ptn = "https://%(hostname)s:443/PLCAPI/",
             proxy = None):
         """ Get existing PLCAPI instance
 
-        :param slicename: Planelab slice name
-        :type slicename: str
+        :param pl_user: Planelab user name (used for web login)
+        :type pl_user: str
         :param pl_pass: Planetlab password (used for web login)
         :type pl_pass: str
         :param pl_host: Planetlab registry host (e.g. "www.planet-lab.eu")
@@ -501,23 +501,23 @@ class PLCAPIFactory(object):
         :param proxy: Proxy service url
         :type pl_ptn: str
         """
-        if slice and pl_pass and pl_host:
-            key = cls._make_key(slicename, pl_host)
+        if pl_user and pl_pass and pl_host:
+            key = cls._make_key(pl_user, pl_host)
             with cls._lock:
                 api = cls._apis.get(key)
                 if not api:
-                    api = cls.create_api(slicename, pl_pass, pl_host, pl_ptn, proxy)
+                    api = cls.create_api(pl_user, pl_pass, pl_host, pl_ptn, proxy)
                 return api
         return None
 
     @classmethod 
-    def create_api(cls, slicename, pl_pass, pl_host,
+    def create_api(cls, pl_user, pl_pass, pl_host,
             pl_ptn = "https://%(hostname)s:443/PLCAPI/",
             proxy = None):
         """ Create an PLCAPI instance
 
-        :param slicename: Planelab slice name
-        :type slicename: str
+        :param pl_user: Planelab user name (used for web login)
+        :type pl_user: str
         :param pl_pass: Planetlab password (used for web login)
         :type pl_pass: str
         :param pl_host: Planetlab registry host (e.g. "www.planet-lab.eu")
@@ -528,13 +528,13 @@ class PLCAPIFactory(object):
         :type pl_ptn: str
         """
         api = PLCAPI(
-            username = slicename,
+            username = pl_user,
             password = pl_pass,
             hostname = pl_host,
             urlpattern = pl_ptn,
             proxy = proxy
         )
-        key = cls._make_key(slicename, pl_host)
+        key = cls._make_key(pl_user, pl_host)
         cls._apis[key] = api
         return api
 
