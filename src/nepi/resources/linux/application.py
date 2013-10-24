@@ -19,8 +19,8 @@
 
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import Trace, TraceAttr
-from nepi.execution.resource import ResourceManager, clsinit, ResourceState, \
-        reschedule_delay
+from nepi.execution.resource import ResourceManager, clsinit_copy, \
+        ResourceState, reschedule_delay, failtrap
 from nepi.resources.linux.node import LinuxNode
 from nepi.util.sshfuncs import ProcStatus
 from nepi.util.timefuncs import tnow, tdiffsec
@@ -31,7 +31,7 @@ import subprocess
 # TODO: Resolve wildcards in commands!!
 # TODO: When a failure occurs during deployment, scp and ssh processes are left running behind!!
 
-@clsinit
+@clsinit_copy
 class LinuxApplication(ResourceManager):
     """
     .. class:: Class Args :
@@ -84,7 +84,6 @@ class LinuxApplication(ResourceManager):
     _rtype = "LinuxApplication"
     _help = "Runs an application on a Linux host with a BASH command "
     _backend_type = "linux"
-
 
     @classmethod
     def _register_attributes(cls):
@@ -270,7 +269,8 @@ class LinuxApplication(ResourceManager):
             out = int(out.strip())
 
         return out
-            
+
+    @failtrap
     def provision(self):
         # create run dir for application
         self.node.mkdir(self.run_home)
@@ -302,7 +302,8 @@ class LinuxApplication(ResourceManager):
         # each step we check that the EC is still 
         for step in steps:
             if self.ec.abort:
-                raise RuntimeError, "EC finished"
+                self.debug("Interrupting provisioning. EC says 'ABORT")
+                return
             
             ret = step()
             if ret:
@@ -470,6 +471,7 @@ class LinuxApplication(ResourceManager):
             # replace application specific paths in the command
             return self.replace_paths(install)
 
+    @failtrap
     def deploy(self):
         # Wait until node is associated and deployed
         node = self.node
@@ -477,17 +479,14 @@ class LinuxApplication(ResourceManager):
             self.debug("---- RESCHEDULING DEPLOY ---- node state %s " % self.node.state )
             self.ec.schedule(reschedule_delay, self.deploy)
         else:
-            try:
-                command = self.get("command") or ""
-                self.info("Deploying command '%s' " % command)
-                self.discover()
-                self.provision()
-            except:
-                self.fail()
-                return
+            command = self.get("command") or ""
+            self.info("Deploying command '%s' " % command)
+            self.discover()
+            self.provision()
 
             super(LinuxApplication, self).deploy()
-    
+   
+    @failtrap
     def start(self):
         command = self.get("command")
 
@@ -498,15 +497,10 @@ class LinuxApplication(ResourceManager):
             # installation), then the application is directly marked as FINISHED
             self.set_finished()
         else:
-
-            try:
-                if self.in_foreground:
-                    self._run_in_foreground()
-                else:
-                    self._run_in_background()
-            except:
-                self.fail()
-                return
+            if self.in_foreground:
+                self._run_in_foreground()
+            else:
+                self._run_in_background()
 
             super(LinuxApplication, self).start()
 
@@ -514,6 +508,7 @@ class LinuxApplication(ResourceManager):
         command = self.get("command")
         sudo = self.get("sudo") or False
         x11 = self.get("forwardX11")
+        env = self.get("env")
 
         # For a command being executed in foreground, if there is stdin,
         # it is expected to be text string not a file or pipe
@@ -526,7 +521,7 @@ class LinuxApplication(ResourceManager):
         # to be able to kill the process from the stop method.
         # We also set blocking = False, since we don't want the
         # thread to block until the execution finishes.
-        (out, err), self._proc = self.execute_command(self, command, 
+        (out, err), self._proc = self.execute_command(command, 
                 env = env,
                 sudo = sudo,
                 stdin = stdin,
@@ -582,7 +577,8 @@ class LinuxApplication(ResourceManager):
                 msg = " Failed to start command '%s' " % command
                 self.error(msg, out, err)
                 raise RuntimeError, msg
-        
+    
+    @failtrap
     def stop(self):
         """ Stops application execution
         """
@@ -609,22 +605,25 @@ class LinuxApplication(ResourceManager):
                     if proc.poll() or err:
                         msg = " Failed to STOP command '%s' " % self.get("command")
                         self.error(msg, out, err)
-                        self.fail()
-                        return
         
             super(LinuxApplication, self).stop()
 
     def release(self):
         self.info("Releasing resource")
 
-        tear_down = self.get("tearDown")
-        if tear_down:
-            self.node.execute(tear_down)
+        try:
+            tear_down = self.get("tearDown")
+            if tear_down:
+                self.node.execute(tear_down)
 
-        self.stop()
+            self.stop()
+        except:
+            import traceback
+            err = traceback.format_exc()
+            self.error(err)
 
         super(LinuxApplication, self).release()
-   
+        
     @property
     def state(self):
         """ Returns the state of the application

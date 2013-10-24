@@ -18,8 +18,8 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 #         Julien Tribino <julien.tribino@inria.fr>
 
-from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState, \
-        reschedule_delay
+from nepi.execution.resource import ResourceManager, clsinit_copy, \
+        ResourceState, reschedule_delay, failtrap
 from nepi.execution.attribute import Attribute, Flags 
 from nepi.resources.omf.omf_resource import ResourceGateway, OMFResource
 from nepi.resources.omf.node import OMFNode
@@ -147,6 +147,7 @@ class OMFApplication(OMFResource):
 
             return True
 
+    @failtrap
     def deploy(self):
         """ Deploy the RM. It means nothing special for an application 
         for now (later it will be upload sources, ...)
@@ -166,8 +167,7 @@ class OMFApplication(OMFResource):
         if not self._omf_api :
             msg = "Credentials are not initialzed. XMPP Connections impossible"
             self.error(msg)
-            self.fail()
-            return
+            raise RuntimeError, msg
 
         if self.get('sources'):
             gateway = ResourceGateway.AMtoGateway[self.get('xmppHost')]
@@ -177,7 +177,7 @@ class OMFApplication(OMFResource):
 
         super(OMFApplication, self).deploy()
 
-
+    @failtrap
     def start(self):
         """ Start the RM. It means : Send Xmpp Message Using OMF protocol 
          to execute the application. 
@@ -187,8 +187,7 @@ class OMFApplication(OMFResource):
         if not (self.get('appid') and self.get('path')) :
             msg = "Application's information are not initialized"
             self.error(msg)
-            self.fail()
-            return
+            raise RuntimeError, msg
 
         if not self.get('args'):
             self.set('args', " ")
@@ -207,11 +206,11 @@ class OMFApplication(OMFResource):
         except AttributeError:
             msg = "Credentials are not initialzed. XMPP Connections impossible"
             self.error(msg)
-            self.fail()
             raise
 
         super(OMFApplication, self).start()
 
+    @failtrap
     def stop(self):
         """ Stop the RM. It means : Send Xmpp Message Using OMF protocol to 
         kill the application. 
@@ -223,8 +222,7 @@ class OMFApplication(OMFResource):
         except AttributeError:
             msg = "Credentials were not initialzed. XMPP Connections impossible"
             self.error(msg)
-            self.fail()
-            return
+            raise
 
         super(OMFApplication, self).stop()
         self.set_finished()
@@ -233,10 +231,15 @@ class OMFApplication(OMFResource):
         """ Clean the RM at the end of the experiment and release the API.
 
         """
-        if self._omf_api :
-            OMFAPIFactory.release_api(self.get('xmppSlice'), 
-                self.get('xmppHost'), self.get('xmppPort'), 
-                self.get('xmppPassword'), exp_id = self.exp_id)
+        try:
+            if self._omf_api :
+                OMFAPIFactory.release_api(self.get('xmppSlice'), 
+                    self.get('xmppHost'), self.get('xmppPort'), 
+                    self.get('xmppPassword'), exp_id = self.exp_id)
+        except:
+            import traceback
+            err = traceback.format_exc()
+            self.error(err)
 
         super(OMFApplication, self).release()
 

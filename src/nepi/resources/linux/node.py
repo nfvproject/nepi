@@ -17,9 +17,9 @@
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
-from nepi.execution.attribute import Attribute, Flags
-from nepi.execution.resource import ResourceManager, clsinit, ResourceState, \
-        reschedule_delay
+from nepi.execution.attribute import Attribute, Flags, Types
+from nepi.execution.resource import ResourceManager, clsinit_copy, \
+        ResourceState, reschedule_delay, failtrap
 from nepi.resources.linux import rpmfuncs, debfuncs 
 from nepi.util import sshfuncs, execfuncs
 from nepi.util.sshfuncs import ProcStatus
@@ -57,7 +57,7 @@ class OSType:
     UBUNTU = "ubuntu"
     DEBIAN = "debian"
 
-@clsinit
+@clsinit_copy
 class LinuxNode(ResourceManager):
     """
     .. class:: Class Args :
@@ -168,14 +168,20 @@ class LinuxNode(ResourceManager):
         
         clean_home = Attribute("cleanHome", "Remove all nepi files and directories "
                 " from node home folder before starting experiment", 
+                type = Types.Bool,
+                default = False,
                 flags = Flags.ExecReadOnly)
 
         clean_experiment = Attribute("cleanExperiment", "Remove all files and directories " 
                 " from a previous same experiment, before the new experiment starts", 
+                type = Types.Bool,
+                default = False,
                 flags = Flags.ExecReadOnly)
         
         clean_processes = Attribute("cleanProcesses", 
                 "Kill all running processes before starting experiment",
+                type = Types.Bool,
+                default = False,
                 flags = Flags.ExecReadOnly)
         
         tear_down = Attribute("tearDown", "Bash script to be executed before " + \
@@ -309,7 +315,6 @@ class LinuxNode(ResourceManager):
             time.sleep(min(30.0, retrydelay))
             retrydelay *= 1.5
 
-
     @property
     def use_deb(self):
         return self.os in [OSType.DEBIAN, OSType.UBUNTU]
@@ -323,10 +328,10 @@ class LinuxNode(ResourceManager):
     def localhost(self):
         return self.get("hostname") in ['localhost', '127.0.0.7', '::1']
 
+    @failtrap
     def provision(self):
         # check if host is alive
         if not self.is_alive():
-            
             msg = "Deploy failed. Unresponsive node %s" % self.get("hostname")
             self.error(msg)
             raise RuntimeError, msg
@@ -353,14 +358,12 @@ class LinuxNode(ResourceManager):
 
         super(LinuxNode, self).provision()
 
+    @failtrap
     def deploy(self):
         if self.state == ResourceState.NEW:
-            try:
-                self.discover()
-                self.provision()
-            except:
-                self.fail()
-                return
+            self.info("Deploying node")
+            self.discover()
+            self.provision()
 
         # Node needs to wait until all associated interfaces are 
         # ready before it can finalize deployment
@@ -374,19 +377,24 @@ class LinuxNode(ResourceManager):
         super(LinuxNode, self).deploy()
 
     def release(self):
-        # Node needs to wait until all associated RMs are released
-        # to be released
-        rms = self.get_connected()
-        for rm in rms:
-            if rm.state < ResourceState.STOPPED:
-                self.ec.schedule(reschedule_delay, self.release)
-                return 
+        try:
+            rms = self.get_connected()
+            for rm in rms:
+                # Node needs to wait until all associated RMs are released
+                # before it can be released
+                if rm.state < ResourceState.STOPPED:
+                    self.ec.schedule(reschedule_delay, self.release)
+                    return 
 
-        tear_down = self.get("tearDown")
-        if tear_down:
-            self.execute(tear_down)
+            tear_down = self.get("tearDown")
+            if tear_down:
+                self.execute(tear_down)
 
-        self.clean_processes()
+            self.clean_processes()
+        except:
+            import traceback
+            err = traceback.format_exc()
+            self.error(err)
 
         super(LinuxNode, self).release()
 
@@ -626,7 +634,6 @@ class LinuxNode(ResourceManager):
                     strict_host_checking = False)
 
         return (out, err), proc
-
 
     def upload(self, src, dst, text = False, overwrite = True):
         """ Copy content to destination

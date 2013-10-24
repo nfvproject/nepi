@@ -18,8 +18,8 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 #         Julien Tribino <julien.tribino@inria.fr>
 
-from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState, \
-        reschedule_delay
+from nepi.execution.resource import ResourceManager, clsinit_copy, \
+        ResourceState, reschedule_delay, failtrap
 from nepi.execution.attribute import Attribute, Flags 
 
 from nepi.resources.omf.omf_resource import ResourceGateway, OMFResource
@@ -121,18 +121,7 @@ class OMFChannel(OMFResource):
                     res.append(couple)
         return res
 
-    def discover(self):
-        """ Discover the availables channels
-
-        """
-        pass
-     
-    def provision(self):
-        """ Provision some availables channels
-
-        """
-        pass
-
+    @failtrap
     def deploy(self):
         """ Deploy the RM. It means : Get the xmpp client and send messages 
         using OMF 5.4 protocol to configure the channel.
@@ -147,58 +136,44 @@ class OMFChannel(OMFResource):
         if not self._omf_api :
             msg = "Credentials are not initialzed. XMPP Connections impossible"
             self.error(msg)
-            self.fail()
-            return
+            raise RuntimeError, msg
 
         if not self.get('channel'):
             msg = "Channel's value is not initialized"
             self.error(msg)
-            self.fail()
-            return
+            raise RuntimeError, msg
 
-        self._nodes_guid = self._get_target(self._connections) 
+        self._nodes_guid = self._get_target(self._connections)
+
         if self._nodes_guid == "reschedule" :
             self.ec.schedule("2s", self.deploy)
-            return False
+        else:
+            try:
+                for couple in self._nodes_guid:
+                    #print "Couple node/alias : " + couple[0] + "  ,  " + couple[1]
+                    attrval = self.get('channel')
+                    attrname = "net/%s/%s" % (couple[1], 'channel')
+                    self._omf_api.configure(couple[0], attrname, attrval)
+            except AttributeError:
+                msg = "Credentials are not initialzed. XMPP Connections impossible"
+                self.error(msg)
+                raise
 
-        try:
-            for couple in self._nodes_guid:
-                #print "Couple node/alias : " + couple[0] + "  ,  " + couple[1]
-                attrval = self.get('channel')
-                attrname = "net/%s/%s" % (couple[1], 'channel')
-                self._omf_api.configure(couple[0], attrname, attrval)
-        except AttributeError:
-            msg = "Credentials are not initialzed. XMPP Connections impossible"
-            self.error(msg)
-            self.fail()
-            return
-
-        super(OMFChannel, self).deploy()
-
-    def start(self):
-        """ Start the RM. It means nothing special for a channel for now
-        It becomes STARTED as soon as this method starts.
-
-        """
-
-        super(OMFChannel, self).start()
-
-    def stop(self):
-        """ Stop the RM. It means nothing special for a channel for now
-        It becomes STOPPED as soon as this method is called
-
-        """
-        super(OMFChannel, self).stop()
-        self.set_finished()
+            super(OMFChannel, self).deploy()
 
     def release(self):
         """ Clean the RM at the end of the experiment and release the API
 
         """
-        if self._omf_api :
-            OMFAPIFactory.release_api(self.get('xmppSlice'), 
-                self.get('xmppHost'), self.get('xmppPort'), 
-                self.get('xmppPassword'), exp_id = self.exp_id)
+        try:
+            if self._omf_api :
+                OMFAPIFactory.release_api(self.get('xmppSlice'), 
+                    self.get('xmppHost'), self.get('xmppPort'), 
+                    self.get('xmppPassword'), exp_id = self.exp_id)
+        except:
+            import traceback
+            err = traceback.format_exc()
+            self.error(err)
 
         super(OMFChannel, self).release()
 

@@ -18,9 +18,10 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 from nepi.execution.attribute import Attribute, Flags
-from nepi.execution.resource import ResourceManager, clsinit, ResourceState
+from nepi.execution.resource import ResourceManager, clsinit_copy, \
+        ResourceState
 
-@clsinit
+@clsinit_copy
 class LinuxChannel(ResourceManager):
     _rtype = "LinuxChannel"
     _help = "Represents a wireless channel on a network of Linux hosts"
@@ -35,3 +36,4 @@ class LinuxChannel(ResourceManager):
     def valid_connection(self, guid):
         # TODO: Validate!
         return True
+

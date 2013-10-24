@@ -19,7 +19,8 @@
 #         Alexandros Kouvakas <alexandros.kouvakas@inria.fr>
 
 
-from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState
+from nepi.execution.resource import ResourceManager, clsinit_copy, \
+        ResourceState, failtrap
 from nepi.execution.attribute import Attribute, Flags
 from nepi.resources.planetlab.node import PlanetlabNode        
 from nepi.resources.linux.application import LinuxApplication
@@ -114,6 +115,7 @@ class OVSWitch(LinuxApplication):
         # TODO: Validate!
         return True
 
+    @failtrap
     def provision(self):
         # create home dir for ovs
         self.node.mkdir(self.ovs_home)
@@ -136,13 +138,16 @@ class OVSWitch(LinuxApplication):
                 stderr = "check_cmd_stderr")
 
         (out, err), proc = self.node.check_output(self.ovs_checks, 'check_cmd_exitcode')
+        
         if out != "0\n":
             msg = "Command sliver-ovs does not exist on the VM"    	 
             self.debug(msg)
             raise RuntimeError, msg
+
         msg = "Command sliver-ovs exists" 
         self.debug(msg)						
 
+    @failtrap
     def deploy(self):
         """ Wait until node is associated and deployed
         """
@@ -152,19 +157,15 @@ class OVSWitch(LinuxApplication):
             self.ec.schedule(reschedule_delay, self.deploy)
 
         else:
-            try:
-                self.discover()
-                self.provision()
-                self.check_sliver_ovs()
-                self.servers_on()
-                self.create_bridge()
-                self.assign_contr()
-                self.ovs_status()
-            except:
-                self._state = ResourceState.FAILED
-                raise
-                
-            self._state = ResourceState.READY
+            self.discover()
+            self.provision()
+            self.check_sliver_ovs()
+            self.servers_on()
+            self.create_bridge()
+            self.assign_contr()
+            self.ovs_status()
+            
+            super(OVSWitch, self).deploy()
 
     def servers_on(self):
         """ Start the openvswitch servers and also checking 
@@ -201,9 +202,11 @@ class OVSWitch(LinuxApplication):
 
         # Check if the servers are running or not
         (out, err), proc = self.node.check_output(self.ovs_checks, 'status_srv_exitcode')
+        
         if out != "0\n":
             self.debug("Servers are not running")
             raise RuntimeError, msg
+        
         self.info("Servers started")  
 
     def del_old_br(self):
@@ -279,44 +282,37 @@ class OVSWitch(LinuxApplication):
         (out, err), proc = self.node.check_output(self.ovs_home, 'show_stdout')
         self.info(out)
 
-    def start(self):
-        """ Start the RM. It means nothing special for 
-            ovswitch for now.	
-        """
-        pass
-
-    def stop(self):
-        """ Stop the RM.It means nothing 
-            for ovswitch for now.
-        """
-        pass
-
     def release(self):
         """ Delete the bridge and 
             close the servers
         """
         # Node needs to wait until all associated RMs are released
         # to be released
-        from nepi.resources.planetlab.openvswitch.ovsport import OVSPort
-        rm = self.get_connected(OVSPort.rtype())
+        try:
+            from nepi.resources.planetlab.openvswitch.ovsport import OVSPort
+            rm = self.get_connected(OVSPort.rtype())
 
-        if rm[0].state < ResourceState.FINISHED:
-            self.ec.schedule(reschedule_delay, self.release)
-            return 
+            if rm[0].state < ResourceState.FINISHED:
+                self.ec.schedule(reschedule_delay, self.release)
+                return 
+                
+            msg = "Deleting the bridge %s" % self.get('bridge_name')
+            self.info(msg)
+            cmd = "sliver-ovs del-bridge %s" % self.get('bridge_name')
+            (out, err), proc = self.node.run(cmd, self.ovs_checks,
+                    sudo = True)
+            cmd = "sliver-ovs stop"
+            (out, err), proc = self.node.run(cmd, self.ovs_checks,
+                    sudo = True)
             
-        msg = "Deleting the bridge %s" % self.get('bridge_name')
-        self.info(msg)
-        cmd = "sliver-ovs del-bridge %s" % self.get('bridge_name')
-        (out, err), proc = self.node.run(cmd, self.ovs_checks,
-                sudo = True)
-        cmd = "sliver-ovs stop"
-        (out, err), proc = self.node.run(cmd, self.ovs_checks,
-                sudo = True)
-        
-        if proc.poll():
-            self.fail()
-            self.error(msg, out, err)
-            raise RuntimeError, msg
-     
-        self._state = ResourceState.RELEASED
-        
+            if proc.poll():
+                self.fail()
+                self.error(msg, out, err)
+                raise RuntimeError, msg
+        except:
+            import traceback
+            err = traceback.format_exc()
+            self.error(err)
+
+        super(OVSWitch, self).release()
+

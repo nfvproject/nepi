@@ -35,51 +35,47 @@ import random
 import sys
 import time
 import threading
-
-class FailurePolicy(object):
-    """ Defines how to respond to experiment failures  
-    """
-    IGNORE_RM_FAILURE = 1
-    ABORT_ON_RM_FAILURE = 2
+import weakref
 
 class FailureLevel(object):
-    """ Describe the system failure state
+    """ Describes the system failure state
     """
     OK = 1
     RM_FAILURE = 2
-    TASK_FAILURE = 3
-    EC_FAILURE = 4
+    EC_FAILURE = 3
 
 class FailureManager(object):
     """ The FailureManager is responsible for handling errors,
     and deciding whether an experiment should be aborted
     """
 
-    def __init__(self, failure_policy = None):
+    def __init__(self, ec):
+        self._ec = weakref.ref(ec)
         self._failure_level = FailureLevel.OK
-        self._failure_policy = failure_policy or \
-                FailurePolicy.ABORT_ON_RM_FAILURE
+
+    @property
+    def ec(self):
+        """ Returns the Experiment Controller """
+        return self._ec()
 
     @property
     def abort(self):
-        if self._failure_level == FailureLevel.EC_FAILURE:
-            return True
+        if self._failure_level == FailureLevel.OK:
+            for guid in self.ec.resources:
+                state = self.ec.state(guid)
+                critical = self.ec.get(guid, "critical")
 
-        if self._failure_level in [FailureLevel.TASK_FAILURE, 
-                FailureLevel.RM_FAILURE] and \
-                        self._failure_policy == FailurePolicy.ABORT_ON_RM_FAILURE:
-            return True
+                if state == ResourceState.FAILED and critical:
+                    self._failure_level = FailureLevel.RM_FAILURE
+                    self.ec.logger.debug("RM critical failure occurred on guid %d." \
+                            " Setting EC FAILURE LEVEL to RM_FAILURE" % guid)
+                    break
 
-        return False
-
-    def set_rm_failure(self):
-        self._failure_level = FailureLevel.RM_FAILURE
-
-    def set_task_failure(self):
-        self._failure_level = FailureLevel.TASK_FAILURE
+        return self._failure_level != FailureLevel.OK
 
     def set_ec_failure(self):
         self._failure_level = FailureLevel.EC_FAILURE
+
 
 class ECState(object):
     """ State of the Experiment Controller
@@ -175,7 +171,9 @@ class ExperimentController(object):
         # Resource managers
         self._resources = dict()
 
-        # Scheduler
+        # Scheduler. It a queue that holds tasks scheduled for
+        # execution, and yields the next task to be executed 
+        # ordered by execution and arrival time
         self._scheduler = HeapScheduler()
 
         # Tasks
@@ -186,21 +184,26 @@ class ExperimentController(object):
 
         # generator of globally unique id for groups
         self._group_id_generator = guid.GuidGenerator()
- 
-        # Event processing thread
-        self._cond = threading.Condition()
-        self._thread = threading.Thread(target = self._process)
-        self._thread.setDaemon(True)
-        self._thread.start()
 
         # Flag to stop processing thread
         self._stop = False
     
         # Entity in charge of managing system failures
-        self._fm = FailureManager()
+        self._fm = FailureManager(self)
 
         # EC state
         self._state = ECState.RUNNING
+
+        # The runner is a pool of threads used to parallelize 
+        # execution of tasks
+        nthreads = int(os.environ.get("NEPI_NTHREADS", "50"))
+        self._runner = ParallelRun(maxthreads = nthreads)
+
+        # Event processing thread
+        self._cond = threading.Condition()
+        self._thread = threading.Thread(target = self._process)
+        self._thread.setDaemon(True)
+        self._thread.start()
 
     @property
     def logger(self):
@@ -233,9 +236,6 @@ class ExperimentController(object):
     @property
     def abort(self):
         return self._fm.abort
-
-    def set_rm_failure(self):
-        self._fm.set_rm_failure()
 
     def wait_finished(self, guids):
         """ Blocking method that wait until all RMs in the 'guid' list 
@@ -316,17 +316,19 @@ class ExperimentController(object):
             # If a guid reached one of the target states, remove it from list
             guid = guids[0]
             rstate = self.state(guid)
+            
+            hrrstate = ResourceState2str.get(rstate)
+            hrstate = ResourceState2str.get(state)
 
             if rstate >= state:
                 guids.remove(guid)
+                self.logger.debug(" guid %d DONE - state is %s, required is >= %s " % (
+                    guid, hrrstate, hrstate))
             else:
                 # Debug...
-                hrrstate = ResourceState2str.get(rstate)
-                hrstate = ResourceState2str.get(state)
                 self.logger.debug(" WAITING FOR guid %d - state is %s, required is >= %s " % (
                     guid, hrrstate, hrstate))
-
-            time.sleep(0.5)
+                time.sleep(0.5)
   
     def get_task(self, tid):
         """ Get a specific task
@@ -694,8 +696,10 @@ class ExperimentController(object):
             guids = self.resources
 
         # Remove all pending tasks from the scheduler queue
-        for tis in self._scheduler.pending:
-            self._scheduler.remove(tis)
+        for tid in list(self._scheduler.pending):
+            self._scheduler.remove(tid)
+
+        self._runner.empty()
 
         for guid in guids:
             rm = self.get_resource(guid)
@@ -708,6 +712,10 @@ class ExperimentController(object):
         Releases all the resources and stops task processing thread
 
         """
+        # If there was a major failure we can't exit gracefully
+        if self._state == ECState.FAILED:
+            raise RuntimeError("EC failure. Can not exit gracefully")
+
         self.release()
 
         # Mark the EC state as TERMINATED
@@ -788,10 +796,8 @@ class ExperimentController(object):
         that might have been raised by the workers.
 
         """
-        nthreads = int(os.environ.get("NEPI_NTHREADS", "50"))
 
-        runner = ParallelRun(maxthreads = nthreads)
-        runner.start()
+        self._runner.start()
 
         while not self._stop:
             try:
@@ -822,7 +828,7 @@ class ExperimentController(object):
 
                 if task:
                     # Process tasks in parallel
-                    runner.put(self._execute, task)
+                    self._runner.put(self._execute, task)
             except: 
                 import traceback
                 err = traceback.format_exc()
@@ -830,13 +836,14 @@ class ExperimentController(object):
 
                 # Set the EC to FAILED state 
                 self._state = ECState.FAILED
-
-                # Set the FailureManager failure level
+            
+                # Set the FailureManager failure level to EC failure
                 self._fm.set_ec_failure()
 
         self.logger.debug("Exiting the task processing loop ... ")
-        runner.sync()
-        runner.destroy()
+        
+        self._runner.sync()
+        self._runner.destroy()
 
     def _execute(self, task):
         """ Executes a single task. 
@@ -863,9 +870,6 @@ class ExperimentController(object):
             task.status = TaskStatus.ERROR
             
             self.logger.error("Error occurred while executing task: %s" % err)
-
-            # Set the FailureManager failure level
-            self._fm.set_task_failure()
 
     def _notify(self):
         """ Awakes the processing thread in case it is blocked waiting

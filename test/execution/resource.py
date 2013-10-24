@@ -20,15 +20,15 @@
 
 
 from nepi.execution.attribute import Attribute
-from nepi.execution.ec import ExperimentController 
-from nepi.execution.resource import ResourceManager, ResourceState, clsinit, \
-        ResourceAction
+from nepi.execution.ec import ExperimentController, FailureLevel 
+from nepi.execution.resource import ResourceManager, ResourceState, \
+        clsinit_copy, ResourceAction, failtrap
 
 import random
 import time
 import unittest
 
-@clsinit
+@clsinit_copy
 class MyResource(ResourceManager):
     _rtype = "MyResource"
 
@@ -40,13 +40,12 @@ class MyResource(ResourceManager):
     def __init__(self, ec, guid):
         super(MyResource, self).__init__(ec, guid)
 
-@clsinit
+@clsinit_copy
 class AnotherResource(ResourceManager):
     _rtype = "AnotherResource"
 
     def __init__(self, ec, guid):
         super(AnotherResource, self).__init__(ec, guid)
-
 
 class Channel(ResourceManager):
     _rtype = "Channel"
@@ -89,7 +88,7 @@ class Node(ResourceManager):
             self.discover()
             self.provision()
             self.logger.debug(" -------- PROVISIONED ------- ")
-            self.ec.schedule("3s", self.deploy)
+            self.ec.schedule("1s", self.deploy)
         elif self.state == ResourceState.PROVISIONED:
             ifaces = self.get_connected(Interface.rtype())
             for rm in ifaces:
@@ -111,15 +110,29 @@ class Application(ResourceManager):
         if node.state < ResourceState.READY:
             self.ec.schedule("0.5s", self.deploy)
         else:
-            time.sleep(random.random() * 5)
+            time.sleep(random.random() * 2)
             super(Application, self).deploy()
             self.logger.debug(" -------- DEPLOYED ------- ")
 
     def start(self):
         super(Application, self).start()
-        time.sleep(random.random() * 5)
+        time.sleep(random.random() * 3)
         self._state = ResourceState.FINISHED
-   
+
+class ErrorApplication(ResourceManager):
+    _rtype = "ErrorApplication"
+
+    def __init__(self, ec, guid):
+        super(ErrorApplication, self).__init__(ec, guid)
+
+    @failtrap
+    def deploy(self):
+        node = self.get_connected(Node.rtype())[0]
+        if node.state < ResourceState.READY:
+            self.ec.schedule("0.5s", self.deploy)
+        else:
+            time.sleep(random.random() * 2)
+            raise RuntimeError, "NOT A REAL ERROR. JUST TESTING"
 
 class ResourceFactoryTestCase(unittest.TestCase):
     def test_add_resource_factory(self):
@@ -130,13 +143,13 @@ class ResourceFactoryTestCase(unittest.TestCase):
         ResourceFactory.register_type(AnotherResource)
 
         self.assertEquals(MyResource.rtype(), "MyResource")
-        self.assertEquals(len(MyResource._attributes), 1)
+        self.assertEquals(len(MyResource._attributes), 2)
 
         self.assertEquals(ResourceManager.rtype(), "Resource")
-        self.assertEquals(len(ResourceManager._attributes), 0)
+        self.assertEquals(len(ResourceManager._attributes), 1)
 
         self.assertEquals(AnotherResource.rtype(), "AnotherResource")
-        self.assertEquals(len(AnotherResource._attributes), 0)
+        self.assertEquals(len(AnotherResource._attributes), 1)
 
         self.assertEquals(len(ResourceFactory.resource_types()), 2)
         
@@ -274,15 +287,43 @@ class ResourceManagerTestCase(unittest.TestCase):
 
         ec.shutdown()
 
-    def test_start_with_condition(self):
+    def test_exception(self):
+        from nepi.execution.resource import ResourceFactory
+        
+        ResourceFactory.register_type(ErrorApplication)
+        ResourceFactory.register_type(Node)
+        ResourceFactory.register_type(Interface)
+        ResourceFactory.register_type(Channel)
+
+        ec = ExperimentController()
+
+        node = ec.register_resource("Node")
+
+        apps = list()
+        for i in xrange(10):
+            app = ec.register_resource("ErrorApplication")
+            ec.register_connection(app, node)
+            apps.append(app)
+
+
+        ec.deploy()
+
+        ec.wait_finished(apps)
+
+        ec.shutdown()
+
+        self.assertTrue(ec._fm._failure_level == FailureLevel.RM_FAILURE)
+
+
+    def ztest_start_with_condition(self):
         # TODO!!!
         pass
     
-    def test_stop_with_condition(self):
+    def ztest_stop_with_condition(self):
         # TODO!!!
         pass
 
-    def test_set_with_condition(self):
+    def ztest_set_with_condition(self):
         # TODO!!!
         pass
 

@@ -30,25 +30,15 @@ N_PROCS = None
 class WorkerThread(threading.Thread):
     class QUIT:
         pass
-    class REASSIGNED:
-        pass
-    
+
     def run(self):
         while True:
             task = self.queue.get()
-            if task is None:
-                self.done = True
-                self.queue.task_done()
-                continue
-            elif task is self.QUIT:
-                self.done = True
+
+            if task is self.QUIT:
                 self.queue.task_done()
                 break
-            elif task is self.REASSIGNED:
-                continue
-            else:
-                self.done = False
-            
+
             try:
                 try:
                     callable, args, kwargs = task
@@ -61,41 +51,35 @@ class WorkerThread(threading.Thread):
             except:
                 traceback.print_exc(file = sys.stderr)
                 self.delayed_exceptions.append(sys.exc_info())
-    
-    def waitdone(self):
-        while not self.queue.empty() and not self.done:
-            self.queue.join()
-    
+
     def attach(self, queue, rvqueue, delayed_exceptions):
-        if self.isAlive():
-            self.waitdone()
-            oldqueue = self.queue
         self.queue = queue
         self.rvqueue = rvqueue
         self.delayed_exceptions = delayed_exceptions
-        if self.isAlive():
-            oldqueue.put(self.REASSIGNED)
-    
-    def detach(self):
-        if self.isAlive():
-            self.waitdone()
-            self.oldqueue = self.queue
-        self.queue = Queue.Queue()
-        self.rvqueue = None
-        self.delayed_exceptions = []
-    
-    def detach_signal(self):
-        if self.isAlive():
-            self.oldqueue.put(self.REASSIGNED)
-            del self.oldqueue
-        
+   
     def quit(self):
         self.queue.put(self.QUIT)
-        self.join()
 
-class ParallelMap(object):
+class ParallelRun(object):
     def __init__(self, maxthreads = None, maxqueue = None, results = True):
+        self.maxqueue = maxqueue
+        self.maxthreads = maxthreads
+        
+        self.queue = Queue.Queue(self.maxqueue or 0)
+        
+        self.delayed_exceptions = []
+        
+        if results:
+            self.rvqueue = Queue.Queue()
+        else:
+            self.rvqueue = None
+    
+        self.initialize_workers()
+
+    def initialize_workers(self):
         global N_PROCS
+
+        maxthreads = self.maxthreads
        
         # Compute maximum number of threads allowed by the system
         if maxthreads is None:
@@ -112,42 +96,30 @@ class ParallelMap(object):
         
         if maxthreads is None:
             maxthreads = 4
-        
-        self.queue = Queue.Queue(maxqueue or 0)
-
-        self.delayed_exceptions = []
-        
-        if results:
-            self.rvqueue = Queue.Queue()
-        else:
-            self.rvqueue = None
-    
+ 
         self.workers = []
 
         # initialize workers
         for x in xrange(maxthreads):
-            t = None
-            if t is None:
-                t = WorkerThread()
-                t.setDaemon(True)
-            else:
-                t.waitdone()
+            worker = WorkerThread()
+            worker.attach(self.queue, self.rvqueue, self.delayed_exceptions)
+            worker.setDaemon(True)
 
-            t.attach(self.queue, self.rvqueue, self.delayed_exceptions)
-            self.workers.append(t)
+            self.workers.append(worker)
     
     def __del__(self):
         self.destroy()
-    
+
+    def empty(self):
+        while True:
+            try:
+                self.queue.get(block = False)
+                self.queue.task_done()
+            except Queue.Empty:
+                break
+  
     def destroy(self):
-        for worker in self.workers:
-            worker.waitdone()
-        for worker in self.workers:
-            worker.detach()
-        for worker in self.workers:
-            worker.detach_signal()
-        for worker in self.workers:
-            worker.quit()
+        self.join()
 
         del self.workers[:]
         
@@ -158,28 +130,21 @@ class ParallelMap(object):
         self.queue.put_nowait((callable, args, kwargs))
 
     def start(self):
-        for thread in self.workers:
-            if not thread.isAlive():
-                thread.start()
+        for worker in self.workers:
+            if not worker.isAlive():
+                worker.start()
     
     def join(self):
-        for thread in self.workers:
-            # That's the sync signal
-            self.queue.put(None)
-            
+        # Wait until all queued tasks have been processed
         self.queue.join()
-        for thread in self.workers:
-            thread.waitdone()
-        
-        if self.delayed_exceptions:
-            typ,val,loc = self.delayed_exceptions[0]
-            del self.delayed_exceptions[:]
-            raise typ,val,loc
-        
-        self.destroy()
+
+        for worker in self.workers:
+            worker.quit()
+
+        for worker in self.workers:
+            worker.join()
     
     def sync(self):
-        self.queue.join()
         if self.delayed_exceptions:
             typ,val,loc = self.delayed_exceptions[0]
             del self.delayed_exceptions[:]
@@ -197,18 +162,3 @@ class ParallelMap(object):
                     except Queue.Empty:
                         raise StopIteration
             
-class ParallelRun(ParallelMap):
-    def __run(self, x):
-        fn, args, kwargs = x
-        return fn(*args, **kwargs)
-    
-    def __init__(self, maxthreads = None, maxqueue = None):
-        super(ParallelRun, self).__init__(maxthreads, maxqueue, True)
-
-    def put(self, what, *args, **kwargs):
-        super(ParallelRun, self).put(self.__run, (what, args, kwargs))
-    
-    def put_nowait(self, what, *args, **kwargs):
-        super(ParallelRun, self).put_nowait(self.__filter, (what, args, kwargs))
-
-
