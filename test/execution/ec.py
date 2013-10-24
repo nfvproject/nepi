@@ -72,17 +72,23 @@ class ExecuteControllersTestCase(unittest.TestCase):
 
     def test_schedule_exception(self):
         def raise_error():
+            # When this task is executed and the error raise,
+            # the FailureManager should set its failure level to 
+            # TASK_FAILURE
             raise RuntimeError, "NOT A REAL ERROR. JUST TESTING!"
 
         ec = ExperimentController()
-        ec.schedule("2s", raise_error)
 
-        while ec.ecstate not in [ECState.FAILED, ECState.TERMINATED]:
-           time.sleep(1)
+        tid = ec.schedule("2s", raise_error, track = True)
         
-        self.assertEquals(ec.ecstate, ECState.FAILED)
-        ec.shutdown()
+        while True:
+            task = ec.get_task(tid)
+            if task.status != TaskStatus.NEW:
+                break
 
+            time.sleep(1)
+
+        self.assertEquals(task.status, TaskStatus.ERROR)
 
 if __name__ == '__main__':
     unittest.main()

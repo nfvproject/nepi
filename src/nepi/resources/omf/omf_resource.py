@@ -19,8 +19,8 @@
 #         Lucia Guevgeozian <lucia.guevgeozian_odizzio@inria.fr>
 
 from nepi.execution.attribute import Attribute, Flags, Types
-from nepi.execution.resource import ResourceManager, clsinit, ResourceState, \
-        reschedule_delay
+from nepi.execution.resource import ResourceManager, clsinit_copy, \
+        ResourceState, reschedule_delay
 
 class ResourceGateway:
     """
@@ -38,7 +38,7 @@ class ResourceGateway:
         "nicta" : "??.??.??",
     })
 
-@clsinit
+@clsinit_copy
 class OMFResource(ResourceManager):
     """
     Generic resource gathering XMPP credential information and common methods

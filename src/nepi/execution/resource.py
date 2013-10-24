@@ -19,6 +19,7 @@
 
 from nepi.util.timefuncs import tnow, tdiff, tdiffsec, stabsformat
 from nepi.util.logger import Logger
+from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import TraceAttr
 
 import copy
@@ -80,6 +81,20 @@ def clsinit_copy(cls):
     cls._clsinit_copy()
     return cls
 
+def failtrap(func):
+    def wrapped(self, *args, **kwargs):
+        try:
+            return func(self, *args, **kwargs)
+        except:
+            import traceback
+            err = traceback.format_exc()
+            self.error(err)
+            self.debug("SETTING guid %d to state FAILED" % self.guid)
+            self.fail()
+            raise
+    
+    return wrapped
+
 # Decorator to invoke class initialization method
 @clsinit
 class ResourceManager(Logger):
@@ -138,8 +153,14 @@ class ResourceManager(Logger):
         resource attributes
 
         """
-        pass
+        critical = Attribute("critical", "Defines whether the resource is critical. "
+                " A failure on a critical resource will interrupt the experiment. ",
+                type = Types.Bool,
+                default = True,
+                flags = Flags.ExecReadOnly)
 
+        cls._register_attribute(critical)
+        
     @classmethod
     def _register_traces(cls):
         """ Resource subclasses will invoke this method to register
@@ -309,7 +330,7 @@ class ResourceManager(Logger):
 
     @property
     def state(self):
-        """ Get the state of the current RM """
+        """ Get the current state of the RM """
         return self._state
 
     def log_message(self, msg):
@@ -344,27 +365,42 @@ class ResourceManager(Logger):
     def discover(self):
         """ Performs resource discovery.
 
-        This  method is resposible for selecting an individual resource
+        This  method is responsible for selecting an individual resource
         matching user requirements.
         This method should be redefined when necessary in child classes.
+
+        If overridden in child classes, make sure to use the failtrap 
+        decorator to ensure the RM state will be set to FAILED in the event 
+        of an exception.
+
         """
         self.set_discovered()
 
     def provision(self):
         """ Performs resource provisioning.
 
-        This  method is resposible for provisioning one resource.
+        This  method is responsible for provisioning one resource.
         After this method has been successfully invoked, the resource
-        should be acccesible/controllable by the RM.
+        should be accessible/controllable by the RM.
         This method should be redefined when necessary in child classes.
+
+        If overridden in child classes, make sure to use the failtrap 
+        decorator to ensure the RM state will be set to FAILED in the event 
+        of an exception.
+
         """
         self.set_provisioned()
 
     def start(self):
-        """ Starts the resource.
+        """ Starts the RM.
         
         There is no generic start behavior for all resources.
         This method should be redefined when necessary in child classes.
+
+        If overridden in child classes, make sure to use the failtrap 
+        decorator to ensure the RM state will be set to FAILED in the event 
+        of an exception.
+
         """
         if not self.state in [ResourceState.READY, ResourceState.STOPPED]:
             self.error("Wrong state %s for start" % self.state)
@@ -373,10 +409,15 @@ class ResourceManager(Logger):
         self.set_started()
 
     def stop(self):
-        """ Stops the resource.
+        """ Interrupts the RM, stopping any tasks the RM was performing.
         
         There is no generic stop behavior for all resources.
         This method should be redefined when necessary in child classes.
+
+        If overridden in child classes, make sure to use the failtrap 
+        decorator to ensure the RM state will be set to FAILED in the event 
+        of an exception.
+
         """
         if not self.state in [ResourceState.STARTED]:
             self.error("Wrong state %s for stop" % self.state)
@@ -385,7 +426,15 @@ class ResourceManager(Logger):
         self.set_stopped()
 
     def deploy(self):
-        """ Execute all steps required for the RM to reach the state READY
+        """ Execute all steps required for the RM to reach the state READY.
+
+        This  method is responsible for deploying the resource (and invoking the
+        discover and provision methods).
+        This method should be redefined when necessary in child classes.
+
+        If overridden in child classes, make sure to use the failtrap 
+        decorator to ensure the RM state will be set to FAILED in the event 
+        of an exception.
 
         """
         if self.state > ResourceState.READY:
@@ -396,14 +445,41 @@ class ResourceManager(Logger):
         self.set_ready()
 
     def release(self):
+        """ Perform actions to free resources used by the RM.
+        
+        This  method is responsible for releasing resources that were
+        used during the experiment by the RM.
+        This method should be redefined when necessary in child classes.
+
+        If overridden in child classes, this method should never
+        raise an error and it must ensure the RM is set to state RELEASED.
+
+        """
         self.set_released()
 
     def finish(self):
+        """ Sets the RM to state FINISHED. 
+        
+        The FINISHED state is different from STOPPED in that it should not be 
+        directly invoked by the user.
+        STOPPED indicates that the user interrupted the RM, FINISHED means
+        that the RM concluded normally the actions it was supposed to perform.
+        This method should be redefined when necessary in child classes.
+        
+        If overridden in child classes, make sure to use the failtrap 
+        decorator to ensure the RM state will be set to FAILED in the event 
+        of an exception.
+
+        """
+
         self.set_finished()
  
     def fail(self):
+        """ Sets the RM to state FAILED.
+
+        """
+
         self.set_failed()
-        self.ec.set_rm_failure()
 
     def set(self, name, value):
         """ Set the value of the attribute
@@ -641,9 +717,11 @@ class ResourceManager(Logger):
         reschedule = False
         delay = reschedule_delay 
 
-        ## evaluate if set conditions are met
+        ## evaluate if conditions to start are met
+        if self.ec.abort:
+            return 
 
-        # only can start when RM is either STOPPED or READY
+        # Can only start when RM is either STOPPED or READY
         if self.state not in [ResourceState.STOPPED, ResourceState.READY]:
             reschedule = True
             self.debug("---- RESCHEDULING START ---- state %s " % self.state )
@@ -680,11 +758,14 @@ class ResourceManager(Logger):
         reschedule = False
         delay = reschedule_delay 
 
-        ## evaluate if set conditions are met
+        ## evaluate if conditions to stop are met
+        if self.ec.abort:
+            return 
 
         # only can stop when RM is STARTED
         if self.state != ResourceState.STARTED:
             reschedule = True
+            self.debug("---- RESCHEDULING STOP ---- state %s " % self.state )
         else:
             self.debug(" ---- STOP CONDITIONS ---- %s" % 
                     self.conditions.get(ResourceAction.STOP))
@@ -710,7 +791,9 @@ class ResourceManager(Logger):
         reschedule = False
         delay = reschedule_delay 
 
-        ## evaluate if set conditions are met
+        ## evaluate if conditions to deploy are met
+        if self.ec.abort:
+            return 
 
         # only can deploy when RM is either NEW, DISCOVERED or PROVISIONED 
         if self.state not in [ResourceState.NEW, ResourceState.DISCOVERED, 
@@ -769,43 +852,43 @@ class ResourceManager(Logger):
     
     def set_started(self):
         """ Mark ResourceManager as STARTED """
-        self._start_time = tnow()
-        self._state = ResourceState.STARTED
+        self.set_state(ResourceState.STARTED, "_start_time")
         
     def set_stopped(self):
         """ Mark ResourceManager as STOPPED """
-        self._stop_time = tnow()
-        self._state = ResourceState.STOPPED
+        self.set_state(ResourceState.STOPPED, "_stop_time")
 
     def set_ready(self):
         """ Mark ResourceManager as READY """
-        self._ready_time = tnow()
-        self._state = ResourceState.READY
+        self.set_state(ResourceState.READY, "_ready_time")
 
     def set_released(self):
         """ Mark ResourceManager as REALEASED """
-        self._release_time = tnow()
-        self._state = ResourceState.RELEASED
+        self.set_state(ResourceState.RELEASED, "_release_time")
 
     def set_finished(self):
         """ Mark ResourceManager as FINISHED """
-        self._finish_time = tnow()
-        self._state = ResourceState.FINISHED
+        self.set_state(ResourceState.FINISHED, "_finish_time")
 
     def set_failed(self):
         """ Mark ResourceManager as FAILED """
-        self._failed_time = tnow()
-        self._state = ResourceState.FAILED
+        self.set_state(ResourceState.FAILED, "_failed_time")
 
     def set_discovered(self):
         """ Mark ResourceManager as DISCOVERED """
-        self._discover_time = tnow()
-        self._state = ResourceState.DISCOVERED
+        self.set_state(ResourceState.DISCOVERED, "_discover_time")
 
     def set_provisioned(self):
         """ Mark ResourceManager as PROVISIONED """
-        self._provision_time = tnow()
-        self._state = ResourceState.PROVISIONED
+        self.set_state(ResourceState.PROVISIONED, "_provision_time")
+
+    def set_state(self, state, state_time_attr):
+        # Ensure that RM state will not change after released
+        if self._state == ResourceState.RELEASED:
+            return 
+   
+        setattr(self, state_time_attr, tnow())
+        self._state = state
 
 class ResourceFactory(object):
     _resource_types = dict()
