@@ -24,6 +24,7 @@ from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState
 from nepi.resources.linux.node import LinuxNode
 from nepi.resources.planetlab.plcapi import PLCAPIFactory 
 from nepi.util.execfuncs import lexec
+from nepi.util import sshfuncs
 
 from random import randint
 import time
@@ -211,18 +212,22 @@ class PlanetlabNode(LinuxNode):
         """
         Based on the attributes defined by the user, discover the suitable nodes
         """
-        hostname = self.get("hostname")
+        hostname = self._get_hostname()
+        print self.guid, hostname 
         if hostname:
             # the user specified one particular node to be provisioned
             # check with PLCAPI if it is alvive
             node_id = self._query_if_alive(hostname=hostname)
             node_id = node_id.pop()
+            print self.guid, node_id
 
             # check that the node is not blacklisted or being provisioned
             # by other RM
             with PlanetlabNode.lock:
                 plist = self.plapi.reserved()
                 blist = self.plapi.blacklisted()
+                print self.guid,plist
+                print self.guid,blist
                 if node_id not in blist and node_id not in plist:
                 
                     # check that is really alive, by performing ping
@@ -273,7 +278,7 @@ class PlanetlabNode(LinuxNode):
         provision_ok = False
         ssh_ok = False
         proc_ok = False
-        timeout = 1200
+        timeout = 120
 
         while not provision_ok:
             node = self._node_to_provision
@@ -282,7 +287,11 @@ class PlanetlabNode(LinuxNode):
             try:
                 self._set_hostname_attr(node)
             except:
+                with PlanetlabNode.lock:
+                    self._blacklist_node(node)
                 self.discover()
+                continue
+
             self._add_node_to_slice(node)
             
             # check ssh connection
@@ -306,6 +315,7 @@ class PlanetlabNode(LinuxNode):
                 with PlanetlabNode.lock:
                     self._blacklist_node(node)
                     self._delete_node_from_slice(node)
+                self.set('hostname', None)
                 self.discover()
                 continue
             
@@ -317,6 +327,7 @@ class PlanetlabNode(LinuxNode):
                     with PlanetlabNode.lock:
                         self._blacklist_node(node)
                         self._delete_node_from_slice(node)
+                    self.set('hostname', None)
                     self.discover()
                     continue
             
@@ -481,7 +492,7 @@ class PlanetlabNode(LinuxNode):
         filters['run_level'] = 'boot'
         filters['boot_state'] = 'boot'
         filters['node_type'] = 'regular' 
-        filters['>last_contact'] =  int(time.time()) - 2*3600
+        #filters['>last_contact'] =  int(time.time()) - 2*3600
 
         # adding node_id or hostname to the filters to check for the particular
         # node
@@ -493,7 +504,7 @@ class PlanetlabNode(LinuxNode):
             alive_nodes_id = self._get_nodes_id(filters)
 
         if len(alive_nodes_id) == 0:
-            self.fail_discovery()
+            self.fail_node_not_alive(self, hostname)
         else:
             nodes_id = list()
             for node_id in alive_nodes_id:
@@ -522,18 +533,20 @@ class PlanetlabNode(LinuxNode):
                 plist = self.plapi.reserved()
                 if node_id not in blist and node_id not in plist:
                     ping_ok = self._do_ping(node_id)
+                    print " ### ping_ok #### %s guid %s" % (ping_ok, self.guid)
                     if not ping_ok:
                         self._blacklist_node(node_id)
                     else:
                         # discovered node for provision, added to provision list
                         self._put_node_in_provision(node_id)
+                        print "node_id %s , guid %s" % (node_id, self.guid)
                         return node_id
 
     def _get_nodes_id(self, filters):
         return self.plapi.get_nodes(filters, fields=['node_id'])
 
     def _add_node_to_slice(self, node_id):
-        self.info(" Selecting node ... ")
+        self.info(" Selected node to provision ")
         slicename = self.get("username")
         with PlanetlabNode.lock:
             slice_nodes = self.plapi.get_slice_nodes(slicename)
@@ -544,6 +557,17 @@ class PlanetlabNode(LinuxNode):
         self.warn(" Deleting node from slice ")
         slicename = self.get("username")
         self.plapi.delete_slice_node(slicename, [node])
+
+    def _get_hostname(self):
+        hostname = self.get("hostname")
+        ip = self.get("ip")
+        if hostname:
+            return hostname
+        elif ip:
+            hostname = sshfuncs.gethostbyname(ip)
+            return hostname
+        else:
+            return None
 
     def _set_hostname_attr(self, node):
         """
@@ -569,12 +593,17 @@ class PlanetlabNode(LinuxNode):
         """
         ping_ok = False
         ip = self._get_ip(node_id)
-        command = "ping -c2 %s | echo \"PING OK\"" % ip
+        print "ip de do_ping %s, guid %s" % (ip, self.guid)
+        if not ip: return ping_ok
+
+        command = "ping -c2 %s" % ip
 
         (out, err) = lexec(command)
-        if not out.find("PING OK") < 0:
+        print "out de do_ping %s, guid %s" % (out, self.guid)
+        if not out.find("2 received") < 0:
             ping_ok = True
-
+        
+        print "ping_ok de do_ping %s, guid %s" % (ping_ok, self.guid)
         return ping_ok 
 
     def _blacklist_node(self, node):
@@ -595,8 +624,12 @@ class PlanetlabNode(LinuxNode):
         """
         Query PLCAPI for the IP of a node with certain node id
         """
-        ip = self.plapi.get_interfaces({'node_id':node_id}, fields=['ip'])
-        ip = ip[0]['ip']
+        hostname = self.plapi.get_nodes(node_id, ['hostname'])[0]
+        print "#### HOSTNAME ##### %s ### guid %s " % (hostname['hostname'], self.guid)
+        ip = sshfuncs.gethostbyname(hostname['hostname'])
+        if not ip:
+            # Fail while trying to find the IP
+            return None
         return ip
 
     def fail_discovery(self):
@@ -605,16 +638,18 @@ class PlanetlabNode(LinuxNode):
         self.error(msg)
         raise RuntimeError, msg
 
-    def fail_node_not_alive(self, hostname):
-        msg = "Node %s not alive, pick another node" % hostname
+    def fail_node_not_alive(self, hostname=None):
+        self.fail()
+        msg = "Node %s not alive" % hostname
         raise RuntimeError, msg
     
     def fail_node_not_available(self, hostname):
-        msg = "Node %s not available for provisioning, pick another \
-                node" % hostname
+        self.fail()
+        msg = "Node %s not available for provisioning" % hostname
         raise RuntimeError, msg
 
     def fail_not_enough_nodes(self):
+        self.fail()
         msg = "Not enough nodes available for provisioning"
         raise RuntimeError, msg
 
