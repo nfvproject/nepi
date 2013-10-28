@@ -19,7 +19,8 @@
 #	      Alexandros Kouvakas <alexandros.kouvakas@gmail.com>
 
 from nepi.execution.attribute import Attribute, Flags, Types
-from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState       
+from nepi.execution.resource import ResourceManager, clsinit_copy, \
+        ResourceState, failtrap
 from nepi.resources.planetlab.openvswitch.ovs import OVSWitch        
 from nepi.resources.planetlab.node import PlanetlabNode        
 from nepi.resources.linux.application import LinuxApplication
@@ -178,16 +179,7 @@ class OVSPort(LinuxApplication):
         command = self.replace_paths(command)
         return command
         
-    def provision(self):
-        """ Provision the ports.No meaning.
-        """
-        pass
-
-    def discover(self):
-        """ Discover the ports.No meaning
-        """	
-        pass
-
+    @failtrap
     def deploy(self):
         """ Wait until ovswitch is started
         """
@@ -197,50 +189,39 @@ class OVSPort(LinuxApplication):
             self.ec.schedule(reschedule_delay, self.deploy)
             
         else:
-            try:
-                self.discover()
-                self.provision()
-                self.get_host_ip()
-                self.create_port()
-                self.get_local_end()
-                self.ovswitch.ovs_status()
-                self._state = ResourceState.READY
-            except:
-                self._state = ResourceState.FAILED
-                raise
+            self.discover()
+            self.provision()
+            self.get_host_ip()
+            self.create_port()
+            self.get_local_end()
+            self.ovswitch.ovs_status()
+            super(OVSPort, self).deploy()
 
-    def start(self):
-        """ Start the RM. It means nothing special for 
-            ovsport for now.
-        """
-        pass
-	
-    def stop(self):
-        """ Stop the RM. It means nothing special for 
-            ovsport for now.        
-        """
-        pass
-        
     def release(self):
         """ Release the port RM means delete the ports
         """
         # OVS needs to wait until all associated RMs are released
         # to be released
-        from nepi.resources.planetlab.openvswitch.tunnel import Tunnel
-        rm = self.get_connected(Tunnel.rtype())
-        if rm and rm[0].state < ResourceState.FINISHED:
-            self.ec.schedule(reschedule_delay, self.release)
-            return 
-            
-        msg = "Deleting the port %s" % self.get('port_name')
-        self.info(msg)
-        cmd = "sliver-ovs del_port %s" % self.get('port_name')
-        (out, err), proc = self.node.run(cmd, self.ovswitch.ovs_checks,
-                sudo = True)
+        try:
+            from nepi.resources.planetlab.openvswitch.tunnel import Tunnel
+            rm = self.get_connected(Tunnel.rtype())
+            if rm and rm[0].state < ResourceState.FINISHED:
+                self.ec.schedule(reschedule_delay, self.release)
+                return 
+                
+            msg = "Deleting the port %s" % self.get('port_name')
+            self.info(msg)
+            cmd = "sliver-ovs del_port %s" % self.get('port_name')
+            (out, err), proc = self.node.run(cmd, self.ovswitch.ovs_checks,
+                    sudo = True)
 
-        if proc.poll():
-            self.fail()
-            self.error(msg, out, err)
-            raise RuntimeError, msg
+            if proc.poll():
+                self.fail()
+                self.error(msg, out, err)
+                raise RuntimeError, msg
+        except:
+            import traceback
+            err = traceback.format_exc()
+            self.error(err)
 
-        self._state = ResourceState.RELEASED
+        super(OVSPort, self).release()

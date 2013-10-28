@@ -18,15 +18,13 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 #         Julien Tribino <julien.tribino@inria.fr>
 
-
-from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState, \
-        reschedule_delay
+from nepi.execution.resource import ResourceManager, clsinit_copy, \
+        ResourceState, reschedule_delay, failtrap
 from nepi.execution.attribute import Attribute, Flags 
 from nepi.resources.omf.omf_resource import ResourceGateway, OMFResource
 from nepi.resources.omf.omf_api import OMFAPIFactory
 
 import time
-
 
 @clsinit_copy
 class OMFNode(OMFResource):
@@ -98,6 +96,7 @@ class OMFNode(OMFResource):
 
         return False
 
+    @failtrap
     def deploy(self):
         """ Deploy the RM. It means : Send Xmpp Message Using OMF protocol 
             to enroll the node into the experiment.
@@ -112,63 +111,37 @@ class OMFNode(OMFResource):
         if not self._omf_api :
             msg = "Credentials are not initialzed. XMPP Connections impossible"
             self.error(msg)
-            self.fail()
-            return
+            raise RuntimeError, msg
 
         if not self.get('hostname') :
             msg = "Hostname's value is not initialized"
             self.error(msg)
-            self.fail()
-            return False
+            raise RuntimeError, msg
 
         try:
             self._omf_api.enroll_host(self.get('hostname'))
         except AttributeError:
             msg = "Credentials are not initialzed. XMPP Connections impossible"
             self.error(msg)
-            self.fail()
-            #raise AttributeError, msg
+            raise
 
         super(OMFNode, self).deploy()
-
-    def discover(self):
-        """ Discover the availables nodes
-
-        """
-        pass
-     
-    def provision(self):
-        """ Provision some availables nodes
-
-        """
-        pass
-
-    def start(self):
-        """Start the RM. It means nothing special for an interface for now
-           It becomes STARTED as soon as this method starts.
-
-        """
-
-        super(OMFNode, self).start()
-
-    def stop(self):
-        """Stop the RM. It means nothing special for an interface for now
-           It becomes STOPPED as soon as this method stops
-
-        """
-        super(OMFNode, self).stop()
-        self.set_finished()
 
     def release(self):
         """Clean the RM at the end of the experiment
 
         """
-        if self._omf_api :
-            self._omf_api.release(self.get('hostname'))
+        try:
+            if self._omf_api :
+                self._omf_api.release(self.get('hostname'))
 
-            OMFAPIFactory.release_api(self.get('xmppSlice'), 
-                self.get('xmppHost'), self.get('xmppPort'), 
-                self.get('xmppPassword'), exp_id = self.exp_id)
+                OMFAPIFactory.release_api(self.get('xmppSlice'), 
+                    self.get('xmppHost'), self.get('xmppPort'), 
+                    self.get('xmppPassword'), exp_id = self.exp_id)
+        except:
+            import traceback
+            err = traceback.format_exc()
+            self.error(err)
 
         super(OMFNode, self).release()
 

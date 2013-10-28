@@ -18,6 +18,27 @@
     Author: Alina Quereilhac <alina.quereilhac@inria.fr>
             Julien Tribino <julien.tribino@inria.fr>
 
+    Example :
+      - Testbed : Nitos
+      - Explanation :
+
+       VLC Streaming on VLC
+                   
+     Node                                               Node   
+     omf.nitos.node0xx                                  omf.nitos.node0xx
+     0--------------------------------------------------0
+     |                                                  |
+     |                                                  |
+     0                                                  0
+     VLC Server                                         VLC Client
+   
+      - Experiment:
+        - t0 : Deployment
+        - t1 : VLC Server start
+        - t2 (t1 + 4s) : VLC Client start
+        - t3 (t2 + 22s) : Client and Server Stop
+        - t4 (t3 + 3s): Kill all the applications
+
 """
 
 #!/usr/bin/env python
@@ -26,7 +47,6 @@ from nepi.execution.ec import ExperimentController
 
 # Create the EC
 ec = ExperimentController()
-
 
 # Create and Configure the Nodes
 node1 = ec.register_resource("OMFNode")
@@ -50,10 +70,6 @@ ec.set(iface1, 'mode', "adhoc")
 ec.set(iface1, 'type', "g")
 ec.set(iface1, 'essid', "vlcexp")
 ec.set(iface1, 'ip', "192.168.0.XX")
-ec.set(iface1, 'xmppSlice', "ZZZ")
-ec.set(iface1, 'xmppHost', "nitlab.inf.uth.gr")
-ec.set(iface1, 'xmppPort', "5222")
-ec.set(iface1, 'xmppPassword', "1234")
 
 iface2 = ec.register_resource("OMFWifiInterface")
 ec.set(iface2, 'alias', "w0")
@@ -61,10 +77,6 @@ ec.set(iface2, 'mode', "adhoc")
 ec.set(iface2, 'type', 'g')
 ec.set(iface2, 'essid', "vlcexp")
 ec.set(iface2, 'ip', "192.168.0.YY")
-ec.set(iface2, 'xmppSlice', "ZZZ")
-ec.set(iface2, 'xmppHost', "nitlab.inf.uth.gr")
-ec.set(iface2, 'xmppPort', "5222")
-ec.set(iface2, 'xmppPassword', "1234")
 
 # Create and Configure the Channel
 channel = ec.register_resource("OMFChannel")
@@ -80,40 +92,24 @@ ec.set(app1, 'appid', 'Vlc#1')
 ec.set(app1, 'path', "/root/vlc-1.1.13/cvlc")
 ec.set(app1, 'args', "/root/10-by-p0d.avi --sout '#rtp{dst=192.168.0.YY,port=1234,mux=ts}'")
 ec.set(app1, 'env', "DISPLAY=localhost:10.0 XAUTHORITY=/root/.Xauthority")
-ec.set(app1, 'xmppSlice', "ZZZ")
-ec.set(app1, 'xmppHost', "nitlab.inf.uth.gr")
-ec.set(app1, 'xmppPort', "5222")
-ec.set(app1, 'xmppPassword', "1234")
 
 app2 = ec.register_resource("OMFApplication")
 ec.set(app2, 'appid', 'Vlc#2')
 ec.set(app2, 'path', "/root/vlc-1.1.13/cvlc")
 ec.set(app2, 'args', "rtp://192.168.0.YY:1234")
 ec.set(app2, 'env', "DISPLAY=localhost:10.0 XAUTHORITY=/root/.Xauthority")
-ec.set(app2, 'xmppSlice', "ZZZ")
-ec.set(app2, 'xmppHost', "nitlab.inf.uth.gr")
-ec.set(app2, 'xmppPort', "5222")
-ec.set(app2, 'xmppPassword', "1234")
 
 app3 = ec.register_resource("OMFApplication")
 ec.set(app3, 'appid', 'Kill#2')
 ec.set(app3, 'path', "/usr/bin/killall")
 ec.set(app3, 'args', "vlc_app")
 ec.set(app3, 'env', " ")
-ec.set(app3, 'xmppSlice', "ZZZ")
-ec.set(app3, 'xmppHost', "nitlab.inf.uth.gr")
-ec.set(app3, 'xmppPort', "5222")
-ec.set(app3, 'xmppPassword', "1234")
 
 app4 = ec.register_resource("OMFApplication")
 ec.set(app4, 'appid', 'Kill#1')
 ec.set(app4, 'path', "/usr/bin/killall")
 ec.set(app4, 'args', "vlc_app")
 ec.set(app4, 'env', " ")
-ec.set(app4, 'xmppSlice', "ZZZ")
-ec.set(app4, 'xmppHost', "nitlab.inf.uth.gr")
-ec.set(app4, 'xmppPort', "5222")
-ec.set(app4, 'xmppPassword', "1234")
 
 # Connection
 ec.register_connection(app3, node1)

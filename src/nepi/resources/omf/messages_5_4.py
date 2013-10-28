@@ -115,7 +115,7 @@ class MessageHandler():
         """
         payload = ET.Element("omf-message")
         stdin = self._id_element(payload,"STDIN")
-        value = self._attr_element(stdin,"TARGET",target)
+        value = self._attr_element(stdin,"VALUE",value)
         sliceid = self._attr_element(stdin,"SLICEID",self._slice_id)
         expid = self._attr_element(stdin,"EXPID",self._exp_id)
         target = self._attr_element(stdin,"TARGET",target)

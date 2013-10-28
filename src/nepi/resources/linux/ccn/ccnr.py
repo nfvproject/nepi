@@ -20,7 +20,7 @@
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import Trace, TraceAttr
 from nepi.execution.resource import clsinit_copy, ResourceState, \
-    ResourceAction, reschedule_delay
+    ResourceAction, reschedule_delay, failtrap
 from nepi.resources.linux.application import LinuxApplication
 from nepi.resources.linux.ccn.ccnd import LinuxCCND
 from nepi.util.timefuncs import tnow
@@ -200,6 +200,7 @@ class LinuxCCNR(LinuxApplication):
         if self.ccnd: return self.ccnd.node
         return None
 
+    @failtrap
     def deploy(self):
         if not self.ccnd or self.ccnd.state < ResourceState.READY:
             self.debug("---- RESCHEDULING DEPLOY ---- CCND state %s " % self.ccnd.state )
@@ -207,23 +208,19 @@ class LinuxCCNR(LinuxApplication):
             # ccnr needs to wait until ccnd is deployed and running
             self.ec.schedule(reschedule_delay, self.deploy)
         else:
-            try:
-                if not self.get("command"):
-                    self.set("command", self._start_command)
+            if not self.get("command"):
+                self.set("command", self._start_command)
 
-                if not self.get("env"):
-                    self.set("env", self._environment)
+            if not self.get("env"):
+                self.set("env", self._environment)
 
-                command = self.get("command")
+            command = self.get("command")
 
-                self.info("Deploying command '%s' " % command)
+            self.info("Deploying command '%s' " % command)
 
-                self.discover()
-                self.provision()
-            except:
-                self.fail()
-                raise
- 
+            self.discover()
+            self.provision()
+
             self.debug("----- READY ---- ")
             self.set_ready()
 
@@ -255,6 +252,7 @@ class LinuxCCNR(LinuxApplication):
                 env = env,
                 raise_on_error = True)
 
+    @failtrap
     def start(self):
         if self.state == ResourceState.READY:
             command = self.get("command")
@@ -264,7 +262,6 @@ class LinuxCCNR(LinuxApplication):
         else:
             msg = " Failed to execute command '%s'" % command
             self.error(msg, out, err)
-            self.fail()
             raise RuntimeError, msg
 
     @property

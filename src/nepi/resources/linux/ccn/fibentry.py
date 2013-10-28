@@ -20,7 +20,7 @@
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import Trace, TraceAttr
 from nepi.execution.resource import clsinit_copy, ResourceState, \
-    ResourceAction, reschedule_delay
+    ResourceAction, reschedule_delay, failtrap
 from nepi.resources.linux.application import LinuxApplication
 from nepi.resources.linux.ccn.ccnd import LinuxCCND
 from nepi.util.timefuncs import tnow
@@ -108,36 +108,33 @@ class LinuxFIBEntry(LinuxApplication):
             return self.ec.trace(self._traceroute, "stdout", attr, block, offset)
 
         return super(LinuxFIBEntry, self).trace(name, attr, block, offset)
-        
+    
+    @failtrap
     def deploy(self):
         # Wait until associated ccnd is provisioned
         if not self.ccnd or self.ccnd.state < ResourceState.READY:
             # ccnr needs to wait until ccnd is deployed and running
             self.ec.schedule(reschedule_delay, self.deploy)
         else:
-            try:
-                if not self.get("ip"):
-                    host = self.get("host")
-                    ip = socket.gethostbyname(host)
-                    self.set("ip", ip)
+            if not self.get("ip"):
+                host = self.get("host")
+                ip = socket.gethostbyname(host)
+                self.set("ip", ip)
 
-                if not self.get("command"):
-                    self.set("command", self._start_command)
+            if not self.get("command"):
+                self.set("command", self._start_command)
 
-                if not self.get("env"):
-                    self.set("env", self._environment)
+            if not self.get("env"):
+                self.set("env", self._environment)
 
-                command = self.get("command")
+            command = self.get("command")
 
-                self.info("Deploying command '%s' " % command)
+            self.info("Deploying command '%s' " % command)
 
-                self.discover()
-                self.provision()
-                self.configure()
-            except:
-                self.fail()
-                raise
- 
+            self.discover()
+            self.provision()
+            self.configure()
+
             self.debug("----- READY ---- ")
             self.set_ready()
 
@@ -161,7 +158,6 @@ class LinuxFIBEntry(LinuxApplication):
         if proc.poll():
             msg = "Failed to execute command"
             self.error(msg, out, err)
-            self.fail()
             raise RuntimeError, msg
         
     def configure(self):
@@ -195,6 +191,7 @@ class LinuxFIBEntry(LinuxApplication):
             # schedule mtr deploy
             self.ec.deploy(guids=[self._traceroute], group = self.deployment_group)
 
+    @failtrap
     def start(self):
         if self.state == ResourceState.READY:
             command = self.get("command")
@@ -204,9 +201,9 @@ class LinuxFIBEntry(LinuxApplication):
         else:
             msg = " Failed to execute command '%s'" % command
             self.error(msg, out, err)
-            self.fail()
             raise RuntimeError, msg
 
+    @failtrap
     def stop(self):
         command = self.get('command')
         env = self.get('env')
@@ -223,7 +220,6 @@ class LinuxFIBEntry(LinuxApplication):
             if err:
                 msg = " Failed to execute command '%s'" % command
                 self.error(msg, out, err)
-                self.fail()
                 raise RuntimeError, msg
 
     @property

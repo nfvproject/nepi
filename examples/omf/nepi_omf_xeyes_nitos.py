@@ -18,6 +18,25 @@
     Author: Alina Quereilhac <alina.quereilhac@inria.fr>
             Julien Tribino <julien.tribino@inria.fr>
 
+    Example :
+      - Testbed : Nitos
+      - Explanation :
+
+       VLC Streaming on VLC
+                   
+     Node
+     omf.nitos.node0xx 
+     0
+     |
+     |
+     0
+     xEyes
+   
+      - Experiment:
+        - t0 : Deployment
+        - t1 : xEeyes Start
+        - t2 (t1 + 10s) : xEyes stop
+        - t3 (t2 + 2s) : Kill the application
 """
 
 #!/usr/bin/env python
@@ -61,20 +80,12 @@ ec.set(app1, 'appid', 'XEyes#1')
 ec.set(app1, 'path', "/usr/bin/xeyes")
 ec.set(app1, 'args', " ")
 ec.set(app1, 'env', "DISPLAY=localhost:10.0 XAUTHORITY=/root/.Xauthority")
-ec.set(app1, 'xmppSlice', "ZZZ")
-ec.set(app1, 'xmppHost', "nitlab.inf.uth.gr")
-ec.set(app1, 'xmppPort', "5222")
-ec.set(app1, 'xmppPassword', "1234")
 
 app2 = ec.register_resource("OMFApplication")
 ec.set(app2, 'appid', 'Kill#1')
 ec.set(app2, 'path', "/usr/bin/kill")
 ec.set(app2, 'args', "xeyes")
 ec.set(app2, 'env', " ")
-ec.set(app2, 'xmppSlice', "ZZZ")
-ec.set(app2, 'xmppHost', "nitlab.inf.uth.gr")
-ec.set(app2, 'xmppPort', "5222")
-ec.set(app2, 'xmppPassword', "1234")
 
 # Connection
 ec.register_connection(app2, node1)

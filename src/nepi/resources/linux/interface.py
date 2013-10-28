@@ -18,8 +18,8 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 from nepi.execution.attribute import Attribute, Types, Flags
-from nepi.execution.resource import ResourceManager, clsinit, ResourceState, \
-        reschedule_delay
+from nepi.execution.resource import ResourceManager, clsinit_copy, \
+        ResourceState, reschedule_delay, failtrap
 from nepi.resources.linux.node import LinuxNode
 from nepi.resources.linux.channel import LinuxChannel
 
@@ -33,7 +33,7 @@ import time
 # TODO: UP, MTU attributes!
 
 
-@clsinit
+@clsinit_copy
 class LinuxInterface(ResourceManager):
     _rtype = "LinuxInterface"
     _help = "Controls network devices on Linux hosts through the ifconfig tool"
@@ -102,6 +102,7 @@ class LinuxInterface(ResourceManager):
         if chan: return chan[0]
         return None
 
+    @failtrap
     def discover(self):
         devname = self.get("deviceName")
         ip4 = self.get("ip4")
@@ -183,6 +184,7 @@ class LinuxInterface(ResourceManager):
 
         super(LinuxInterface, self).discover()
 
+    @failtrap
     def provision(self):
         devname = self.get("deviceName")
         ip4 = self.get("ip4")
@@ -226,6 +228,7 @@ class LinuxInterface(ResourceManager):
 
         super(LinuxInterface, self).provision()
 
+    @failtrap
     def deploy(self):
         # Wait until node is provisioned
         node = self.node
@@ -238,19 +241,20 @@ class LinuxInterface(ResourceManager):
         else:
             # Verify if the interface exists in node. If not, configue
             # if yes, load existing configuration
-            try:
-                self.discover()
-                self.provision()
-            except:
-                self.fail()
-                raise
+            self.discover()
+            self.provision()
 
             super(LinuxInterface, self).deploy()
 
     def release(self):
-        tear_down = self.get("tearDown")
-        if tear_down:
-            self.execute(tear_down)
+        try:
+            tear_down = self.get("tearDown")
+            if tear_down:   
+                self.execute(tear_down)
+        except:
+            import traceback
+            err = traceback.format_exc()
+            self.error(err)
 
         super(LinuxInterface, self).release()
 

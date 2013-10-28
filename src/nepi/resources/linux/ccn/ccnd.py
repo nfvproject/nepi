@@ -20,7 +20,7 @@
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import Trace, TraceAttr
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
-        ResourceState, reschedule_delay
+        ResourceState, reschedule_delay, failtrap
 from nepi.resources.linux.application import LinuxApplication
 from nepi.resources.linux.node import OSType
 from nepi.util.timefuncs import tnow, tdiffsec
@@ -136,6 +136,7 @@ class LinuxCCND(LinuxApplication):
     def path(self):
         return "PATH=$PATH:${BIN}/%s/" % self.version 
 
+    @failtrap
     def deploy(self):
         if not self.node or self.node.state < ResourceState.READY:
             self.debug("---- RESCHEDULING DEPLOY ---- node state %s " % self.node.state )
@@ -143,43 +144,39 @@ class LinuxCCND(LinuxApplication):
             # ccnd needs to wait until node is deployed and running
             self.ec.schedule(reschedule_delay, self.deploy)
         else:
-            try:
-                if not self.get("command"):
-                    self.set("command", self._start_command)
-                
-                if not self.get("depends"):
-                    self.set("depends", self._dependencies)
+            if not self.get("command"):
+                self.set("command", self._start_command)
+            
+            if not self.get("depends"):
+                self.set("depends", self._dependencies)
 
-                if not self.get("sources"):
-                    self.set("sources", self._sources)
+            if not self.get("sources"):
+                self.set("sources", self._sources)
 
-                sources = self.get("sources")
-                source = sources.split(" ")[0]
-                basename = os.path.basename(source)
-                self._version = ( basename.strip().replace(".tar.gz", "")
-                        .replace(".tar","")
-                        .replace(".gz","")
-                        .replace(".zip","") )
+            sources = self.get("sources")
+            source = sources.split(" ")[0]
+            basename = os.path.basename(source)
+            self._version = ( basename.strip().replace(".tar.gz", "")
+                    .replace(".tar","")
+                    .replace(".gz","")
+                    .replace(".zip","") )
 
-                if not self.get("build"):
-                    self.set("build", self._build)
+            if not self.get("build"):
+                self.set("build", self._build)
 
-                if not self.get("install"):
-                    self.set("install", self._install)
+            if not self.get("install"):
+                self.set("install", self._install)
 
-                if not self.get("env"):
-                    self.set("env", self._environment)
+            if not self.get("env"):
+                self.set("env", self._environment)
 
-                command = self.get("command")
+            command = self.get("command")
 
-                self.info("Deploying command '%s' " % command)
+            self.info("Deploying command '%s' " % command)
 
-                self.discover()
-                self.provision()
-            except:
-                self.fail()
-                raise
- 
+            self.discover()
+            self.provision()
+
             self.debug("----- READY ---- ")
             self.set_ready()
 
@@ -202,6 +199,7 @@ class LinuxCCND(LinuxApplication):
                 env = env,
                 raise_on_error = True)
 
+    @failtrap
     def start(self):
         if self.state == ResourceState.READY:
             command = self.get("command")
@@ -211,9 +209,9 @@ class LinuxCCND(LinuxApplication):
         else:
             msg = " Failed to execute command '%s'" % command
             self.error(msg, out, err)
-            self.set_failed()
             raise RuntimeError, msg
 
+    @failtrap
     def stop(self):
         command = self.get('command') or ''
         
@@ -246,7 +244,7 @@ class LinuxCCND(LinuxApplication):
         state_check_delay = 0.5
         if self._state == ResourceState.STARTED and \
                 tdiffsec(tnow(), self._last_state_check) > state_check_delay:
-            (out, err), proc = self._ccndstatus
+            (out, err), proc = self._ccndstatus()
 
             retcode = proc.poll()
 
@@ -263,7 +261,6 @@ class LinuxCCND(LinuxApplication):
 
         return self._state
 
-    @property
     def _ccndstatus(self):
         env = self.get('env') or ""
         environ = self.node.format_environment(env, inline = True)

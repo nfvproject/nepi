@@ -19,8 +19,7 @@
 
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.resource import clsinit_copy, ResourceState, \
-        reschedule_delay
-from nepi.execution.resource import clsinit_copy 
+        reschedule_delay, failtrap 
 from nepi.resources.linux.application import LinuxApplication
 from nepi.util.timefuncs import tnow
 
@@ -214,6 +213,7 @@ class LinuxUdpTest(LinuxApplication):
         super(LinuxUdpTest, self).__init__(ec, guid)
         self._home = "udptest-%s" % self.guid
 
+    @failtrap
     def deploy(self):
         if not self.get("command"):
             self.set("command", self._start_command)
@@ -247,6 +247,7 @@ class LinuxUdpTest(LinuxApplication):
             # finished to continue )
             self._run_in_background()
     
+    @failtrap
     def start(self):
         if self.get("s") == True:
             # Server is already running
@@ -258,8 +259,7 @@ class LinuxUdpTest(LinuxApplication):
             else:
                 msg = " Failed to execute command '%s'" % command
                 self.error(msg, out, err)
-                self.fail()
-                raise RuntimeError, msg
+                raise RuntimeError, err
         else:
             super(LinuxUdpTest, self).start()
  

@@ -25,7 +25,6 @@ class TaskStatus:
     DONE = 1
     ERROR = 2
 
-
 class Task(object):
     """ This class is to define a task, that is represented by an id,
     an execution time 'timestamp' and an action 'callback """
@@ -53,6 +52,11 @@ class HeapScheduler(object):
         self._queue = list() 
         self._valid = set()
         self._idgen = itertools.count(1)
+
+    @property
+    def pending(self):
+        """ Returns the list of pending task ids """
+        return self._valid
 
     def schedule(self, task):
         """ Add the task 'task' in the heap of the scheduler
