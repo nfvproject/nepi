@@ -112,15 +112,15 @@ class OvsTestCase(unittest.TestCase):
         ec.set(tap2, "prefix4", 24)
         ec.register_connection(tap2, node4)
 
-        ovstun1 = ec.register_resource("Tunnel")
+        ovstun1 = ec.register_resource("OVSTunnel")
         ec.register_connection(port1, ovstun1)
         ec.register_connection(tap1, ovstun1)
 
-        ovstun2 = ec.register_resource("Tunnel")
+        ovstun2 = ec.register_resource("OVSTunnel")
         ec.register_connection(port3, ovstun2)
         ec.register_connection(tap2, ovstun2)
 
-        ovstun3 = ec.register_resource("Tunnel")
+        ovstun3 = ec.register_resource("OVSTunnel")
         ec.register_connection(port2, ovstun3)
         ec.register_connection(port4, ovstun3)
 

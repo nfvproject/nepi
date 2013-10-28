@@ -18,8 +18,8 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 #         Julien Tribino <julien.tribino@inria.fr>
 
-from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState, \
-        reschedule_delay
+from nepi.execution.resource import ResourceManager, clsinit_copy, \
+        ResourceState, reschedule_delay, failtrap
 from nepi.execution.attribute import Attribute, Flags 
 
 from nepi.resources.omf.node import OMFNode
@@ -120,7 +120,6 @@ class OMFWifiInterface(OMFResource):
         if rm_list: return rm_list[0]
         return None
 
-
     def configure_iface(self):
         """ Configure the interface without the ip
 
@@ -165,6 +164,7 @@ class OMFWifiInterface(OMFResource):
 
         return True
 
+    @failtrap
     def deploy(self):
         """ Deploy the RM. It means : Get the xmpp client and send messages 
         using OMF 5.4 protocol to configure the interface.
@@ -178,21 +178,18 @@ class OMFWifiInterface(OMFResource):
         if not self._omf_api :
             msg = "Credentials are not initialzed. XMPP Connections impossible"
             self.error(msg)
-            self.fail()
-            return
+            raise RuntimeError, msg
 
         if not (self.get('mode') and self.get('type') and self.get('essid') \
                 and self.get('ip')):
             msg = "Interface's variable are not initialized"
             self.error(msg)
-            self.fail()
-            return False
+            raise RuntimeError, msg
 
         if not self.node.get('hostname') :
             msg = "The channel is connected with an undefined node"
             self.error(msg)
-            self.fail()
-            return False
+            raise RuntimeError, msg
 
         # Just for information
         self.debug(" " + self.rtype() + " ( Guid : " + str(self._guid) +") : " + \
@@ -200,43 +197,25 @@ class OMFWifiInterface(OMFResource):
             self.get('essid') + " : " + self.get('ip'))
     
         # Check if the node is already deployed
-        chk1 = True
         if self.state < ResourceState.PROVISIONED:
-            chk1 = self.configure_iface()
-        if chk1:
-            chk2 = self.configure_ip()
+            if self.configure_iface():
+                self.configure_ip()
 
-        if not (chk1 and chk2) :
-            return False
-            
         super(OMFWifiInterface, self).deploy()
-        return True
-
-
-    def start(self):
-        """ Start the RM. It means nothing special for a channel for now
-        It becomes STARTED as soon as this method starts.
-
-        """
-
-        super(OMFWifiInterface, self).start()
-
-    def stop(self):
-        """ Stop the RM. It means nothing special for a channel for now
-        It becomes STOPPED as soon as this method is called
-
-        """
-        super(OMFWifiInterface, self).stop()
-        self.set_finished()
 
     def release(self):
         """ Clean the RM at the end of the experiment and release the API
 
         """
-        if self._omf_api :
-            OMFAPIFactory.release_api(self.get('xmppSlice'), 
-                self.get('xmppHost'), self.get('xmppPort'), 
-                self.get('xmppPassword'), exp_id = self.exp_id)
+        try:
+            if self._omf_api :
+                OMFAPIFactory.release_api(self.get('xmppSlice'), 
+                    self.get('xmppHost'), self.get('xmppPort'), 
+                    self.get('xmppPassword'), exp_id = self.exp_id)
+        except:
+            import traceback
+            err = traceback.format_exc()
+            self.error(err)
 
         super(OMFWifiInterface, self).release()
 

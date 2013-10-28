@@ -19,14 +19,14 @@
 
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import Trace, TraceAttr
-from nepi.execution.resource import ResourceManager, clsinit, ResourceState, \
-        ResourceAction
+from nepi.execution.resource import ResourceManager, clsinit_copy, \
+        ResourceState, ResourceAction, failtrap
 from nepi.util.sshfuncs import ProcStatus
 
 import os
 import tempfile
 
-@clsinit
+@clsinit_copy
 class Collector(ResourceManager):
     """ The collector is reponsible of collecting traces
     of a same type associated to RMs into a local directory.
@@ -69,7 +69,8 @@ class Collector(ResourceManager):
     @property
     def store_path(self):
         return self._store_path
-    
+   
+    @failtrap
     def provision(self):
         trace_name = self.get("traceName")
         if not trace_name:
@@ -97,38 +98,40 @@ class Collector(ResourceManager):
 
         super(Collector, self).provision()
 
+    @failtrap
     def deploy(self):
-        try:
-            self.discover()
-            self.provision()
-        except:
-            self.fail()
-            raise
+        self.discover()
+        self.provision()
 
         super(Collector, self).deploy()
 
     def release(self):
-        trace_name = self.get("traceName")
-        rename = self.get("rename") or trace_name
+        try:
+            trace_name = self.get("traceName")
+            rename = self.get("rename") or trace_name
 
-        msg = "Collecting '%s' traces to local directory %s" % (
-            trace_name, self.store_path)
-        self.info(msg)
+            msg = "Collecting '%s' traces to local directory %s" % (
+                trace_name, self.store_path)
+            self.info(msg)
 
-        rms = self.get_connected()
-        for rm in rms:
-            result = self.ec.trace(rm.guid, trace_name)
-            fpath = os.path.join(self.store_path, "%d.%s" % (rm.guid, 
-                rename))
-            try:
-                f = open(fpath, "w")
-                f.write(result)
-                f.close()
-            except:
-                msg = "Couldn't retrieve trace %s for %d at %s " % (trace_name, 
-                        rm.guid, fpath)
-                self.error(msg)
-                continue
+            rms = self.get_connected()
+            for rm in rms:
+                result = self.ec.trace(rm.guid, trace_name)
+                fpath = os.path.join(self.store_path, "%d.%s" % (rm.guid, 
+                    rename))
+                try:
+                    f = open(fpath, "w")
+                    f.write(result)
+                    f.close()
+                except:
+                    msg = "Couldn't retrieve trace %s for %d at %s " % (trace_name, 
+                            rm.guid, fpath)
+                    self.error(msg)
+                    continue
+        except:
+            import traceback
+            err = traceback.format_exc()
+            self.error(err)
 
         super(Collector, self).release()
 

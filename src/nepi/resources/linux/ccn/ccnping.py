@@ -18,8 +18,8 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 from nepi.execution.attribute import Attribute, Flags, Types
-from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState, \
-    reschedule_delay
+from nepi.execution.resource import ResourceManager, clsinit_copy, \
+        ResourceState, reschedule_delay, failtrap
 from nepi.resources.linux.ccn.ccnpingserver import LinuxCCNPingServer
 from nepi.util.timefuncs import tnow, tdiffsec
 
@@ -65,6 +65,7 @@ class LinuxCCNPing(LinuxCCNPingServer):
         if ccnpingserver: return ccnpingserver[0]
         return None
 
+    @failtrap
     def start(self):
         if not self.ccnpingserver or \
                 self.ccnpingserver.state < ResourceState.STARTED:

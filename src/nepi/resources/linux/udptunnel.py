@@ -19,7 +19,7 @@
 
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.resource import clsinit_copy, ResourceState, \
-        reschedule_delay
+        reschedule_delay, failtrap
 from nepi.resources.linux.application import LinuxApplication
 from nepi.util.sshfuncs import ProcStatus
 from nepi.util.timefuncs import tnow, tdiffsec
@@ -141,7 +141,6 @@ class UdpTunnel(LinuxApplication):
         msg = " Failed to connect endpoints "
         
         if proc.poll():
-            self.fail()
             self.error(msg, out, err)
             raise RuntimeError, msg
     
@@ -154,7 +153,6 @@ class UdpTunnel(LinuxApplication):
             (out, err), proc = endpoint.node.check_errors(self.run_home(endpoint))
             # Out is what was written in the stderr file
             if err:
-                self.fail()
                 msg = " Failed to start command '%s' " % command
                 self.error(msg, out, err)
                 raise RuntimeError, msg
@@ -163,6 +161,7 @@ class UdpTunnel(LinuxApplication):
         port = self.wait_local_port(endpoint)
         return (port, pid, ppid)
 
+    @failtrap
     def provision(self):
         # create run dir for tunnel on each node 
         self.endpoint1.node.mkdir(self.run_home(self.endpoint1))
@@ -192,21 +191,19 @@ class UdpTunnel(LinuxApplication):
  
         self.set_provisioned()
 
+    @failtrap
     def deploy(self):
         if (not self.endpoint1 or self.endpoint1.state < ResourceState.READY) or \
             (not self.endpoint2 or self.endpoint2.state < ResourceState.READY):
             self.ec.schedule(reschedule_delay, self.deploy)
         else:
-            try:
-                self.discover()
-                self.provision()
-            except:
-                self.fail()
-                raise
+            self.discover()
+            self.provision()
  
             self.debug("----- READY ---- ")
             self.set_ready()
 
+    @failtrap
     def start(self):
         if self.state == ResourceState.READY:
             command = self.get("command")
@@ -216,9 +213,9 @@ class UdpTunnel(LinuxApplication):
         else:
             msg = " Failed to execute command '%s'" % command
             self.error(msg, out, err)
-            self.fail()
             raise RuntimeError, msg
 
+    @failtrap
     def stop(self):
         """ Stops application execution
         """
@@ -237,9 +234,8 @@ class UdpTunnel(LinuxApplication):
                     # check if execution errors occurred
                     msg = " Failed to STOP tunnel"
                     self.error(msg, err1, err2)
-                    self.fail()
+                    raise RuntimeError, msg
 
-        if self.state == ResourceState.STARTED:
             self.set_stopped()
 
     @property
@@ -311,7 +307,6 @@ class UdpTunnel(LinuxApplication):
         else:
             msg = "Couldn't retrieve %s" % filename
             self.error(msg, out, err)
-            self.fail()
             raise RuntimeError, msg
 
         return result

@@ -19,7 +19,8 @@
 #	      Alexandros Kouvakas <alexandros.kouvakas@gmail.com>
 
 from nepi.execution.attribute import Attribute, Flags, Types
-from nepi.execution.resource import ResourceManager, clsinit_copy, ResourceState 
+from nepi.execution.resource import ResourceManager, clsinit_copy, \
+        ResourceState, failtrap
 from nepi.resources.linux.application import LinuxApplication
 from nepi.resources.planetlab.node import PlanetlabNode            
 from nepi.resources.planetlab.openvswitch.ovs import OVSWitch   
@@ -29,11 +30,10 @@ import os
 import time
 import socket
 
-
 reschedule_delay = "0.5s"
 
 @clsinit_copy                 
-class Tunnel(LinuxApplication):
+class OVSTunnel(LinuxApplication):
     """
     .. class:: Class Args :
       
@@ -46,7 +46,7 @@ class Tunnel(LinuxApplication):
 
     """
     
-    _rtype = "Tunnel"
+    _rtype = "OVSTunnel"
     _authorized_connections = ["OVSPort", "PlanetlabTap"]    
 
     @classmethod
@@ -93,7 +93,7 @@ class Tunnel(LinuxApplication):
         :type guid: int
     
         """
-        super(Tunnel, self).__init__(ec, guid)
+        super(OVSTunnel, self).__init__(ec, guid)
         self._home = "tunnel-%s" % self.guid
         self.port_info_tunl = []
         self._nodes = []
@@ -246,6 +246,7 @@ class Tunnel(LinuxApplication):
             self.fail()
             self.error(msg, out, err)
             raise RuntimeError, msg
+
         msg = "Connection on host %s configured" \
             % self.node.get("hostname")
         self.info(msg)
@@ -344,6 +345,7 @@ class Tunnel(LinuxApplication):
             self.info(msg)
             return                                                      
 
+    @failtrap
     def provision(self):
         """ Provision the tunnel
         """
@@ -363,68 +365,41 @@ class Tunnel(LinuxApplication):
             (self._pid, self._ppid) = self.udp_connect(self.endpoint2, self.endpoint1)
             switch_connect = self.sw_host_connect(self.endpoint1, self.endpoint2)
 
-        self.debug("------- READY -------")
-        self._provision_time = tnow()
-        self._state = ResourceState.PROVISIONED
+        super(OVSTunnel, self).provision()
 
-    def discover(self):
-        """ Discover the tunnel
-
-        """	
-        pass
-
+    @failtrap
     def deploy(self):
         if (not self.endpoint1 or self.endpoint1.state < ResourceState.READY) or \
             (not self.endpoint2 or self.endpoint2.state < ResourceState.READY):
             self.ec.schedule(reschedule_delay, self.deploy)
         else:
-            try:
-                self.discover()
-                self.provision()
-            except:
-                self.fail()
-                raise
+            self.discover()
+            self.provision()
+
+            super(OVSTunnel, self).deploy()
  
-            self.debug("----- READY ---- ")
-            self._ready_time = tnow()
-            self._state = ResourceState.READY
-
-    def start(self):
-        """ Start the RM. It means nothing special for 
-            ovsport for now.
-        """
-        pass
-        
-	
-    def stop(self):
-        """ Stop the RM. It means nothing special for 
-            ovsport for now.        
-        """
-        pass
-
     def release(self):
         """ Release the udp_tunnel on endpoint2.
             On endpoint1 means nothing special.        
         """
-        if not self.check_endpoints():
-            # Kill the TAP devices
-            # TODO: Make more generic Release method of PLTAP
-            if self._pid and self._ppid:
-                self._nodes = self.get_node(self.endpoint2) 
-                (out, err), proc = self.node.kill(self._pid,
-                        self._ppid, sudo = True)
-            if err or proc.poll():
-                    # check if execution errors occurred
-                    msg = " Failed to delete TAP device"
-                    self.error(msg, err, err)
-                    self.fail()
-            
-        self._state = ResourceState.RELEASED
+        try:
+            if not self.check_endpoints():
+                # Kill the TAP devices
+                # TODO: Make more generic Release method of PLTAP
+                if self._pid and self._ppid:
+                    self._nodes = self.get_node(self.endpoint2) 
+                    (out, err), proc = self.node.kill(self._pid,
+                            self._ppid, sudo = True)
+                if err or proc.poll():
+                        # check if execution errors occurred
+                        msg = " Failed to delete TAP device"
+                        self.error(msg, err, err)
+                        self.fail()
+        except:
+            import traceback
+            err = traceback.format_exc()
+            self.error(err)
 
-
-
-
-
-
+        super(OVSTunnel, self).release()
 
 
