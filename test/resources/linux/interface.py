@@ -63,7 +63,7 @@ class LinuxInterfaceTestCase(unittest.TestCase):
         ec.deploy()
 
         while not all([ ec.state(guid) == ResourceState.STARTED \
-                for guid in [node, iface]]) and not ec.finished:
+                for guid in [node, iface]]):
             time.sleep(0.5)
 
         self.assertTrue(ec.state(node) == ResourceState.STARTED)
