@@ -299,16 +299,13 @@ class ResourceManagerTestCase(unittest.TestCase):
 
         node = ec.register_resource("Node")
 
-        apps = list()
-        for i in xrange(10):
-            app = ec.register_resource("ErrorApplication")
-            ec.register_connection(app, node)
-            apps.append(app)
-
+        app = ec.register_resource("ErrorApplication")
+        ec.register_connection(app, node)
+        apps.append(app)
 
         ec.deploy()
 
-        ec.wait_finished(apps)
+        ec.wait_finished(app)
 
         ec.shutdown()
 
