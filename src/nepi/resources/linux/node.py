@@ -19,7 +19,7 @@
 
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
-        ResourceState, reschedule_delay, failtrap
+        ResourceState, reschedule_delay
 from nepi.resources.linux import rpmfuncs, debfuncs 
 from nepi.util import sshfuncs, execfuncs
 from nepi.util.sshfuncs import ProcStatus
@@ -330,8 +330,7 @@ class LinuxNode(ResourceManager):
     def localhost(self):
         return self.get("hostname") in ['localhost', '127.0.0.7', '::1']
 
-    @failtrap
-    def provision(self):
+    def do_provision(self):
         # check if host is alive
         if not self.is_alive():
             msg = "Deploy failed. Unresponsive node %s" % self.get("hostname")
@@ -358,14 +357,13 @@ class LinuxNode(ResourceManager):
         # Create experiment node home directory
         self.mkdir(self.node_home)
 
-        super(LinuxNode, self).provision()
+        super(LinuxNode, self).do_provision()
 
-    @failtrap
-    def deploy(self):
+    def do_deploy(self):
         if self.state == ResourceState.NEW:
             self.info("Deploying node")
-            self.discover()
-            self.provision()
+            self.do_discover()
+            self.do_provision()
 
         # Node needs to wait until all associated interfaces are 
         # ready before it can finalize deployment
@@ -376,29 +374,24 @@ class LinuxNode(ResourceManager):
                 self.ec.schedule(reschedule_delay, self.deploy)
                 return 
 
-        super(LinuxNode, self).deploy()
+        super(LinuxNode, self).do_deploy()
 
-    def release(self):
-        try:
-            rms = self.get_connected()
-            for rm in rms:
-                # Node needs to wait until all associated RMs are released
-                # before it can be released
-                if rm.state < ResourceState.STOPPED:
-                    self.ec.schedule(reschedule_delay, self.release)
-                    return 
+    def do_release(self):
+        rms = self.get_connected()
+        for rm in rms:
+            # Node needs to wait until all associated RMs are released
+            # before it can be released
+            if rm.state != ResourceState.RELEASED:
+                self.ec.schedule(reschedule_delay, self.release)
+                return 
 
-            tear_down = self.get("tearDown")
-            if tear_down:
-                self.execute(tear_down)
+        tear_down = self.get("tearDown")
+        if tear_down:
+            self.execute(tear_down)
 
-            self.clean_processes()
-        except:
-            import traceback
-            err = traceback.format_exc()
-            self.error(err)
+        self.clean_processes()
 
-        super(LinuxNode, self).release()
+        super(LinuxNode, self).do_release()
 
     def valid_connection(self, guid):
         # TODO: Validate!
@@ -422,8 +415,8 @@ class LinuxNode(ResourceManager):
                 "sudo -S killall -u %s || /bin/true ; " % self.get("username"))
 
         out = err = ""
-        (out, err), proc = self.execute(cmd, retry = 1, with_lock = True) 
-            
+        (out, err), proc = self.execute(cmd, retry = 1, with_lock = True)
+
     def clean_home(self):
         """ Cleans all NEPI related folders in the Linux host
         """

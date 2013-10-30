@@ -28,11 +28,9 @@ import time
 import unittest
 import multiprocessing
 
-class DummyEC(ExperimentController):
-    pass
-
-def create_node(ec, username, pl_user, pl_password, hostname=None, country=None,
-                operatingSystem=None, minBandwidth=None, minCpu=None):
+def create_node(ec, username, pl_user, pl_password, hostname = None, 
+        country = None, operatingSystem = None, minBandwidth = None, 
+        minCpu = None):
 
     node = ec.register_resource("PlanetlabNode")
 
@@ -60,7 +58,6 @@ def create_node(ec, username, pl_user, pl_password, hostname=None, country=None,
     return node
 
 class PLNodeFactoryTestCase(unittest.TestCase):
-
     def test_creation_phase(self):
         self.assertEquals(PlanetlabNode.rtype(), "PlanetlabNode")
         self.assertEquals(len(PlanetlabNode._attributes), 29)
@@ -73,7 +70,7 @@ class PLNodeTestCase(unittest.TestCase):
     """
 
     def setUp(self):
-        self.ec = DummyEC()
+        self.ec = ExperimentController()
         self.username = "inria_sfatest"
         self.pl_user = os.environ.get("PL_USER")
         self.pl_password = os.environ.get("PL_PASS")

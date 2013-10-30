@@ -20,7 +20,7 @@
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import Trace, TraceAttr
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
-        ResourceState, reschedule_delay, failtrap
+        ResourceState, reschedule_delay
 from nepi.resources.linux.node import LinuxNode
 from nepi.util.sshfuncs import ProcStatus
 from nepi.util.timefuncs import tnow, tdiffsec
@@ -270,8 +270,7 @@ class LinuxApplication(ResourceManager):
 
         return out
 
-    @failtrap
-    def provision(self):
+    def do_provision(self):
         # create run dir for application
         self.node.mkdir(self.run_home)
    
@@ -318,7 +317,7 @@ class LinuxApplication(ResourceManager):
        
         self.info("Provisioning finished")
 
-        super(LinuxApplication, self).provision()
+        super(LinuxApplication, self).do_provision()
 
     def upload_start_command(self):
         # Upload command to remote bash script
@@ -471,8 +470,7 @@ class LinuxApplication(ResourceManager):
             # replace application specific paths in the command
             return self.replace_paths(install)
 
-    @failtrap
-    def deploy(self):
+    def do_deploy(self):
         # Wait until node is associated and deployed
         node = self.node
         if not node or node.state < ResourceState.READY:
@@ -481,13 +479,12 @@ class LinuxApplication(ResourceManager):
         else:
             command = self.get("command") or ""
             self.info("Deploying command '%s' " % command)
-            self.discover()
-            self.provision()
+            self.do_discover()
+            self.do_provision()
 
-            super(LinuxApplication, self).deploy()
+            super(LinuxApplication, self).do_deploy()
    
-    @failtrap
-    def start(self):
+    def do_start(self):
         command = self.get("command")
 
         self.info("Starting command '%s'" % command)
@@ -495,14 +492,14 @@ class LinuxApplication(ResourceManager):
         if not command:
             # If no command was given (i.e. Application was used for dependency
             # installation), then the application is directly marked as FINISHED
-            self.set_finished()
+            super(LinuxApplication, self).do_finished()
         else:
             if self.in_foreground:
                 self._run_in_foreground()
             else:
                 self._run_in_background()
 
-            super(LinuxApplication, self).start()
+            super(LinuxApplication, self).do_start()
 
     def _run_in_foreground(self):
         command = self.get("command")
@@ -578,8 +575,7 @@ class LinuxApplication(ResourceManager):
                 self.error(msg, out, err)
                 raise RuntimeError, msg
     
-    @failtrap
-    def stop(self):
+    def do_stop(self):
         """ Stops application execution
         """
         command = self.get('command') or ''
@@ -606,23 +602,18 @@ class LinuxApplication(ResourceManager):
                         msg = " Failed to STOP command '%s' " % self.get("command")
                         self.error(msg, out, err)
         
-            super(LinuxApplication, self).stop()
+            super(LinuxApplication, self).do_stop()
 
-    def release(self):
+    def do_release(self):
         self.info("Releasing resource")
 
-        try:
-            tear_down = self.get("tearDown")
-            if tear_down:
-                self.node.execute(tear_down)
+        tear_down = self.get("tearDown")
+        if tear_down:
+            self.node.execute(tear_down)
 
-            self.stop()
-        except:
-            import traceback
-            err = traceback.format_exc()
-            self.error(err)
+        self.do_stop()
 
-        super(LinuxApplication, self).release()
+        super(LinuxApplication, self).do_release()
         
     @property
     def state(self):

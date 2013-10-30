@@ -19,7 +19,7 @@
 #         Julien Tribino <julien.tribino@inria.fr>
 
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
-        ResourceState, reschedule_delay, failtrap
+        ResourceState, reschedule_delay
 from nepi.execution.attribute import Attribute, Flags 
 from nepi.resources.omf.omf_resource import ResourceGateway, OMFResource
 from nepi.resources.omf.node import OMFNode
@@ -136,8 +136,7 @@ class OMFApplication(OMFResource):
 
             return True
 
-    @failtrap
-    def deploy(self):
+    def do_deploy(self):
         """ Deploy the RM. It means nothing special for an application 
         for now (later it will be upload sources, ...)
         It becomes DEPLOYED after getting the xmpp client.
@@ -153,10 +152,9 @@ class OMFApplication(OMFResource):
             self.error(msg)
             raise RuntimeError, msg
 
-        super(OMFApplication, self).deploy()
+        super(OMFApplication, self).do_deploy()
 
-    @failtrap
-    def start(self):
+    def do_start(self):
         """ Start the RM. It means : Send Xmpp Message Using OMF protocol 
          to execute the application. 
          It becomes STARTED before the messages are sent (for coordination)
@@ -186,10 +184,9 @@ class OMFApplication(OMFResource):
             self.error(msg)
             raise
 
-        super(OMFApplication, self).start()
+        super(OMFApplication, self).do_start()
 
-    @failtrap
-    def stop(self):
+    def do_stop(self):
         """ Stop the RM. It means : Send Xmpp Message Using OMF protocol to 
         kill the application. 
         State is set to STOPPED after the message is sent.
@@ -202,22 +199,16 @@ class OMFApplication(OMFResource):
             self.error(msg)
             raise
 
-        super(OMFApplication, self).stop()
-        self.set_finished()
+        super(OMFApplication, self).do_stop()
 
-    def release(self):
+    def do_release(self):
         """ Clean the RM at the end of the experiment and release the API.
 
         """
-        try:
-            if self._omf_api :
-                OMFAPIFactory.release_api(self.get('xmppSlice'), 
-                    self.get('xmppHost'), self.get('xmppPort'), 
-                    self.get('xmppPassword'), exp_id = self.exp_id)
-        except:
-            import traceback
-            err = traceback.format_exc()
-            self.error(err)
+        if self._omf_api:
+            OMFAPIFactory.release_api(self.get('xmppSlice'), 
+                self.get('xmppHost'), self.get('xmppPort'), 
+                self.get('xmppPassword'), exp_id = self.exp_id)
 
-        super(OMFApplication, self).release()
+        super(OMFApplication, self).do_release()
 

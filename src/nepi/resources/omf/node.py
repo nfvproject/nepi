@@ -19,7 +19,7 @@
 #         Julien Tribino <julien.tribino@inria.fr>
 
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
-        ResourceState, reschedule_delay, failtrap
+        ResourceState, reschedule_delay
 from nepi.execution.attribute import Attribute, Flags 
 from nepi.resources.omf.omf_resource import ResourceGateway, OMFResource
 from nepi.resources.omf.omf_api import OMFAPIFactory
@@ -96,8 +96,7 @@ class OMFNode(OMFResource):
 
         return False
 
-    @failtrap
-    def deploy(self):
+    def do_deploy(self):
         """ Deploy the RM. It means : Send Xmpp Message Using OMF protocol 
             to enroll the node into the experiment.
             It becomes DEPLOYED after sending messages to enroll the node
@@ -125,23 +124,18 @@ class OMFNode(OMFResource):
             self.error(msg)
             raise
 
-        super(OMFNode, self).deploy()
+        super(OMFNode, self).do_deploy()
 
-    def release(self):
-        """Clean the RM at the end of the experiment
+    def do_release(self):
+        """ Clean the RM at the end of the experiment
 
         """
-        try:
-            if self._omf_api :
-                self._omf_api.release(self.get('hostname'))
+        if self._omf_api:
+            self._omf_api.release(self.get('hostname'))
 
-                OMFAPIFactory.release_api(self.get('xmppSlice'), 
-                    self.get('xmppHost'), self.get('xmppPort'), 
-                    self.get('xmppPassword'), exp_id = self.exp_id)
-        except:
-            import traceback
-            err = traceback.format_exc()
-            self.error(err)
+            OMFAPIFactory.release_api(self.get('xmppSlice'), 
+                self.get('xmppHost'), self.get('xmppPort'), 
+                self.get('xmppPassword'), exp_id = self.exp_id)
 
-        super(OMFNode, self).release()
+        super(OMFNode, self).do_release()
 

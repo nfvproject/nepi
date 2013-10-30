@@ -20,7 +20,7 @@
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import Trace, TraceAttr
 from nepi.execution.resource import clsinit_copy, ResourceState, \
-    ResourceAction, reschedule_delay, failtrap
+    ResourceAction, reschedule_delay
 from nepi.resources.linux.application import LinuxApplication
 from nepi.resources.linux.ccn.ccnd import LinuxCCND
 from nepi.util.timefuncs import tnow
@@ -109,8 +109,7 @@ class LinuxFIBEntry(LinuxApplication):
 
         return super(LinuxFIBEntry, self).trace(name, attr, block, offset)
     
-    @failtrap
-    def deploy(self):
+    def do_deploy(self):
         # Wait until associated ccnd is provisioned
         if not self.ccnd or self.ccnd.state < ResourceState.READY:
             # ccnr needs to wait until ccnd is deployed and running
@@ -131,8 +130,8 @@ class LinuxFIBEntry(LinuxApplication):
 
             self.info("Deploying command '%s' " % command)
 
-            self.discover()
-            self.provision()
+            self.do_discover()
+            self.do_provision()
             self.configure()
 
             self.debug("----- READY ---- ")
@@ -191,8 +190,7 @@ class LinuxFIBEntry(LinuxApplication):
             # schedule mtr deploy
             self.ec.deploy(guids=[self._traceroute], group = self.deployment_group)
 
-    @failtrap
-    def start(self):
+    def do_start(self):
         if self.state == ResourceState.READY:
             command = self.get("command")
             self.info("Starting command '%s'" % command)
@@ -203,8 +201,7 @@ class LinuxFIBEntry(LinuxApplication):
             self.error(msg, out, err)
             raise RuntimeError, msg
 
-    @failtrap
-    def stop(self):
+    def do_stop(self):
         command = self.get('command')
         env = self.get('env')
         

@@ -20,7 +20,7 @@
 
 
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
-        ResourceState, failtrap
+        ResourceState
 from nepi.execution.attribute import Attribute, Flags
 from nepi.resources.planetlab.node import PlanetlabNode        
 from nepi.resources.linux.application import LinuxApplication
@@ -115,12 +115,13 @@ class OVSWitch(LinuxApplication):
         # TODO: Validate!
         return True
 
-    @failtrap
-    def provision(self):
+    def do_provision(self):
         # create home dir for ovs
         self.node.mkdir(self.ovs_home)
         # create dir for ovs checks
         self.node.mkdir(self.ovs_checks)
+        
+        super(OVSWitch, self).do_provision()
 
     def check_sliver_ovs(self):  
         """ Check if sliver-ovs exists. If it does not exist, we interrupt
@@ -147,8 +148,7 @@ class OVSWitch(LinuxApplication):
         msg = "Command sliver-ovs exists" 
         self.debug(msg)						
 
-    @failtrap
-    def deploy(self):
+    def do_deploy(self):
         """ Wait until node is associated and deployed
         """
         node = self.node
@@ -157,15 +157,15 @@ class OVSWitch(LinuxApplication):
             self.ec.schedule(reschedule_delay, self.deploy)
 
         else:
-            self.discover()
-            self.provision()
+            self.do_discover()
+            self.do_provision()
             self.check_sliver_ovs()
             self.servers_on()
             self.create_bridge()
             self.assign_contr()
             self.ovs_status()
             
-            super(OVSWitch, self).deploy()
+            super(OVSWitch, self).do_deploy()
 
     def servers_on(self):
         """ Start the openvswitch servers and also checking 
@@ -282,37 +282,31 @@ class OVSWitch(LinuxApplication):
         (out, err), proc = self.node.check_output(self.ovs_home, 'show_stdout')
         self.info(out)
 
-    def release(self):
+    def do_release(self):
         """ Delete the bridge and 
             close the servers
         """
         # Node needs to wait until all associated RMs are released
         # to be released
-        try:
-            from nepi.resources.planetlab.openvswitch.ovsport import OVSPort
-            rm = self.get_connected(OVSPort.rtype())
+        from nepi.resources.planetlab.openvswitch.ovsport import OVSPort
+        rm = self.get_connected(OVSPort.rtype())
 
-            if rm[0].state < ResourceState.FINISHED:
-                self.ec.schedule(reschedule_delay, self.release)
-                return 
-                
-            msg = "Deleting the bridge %s" % self.get('bridge_name')
-            self.info(msg)
-            cmd = "sliver-ovs del-bridge %s" % self.get('bridge_name')
-            (out, err), proc = self.node.run(cmd, self.ovs_checks,
-                    sudo = True)
-            cmd = "sliver-ovs stop"
-            (out, err), proc = self.node.run(cmd, self.ovs_checks,
-                    sudo = True)
+        if rm[0].state < ResourceState.FINISHED:
+            self.ec.schedule(reschedule_delay, self.release)
+            return 
             
-            if proc.poll():
-                self.fail()
-                self.error(msg, out, err)
-                raise RuntimeError, msg
-        except:
-            import traceback
-            err = traceback.format_exc()
-            self.error(err)
+        msg = "Deleting the bridge %s" % self.get('bridge_name')
+        self.info(msg)
+        cmd = "sliver-ovs del-bridge %s" % self.get('bridge_name')
+        (out, err), proc = self.node.run(cmd, self.ovs_checks,
+                sudo = True)
+        cmd = "sliver-ovs stop"
+        (out, err), proc = self.node.run(cmd, self.ovs_checks,
+                sudo = True)
+        
+        if proc.poll():
+            self.error(msg, out, err)
+            raise RuntimeError, msg
 
-        super(OVSWitch, self).release()
+        super(OVSWitch, self).do_release()
 

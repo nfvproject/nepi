@@ -19,7 +19,7 @@
 
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
-        ResourceState, reschedule_delay, failtrap
+        ResourceState, reschedule_delay
 from nepi.resources.linux.ccn.ccnapplication import LinuxCCNApplication
 from nepi.util.timefuncs import tnow, tdiffsec
 
@@ -54,8 +54,7 @@ class LinuxCCNPingServer(LinuxCCNApplication):
         super(LinuxCCNPingServer, self).__init__(ec, guid)
         self._home = "ccnping-serv-%s" % self.guid
 
-    @failtrap
-    def deploy(self):
+    def do_deploy(self):
         if not self.get("command"):
             self.set("command", self._start_command)
 
@@ -71,7 +70,7 @@ class LinuxCCNPingServer(LinuxCCNApplication):
         if not self.get("install"):
             self.set("install", self._install)
 
-        super(LinuxCCNPingServer, self).deploy()
+        super(LinuxCCNPingServer, self).do_deploy()
 
     @property
     def _start_command(self):

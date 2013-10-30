@@ -19,7 +19,7 @@
 
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.resource import clsinit_copy, ResourceState, \
-        reschedule_delay, failtrap
+        reschedule_delay
 from nepi.resources.linux.application import LinuxApplication
 from nepi.util.sshfuncs import ProcStatus
 from nepi.util.timefuncs import tnow, tdiffsec
@@ -161,8 +161,7 @@ class UdpTunnel(LinuxApplication):
         port = self.wait_local_port(endpoint)
         return (port, pid, ppid)
 
-    @failtrap
-    def provision(self):
+    def do_provision(self):
         # create run dir for tunnel on each node 
         self.endpoint1.node.mkdir(self.run_home(self.endpoint1))
         self.endpoint2.node.mkdir(self.run_home(self.endpoint2))
@@ -191,20 +190,18 @@ class UdpTunnel(LinuxApplication):
  
         self.set_provisioned()
 
-    @failtrap
-    def deploy(self):
+    def do_deploy(self):
         if (not self.endpoint1 or self.endpoint1.state < ResourceState.READY) or \
             (not self.endpoint2 or self.endpoint2.state < ResourceState.READY):
             self.ec.schedule(reschedule_delay, self.deploy)
         else:
-            self.discover()
-            self.provision()
+            self.do_discover()
+            self.do_provision()
  
             self.debug("----- READY ---- ")
             self.set_ready()
 
-    @failtrap
-    def start(self):
+    def do_start(self):
         if self.state == ResourceState.READY:
             command = self.get("command")
             self.info("Starting command '%s'" % command)
@@ -215,8 +212,7 @@ class UdpTunnel(LinuxApplication):
             self.error(msg, out, err)
             raise RuntimeError, msg
 
-    @failtrap
-    def stop(self):
+    def do_stop(self):
         """ Stops application execution
         """
         if self.state == ResourceState.STARTED:

@@ -20,7 +20,7 @@
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import Trace, TraceAttr
 from nepi.execution.resource import clsinit_copy, ResourceState, \
-    ResourceAction, reschedule_delay, failtrap
+    ResourceAction, reschedule_delay
 from nepi.resources.linux.application import LinuxApplication
 from nepi.resources.linux.ccn.ccnd import LinuxCCND
 from nepi.util.timefuncs import tnow
@@ -200,8 +200,7 @@ class LinuxCCNR(LinuxApplication):
         if self.ccnd: return self.ccnd.node
         return None
 
-    @failtrap
-    def deploy(self):
+    def do_deploy(self):
         if not self.ccnd or self.ccnd.state < ResourceState.READY:
             self.debug("---- RESCHEDULING DEPLOY ---- CCND state %s " % self.ccnd.state )
             
@@ -218,8 +217,8 @@ class LinuxCCNR(LinuxApplication):
 
             self.info("Deploying command '%s' " % command)
 
-            self.discover()
-            self.provision()
+            self.do_discover()
+            self.do_provision()
 
             self.debug("----- READY ---- ")
             self.set_ready()
@@ -252,8 +251,7 @@ class LinuxCCNR(LinuxApplication):
                 env = env,
                 raise_on_error = True)
 
-    @failtrap
-    def start(self):
+    def do_start(self):
         if self.state == ResourceState.READY:
             command = self.get("command")
             self.info("Starting command '%s'" % command)

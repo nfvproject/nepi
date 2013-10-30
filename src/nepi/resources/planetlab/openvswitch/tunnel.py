@@ -20,7 +20,7 @@
 
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
-        ResourceState, failtrap
+        ResourceState
 from nepi.resources.linux.application import LinuxApplication
 from nepi.resources.planetlab.node import PlanetlabNode            
 from nepi.resources.planetlab.openvswitch.ovs import OVSWitch   
@@ -243,7 +243,6 @@ class OVSTunnel(LinuxApplication):
         msg = "Failed to connect endpoints"
 
         if proc.poll():
-            self.fail()
             self.error(msg, out, err)
             raise RuntimeError, msg
 
@@ -261,7 +260,6 @@ class OVSTunnel(LinuxApplication):
             (out, err), proc = self.node.check_errors(self.run_home(self.node))
             # Out is what was written in the stderr file
             if err:
-                self.fail()
                 msg = " Failed to start command '%s' " % command
                 self.error(msg, out, err)
                 raise RuntimeError, msg
@@ -296,7 +294,6 @@ class OVSTunnel(LinuxApplication):
         msg = "Failed to connect endpoints"
 
         if proc.poll():
-            self.fail()
             self.error(msg, out, err)
             raise RuntimeError, msg
         else:
@@ -337,7 +334,6 @@ class OVSTunnel(LinuxApplication):
         msg = "Failed to connect endpoints"
 
         if proc.poll():
-            self.fail()
             self.error(msg, out, err)
             raise RuntimeError, msg
         else:
@@ -345,8 +341,7 @@ class OVSTunnel(LinuxApplication):
             self.info(msg)
             return                                                      
 
-    @failtrap
-    def provision(self):
+    def do_provision(self):
         """ Provision the tunnel
         """
         # Create folders
@@ -365,41 +360,33 @@ class OVSTunnel(LinuxApplication):
             (self._pid, self._ppid) = self.udp_connect(self.endpoint2, self.endpoint1)
             switch_connect = self.sw_host_connect(self.endpoint1, self.endpoint2)
 
-        super(OVSTunnel, self).provision()
+        super(OVSTunnel, self).do_provision()
 
-    @failtrap
-    def deploy(self):
+    def do_deploy(self):
         if (not self.endpoint1 or self.endpoint1.state < ResourceState.READY) or \
             (not self.endpoint2 or self.endpoint2.state < ResourceState.READY):
             self.ec.schedule(reschedule_delay, self.deploy)
         else:
-            self.discover()
-            self.provision()
+            self.do_discover()
+            self.do_provision()
 
-            super(OVSTunnel, self).deploy()
+            super(OVSTunnel, self).do_deploy()
  
-    def release(self):
+    def do_release(self):
         """ Release the udp_tunnel on endpoint2.
             On endpoint1 means nothing special.        
         """
-        try:
-            if not self.check_endpoints():
-                # Kill the TAP devices
-                # TODO: Make more generic Release method of PLTAP
-                if self._pid and self._ppid:
-                    self._nodes = self.get_node(self.endpoint2) 
-                    (out, err), proc = self.node.kill(self._pid,
-                            self._ppid, sudo = True)
-                if err or proc.poll():
-                        # check if execution errors occurred
-                        msg = " Failed to delete TAP device"
-                        self.error(msg, err, err)
-                        self.fail()
-        except:
-            import traceback
-            err = traceback.format_exc()
-            self.error(err)
+        if not self.check_endpoints():
+            # Kill the TAP devices
+            # TODO: Make more generic Release method of PLTAP
+            if self._pid and self._ppid:
+                self._nodes = self.get_node(self.endpoint2) 
+                (out, err), proc = self.node.kill(self._pid,
+                        self._ppid, sudo = True)
+            if err or proc.poll():
+                    # check if execution errors occurred
+                    msg = " Failed to delete TAP device"
+                    self.error(msg, err, err)
 
-        super(OVSTunnel, self).release()
-
+        super(OVSTunnel, self).do_release()
 

@@ -18,7 +18,7 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 from nepi.execution.resource import clsinit_copy, ResourceState, \
-    reschedule_delay, failtrap
+    reschedule_delay
 from nepi.resources.linux.application import LinuxApplication
 from nepi.resources.linux.ccn.ccnd import LinuxCCND
 from nepi.util.timefuncs import tnow, tdiffsec
@@ -44,8 +44,7 @@ class LinuxCCNApplication(LinuxApplication):
         if self.ccnd: return self.ccnd.node
         return None
 
-    @failtrap
-    def deploy(self):
+    def do_deploy(self):
         if not self.ccnd or self.ccnd.state < ResourceState.READY:
             self.debug("---- RESCHEDULING DEPLOY ---- node state %s " % self.node.state )
             self.ec.schedule(reschedule_delay, self.deploy)
@@ -57,8 +56,8 @@ class LinuxCCNApplication(LinuxApplication):
             if not self.get("env"):
                 self.set("env", self._environment)
 
-            self.discover()
-            self.provision()
+            self.do_discover()
+            self.do_provision()
 
             self.debug("----- READY ---- ")
             self.set_ready()

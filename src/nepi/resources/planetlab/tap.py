@@ -19,7 +19,7 @@
 
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.resource import clsinit_copy, ResourceState, \
-        reschedule_delay, failtrap
+        reschedule_delay
 from nepi.resources.linux.application import LinuxApplication
 from nepi.resources.planetlab.node import PlanetlabNode
 from nepi.util.timefuncs import tnow, tdiffsec
@@ -147,8 +147,7 @@ class PlanetlabTap(LinuxApplication):
         if_name = self.wait_if_name()
         self.set("deviceName", if_name) 
 
-    @failtrap
-    def deploy(self):
+    def do_deploy(self):
         if not self.node or self.node.state < ResourceState.PROVISIONED:
             self.ec.schedule(reschedule_delay, self.deploy)
         else:
@@ -161,14 +160,13 @@ class PlanetlabTap(LinuxApplication):
             if not self.get("install"):
                 self.set("install", self._install)
 
-            self.discover()
-            self.provision()
+            self.do_discover()
+            self.do_provision()
 
             self.debug("----- READY ---- ")
             self.set_ready()
 
-    @failtrap
-    def start(self):
+    def do_start(self):
         if self.state == ResourceState.READY:
             command = self.get("command")
             self.info("Starting command '%s'" % command)
@@ -179,8 +177,7 @@ class PlanetlabTap(LinuxApplication):
             self.error(msg, out, err)
             raise RuntimeError, msg
 
-    @failtrap
-    def stop(self):
+    def do_stop(self):
         command = self.get('command') or ''
         
         if self.state == ResourceState.STARTED:
@@ -210,22 +207,17 @@ class PlanetlabTap(LinuxApplication):
 
         return self._state
 
-    def release(self):
+    def do_release(self):
         # Node needs to wait until all associated RMs are released
         # to be released
-        try:
-            from nepi.resources.linux.udptunnel import UdpTunnel
-            rms = self.get_connected(UdpTunnel.rtype())
-            for rm in rms:
-                if rm.state < ResourceState.STOPPED:
-                    self.ec.schedule(reschedule_delay, self.release)
-                    return 
-        except:
-            import traceback
-            err = traceback.format_exc()
-            self.error(err)
+        from nepi.resources.linux.udptunnel import UdpTunnel
+        rms = self.get_connected(UdpTunnel.rtype())
+        for rm in rms:
+            if rm.state < ResourceState.STOPPED:
+                self.ec.schedule(reschedule_delay, self.release)
+                return 
 
-        super(PlanetlabTap, self).release()
+        super(PlanetlabTap, self).do_release()
 
     def wait_if_name(self):
         """ Waits until the if_name file for the command is generated, 

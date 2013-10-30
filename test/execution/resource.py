@@ -22,7 +22,7 @@
 from nepi.execution.attribute import Attribute
 from nepi.execution.ec import ExperimentController, FailureLevel 
 from nepi.execution.resource import ResourceManager, ResourceState, \
-        clsinit_copy, ResourceAction, failtrap
+        clsinit_copy, ResourceAction
 
 import random
 import time
@@ -53,9 +53,9 @@ class Channel(ResourceManager):
     def __init__(self, ec, guid):
         super(Channel, self).__init__(ec, guid)
 
-    def deploy(self):
+    def do_deploy(self):
         time.sleep(1)
-        super(Channel, self).deploy()
+        super(Channel, self).do_deploy()
         self.logger.debug(" -------- DEPLOYED ------- ")
        
 class Interface(ResourceManager):
@@ -64,7 +64,7 @@ class Interface(ResourceManager):
     def __init__(self, ec, guid):
         super(Interface, self).__init__(ec, guid)
 
-    def deploy(self):
+    def do_deploy(self):
         node = self.get_connected(Node.rtype())[0]
         chan = self.get_connected(Channel.rtype())[0]
 
@@ -74,7 +74,7 @@ class Interface(ResourceManager):
             self.ec.schedule("0.5s", self.deploy)
         else:
             time.sleep(2)
-            super(Interface, self).deploy()
+            super(Interface, self).do_deploy()
             self.logger.debug(" -------- DEPLOYED ------- ")
 
 class Node(ResourceManager):
@@ -83,10 +83,10 @@ class Node(ResourceManager):
     def __init__(self, ec, guid):
         super(Node, self).__init__(ec, guid)
 
-    def deploy(self):
+    def do_deploy(self):
         if self.state == ResourceState.NEW:
-            self.discover()
-            self.provision()
+            self.do_discover()
+            self.do_provision()
             self.logger.debug(" -------- PROVISIONED ------- ")
             self.ec.schedule("1s", self.deploy)
         elif self.state == ResourceState.PROVISIONED:
@@ -96,7 +96,7 @@ class Node(ResourceManager):
                     self.ec.schedule("0.5s", self.deploy)
                     return 
 
-            super(Node, self).deploy()
+            super(Node, self).do_deploy()
             self.logger.debug(" -------- DEPLOYED ------- ")
 
 class Application(ResourceManager):
@@ -105,19 +105,19 @@ class Application(ResourceManager):
     def __init__(self, ec, guid):
         super(Application, self).__init__(ec, guid)
 
-    def deploy(self):
+    def do_deploy(self):
         node = self.get_connected(Node.rtype())[0]
         if node.state < ResourceState.READY:
             self.ec.schedule("0.5s", self.deploy)
         else:
             time.sleep(random.random() * 2)
-            super(Application, self).deploy()
+            super(Application, self).do_deploy()
             self.logger.debug(" -------- DEPLOYED ------- ")
 
-    def start(self):
-        super(Application, self).start()
+    def do_start(self):
+        super(Application, self).do_start()
         time.sleep(random.random() * 3)
-        self._state = ResourceState.FINISHED
+        self.ec.schedule("0.5s", self.finish)
 
 class ErrorApplication(ResourceManager):
     _rtype = "ErrorApplication"
@@ -125,8 +125,7 @@ class ErrorApplication(ResourceManager):
     def __init__(self, ec, guid):
         super(ErrorApplication, self).__init__(ec, guid)
 
-    @failtrap
-    def deploy(self):
+    def do_deploy(self):
         node = self.get_connected(Node.rtype())[0]
         if node.state < ResourceState.READY:
             self.ec.schedule("0.5s", self.deploy)
@@ -245,15 +244,15 @@ class ResourceManagerTestCase(unittest.TestCase):
         self.assertTrue(rmnode1.ready_time < rmapp1.ready_time)
         self.assertTrue(rmnode2.ready_time < rmapp2.ready_time)
 
-         # - Node needs to wait until Interface is ready to be ready
+        # - Node needs to wait until Interface is ready to be ready
         self.assertTrue(rmnode1.ready_time > rmiface1.ready_time)
         self.assertTrue(rmnode2.ready_time > rmiface2.ready_time)
 
-         # - Interface needs to wait until Node is provisioned to be ready
+        # - Interface needs to wait until Node is provisioned to be ready
         self.assertTrue(rmnode1.provision_time < rmiface1.ready_time)
         self.assertTrue(rmnode2.provision_time < rmiface2.ready_time)
 
-         # - Interface needs to wait until Channel is ready to be ready
+        # - Interface needs to wait until Channel is ready to be ready
         self.assertTrue(rmchan.ready_time < rmiface1.ready_time)
         self.assertTrue(rmchan.ready_time < rmiface2.ready_time)
 
@@ -301,7 +300,6 @@ class ResourceManagerTestCase(unittest.TestCase):
 
         app = ec.register_resource("ErrorApplication")
         ec.register_connection(app, node)
-        apps.append(app)
 
         ec.deploy()
 

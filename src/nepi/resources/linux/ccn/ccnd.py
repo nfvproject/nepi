@@ -20,7 +20,7 @@
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import Trace, TraceAttr
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
-        ResourceState, reschedule_delay, failtrap
+        ResourceState, reschedule_delay
 from nepi.resources.linux.application import LinuxApplication
 from nepi.resources.linux.node import OSType
 from nepi.util.timefuncs import tnow, tdiffsec
@@ -136,8 +136,7 @@ class LinuxCCND(LinuxApplication):
     def path(self):
         return "PATH=$PATH:${BIN}/%s/" % self.version 
 
-    @failtrap
-    def deploy(self):
+    def do_deploy(self):
         if not self.node or self.node.state < ResourceState.READY:
             self.debug("---- RESCHEDULING DEPLOY ---- node state %s " % self.node.state )
             
@@ -174,8 +173,8 @@ class LinuxCCND(LinuxApplication):
 
             self.info("Deploying command '%s' " % command)
 
-            self.discover()
-            self.provision()
+            self.do_discover()
+            self.do_provision()
 
             self.debug("----- READY ---- ")
             self.set_ready()
@@ -199,8 +198,7 @@ class LinuxCCND(LinuxApplication):
                 env = env,
                 raise_on_error = True)
 
-    @failtrap
-    def start(self):
+    def do_start(self):
         if self.state == ResourceState.READY:
             command = self.get("command")
             self.info("Starting command '%s'" % command)
@@ -211,8 +209,7 @@ class LinuxCCND(LinuxApplication):
             self.error(msg, out, err)
             raise RuntimeError, msg
 
-    @failtrap
-    def stop(self):
+    def do_stop(self):
         command = self.get('command') or ''
         
         if self.state == ResourceState.STARTED:

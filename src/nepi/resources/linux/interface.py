@@ -19,7 +19,7 @@
 
 from nepi.execution.attribute import Attribute, Types, Flags
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
-        ResourceState, reschedule_delay, failtrap
+        ResourceState, reschedule_delay
 from nepi.resources.linux.node import LinuxNode
 from nepi.resources.linux.channel import LinuxChannel
 
@@ -102,8 +102,7 @@ class LinuxInterface(ResourceManager):
         if chan: return chan[0]
         return None
 
-    @failtrap
-    def discover(self):
+    def do_discover(self):
         devname = self.get("deviceName")
         ip4 = self.get("ip4")
         ip6 = self.get("ip4")
@@ -182,10 +181,9 @@ class LinuxInterface(ResourceManager):
             self.error(msg)
             raise RuntimeError, msg
 
-        super(LinuxInterface, self).discover()
+        super(LinuxInterface, self).do_discover()
 
-    @failtrap
-    def provision(self):
+    def do_provision(self):
         devname = self.get("deviceName")
         ip4 = self.get("ip4")
         ip6 = self.get("ip4")
@@ -226,10 +224,9 @@ class LinuxInterface(ResourceManager):
                 self.error(msg, out, err)
                 raise RuntimeError, "%s - %s - %s" % (msg, out, err)
 
-        super(LinuxInterface, self).provision()
+        super(LinuxInterface, self).do_provision()
 
-    @failtrap
-    def deploy(self):
+    def do_deploy(self):
         # Wait until node is provisioned
         node = self.node
         chan = self.channel
@@ -241,22 +238,17 @@ class LinuxInterface(ResourceManager):
         else:
             # Verify if the interface exists in node. If not, configue
             # if yes, load existing configuration
-            self.discover()
-            self.provision()
+            self.do_discover()
+            self.do_provision()
 
-            super(LinuxInterface, self).deploy()
+            super(LinuxInterface, self).do_deploy()
 
-    def release(self):
-        try:
-            tear_down = self.get("tearDown")
-            if tear_down:   
-                self.execute(tear_down)
-        except:
-            import traceback
-            err = traceback.format_exc()
-            self.error(err)
+    def do_release(self):
+        tear_down = self.get("tearDown")
+        if tear_down:   
+            self.execute(tear_down)
 
-        super(LinuxInterface, self).release()
+        super(LinuxInterface, self).do_release()
 
     def valid_connection(self, guid):
         # TODO: Validate!

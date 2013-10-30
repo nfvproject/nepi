@@ -18,7 +18,7 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 from nepi.execution.attribute import Attribute, Flags, Types
-from nepi.execution.resource import clsinit_copy, failtrap
+from nepi.execution.resource import clsinit_copy
 from nepi.resources.linux.application import LinuxApplication
 from nepi.util.timefuncs import tnow
 
@@ -184,12 +184,11 @@ class LinuxPing(LinuxApplication):
         super(LinuxPing, self).__init__(ec, guid)
         self._home = "ping-%s" % self.guid
 
-    @failtrap
-    def deploy(self):
+    def do_deploy(self):
         if not self.get("command"):
             self.set("command", self._start_command)
 
-        super(LinuxPing, self).deploy()
+        super(LinuxPing, self).do_deploy()
 
     @property
     def _start_command(self):
