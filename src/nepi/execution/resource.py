@@ -28,6 +28,7 @@ import logging
 import os
 import pkgutil
 import sys
+import threading
 import weakref
 
 reschedule_delay = "1s"
@@ -68,20 +69,48 @@ ResourceState2str = dict({
 
 def clsinit(cls):
     """ Initializes template information (i.e. attributes and traces)
-    for the ResourceManager class
-    """
+    on classes derived from the ResourceManager class.
+
+    It is used as a decorator in the class declaration as follows:
+
+        @clsinit
+        class MyResourceManager(ResourceManager):
+        
+            ...
+
+     """
+
     cls._clsinit()
     return cls
 
 def clsinit_copy(cls):
     """ Initializes template information (i.e. attributes and traces)
-    for the ResourceManager class, inheriting attributes and traces
-    from the parent class
+    on classes direved from the ResourceManager class.
+    It differs from the clsinit method in that it forces inheritance
+    of attributes and traces from the parent class.
+
+    It is used as a decorator in the class declaration as follows:
+
+        @clsinit
+        class MyResourceManager(ResourceManager):
+        
+            ...
+
+
+    clsinit_copy should be prefered to clsinit when creating new
+    ResourceManager child classes.
+
     """
+    
     cls._clsinit_copy()
     return cls
 
 def failtrap(func):
+    """ Decorator function for instance methods that should set the 
+    RM state to FAILED when an error is raised. The methods that must be
+    decorated are: discover, provision, deploy, start, stop and finish.
+
+    """
     def wrapped(self, *args, **kwargs):
         try:
             return func(self, *args, **kwargs)
@@ -95,7 +124,6 @@ def failtrap(func):
     
     return wrapped
 
-# Decorator to invoke class initialization method
 @clsinit
 class ResourceManager(Logger):
     """ Base clase for all ResourceManagers. 
@@ -121,6 +149,7 @@ class ResourceManager(Logger):
         resource attribute
 
         """
+        
         cls._attributes[attr.name] = attr
 
     @classmethod
@@ -129,6 +158,7 @@ class ResourceManager(Logger):
         resource attribute
 
         """
+        
         del cls._attributes[name]
 
     @classmethod
@@ -137,6 +167,7 @@ class ResourceManager(Logger):
         resource trace
 
         """
+        
         cls._traces[trace.name] = trace
 
     @classmethod
@@ -145,16 +176,23 @@ class ResourceManager(Logger):
         resource trace
 
         """
+        
         del cls._traces[name]
 
     @classmethod
     def _register_attributes(cls):
         """ Resource subclasses will invoke this method to register
-        resource attributes
+        resource attributes.
+
+        This method should be overriden in the RMs that define
+        attributes.
 
         """
-        critical = Attribute("critical", "Defines whether the resource is critical. "
-                " A failure on a critical resource will interrupt the experiment. ",
+        
+        critical = Attribute("critical", 
+                "Defines whether the resource is critical. "
+                "A failure on a critical resource will interrupt "
+                "the experiment. ",
                 type = Types.Bool,
                 default = True,
                 flags = Flags.ExecReadOnly)
@@ -166,19 +204,24 @@ class ResourceManager(Logger):
         """ Resource subclasses will invoke this method to register
         resource traces
 
+        This method should be overriden in the RMs that define traces.
+        
         """
+        
         pass
 
     @classmethod
     def _clsinit(cls):
-        """ ResourceManager child classes have different attributes and traces.
-        Since the templates that hold the information of attributes and traces
-        are 'class attribute' dictionaries, initially they all point to the 
-        parent class ResourceManager instances of those dictionaries. 
-        In order to make these templates independent from the parent's one,
-        it is necessary re-initialize the corresponding dictionaries. 
-        This is the objective of the _clsinit method
+        """ ResourceManager classes have different attributes and traces.
+        Attribute and traces are stored in 'class attribute' dictionaries.
+        When a new ResourceManager class is created, the _clsinit method is 
+        called to create a new instance of those dictionaries and initialize 
+        them.
+        
+        The _clsinit method is called by the clsinit decorator method.
+        
         """
+        
         # static template for resource attributes
         cls._attributes = dict()
         cls._register_attributes()
@@ -189,8 +232,12 @@ class ResourceManager(Logger):
 
     @classmethod
     def _clsinit_copy(cls):
-        """ Same as _clsinit, except that it also inherits all attributes and traces
-        from the parent class.
+        """ Same as _clsinit, except that after creating new instances of the
+        dictionaries it copies all the attributes and traces from the parent 
+        class.
+        
+        The _clsinit_copy method is called by the clsinit_copy decorator method.
+        
         """
         # static template for resource attributes
         cls._attributes = copy.deepcopy(cls._attributes)
@@ -265,6 +312,11 @@ class ResourceManager(Logger):
 
         self._state = ResourceState.NEW
 
+        # instance lock to synchronize exclusive state change methods (such
+        # as deploy and release methods), in order to prevent them from being 
+        # executed at the same time
+        self._release_lock = threading.Lock()
+
     @property
     def guid(self):
         """ Returns the global unique identifier of the RM """
@@ -272,60 +324,62 @@ class ResourceManager(Logger):
 
     @property
     def ec(self):
-        """ Returns the Experiment Controller """
+        """ Returns the Experiment Controller of the RM """
         return self._ec()
 
     @property
     def connections(self):
-        """ Returns the set of guids of connected RMs"""
+        """ Returns the set of guids of connected RMs """
         return self._connections
 
     @property
     def conditions(self):
         """ Returns the conditions to which the RM is subjected to.
         
-        The object returned by this method is a dictionary indexed by
-        ResourceAction."""
+        This method returns a dictionary of conditions lists indexed by
+        a ResourceAction.
+        
+        """
         return self._conditions
 
     @property
     def start_time(self):
-        """ Returns the start time of the RM as a timestamp"""
+        """ Returns the start time of the RM as a timestamp """
         return self._start_time
 
     @property
     def stop_time(self):
-        """ Returns the stop time of the RM as a timestamp"""
+        """ Returns the stop time of the RM as a timestamp """
         return self._stop_time
 
     @property
     def discover_time(self):
-        """ Returns the time discovering was finished for the RM as a timestamp"""
+        """ Returns the discover time of the RM as a timestamp """
         return self._discover_time
 
     @property
     def provision_time(self):
-        """ Returns the time provisioning was finished for the RM as a timestamp"""
+        """ Returns the provision time of the RM as a timestamp """
         return self._provision_time
 
     @property
     def ready_time(self):
-        """ Returns the time deployment was finished for the RM as a timestamp"""
+        """ Returns the deployment time of the RM as a timestamp """
         return self._ready_time
 
     @property
     def release_time(self):
-        """ Returns the release time of the RM as a timestamp"""
+        """ Returns the release time of the RM as a timestamp """
         return self._release_time
 
     @property
     def finish_time(self):
-        """ Returns the finalization time of the RM as a timestamp"""
+        """ Returns the finalization time of the RM as a timestamp """
         return self._finish_time
 
     @property
     def failed_time(self):
-        """ Returns the time failure occured for the RM as a timestamp"""
+        """ Returns the time failure occured for the RM as a timestamp """
         return self._failed_time
 
     @property
@@ -339,147 +393,174 @@ class ResourceManager(Logger):
         :param msg: text message
         :type msg: str
         :rtype: str
+
         """
         return " %s guid: %d - %s " % (self._rtype, self.guid, msg)
 
     def register_connection(self, guid):
         """ Registers a connection to the RM identified by guid
 
+        This method should not be overriden. Specific functionality
+        should be added in the do_connect method.
+
         :param guid: Global unique identified of the RM to connect to
         :type guid: int
+
         """
         if self.valid_connection(guid):
-            self.connect(guid)
+            self.do_connect(guid)
             self._connections.add(guid)
 
     def unregister_connection(self, guid):
         """ Removes a registered connection to the RM identified by guid
+        
+        This method should not be overriden. Specific functionality
+        should be added in the do_disconnect method.
 
         :param guid: Global unique identified of the RM to connect to
         :type guid: int
+
         """
         if guid in self._connections:
-            self.disconnect(guid)
+            self.do_disconnect(guid)
             self._connections.remove(guid)
 
+    @failtrap
     def discover(self):
         """ Performs resource discovery.
-
+        
         This  method is responsible for selecting an individual resource
         matching user requirements.
-        This method should be redefined when necessary in child classes.
 
-        If overridden in child classes, make sure to use the failtrap 
-        decorator to ensure the RM state will be set to FAILED in the event 
-        of an exception.
+        This method should not be overriden directly. Specific functionality
+        should be added in the do_discover method.
 
         """
-        self.set_discovered()
+        with self._release_lock:
+            if self._state != ResourceState.RELEASED:
+                self.do_discover()
 
+    @failtrap
     def provision(self):
         """ Performs resource provisioning.
 
         This  method is responsible for provisioning one resource.
         After this method has been successfully invoked, the resource
         should be accessible/controllable by the RM.
-        This method should be redefined when necessary in child classes.
 
-        If overridden in child classes, make sure to use the failtrap 
-        decorator to ensure the RM state will be set to FAILED in the event 
-        of an exception.
+        This method should not be overriden directly. Specific functionality
+        should be added in the do_provision method.
 
         """
-        self.set_provisioned()
+        with self._release_lock:
+            if self._state != ResourceState.RELEASED:
+                self.do_provision()
 
+    @failtrap
     def start(self):
-        """ Starts the RM.
-        
-        There is no generic start behavior for all resources.
-        This method should be redefined when necessary in child classes.
+        """ Starts the RM (e.g. launch remote process).
+    
+        There is no standard start behavior. Some RMs will not need to perform
+        any actions upon start.
 
-        If overridden in child classes, make sure to use the failtrap 
-        decorator to ensure the RM state will be set to FAILED in the event 
-        of an exception.
+        This method should not be overriden directly. Specific functionality
+        should be added in the do_start method.
 
         """
         if not self.state in [ResourceState.READY, ResourceState.STOPPED]:
             self.error("Wrong state %s for start" % self.state)
             return
 
-        self.set_started()
+        with self._release_lock:
+            if self._state != ResourceState.RELEASED:
+                self.do_start()
 
+    @failtrap
     def stop(self):
         """ Interrupts the RM, stopping any tasks the RM was performing.
-        
-        There is no generic stop behavior for all resources.
-        This method should be redefined when necessary in child classes.
-
-        If overridden in child classes, make sure to use the failtrap 
-        decorator to ensure the RM state will be set to FAILED in the event 
-        of an exception.
-
+     
+        There is no standard stop behavior. Some RMs will not need to perform
+        any actions upon stop.
+    
+        This method should not be overriden directly. Specific functionality
+        should be added in the do_stop method.
+      
         """
         if not self.state in [ResourceState.STARTED]:
             self.error("Wrong state %s for stop" % self.state)
             return
         
-        self.set_stopped()
+        with self._release_lock:
+            self.do_stop()
 
+    @failtrap
     def deploy(self):
         """ Execute all steps required for the RM to reach the state READY.
 
-        This  method is responsible for deploying the resource (and invoking the
-        discover and provision methods).
-        This method should be redefined when necessary in child classes.
-
-        If overridden in child classes, make sure to use the failtrap 
-        decorator to ensure the RM state will be set to FAILED in the event 
-        of an exception.
-
+        This method is responsible for deploying the resource (and invoking 
+        the discover and provision methods).
+ 
+        This method should not be overriden directly. Specific functionality
+        should be added in the do_deploy method.
+       
         """
         if self.state > ResourceState.READY:
             self.error("Wrong state %s for deploy" % self.state)
             return
 
-        self.debug("----- READY ---- ")
-        self.set_ready()
+        with self._release_lock:
+            if self._state != ResourceState.RELEASED:
+                self.do_deploy()
+                self.debug("----- READY ---- ")
 
     def release(self):
         """ Perform actions to free resources used by the RM.
-        
+  
         This  method is responsible for releasing resources that were
         used during the experiment by the RM.
-        This method should be redefined when necessary in child classes.
 
-        If overridden in child classes, this method should never
-        raise an error and it must ensure the RM is set to state RELEASED.
-
+        This method should not be overriden directly. Specific functionality
+        should be added in the do_release method.
+      
         """
-        self.set_released()
+        with self._release_lock:
+            try:
+                self.do_release()
+            except:
+                import traceback
+                err = traceback.format_exc()
+                self.error(err)
 
+            self.set_released()
+            self.debug("----- RELEASED ---- ")
+
+    @failtrap
     def finish(self):
         """ Sets the RM to state FINISHED. 
-        
-        The FINISHED state is different from STOPPED in that it should not be 
-        directly invoked by the user.
+     
+        The FINISHED state is different from STOPPED state in that it 
+        should not be directly invoked by the user.
         STOPPED indicates that the user interrupted the RM, FINISHED means
         that the RM concluded normally the actions it was supposed to perform.
-        This method should be redefined when necessary in child classes.
+    
+        This method should not be overriden directly. Specific functionality
+        should be added in the do_finish method.
         
-        If overridden in child classes, make sure to use the failtrap 
-        decorator to ensure the RM state will be set to FAILED in the event 
-        of an exception.
-
         """
+        with self._release_lock:
+            if self._state != ResourceState.RELEASED:
+                self.do_finish()
 
-        self.set_finished()
- 
     def fail(self):
         """ Sets the RM to state FAILED.
 
-        """
+        This method should not be overriden directly. Specific functionality
+        should be added in the do_fail method.
 
-        self.set_failed()
+        """
+        with self._release_lock:
+            if self._state != ResourceState.RELEASED:
+                self.do_fail()
 
     def set(self, name, value):
         """ Set the value of the attribute
@@ -825,13 +906,13 @@ class ResourceManager(Logger):
             self.debug("----- STARTING ---- ")
             self.deploy()
 
-    def connect(self, guid):
+    def do_connect(self, guid):
         """ Performs actions that need to be taken upon associating RMs.
         This method should be redefined when necessary in child classes.
         """
         pass
 
-    def disconnect(self, guid):
+    def do_disconnect(self, guid):
         """ Performs actions that need to be taken upon disassociating RMs.
         This method should be redefined when necessary in child classes.
         """
@@ -849,7 +930,31 @@ class ResourceManager(Logger):
         """
         # TODO: Validate!
         return True
-    
+
+    def do_discover(self):
+        self.set_discovered()
+
+    def do_provision(self):
+        self.set_provisioned()
+
+    def do_start(self):
+        self.set_started()
+
+    def do_stop(self):
+        self.set_stopped()
+
+    def do_deploy(self):
+        self.set_ready()
+
+    def do_release(self):
+        pass
+
+    def do_finish(self):
+        self.set_finished()
+
+    def do_fail(self):
+        self.set_failed()
+
     def set_started(self):
         """ Mark ResourceManager as STARTED """
         self.set_state(ResourceState.STARTED, "_start_time")

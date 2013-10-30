@@ -18,7 +18,7 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 from nepi.execution.attribute import Attribute, Flags, Types
-from nepi.execution.resource import clsinit_copy, failtrap 
+from nepi.execution.resource import clsinit_copy 
 from nepi.resources.linux.application import LinuxApplication
 from nepi.util.timefuncs import tnow
 
@@ -83,8 +83,7 @@ class LinuxMtr(LinuxApplication):
         self._home = "mtr-%s" % self.guid
         self._sudo_kill = True
 
-    @failtrap
-    def deploy(self):
+    def do_deploy(self):
         if not self.get("command"):
             self.set("command", self._start_command)
 
@@ -94,7 +93,7 @@ class LinuxMtr(LinuxApplication):
         if not self.get("depends"):
             self.set("depends", "mtr")
 
-        super(LinuxMtr, self).deploy()
+        super(LinuxMtr, self).do_deploy()
 
     @property
     def _start_command(self):

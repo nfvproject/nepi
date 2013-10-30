@@ -19,7 +19,7 @@
 #         Julien Tribino <julien.tribino@inria.fr>
 
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
-        ResourceState, reschedule_delay, failtrap
+        ResourceState, reschedule_delay
 from nepi.execution.attribute import Attribute, Flags 
 
 from nepi.resources.omf.node import OMFNode
@@ -164,8 +164,7 @@ class OMFWifiInterface(OMFResource):
 
         return True
 
-    @failtrap
-    def deploy(self):
+    def do_deploy(self):
         """ Deploy the RM. It means : Get the xmpp client and send messages 
         using OMF 5.4 protocol to configure the interface.
         It becomes DEPLOYED after sending messages to configure the interface
@@ -201,21 +200,16 @@ class OMFWifiInterface(OMFResource):
             if self.configure_iface():
                 self.configure_ip()
 
-        super(OMFWifiInterface, self).deploy()
+        super(OMFWifiInterface, self).do_deploy()
 
-    def release(self):
+    def do_release(self):
         """ Clean the RM at the end of the experiment and release the API
 
         """
-        try:
-            if self._omf_api :
-                OMFAPIFactory.release_api(self.get('xmppSlice'), 
-                    self.get('xmppHost'), self.get('xmppPort'), 
-                    self.get('xmppPassword'), exp_id = self.exp_id)
-        except:
-            import traceback
-            err = traceback.format_exc()
-            self.error(err)
+        if self._omf_api:
+            OMFAPIFactory.release_api(self.get('xmppSlice'), 
+                self.get('xmppHost'), self.get('xmppPort'), 
+                self.get('xmppPassword'), exp_id = self.exp_id)
 
-        super(OMFWifiInterface, self).release()
+        super(OMFWifiInterface, self).do_release()
 

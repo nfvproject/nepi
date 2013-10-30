@@ -20,7 +20,7 @@
 
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
-        ResourceState, reschedule_delay, failtrap
+        ResourceState, reschedule_delay
 from nepi.resources.linux.node import LinuxNode
 from nepi.resources.planetlab.plcapi import PLCAPIFactory 
 from nepi.util.execfuncs import lexec
@@ -37,6 +37,8 @@ class PlanetlabNode(LinuxNode):
             "associated to a PlanetLab user account"
     _backend = "planetlab"
 
+    ## XXX A.Q. This lock could use a more descriptive name and 
+    #           an explanatory comment
     lock = threading.Lock()
 
     @classmethod
@@ -207,7 +209,7 @@ class PlanetlabNode(LinuxNode):
             
         return self._plapi
 
-    def discover(self):
+    def do_discover(self):
         """
         Based on the attributes defined by the user, discover the suitable nodes
         """
@@ -237,7 +239,7 @@ class PlanetlabNode(LinuxNode):
                     else:
                         self._put_node_in_provision(node_id)
                         self._node_to_provision = node_id
-                        super(PlanetlabNode, self).discover()
+                        super(PlanetlabNode, self).do_discover()
                 
                 else:
                     self.fail_node_not_available(hostname)
@@ -265,11 +267,11 @@ class PlanetlabNode(LinuxNode):
 
             if node_id:
                 self._node_to_provision = node_id
-                super(PlanetlabNode, self).discover()
+                super(PlanetlabNode, self).do_discover()
             else:
                self.fail_not_enough_nodes() 
             
-    def provision(self):
+    def do_provision(self):
         """
         Add node to user's slice after verifing that the node is functioning
         correctly
@@ -288,7 +290,7 @@ class PlanetlabNode(LinuxNode):
             except:
                 with PlanetlabNode.lock:
                     self._blacklist_node(node)
-                self.discover()
+                self.do_discover()
                 continue
 
             self._add_node_to_slice(node)
@@ -315,7 +317,7 @@ class PlanetlabNode(LinuxNode):
                     self._blacklist_node(node)
                     self._delete_node_from_slice(node)
                 self.set('hostname', None)
-                self.discover()
+                self.do_discover()
                 continue
             
             # check /proc directory is mounted (ssh_ok = True)
@@ -327,7 +329,7 @@ class PlanetlabNode(LinuxNode):
                         self._blacklist_node(node)
                         self._delete_node_from_slice(node)
                     self.set('hostname', None)
-                    self.discover()
+                    self.do_discover()
                     continue
             
                 else:
@@ -336,12 +338,13 @@ class PlanetlabNode(LinuxNode):
                     ip = self._get_ip(node)
                     self.set("ip", ip)
             
-        super(PlanetlabNode, self).provision()
+        super(PlanetlabNode, self).do_provision()
 
     def _filter_based_on_attributes(self):
         """
         Retrive the list of nodes ids that match user's constraints 
         """
+
         # Map user's defined attributes with tagnames of PlanetLab
         timeframe = self.get("timeframe")[0]
         attr_to_tags = {
@@ -513,7 +516,7 @@ class PlanetlabNode(LinuxNode):
             return nodes_id
 
     def _choose_random_node(self, nodes):
-        """
+        """ 
         From the possible nodes for provision, choose randomly to decrese the
         probability of different RMs choosing the same node for provision
         """
@@ -632,23 +635,19 @@ class PlanetlabNode(LinuxNode):
         return ip
 
     def fail_discovery(self):
-        self.fail()
         msg = "Discovery failed. No candidates found for node"
         self.error(msg)
         raise RuntimeError, msg
 
     def fail_node_not_alive(self, hostname=None):
-        self.fail()
         msg = "Node %s not alive" % hostname
         raise RuntimeError, msg
     
     def fail_node_not_available(self, hostname):
-        self.fail()
         msg = "Node %s not available for provisioning" % hostname
         raise RuntimeError, msg
 
     def fail_not_enough_nodes(self):
-        self.fail()
         msg = "Not enough nodes available for provisioning"
         raise RuntimeError, msg
 
