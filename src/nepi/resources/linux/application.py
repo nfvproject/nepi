@@ -492,7 +492,7 @@ class LinuxApplication(ResourceManager):
         if not command:
             # If no command was given (i.e. Application was used for dependency
             # installation), then the application is directly marked as FINISHED
-            super(LinuxApplication, self).do_finished()
+            super(LinuxApplication, self).do_finish()
         else:
             if self.in_foreground:
                 self._run_in_foreground()
