@@ -292,7 +292,6 @@ class ResourceManagerTestCase(unittest.TestCase):
         ResourceFactory.register_type(ErrorApplication)
         ResourceFactory.register_type(Node)
         ResourceFactory.register_type(Interface)
-        ResourceFactory.register_type(Channel)
 
         ec = ExperimentController()
 
@@ -307,8 +306,48 @@ class ResourceManagerTestCase(unittest.TestCase):
 
         ec.shutdown()
 
-        self.assertTrue(ec._fm._failure_level == FailureLevel.RM_FAILURE)
+        self.assertEquals(ec._fm._failure_level, FailureLevel.RM_FAILURE)
 
+    def test_critical(self):
+        from nepi.execution.resource import ResourceFactory
+        
+        ResourceFactory.register_type(ErrorApplication)
+        ResourceFactory.register_type(Application)
+        ResourceFactory.register_type(Node)
+        ResourceFactory.register_type(Interface)
+
+        ec = ExperimentController()
+
+        node = ec.register_resource("Node")
+
+        apps = list()
+        
+        eapp = ec.register_resource("ErrorApplication")
+        ec.set(eapp, "critical", False)
+        ec.register_connection(eapp, node)
+        apps.append(eapp)
+
+        for i in xrange(10):
+            app = ec.register_resource("Application")
+            ec.register_connection(app, node)
+            apps.append(app)
+
+        ec.deploy()
+
+        ec.wait_finished(apps)
+        
+        state = ec.state(eapp)
+        self.assertEquals(state, ResourceState.FAILED)
+      
+        apps.remove(eapp)
+
+        for app in apps:
+            state = ec.state(app)
+            self.assertEquals(state, ResourceState.FINISHED)
+        
+        ec.shutdown()
+
+        self.assertEquals(ec._fm._failure_level, FailureLevel.OK)
 
     def ztest_start_with_condition(self):
         # TODO!!!

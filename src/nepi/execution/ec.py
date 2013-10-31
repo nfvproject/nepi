@@ -307,6 +307,9 @@ class ExperimentController(object):
         if isinstance(guids, int):
             guids = [guids]
 
+        # Make a copy to avoid modifying the original guids list
+        guids = list(guids)
+
         while True:
             # If there are no more guids to wait for
             # or the quit function returns True, exit the loop
