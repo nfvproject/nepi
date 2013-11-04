@@ -42,6 +42,8 @@
 from nepi.execution.resource import ResourceFactory, ResourceAction, ResourceState
 from nepi.execution.ec import ExperimentController
 
+import time
+
 # Create the EC
 ec = ExperimentController()
 
@@ -58,11 +60,11 @@ ec.set(node1, 'xmppPassword', "1234")
 # Create and Configure the Application
 app1 = ec.register_resource("OMFRobotApplication")
 ec.set(app1, 'appid', "robot")
-ec.set(app1, 'path', "/users/jtribino/RobotCTRLComm.rb")
-ec.set(app1, 'args', "/users/jtribino/coordinate.csv")
+ec.set(app1, 'path', "/users/jtribino/RobotCTRLComm.rb") # /users/username/RobotCTRLComm.rb
+ec.set(app1, 'args', "/users/jtribino/coordinate.csv")   #/users/username/coordinate.csv
 ec.set(app1, 'env', " ")
-ec.set(app1, 'sources', "/home/wlab18/Desktop/coordinate.csv")
-ec.set(app1, 'sshUser', "jtribino")
+ec.set(app1, 'sources', "/home/wlab18/Desktop/coordinate.csv")  # local path
+ec.set(app1, 'sshUser', "jtribino")  # username
 
 # Connection
 ec.register_connection(app1, node1)
@@ -85,5 +87,5 @@ ec.set(app1, 'stdin', "2;openlefteye")
 
 ec.wait_finished([app1])
 
- Stop Experiment
+# Stop Experiment
 ec.shutdown()
