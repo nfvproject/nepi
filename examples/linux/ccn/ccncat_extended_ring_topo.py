@@ -138,13 +138,21 @@ if __name__ == '__main__':
 
     ec = ExperimentController(exp_id = exp_id)
 
-    # host in the US
-    host1 = "planetlab4.wail.wisc.edu"
-    host2 = "planetlab2.cs.columbia.edu"
-    host3 = "ricepl-2.cs.rice.edu"
-    host4 = "node1.planetlab.albany.edu"
-    host5 = "earth.cs.brown.edu"
-    host6 = "planetlab2.engr.uconn.edu"
+    # hosts in the US
+    #host1 = "planetlab4.wail.wisc.edu"
+    #host2 = "planetlab2.cs.columbia.edu"
+    #host3 = "ricepl-2.cs.rice.edu"
+    #host4 = "node1.planetlab.albany.edu"
+    #host5 = "earth.cs.brown.edu"
+    #host6 = "planetlab2.engr.uconn.edu"
+
+    # hosts in EU
+    host1 = "planetlab2.fct.ualg.pt"
+    host2 = "planet2.unipr.it"
+    host3 = "planetlab1.aston.ac.uk"
+    host4 = "itchy.comlab.bth.se"
+    host5 = "rochefort.infonet.fundp.ac.be"
+    host6 = "planetlab1.u-strasbg.fr"
 
     # describe nodes in the central ring 
     ring_hosts = [host1, host2, host3, host4]

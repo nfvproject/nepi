@@ -31,7 +31,7 @@ def install_packages_command(os, packages):
     cmd = install_rpmfusion_command(os)
     if cmd: cmd += " ; "
     cmd += " && ".join(map(lambda p: 
-            " { rpm -q %(package)s || sudo -S yum --nogpgcheck -y install %(package)s ; } " % {
+            " { rpm -q %(package)s || sudo -S yum -y install --nogpgcheck %(package)s ; } " % {
                     'package': p}, packages))
     
     #cmd = { rpm -q rpmfusion-free-release || sudo -s rpm -i ... ; } && { rpm -q vim || sudo yum -y install vim ; } && ..

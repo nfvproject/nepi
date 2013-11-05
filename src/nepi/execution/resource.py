@@ -698,6 +698,7 @@ class ResourceManager(Logger):
                 connected.append(rm)
         return connected
 
+    @failtrap
     def _needs_reschedule(self, group, state, time):
         """ Internal method that verify if 'time' has elapsed since 
         all elements in 'group' have reached state 'state'.
@@ -720,6 +721,13 @@ class ResourceManager(Logger):
         # check state and time elapsed on all RMs
         for guid in group:
             rm = self.ec.get_resource(guid)
+            
+            # If one of the RMs this resource needs to wait for has FAILED
+            # we raise an exception
+            if rm.state == ResourceState.FAILED:
+                msg = "Resource can not wait for FAILED RM %d. Setting Resource to FAILED"
+                raise RuntimeError, msg
+
             # If the RM state is lower than the requested state we must
             # reschedule (e.g. if RM is READY but we required STARTED).
             if rm.state < state:
@@ -739,6 +747,10 @@ class ResourceManager(Logger):
                     t = rm.start_time
                 elif state == ResourceState.STOPPED:
                     t = rm.stop_time
+                elif state == ResourceState.FINISHED:
+                    t = rm.finish_time
+                elif state == ResourceState.RELEASED:
+                    t = rm.release_time
                 else:
                     break
 
