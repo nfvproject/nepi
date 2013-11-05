@@ -633,10 +633,10 @@ class LinuxApplication(ResourceManager):
                     msg = " Failed to execute command '%s'" % self.get("command")
                     err = self._proc.stderr.read()
                     self.error(msg, out, err)
-                    self.fail()
+                    self.do_fail()
 
                 elif retcode == 0:
-                    self.finish()
+                    self.do_finish()
             else:
                 # We need to query the status of the command we launched in 
                 # background. In order to avoid overwhelming the remote host and
@@ -658,9 +658,9 @@ class LinuxApplication(ResourceManager):
                                 msg = "Failed to execute command '%s'" % \
                                         self.get("command")
                                 self.error(msg, out, err)
-                                self.fail()
+                                self.do_fail()
                             else:
-                                self.finish()
+                                self.do_finish()
 
                     self._last_state_check = tnow()
 

@@ -325,8 +325,9 @@ class ExperimentController(object):
 
             if rstate >= state:
                 guids.remove(guid)
-                self.logger.debug(" guid %d DONE - state is %s, required is >= %s " % (
-                    guid, hrrstate, hrstate))
+                rm = self.get_resource(guid)
+                self.logger.debug(" %s guid %d DONE - state is %s, required is >= %s " % (
+                    rm.rtype(), guid, hrrstate, hrstate))
             else:
                 # Debug...
                 self.logger.debug(" WAITING FOR guid %d - state is %s, required is >= %s " % (

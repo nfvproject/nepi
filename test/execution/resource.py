@@ -349,13 +349,67 @@ class ResourceManagerTestCase(unittest.TestCase):
 
         self.assertEquals(ec._fm._failure_level, FailureLevel.OK)
 
-    def ztest_start_with_condition(self):
-        # TODO!!!
-        pass
-    
-    def ztest_stop_with_condition(self):
-        # TODO!!!
-        pass
+    def test_start_with_condition(self):
+        from nepi.execution.resource import ResourceFactory
+        
+        ResourceFactory.register_type(Application)
+        ResourceFactory.register_type(Node)
+        ResourceFactory.register_type(Interface)
+
+        ec = ExperimentController()
+
+        node = ec.register_resource("Node")
+
+        app1 = ec.register_resource("Application")
+        ec.register_connection(app1, node)
+
+        app2 = ec.register_resource("Application")
+        ec.register_connection(app2, node)
+
+        ec.register_condition(app2, ResourceAction.START, app1, 
+                ResourceState.STARTED, time = "5s")
+
+        ec.deploy()
+
+        ec.wait_finished([app1, app2])
+        
+        rmapp1 = ec.get_resource(app1)
+        rmapp2 = ec.get_resource(app2)
+
+        self.assertTrue(rmapp2.start_time > rmapp1.start_time)
+        
+        ec.shutdown()
+
+    def test_stop_with_condition(self):
+        from nepi.execution.resource import ResourceFactory
+        
+        ResourceFactory.register_type(Application)
+        ResourceFactory.register_type(Node)
+        ResourceFactory.register_type(Interface)
+
+        ec = ExperimentController()
+
+        node = ec.register_resource("Node")
+
+        app1 = ec.register_resource("Application")
+        ec.register_connection(app1, node)
+
+        app2 = ec.register_resource("Application")
+        ec.register_connection(app2, node)
+
+        ec.register_condition(app2, ResourceAction.START, app1, 
+                ResourceState.STOPPED)
+
+        ec.deploy()
+
+        ec.wait_finished([app1, app2])
+        
+        rmapp1 = ec.get_resource(app1)
+        rmapp2 = ec.get_resource(app2)
+
+        self.assertTrue(rmapp2.start_time > rmapp1.stop_time)
+        
+        ec.shutdown()
 
     def ztest_set_with_condition(self):
         # TODO!!!

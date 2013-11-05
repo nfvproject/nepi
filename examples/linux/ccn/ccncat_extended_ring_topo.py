@@ -212,7 +212,7 @@ if __name__ == '__main__':
             app, ResourceState.STARTED, time = "10s")
     ec.register_condition(l5d, ResourceAction.STOP, 
             app, ResourceState.STARTED, time = "10s")
- 
+
     # Register a collector to automatically collect traces
     collector = add_collector(ec, "stderr", results_dir)
     for ccnd in ccnds.values():
