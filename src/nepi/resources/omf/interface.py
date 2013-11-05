@@ -78,6 +78,8 @@ class OMFWifiInterface(OMFResource):
         """
         super(OMFWifiInterface, self).__init__(ec, guid)
 
+        self._conf = False
+
         self._omf_api = None
         self._alias = self.get('alias')
 
@@ -191,9 +193,9 @@ class OMFWifiInterface(OMFResource):
     
         # Check if the node is already deployed
         if self.state < ResourceState.PROVISIONED:
-            iface = False
-            if iface == False:
-                iface = self.configure_iface()  
+            if self._conf == False:
+                self._conf = self.configure_iface()
+        if self._conf == True:
             self.configure_ip()
 
         super(OMFWifiInterface, self).do_deploy()
