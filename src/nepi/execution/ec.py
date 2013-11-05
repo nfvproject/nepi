@@ -64,7 +64,6 @@ class FailureManager(object):
             for guid in self.ec.resources:
                 state = self.ec.state(guid)
                 critical = self.ec.get(guid, "critical")
-
                 if state == ResourceState.FAILED and critical:
                     self._failure_level = FailureLevel.RM_FAILURE
                     self.ec.logger.debug("RM critical failure occurred on guid %d." \
@@ -657,6 +656,7 @@ class ExperimentController(object):
                     break
 
             if reschedule:
+
                 callback = functools.partial(wait_all_and_start, group)
                 self.schedule("1s", callback)
             else:

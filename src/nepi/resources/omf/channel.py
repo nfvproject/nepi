@@ -127,15 +127,16 @@ class OMFChannel(OMFResource):
         It becomes DEPLOYED after sending messages to configure the channel
 
         """
+        if not (self.get('xmppSlice') and self.get('xmppHost')
+              and self.get('xmppPort') and self.get('xmppPassword')):
+            msg = "Credentials are not initialzed. XMPP Connections impossible"
+            self.error(msg)
+            raise RuntimeError, msg
+
         if not self._omf_api :
             self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
                 self.get('xmppHost'), self.get('xmppPort'), 
                 self.get('xmppPassword'), exp_id = self.exp_id)
-
-        if not self._omf_api :
-            msg = "Credentials are not initialzed. XMPP Connections impossible"
-            self.error(msg)
-            raise RuntimeError, msg
 
         if not self.get('channel'):
             msg = "Channel's value is not initialized"
@@ -147,16 +148,10 @@ class OMFChannel(OMFResource):
         if self._nodes_guid == "reschedule" :
             self.ec.schedule("2s", self.deploy)
         else:
-            try:
-                for couple in self._nodes_guid:
-                    #print "Couple node/alias : " + couple[0] + "  ,  " + couple[1]
-                    attrval = self.get('channel')
-                    attrname = "net/%s/%s" % (couple[1], 'channel')
-                    self._omf_api.configure(couple[0], attrname, attrval)
-            except AttributeError:
-                msg = "Credentials are not initialzed. XMPP Connections impossible"
-                self.error(msg)
-                raise
+            for couple in self._nodes_guid:
+                attrval = self.get('channel')
+                attrname = "net/%s/%s" % (couple[1], 'channel')
+                self._omf_api.configure(couple[0], attrname, attrval)
 
             super(OMFChannel, self).do_deploy()
 
