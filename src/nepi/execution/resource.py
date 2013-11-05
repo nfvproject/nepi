@@ -962,6 +962,11 @@ class ResourceManager(Logger):
         pass
 
     def do_finish(self):
+        # In case the RM passed from STARTED directly to FINISHED,
+        # we set the stop_time for consistency
+        if self.stop_time == None:
+            self.set_stopped()
+
         self.set_finished()
 
     def do_fail(self):
