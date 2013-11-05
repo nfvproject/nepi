@@ -25,6 +25,8 @@ from nepi.resources.omf.omf_resource import ResourceGateway, OMFResource
 from nepi.resources.omf.node import OMFNode
 from nepi.resources.omf.omf_api import OMFAPIFactory
 
+from nepi.util import sshfuncs
+
 @clsinit_copy
 class OMFApplication(OMFResource):
     """
@@ -56,11 +58,20 @@ class OMFApplication(OMFResource):
         args = Attribute("args", "Argument of the application")
         env = Attribute("env", "Environnement variable of the application")
         stdin = Attribute("stdin", "Input of the application", default = "")
+        sources = Attribute("sources", "Sources of the application", 
+                     flags = Flags.ExecReadOnly)
+        sshuser = Attribute("sshUser", "user to connect with ssh", 
+                     flags = Flags.ExecReadOnly)
+        sshkey = Attribute("sshKey", "key to use for ssh", 
+                     flags = Flags.ExecReadOnly)
         cls._register_attribute(appid)
         cls._register_attribute(path)
         cls._register_attribute(args)
         cls._register_attribute(env)
         cls._register_attribute(stdin)
+        cls._register_attribute(sources)
+        cls._register_attribute(sshuser)
+        cls._register_attribute(sshkey)
 
     def __init__(self, ec, guid):
         """
@@ -142,15 +153,27 @@ class OMFApplication(OMFResource):
         It becomes DEPLOYED after getting the xmpp client.
 
         """
+        self.set('xmppSlice',self.node.get('xmppSlice'))
+        self.set('xmppHost',self.node.get('xmppHost'))
+        self.set('xmppPort',self.node.get('xmppPort'))
+        self.set('xmppPassword',self.node.get('xmppPassword'))
+
+        if not (self.get('xmppSlice') and self.get('xmppHost')
+              and self.get('xmppPort') and self.get('xmppPassword')):
+            msg = "Credentials are not initialzed. XMPP Connections impossible"
+            self.error(msg)
+            raise RuntimeError, msg
+
         if not self._omf_api :
             self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
                 self.get('xmppHost'), self.get('xmppPort'), 
                 self.get('xmppPassword'), exp_id = self.exp_id)
 
-        if not self._omf_api :
-            msg = "Credentials are not initialzed. XMPP Connections impossible"
-            self.error(msg)
-            raise RuntimeError, msg
+        if self.get('sources'):
+            gateway = ResourceGateway.AMtoGateway[self.get('xmppHost')]
+            user = self.get('sshUser') or self.get('xmppSlice')
+            dst = user + "@"+ gateway + ":"
+            (out, err), proc = sshfuncs.rcopy(self.get('sources'), dst)
 
         super(OMFApplication, self).do_deploy()
 
