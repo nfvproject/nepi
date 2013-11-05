@@ -153,6 +153,7 @@ class OMFApplication(OMFResource):
         It becomes DEPLOYED after getting the xmpp client.
 
         """
+
         self.set('xmppSlice',self.node.get('xmppSlice'))
         self.set('xmppHost',self.node.get('xmppHost'))
         self.set('xmppPort',self.node.get('xmppPort'))
@@ -199,13 +200,8 @@ class OMFApplication(OMFResource):
             self.get('args') + " : " + self.get('env')
         self.info(msg)
 
-        try:
-            self._omf_api.execute(self.node.get('hostname'),self.get('appid'), \
-                self.get('args'), self.get('path'), self.get('env'))
-        except AttributeError:
-            msg = "Credentials are not initialzed. XMPP Connections impossible"
-            self.error(msg)
-            raise
+        self._omf_api.execute(self.node.get('hostname'),self.get('appid'), \
+            self.get('args'), self.get('path'), self.get('env'))
 
         super(OMFApplication, self).do_start()
 
@@ -215,13 +211,8 @@ class OMFApplication(OMFResource):
         State is set to STOPPED after the message is sent.
 
         """
-        try:
-            self._omf_api.exit(self.node.get('hostname'),self.get('appid'))
-        except AttributeError:
-            msg = "Credentials were not initialzed. XMPP Connections impossible"
-            self.error(msg)
-            raise
 
+        self._omf_api.exit(self.node.get('hostname'),self.get('appid'))
         super(OMFApplication, self).do_stop()
 
     def do_release(self):

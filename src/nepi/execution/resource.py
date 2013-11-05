@@ -467,6 +467,7 @@ class ResourceManager(Logger):
         should be added in the do_start method.
 
         """
+
         if not self.state in [ResourceState.READY, ResourceState.STOPPED]:
             self.error("Wrong state %s for start" % self.state)
             return
@@ -807,8 +808,11 @@ class ResourceManager(Logger):
         action 'START' are satisfied.
 
         """
+        #import pdb;pdb.set_trace()
+
         reschedule = False
         delay = reschedule_delay 
+
 
         ## evaluate if conditions to start are met
         if self.ec.abort:
@@ -826,12 +830,12 @@ class ResourceManager(Logger):
             # Verify all start conditions are met
             for (group, state, time) in start_conditions:
                 # Uncomment for debug
-                #unmet = []
-                #for guid in group:
-                #    rm = self.ec.get_resource(guid)
-                #    unmet.append((guid, rm._state))
-                #
-                #self.debug("---- WAITED STATES ---- %s" % unmet )
+                unmet = []
+                for guid in group:
+                    rm = self.ec.get_resource(guid)
+                    unmet.append((guid, rm._state))
+                
+                self.debug("---- WAITED STATES ---- %s" % unmet )
 
                 reschedule, delay = self._needs_reschedule(group, state, time)
                 if reschedule:
@@ -915,7 +919,7 @@ class ResourceManager(Logger):
         if reschedule:
             self.ec.schedule(delay, self.deploy_with_conditions)
         else:
-            self.debug("----- STARTING ---- ")
+            self.debug("----- DEPLOYING ---- ")
             self.deploy()
 
     def do_connect(self, guid):

@@ -33,34 +33,24 @@ from nepi.util.timefuncs import *
 import time
 import unittest
 
-class DummyEC(ExperimentController):
-    pass
-
-class DummyRM(ResourceManager):
-    pass
-
-
 class OMFResourceFactoryTestCase(unittest.TestCase):
-
     def test_creation_phase(self):
 
         self.assertEquals(OMFNode.rtype(), "OMFNode")
         self.assertEquals(len(OMFNode._attributes), 6)
 
         self.assertEquals(OMFWifiInterface.rtype(), "OMFWifiInterface")
-        self.assertEquals(len(OMFWifiInterface._attributes), 9)
+        self.assertEquals(len(OMFWifiInterface._attributes), 10)
 
         self.assertEquals(OMFChannel.rtype(), "OMFChannel")
-        self.assertEquals(len(OMFChannel._attributes), 5)
+        self.assertEquals(len(OMFChannel._attributes), 6)
 
         self.assertEquals(OMFApplication.rtype(), "OMFApplication")
-        self.assertEquals(len(OMFApplication._attributes), 12)
-
+        self.assertEquals(len(OMFApplication._attributes), 13)
 
 class OMFEachTestCase(unittest.TestCase):
-
     def setUp(self):
-        self.ec = DummyEC(exp_id = "99999")
+        self.ec = ExperimentController(exp_id = "99999")
 
         self.node1 = self.ec.register_resource("OMFNode")
         self.ec.set(self.node1, 'hostname', 'omf.plexus.wlab17')
@@ -155,11 +145,9 @@ class OMFEachTestCase(unittest.TestCase):
         self.assertEquals(len(self.ec.get_resource(self.app4).conditions[ResourceAction.STOP]), 1)
         self.assertEquals(len(self.ec.get_resource(self.app5).conditions[ResourceAction.START]), 2)
 
-
-class OMFVLCTestCaseComplete(unittest.TestCase):
-
-    def xtest_deploy(self):
-        ec = DummyEC(exp_id = "5421" )
+class OMFVLCNormalCase(unittest.TestCase):
+    def test_deploy(self):
+        ec = ExperimentController(exp_id = "5421" )
 
         self.node1 = ec.register_resource("OMFNode")
         ec.set(self.node1, 'hostname', 'omf.plexus.wlab17')
@@ -232,8 +220,6 @@ class OMFVLCTestCaseComplete(unittest.TestCase):
 
         ec.wait_finished([self.app1, self.app2, self.app3,self.app4, self.app5])
 
-        time.sleep(1)
-
         self.assertEquals(round(tdiffsec(ec.get_resource(self.app2).start_time, ec.get_resource(self.app1).start_time),0), 3.0)
         self.assertEquals(round(tdiffsec(ec.get_resource(self.app3).start_time, ec.get_resource(self.app2).start_time),0), 2.0)
         self.assertEquals(round(tdiffsec(ec.get_resource(self.app4).start_time, ec.get_resource(self.app3).start_time),0), 3.0)
@@ -243,14 +229,13 @@ class OMFVLCTestCaseComplete(unittest.TestCase):
         self.assertEquals(ec.get_resource(self.node1).state, ResourceState.STARTED)
         self.assertEquals(ec.get_resource(self.iface1).state, ResourceState.STARTED)
         self.assertEquals(ec.get_resource(self.channel).state, ResourceState.STARTED)
-        self.assertEquals(ec.get_resource(self.app1).state, ResourceState.FINISHED)
-        self.assertEquals(ec.get_resource(self.app2).state, ResourceState.FINISHED)
-        self.assertEquals(ec.get_resource(self.app3).state, ResourceState.FINISHED)
-        self.assertEquals(ec.get_resource(self.app4).state, ResourceState.FINISHED)
-        self.assertEquals(ec.get_resource(self.app5).state, ResourceState.FINISHED)
+        self.assertEquals(ec.get_resource(self.app1).state, ResourceState.STOPPED)
+        self.assertEquals(ec.get_resource(self.app2).state, ResourceState.STOPPED)
+        self.assertEquals(ec.get_resource(self.app3).state, ResourceState.STOPPED)
+        self.assertEquals(ec.get_resource(self.app4).state, ResourceState.STOPPED)
+        self.assertEquals(ec.get_resource(self.app5).state, ResourceState.STOPPED)
 
         ec.shutdown()
-        time.sleep(1)
 
         self.assertEquals(ec.get_resource(self.node1).state, ResourceState.RELEASED)
         self.assertEquals(ec.get_resource(self.iface1).state, ResourceState.RELEASED)
@@ -261,90 +246,6 @@ class OMFVLCTestCaseComplete(unittest.TestCase):
         self.assertEquals(ec.get_resource(self.app4).state, ResourceState.RELEASED)
         self.assertEquals(ec.get_resource(self.app5).state, ResourceState.RELEASED)
 
-
-
-class OMFVLCTestCaseNoComplete(unittest.TestCase):
-    def test_deploy(self):
-
-        ec = DummyEC(exp_id = "1245" )
-
-        self.node1 = ec.register_resource("OMFNode")
-        ec.set(self.node1, 'hostname', 'omf.plexus.wlab17')
-        ec.set(self.node1, 'xmppSlice', "nepi")
-        ec.set(self.node1, 'xmppHost', "xmpp-plexus.onelab.eu")
-        ec.set(self.node1, 'xmppPort', "5222")
-        ec.set(self.node1, 'xmppPassword', "1234")
-
-        self.node2 = ec.register_resource("OMFNode")
-        
-        self.iface1 = ec.register_resource("OMFWifiInterface")
-        ec.set(self.iface1, 'alias', "w0")
-        ec.set(self.iface1, 'mode', "adhoc")
-        ec.set(self.iface1, 'type', "g")
-        ec.set(self.iface1, 'essid', "vlcexp")
-        ec.set(self.iface1, 'ip', "10.0.0.17")
-
-        self.iface2 = ec.register_resource("OMFWifiInterface")
-        
-        self.channel = ec.register_resource("OMFChannel")
-        ec.set(self.channel, 'channel', "6")
-        ec.set(self.channel, 'xmppSlice', "nepi")
-        ec.set(self.channel, 'xmppHost', "xmpp-plexus.onelab.eu")
-        ec.set(self.channel, 'xmppPort', "5222")
-        ec.set(self.channel, 'xmppPassword', "1234")
-        
-        self.app1 = ec.register_resource("OMFApplication")
-        ec.set(self.app1, 'appid', 'Vlc#1')
-        ec.set(self.app1, 'path', "/opt/vlc-1.1.13/cvlc")
-        ec.set(self.app1, 'args', "/opt/10-by-p0d.avi --sout '#rtp{dst=10.0.0.37,port=1234,mux=ts}'")
-        ec.set(self.app1, 'env', "DISPLAY=localhost:10.0 XAUTHORITY=/root/.Xauthority")
-
-        self.app2 = ec.register_resource("OMFApplication")
-
-        self.app3 = ec.register_resource("OMFApplication")
-        ec.set(self.app3, 'appid', 'Kill#2')
-        ec.set(self.app3, 'path', "/usr/bin/killall")
-        ec.set(self.app3, 'args', "vlc")
-        ec.set(self.app3, 'env', " ")
-
-        ec.register_connection(self.app1, self.node1)
-        ec.register_connection(self.app2, self.node1)
-        ec.register_connection(self.app3, self.node1)
-        ec.register_connection(self.node1, self.iface1)
-        ec.register_connection(self.iface1, self.channel)
-        ec.register_connection(self.node2, self.iface2)
-        ec.register_connection(self.iface2, self.channel)
-
-        ec.register_condition(self.app2, ResourceAction.START, self.app1, ResourceState.STARTED , "2s")
-        ec.register_condition(self.app3, ResourceAction.START, self.app2, ResourceState.STARTED , "2s")
-
-        ec.register_condition([self.app1, self.app2, self.app3], ResourceAction.STOP, self.app1, ResourceState.STARTED , "6s")
-
-        ec.deploy()
-
-        ec.wait_finished([self.app1, self.app2, self.app3])
-
-#        self.assertEquals(ec.get_resource(self.node1).state, ResourceState.STARTED)
-#        self.assertEquals(ec.get_resource(self.node2).state, ResourceState.FAILED)
-#        self.assertEquals(ec.get_resource(self.iface1).state, ResourceState.STARTED)
-#        self.assertEquals(ec.get_resource(self.iface2).state, ResourceState.FAILED)
-#        self.assertEquals(ec.get_resource(self.channel).state, ResourceState.STARTED)
-#        self.assertEquals(ec.get_resource(self.app1).state, ResourceState.FINISHED)
-#        self.assertEquals(ec.get_resource(self.app2).state, ResourceState.FAILED)
-#        self.assertEquals(ec.get_resource(self.app3).state, ResourceState.FINISHED)
-
-        time.sleep(1)
-
-        ec.shutdown()
-
-        self.assertEquals(ec.get_resource(self.node1).state, ResourceState.RELEASED)
-        self.assertEquals(ec.get_resource(self.node2).state, ResourceState.RELEASED)
-        self.assertEquals(ec.get_resource(self.iface1).state, ResourceState.RELEASED)
-        self.assertEquals(ec.get_resource(self.iface2).state, ResourceState.RELEASED)
-        self.assertEquals(ec.get_resource(self.channel).state, ResourceState.RELEASED)
-        self.assertEquals(ec.get_resource(self.app1).state, ResourceState.RELEASED)
-        self.assertEquals(ec.get_resource(self.app2).state, ResourceState.RELEASED)
-        self.assertEquals(ec.get_resource(self.app3).state, ResourceState.RELEASED)
 
 if __name__ == '__main__':
     unittest.main()

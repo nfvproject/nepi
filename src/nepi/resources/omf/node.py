@@ -102,27 +102,23 @@ class OMFNode(OMFResource):
             It becomes DEPLOYED after sending messages to enroll the node
 
         """ 
+        if not (self.get('xmppSlice') and self.get('xmppHost')
+              and self.get('xmppPort') and self.get('xmppPassword')):
+            msg = "Credentials are not initialzed. XMPP Connections impossible"
+            self.error(msg)
+            raise RuntimeError, msg
+
         if not self._omf_api :
             self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
                 self.get('xmppHost'), self.get('xmppPort'), 
                 self.get('xmppPassword'), exp_id = self.exp_id)
-
-        if not self._omf_api :
-            msg = "Credentials are not initialzed. XMPP Connections impossible"
-            self.error(msg)
-            raise RuntimeError, msg
 
         if not self.get('hostname') :
             msg = "Hostname's value is not initialized"
             self.error(msg)
             raise RuntimeError, msg
 
-        try:
-            self._omf_api.enroll_host(self.get('hostname'))
-        except AttributeError:
-            msg = "Credentials are not initialzed. XMPP Connections impossible"
-            self.error(msg)
-            raise
+        self._omf_api.enroll_host(self.get('hostname'))
 
         super(OMFNode, self).do_deploy()
 
