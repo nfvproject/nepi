@@ -642,28 +642,23 @@ class PlanetlabNode(LinuxNode):
         return ip
 
     def fail_discovery(self):
-        self.fail()
         msg = "Discovery failed. No candidates found for node"
         self.error(msg)
         raise RuntimeError, msg
 
     def fail_node_not_alive(self, hostname=None):
-        self.fail()
         msg = "Node %s not alive" % hostname
         raise RuntimeError, msg
     
     def fail_node_not_available(self, hostname):
-        self.fail()
         msg = "Node %s not available for provisioning" % hostname
         raise RuntimeError, msg
 
     def fail_not_enough_nodes(self):
-        self.fail()
         msg = "Not enough nodes available for provisioning"
         raise RuntimeError, msg
 
     def fail_plapi(self):
-        self.fail()
         msg = "Failing while trying to instanciate the PLC API"
         raise RuntimeError, msg
 
