@@ -1,0 +1,339 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%    NEPI, a framework to manage network experiments
+%    Copyright (C) 2013 INRIA
+%
+%    This program is free software: you can redistribute it and/or modify
+%    it under the terms of the GNU General Public License as published by
+%    the Free Software Foundation, either version 3 of the License, or
+%    (at your option) any later version.
+%
+%    This program is distributed in the hope that it will be useful,
+%    but WITHOUT ANY WARRANTY; without even the implied warranty of
+%    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+%    GNU General Public License for more details.
+%
+%    You should have received a copy of the GNU General Public License
+%    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+%
+% Author: Alina Quereilhac <alina.quereilhac@inria.fr>
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+NEPI is written in Python, so you will need to install Python before
+before being able to run experiments with NEPI. 
+NEPI is known to work on Linux (Fedore, Debian, Ubuntu) and Mac (OS X).
+
+\section{Dependencies}
+
+Dependencies for NEPI vary according to the features you want to enable.
+Make sure the following dependencies are correctly installed in your system
+before using NEPI. \\
+
+Mandatory dependencies:
+\begin{itemize}
+    \item Python 2.6+
+    \item Mercurial 
+\end{itemize}
+
+Optional dependencies:
+\begin{itemize}
+    \item SleekXMPP - Required to run experiments on OMF testbeds
+\end{itemize}
+
+\subsection{Install dependencies on Debian/Ubuntu}
+
+\begingroup
+    \fontsize{10pt}{12pt}\selectfont
+
+\begin{verbatim}
+    $ sudo aptitude install -y python mercurial
+\end{verbatim}
+
+\endgroup
+
+\subsection{Install dependencies on Fedora}
+
+\begingroup
+    \fontsize{10pt}{12pt}\selectfont
+
+\begin{verbatim}
+    $ sudo yum install -y python mercurial
+\end{verbatim}
+
+\endgroup
+
+\subsection{Install dependencies on Mac}
+
+First install homebrew (\url{http://mxcl.github.io/homebrew/}),
+then install Python.
+
+\begingroup
+    \fontsize{10pt}{12pt}\selectfont
+
+\begin{verbatim}
+    $ brew install python
+\end{verbatim}
+
+\endgroup
+
+\subsection{Install SleekXMPP}
+
+You will need \textit{git} to get the SleekXMPP sources.
+
+\begingroup
+    \fontsize{10pt}{12pt}\selectfont
+
+\begin{verbatim}
+    $ git clone -b develop git://github.com/fritzy/SleekXMPP.git
+    $ cd SleekXMPP
+    $ sudo python setup.py install
+\end{verbatim}
+
+\endgroup
+
+\section{The source code}
+
+To get NEPI's source code you will need Mercurial version 
+control system. The Mercurial NEPI repo can also be browsed online at: \\
+
+\url{http://nepi.inria.fr/code/nepi/} 
+
+\subsection{Clone the repo}
+
+\begingroup
+    \fontsize{10pt}{12pt}\selectfont
+
+\begin{verbatim}
+$ hg clone http://nepi.inria.fr/code/nepi -r nepi-3.0-release
+\end{verbatim}
+
+\endgroup
+
+\section{Install NEPI in your system}
+
+You don't need to install NEPI in your system to be able to run 
+experiments. However this might be convenient if you don't 
+plan to modify or extend the sources.
+
+To install NEPI, just run \emph{make install} in the NEPI source
+folder.
+
+\begingroup
+    \fontsize{10pt}{12pt}\selectfont
+
+\begin{verbatim}
+    $ cd nepi
+    $ make install 
+\end{verbatim}
+
+\endgroup
+
+If you are developing your own NEPI extensions, the installed 
+NEPI version might interfere with your work.
+In this case it is probably more convenient to tell
+Python where to find the NEPI sources, using the PYTHONPATH
+environmental variable, when you run a NEPI script.
+
+\begingroup
+    \fontsize{10pt}{12pt}\selectfont
+
+\begin{verbatim}
+    $ PYTHONATH=$PYTHONPATH:<path-to-nepi>/src python experiment.py
+\end{verbatim}
+
+\endgroup
+
+\section{Run experiments}
+
+There are two ways you can use NEPI to run your experiments.
+The first one is writing a Python script, which will import
+NEPI libraries, and run it. 
+The second one is in interactive mode by using Python console.
+
+\subsection{Run from script}
+
+Writing a simple NEPI expeiment script is easy.
+Take a look at the example in the FAQ section \ref{faq:ping_example}.
+Once you have written down the script, you can run it using
+Python. Note that since NEPI is not yet installed in your system,
+you will need to export the path to NEPI's source code to 
+the PYTHONPATH environment variable, so that Python can find
+NEPI's libraries.
+
+\begingroup
+    \fontsize{10pt}{12pt}\selectfont
+
+\begin{verbatim}
+    $ export PYTHONPATH=<path-to-nepi>/src:$PYTHONPATH
+    $ python first-experiment.py 
+\end{verbatim}
+
+\endgroup
+
+\subsection{Run interactively}
+
+The Python interpreter can be used as an interactive console to execute 
+Python instructions.
+We can take advantage of this feature, to interactively run experiments
+with NEPI. We  use the \textit{ipython} console for the example below, 
+you can install it with \textit{sudo yum/aptitude install ipython} on 
+Fedora/Debian.
+
+\begingroup
+    \fontsize{10pt}{12pt}\selectfont
+
+\begin{verbatim}
+$ export PYTHONPATH=<path-to-nepi>/src:$PYTHONPATH
+$ ipython
+Python 2.7.3 (default, Jan  2 2013, 13:56:14) 
+Type "copyright", "credits" or "license" for more information.
+
+IPython 0.13.1 -- An enhanced Interactive Python.
+?         -> Introduction and overview of IPython's features.
+%quickref -> Quick reference.
+help      -> Python's own help system.
+object?   -> Details about 'object', use 'object??' for extra details.
+
+\end{verbatim}
+
+\endgroup
+
+With ipython, if you want to paste many lines at once you will need to type
+\emph{\%cpaste} and finish the paste block with \emph{\-\-}.
+
+The first thing we have to do is to import the NEPI classes
+we will use. 
+In particular we need to import the ExperimentController class.
+
+\begin{lstlisting}[language=Python]
+
+from nepi.execution.ec import ExperimentController
+
+\end{lstlisting}
+
+Then we need to create an ExperimentController instance.
+The \textit{exp-id} argument serves as a human readable identifier
+for the experiment to be ran.
+
+\begin{lstlisting}[language=Python]
+
+ec = ExperimentController(exp_id = "<your-exp-id>")
+
+\end{lstlisting}
+
+Next we will define two Python functions, one to register \emph{LinuxNode}
+resources and the other to register \emph{LinuxApplication} resources.
+A \emph{LinuxNode} resource (or ResourceManager) will serve as an abstraction
+to a Linux host resource, that can be accessed using SSH key authentication.
+A \emph{LinuxApplication} resource represents anything that can be executed
+on a Linux host as a BASH command.
+
+\begin{lstlisting}[language=Python]
+
+%cpaste
+def add_node(ec, host, user, ssh_key):
+    node = ec.register_resource("LinuxNode")
+    ec.set(node, "hostname", host)
+    ec.set(node, "username", user)
+    ec.set(node, "identity", ssh_key)
+    ec.set(node, "cleanHome", True)
+    ec.set(node, "cleanProcesses", True)
+    return node
+
+def add_app(ec, command, node):
+    app = ec.register_resource("LinuxApplication")
+    ec.set(app, "command", command)
+    ec.register_connection(app, node)
+    return app
+--
+
+\end{lstlisting}
+
+The method \textit{register\_resource} declares a resource instance to the 
+Experiment Controller. The method \textit{register\_connection} indicates
+that two resource will interact during the experiment. 
+Note that invoking \textit{add\_node} or \textit{add\_app} has no effect other
+than informing the EC about the resources that will be used during the experiment.
+The actual deployment of the experiment requires the method \textit{deploy} to
+be invoked.
+
+The Resource Managers (RM) that abstract the concrete resources expose
+configuration attributes. In the LinuxNode RM we set the \emph{hostname} 
+and \emph{username} as attributes, while in the LinuxApplication RM 
+we set the \emph{command} attribute.
+
+Apart from teh \emph{command} attribute, the \emph{LinuxApplication} 
+ResourceManager exposed several other attributes
+that permit to upload, compile and install arbitrary sources, 
+to run any application might be needed to run an experiment. 
+More details will be given in the following sections of this document.
+
+Lets now use these functions to describe the experiment we will run. 
+Choose a host where you have an account, and can access using SSH
+key authentication. Define string variables with the right
+values for the  \emph{hostname}, \emph{username} and path to the
+SSH public key in as \emph{ssh\_key}, and then type the following lines.
+
+\begin{lstlisting}[language=Python]
+
+node = add_node(ec, hostname, username, ssh_key)
+app = add_app(ec, "ping -c3 nepi.inria.fr",  node)
+
+\end{lstlisting}
+
+Now that we have described our simple PING experiment, we can deploy
+it. Invoking the \emph{deploy} command will not only configure the 
+resource but also automatically launch the applications.
+
+\begin{lstlisting}[language=Python]
+
+ ec.deploy()
+
+\end{lstlisting}
+
+After some seconds, we should see some log messages informing about 
+the progress of the deployment.
+If you now open another terminal and connect to the host through SSH, 
+you should find some directories created by NEPI.
+You should see a directory named \emph{nepi-exp}, and under that directory
+you will find another with the identifier you gave when you created the 
+experiment controller (the <exp-id>). 
+Under the experiment directory, you will find directories for each of the 
+resources deployed (e.g. \emph{node-1}, \emph{app-2}). 
+The resource directories are named with a short string that identifies the
+type of resource (e.g. 'node', 'app', etc), followed by a unique number that 
+uniquely identifies a given resource within the experiment, 
+the global unique identifier (guid).
+
+From the ipython console, we can check the deployment status of each resource
+by querying the EC with the method \emph{state}.
+The argument \emph{hr} stand for `human readable`, and will return a string 
+state instead of a state number.
+
+\begin{lstlisting}[language=Python]
+
+ec.state(app, hr=True)
+
+\end{lstlisting}
+
+Once the LinuxApplication is STARTED, we can retrieve the PING output using
+stored as a \emph{trace} file on the host. For this we use use \emph{trace}
+method, and specify the resource and the trace name (i.e. stdout).
+
+\begin{lstlisting}[language=Python]
+
+ ec.trace(app, "stdout")
+
+\end{lstlisting}
+
+That is it. We can terminate the experiment by invoking the method \emph{shutdown}.
+
+\begin{lstlisting}[language=Python]
+
+ ec.shutdown()
+
+\end{lstlisting}
+
+
+
