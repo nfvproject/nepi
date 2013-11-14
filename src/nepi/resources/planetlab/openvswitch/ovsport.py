@@ -115,6 +115,7 @@ class OVSPort(LinuxApplication):
             msg = "info_list is empty"
             self.debug(msg)
             raise RuntimeError, msg
+
         import socket
         self.port_info.append(get_host_ip.get('hostname'))
         self.port_info.append(socket.gethostbyname(self.port_info[0]))   
@@ -123,6 +124,7 @@ class OVSPort(LinuxApplication):
         """ Create the desired port
         """
         port_name = self.get('port_name')
+
         if not (port_name or self.ovswitch):
             msg = "The rm_list is empty or the port name is not assigned\n Failed to create port"
             self.error(msg)
@@ -161,6 +163,7 @@ class OVSPort(LinuxApplication):
             self.error(msg)
             self.debug("You are in the method get_local_end and the port_name = %s" % self.get('port_name'))
             raise AttributeError, msg
+
         self._port_number = None
         self._port_number = int(out)
         self.port_info.append(self._port_number)				
@@ -183,27 +186,29 @@ class OVSPort(LinuxApplication):
         """ Wait until ovswitch is started
         """
         ovswitch = self.ovswitch
+
         if not ovswitch or ovswitch.state < ResourceState.READY:       
             self.debug("---- RESCHEDULING DEPLOY ---- node state %s " % self.ovswitch.state )  
             self.ec.schedule(reschedule_delay, self.deploy)
-            
-        else:
-            self.do_discover()
-            self.do_provision()
-            self.get_host_ip()
-            self.create_port()
-            self.get_local_end()
-            self.ovswitch.ovs_status()
+            return
 
-            super(OVSPort, self).do_deploy()
+        self.do_discover()
+        self.do_provision()
+        self.get_host_ip()
+        self.create_port()
+        self.get_local_end()
+        self.ovswitch.ovs_status()
+
+        super(OVSPort, self).do_deploy()
 
     def do_release(self):
         """ Release the port RM means delete the ports
         """
         # OVS needs to wait until all associated RMs are released
         # to be released
-        from nepi.resources.planetlab.openvswitch.tunnel import Tunnel
-        rm = self.get_connected(Tunnel.rtype())
+        from nepi.resources.planetlab.openvswitch.tunnel import OVSTunnel
+        rm = self.get_connected(OVSTunnel.rtype())
+
         if rm and rm[0].state < ResourceState.FINISHED:
             self.ec.schedule(reschedule_delay, self.release)
             return 

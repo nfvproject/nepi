@@ -153,19 +153,19 @@ class OVSWitch(LinuxApplication):
         """
         node = self.node
         if not node or node.state < ResourceState.READY:
-            self.debug("---- RESCHEDULING DEPLOY ---- node state %s " % self.node.state )
+            #self.debug("---- RESCHEDULING DEPLOY ---- node state %s " % self.node.state )
             self.ec.schedule(reschedule_delay, self.deploy)
+            return
 
-        else:
-            self.do_discover()
-            self.do_provision()
-            self.check_sliver_ovs()
-            self.servers_on()
-            self.create_bridge()
-            self.assign_contr()
-            self.ovs_status()
+        self.do_discover()
+        self.do_provision()
+        self.check_sliver_ovs()
+        self.servers_on()
+        self.create_bridge()
+        self.assign_controller()
+        self.ovs_status()
             
-            super(OVSWitch, self).do_deploy()
+        super(OVSWitch, self).do_deploy()
 
     def servers_on(self):
         """ Start the openvswitch servers and also checking 
@@ -222,36 +222,38 @@ class OVSWitch(LinuxApplication):
         # TODO: Add check for virtual_ip belonging to vsys_tag
         self.del_old_br()
 	
-        if self.get("bridge_name") and self.get("virtual_ip_pref"):	
-            bridge_name = self.get("bridge_name")
-            virtual_ip_pref = self.get("virtual_ip_pref")
-            self.info(" Creating the bridge %s and assigning %s" %\
-                (bridge_name, virtual_ip_pref) )
-            cmd = "sliver-ovs create-bridge '%s' '%s'" %\
-                (bridge_name, virtual_ip_pref) 
-            out = err = ""
-            (out, err), proc = self.node.run_and_wait(cmd, self.ovs_checks,
-                    shfile = "create_br.sh",
-                    pidfile = "create_br_pidfile",
-                    ecodefile = "create_br_exitcode", 
-                    sudo = True, 
-                    stdout = "create_br_stdout", 
-                    stderr = "create_br_stderr") 
-            (out, err), proc = self.node.check_output(self.ovs_checks, 'create_br_exitcode')
-            if out != "0\n":
-                msg = "No such pltap netdev\novs-appctl: ovs-vswitchd: server returned an error"
-                self.debug("Check again the virtual IP")			
-                raise RuntimeError, msg
-            self.info("Bridge %s created" % bridge_name)
-          
-        else: 	
+        if not (self.get("bridge_name") and self.get("virtual_ip_pref")):
             msg = "No assignment in one or both attributes"
             self.error(msg)
             self.debug("Bridge name is %s and virtual_ip_pref is %s" %\
                 (self.get("bridge_name"), self.get("virtual_ip_pref")) )
             raise AttributeError, msg
+	
+        bridge_name = self.get("bridge_name")
+        virtual_ip_pref = self.get("virtual_ip_pref")
+        self.info(" Creating the bridge %s and assigning %s" %\
+            (bridge_name, virtual_ip_pref) )
+        cmd = "sliver-ovs create-bridge '%s' '%s'" %\
+            (bridge_name, virtual_ip_pref) 
+        out = err = ""
+        (out, err), proc = self.node.run_and_wait(cmd, self.ovs_checks,
+                shfile = "create_br.sh",
+                pidfile = "create_br_pidfile",
+                ecodefile = "create_br_exitcode", 
+                sudo = True, 
+                stdout = "create_br_stdout", 
+                stderr = "create_br_stderr") 
 
-    def assign_contr(self):
+        (out, err), proc = self.node.check_output(self.ovs_checks, 'create_br_exitcode')
+        if out != "0\n":
+            msg = "No such pltap netdev\novs-appctl: ovs-vswitchd: server returned an error"
+            self.debug("Check again the virtual IP")			
+            raise RuntimeError, msg
+
+        self.info("Bridge %s created" % bridge_name)
+          
+
+    def assign_controller(self):
         """ Set the controller IP
         """
         if self.get("controller_ip") and self.get("controller_port"):

@@ -28,13 +28,19 @@
 
 
 from nepi.execution.ec import ExperimentController
+import os, time
 
-def add_node(ec, host, user):
+def add_node(ec, host, user, pl_user, pl_password):
     node = ec.register_resource("PlanetlabNode")
     ec.set(node, "hostname", host)
     ec.set(node, "username", user)
+    if pl_user:
+        ec.set(node, "pluser", pl_user)
+    if pl_password:
+        ec.set(node, "plpassword", pl_password)
     ec.set(node, "cleanHome", True)
     ec.set(node, "cleanProcesses", True)
+
     return node
 
 def add_ovs(ec, bridge_name, virtual_ip_pref, controller_ip, controller_port, node):
@@ -62,7 +68,7 @@ def add_tap(ec, ip4, prefix4, pointopoint, node):
     return tap
 
 def add_tunnel(ec, port0, tap):
-    tunnel = ec.register_resource("Tunnel")
+    tunnel = ec.register_resource("OVSTunnel")
     ec.register_connection(port0, tunnel)
     ec.register_connection(tunnel, tap)
     return tunnel
@@ -79,12 +85,15 @@ ec = ExperimentController(exp_id = "one")
 switch1 = "planetlab2.virtues.fi"
 switch2 = "planetlab2.upc.es"
 host1 = "planetlab2.ionio.gr"
-host2 = "planetlab2.cs.aueb.gr"
+host2 = "planetlab2.diku.dk"
 
 slicename = "inria_nepi"
 
-s1_node = add_node(ec, switch1, slicename)
-s2_node = add_node(ec, switch2, slicename)
+pl_user = os.environ.get("PL_USER")
+pl_password =  os.environ.get("PL_PASS")
+
+s1_node = add_node(ec, switch1, slicename, pl_user, pl_password)
+s2_node = add_node(ec, switch2, slicename, pl_user, pl_password)
 
 # Add switches 
 ovs1 = add_ovs(ec, "nepi_bridge", "192.168.3.1/24", "85.23.168.77", "6633", s1_node)
@@ -96,12 +105,12 @@ port3 = add_port(ec, "nepi_port3", ovs1)
 port2 = add_port(ec, "nepi_port2", ovs2)
 port4 = add_port(ec, "nepi_port4", ovs2)
 
-h1_node = add_node(ec, host1, slicename)
-h2_node = add_node(ec, host2, slicename) 
+h1_node = add_node(ec, host1, slicename, pl_user, pl_password)
+h2_node = add_node(ec, host2, slicename, pl_user, pl_password)
 
 # Add tap devices
 tap1 = add_tap(ec, "192.168.3.3", 24, "192.168.3.1", h1_node)
-tap2 = add_tap(ec, "192.168.3.4", 24, "192.168.3.1", h2_node)
+tap2 = add_tap(ec, "192.168.3.4", 24, "192.168.3.2", h2_node)
 
 # Connect the nodes
 tunnel1 = add_tunnel(ec, port1, tap1)
@@ -113,6 +122,7 @@ app1 = add_app(ec, "ping -c3 192.168.3.3", s1_node)
 app2 = add_app(ec, "ping -c3 192.168.3.4", s2_node)
 
 ec.deploy()
+
 ec.wait_finished([app2])
 
 # Retreive ping results and save
