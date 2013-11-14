@@ -100,9 +100,14 @@ class OVSTunnel(LinuxApplication):
         self._pid = None
         self._ppid = None
 
+
+    def log_message(self, msg):
+        return " guid %d - Tunnel - %s " % (self.guid, msg)
+
     @property
     def node(self):
-        return self._nodes[0]
+        if self._nodes:
+            return self._nodes[0]
 
     def app_home(self, node):
         return os.path.join(node.exp_home, self._home)
@@ -132,20 +137,17 @@ class OVSTunnel(LinuxApplication):
 
     def get_node(self, endpoint):
         # Get connected to the nodes
+        res = []
         if hasattr(endpoint, "create_port"):
-            res = []
             rm_list = endpoint.get_connected(OVSWitch.rtype())
             if rm_list:
                 rm = rm_list[0].get_connected(PlanetlabNode.rtype())
-                if rm: 
-                    res.append(rm[0])
-            return res
         else:
-            res = []
             rm = endpoint.get_connected(PlanetlabNode.rtype())
-            if rm :
-                res.append(rm[0])
-            return res
+
+        if rm :
+            res.append(rm[0])
+        return res
 
     @property
     def endpoint1(self):
@@ -172,8 +174,7 @@ class OVSTunnel(LinuxApplication):
         port_endpoints = self.port_endpoints()
         if len(port_endpoints) == 2:
             return True
-        else: 
-            return False
+        return False
 
     def get_port_info(self, endpoint, rem_endpoint):
         """ Retrieve the port_info list for each port
@@ -191,11 +192,10 @@ class OVSTunnel(LinuxApplication):
             host1, ip1, pname1, virt_ip1, pnumber1 = self.port_info_tunl[1]
             return (pname0, ip1, pnumber1)      
          
-        else:
-            # Use for the link host-->switch
-            self.port_info_tunl.append(endpoint.port_info)
-            host0, ip0, pname0, virt_ip0, pnumber0 = self.port_info_tunl[0]
-            return pnumber0
+        # Use for the link host-->switch
+        self.port_info_tunl.append(endpoint.port_info)
+        host0, ip0, pname0, virt_ip0, pnumber0 = self.port_info_tunl[0]
+        return pnumber0
     
     def udp_connect(self, endpoint, rem_endpoint):     
         # Collect info from rem_endpoint
@@ -248,7 +248,7 @@ class OVSTunnel(LinuxApplication):
 
         msg = "Connection on host %s configured" \
             % self.node.get("hostname")
-        self.info(msg)
+        self.debug(msg)
          
         # Wait for pid file to be generated
         self._nodes = self.get_node(endpoint) 
@@ -291,15 +291,14 @@ class OVSTunnel(LinuxApplication):
                 stderr = "sw_stderr")
         
         # check if execution errors occured
-        msg = "Failed to connect endpoints"
-
         if proc.poll():
+            msg = "Failed to connect endpoints"
             self.error(msg, out, err)
             raise RuntimeError, msg
-        else:
-            msg = "Connection on port %s configured" % local_port_name
-            self.info(msg)
-            return 
+
+        # For debugging
+        msg = "Connection on port %s configured" % local_port_name
+        self.info(msg)
 
     def sw_host_connect(self, endpoint, rem_endpoint):
         """Link switch--> host
@@ -323,23 +322,23 @@ class OVSTunnel(LinuxApplication):
                 text = True,
                 overwrite = False)
 
-        #invoke connect script
+        # Invoke connect script
         cmd = "bash %s" % shfile
         (out, err), proc = self.node.run(cmd, self.run_home(self.node),
                 sudo  = True,
                 stdout = "sw_stdout",
                 stderr = "sw_stderr")
         
-        # check if execution errors occured
-        msg = "Failed to connect endpoints"
+        # Check if execution errors occured
 
         if proc.poll():
+            msg = "Failed to connect endpoints"
             self.error(msg, out, err)
             raise RuntimeError, msg
-        else:
-            msg = "Connection on port %s configured" % local_port_name
-            self.info(msg)
-            return                                                      
+
+        # For debugging
+        msg = "Connection on port %s configured" % local_port_name
+        self.debug(msg)                                                   
 
     def do_provision(self):
         """ Provision the tunnel
@@ -352,13 +351,13 @@ class OVSTunnel(LinuxApplication):
 
         if self.check_endpoints():
             #Invoke connect script between switches
-            switch_connect1 = self.switch_connect(self.endpoint1, self.endpoint2)
-            switch_connect2 = self.switch_connect(self.endpoint2, self.endpoint1)
+            self.switch_connect(self.endpoint1, self.endpoint2)
+            self.switch_connect(self.endpoint2, self.endpoint1)
 
         else: 
             # Invoke connect script between switch & host
             (self._pid, self._ppid) = self.udp_connect(self.endpoint2, self.endpoint1)
-            switch_connect = self.sw_host_connect(self.endpoint1, self.endpoint2)
+            self.sw_host_connect(self.endpoint1, self.endpoint2)
 
         super(OVSTunnel, self).do_provision()
 
@@ -366,11 +365,12 @@ class OVSTunnel(LinuxApplication):
         if (not self.endpoint1 or self.endpoint1.state < ResourceState.READY) or \
             (not self.endpoint2 or self.endpoint2.state < ResourceState.READY):
             self.ec.schedule(reschedule_delay, self.deploy)
-        else:
-            self.do_discover()
-            self.do_provision()
+            return
 
-            super(OVSTunnel, self).do_deploy()
+        self.do_discover()
+        self.do_provision()
+
+        super(OVSTunnel, self).do_deploy()
  
     def do_release(self):
         """ Release the udp_tunnel on endpoint2.
@@ -383,7 +383,7 @@ class OVSTunnel(LinuxApplication):
                 self._nodes = self.get_node(self.endpoint2) 
                 (out, err), proc = self.node.kill(self._pid,
                         self._ppid, sudo = True)
-            if err or proc.poll():
+                if err or proc.poll():
                     # check if execution errors occurred
                     msg = " Failed to delete TAP device"
                     self.error(msg, err, err)
