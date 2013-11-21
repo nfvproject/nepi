@@ -88,9 +88,54 @@ class PlanetlabTap(LinuxApplication):
 
     @property
     def node(self):
-        node = self.get_connected(PlanetlabNode.rtype())
+        node = self.get_connected(PlanetlabNode.get_rtype())
         if node: return node[0]
         return None
+
+    """
+    def trace(self, name, attr = TraceAttr.ALL, block = 512, offset = 0):
+        self.info("Retrieving '%s' trace %s " % (name, attr))
+
+        path = os.path.join(self.run_home, name)
+        
+        command = "(test -f %s && echo 'success') || echo 'error'" % path
+        (out, err), proc = self.node.execute(command)
+
+        if (err and proc.poll()) or out.find("error") != -1:
+            msg = " Couldn't find trace %s " % name
+            self.error(msg, out, err)
+            return None
+    
+        if attr == TraceAttr.PATH:
+            return path
+
+        if attr == TraceAttr.ALL:
+            (out, err), proc = self.node.check_output(self.run_home, name)
+            
+            if proc.poll():
+                msg = " Couldn't read trace %s " % name
+                self.error(msg, out, err)
+                return None
+
+            return out
+
+        if attr == TraceAttr.STREAM:
+            cmd = "dd if=%s bs=%d count=1 skip=%d" % (path, block, offset)
+        elif attr == TraceAttr.SIZE:
+            cmd = "stat -c%%s %s " % path
+
+        (out, err), proc = self.node.execute(cmd)
+
+        if proc.poll():
+            msg = " Couldn't find trace %s " % name
+            self.error(msg, out, err)
+            return None
+        
+        if attr == TraceAttr.SIZE:
+            out = int(out.strip())
+
+        return out
+    """
 
     def upload_sources(self):
         # upload vif-creation python script
@@ -211,7 +256,7 @@ class PlanetlabTap(LinuxApplication):
         # Node needs to wait until all associated RMs are released
         # to be released
         from nepi.resources.linux.udptunnel import UdpTunnel
-        rms = self.get_connected(UdpTunnel.rtype())
+        rms = self.get_connected(UdpTunnel.get_rtype())
         for rm in rms:
             if rm.state < ResourceState.STOPPED:
                 self.ec.schedule(reschedule_delay, self.release)

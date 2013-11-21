@@ -72,7 +72,7 @@ class OVSWitch(LinuxApplication):
 
     @property
     def node(self):
-        node = self.get_connected(PlanetlabNode.rtype())
+        node = self.get_connected(PlanetlabNode.get_rtype())
         if node: return node[0]
         return None
 
@@ -101,13 +101,13 @@ class OVSWitch(LinuxApplication):
 
 #        """
 #        rm = self.ec.get_resource(guid)
-#        if rm.rtype() in self._authorized_connections:
+#        if rm.get_rtype() in self._authorized_connections:
 #            msg = "Connection between %s %s and %s %s accepted" % \
-#                (self.rtype(), self._guid, rm.rtype(), guid)
+#                (self.get_rtype(), self._guid, rm.get_rtype(), guid)
 #            self.debug(msg)
 #            return True
 #        msg = "Connection between %s %s and %s %s refused" % \
-#             (self.rtype(), self._guid, rm.rtype(), guid)
+#             (self.get_rtype(), self._guid, rm.get_rtype(), guid)
 #        self.debug(msg)
 #        return False
 
@@ -291,7 +291,7 @@ class OVSWitch(LinuxApplication):
         # Node needs to wait until all associated RMs are released
         # to be released
         from nepi.resources.planetlab.openvswitch.ovsport import OVSPort
-        rm = self.get_connected(OVSPort.rtype())
+        rm = self.get_connected(OVSPort.get_rtype())
 
         if rm[0].state < ResourceState.FINISHED:
             self.ec.schedule(reschedule_delay, self.release)

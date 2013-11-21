@@ -21,22 +21,205 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-\begin{itemize}
-  \item EC API
-    \begin{itemize}
-        \item register resource
-        \item RM States (State transition DIAGRAM)
-        \item RM Actions
-        \item Attributes
-        \item The critical attribute
-        \item Traces (how to collect traces to the local repo, talk about the Collector RM)
-        \item deploy (interactive deployment)
-        \item workflow - register condition
-    \end{itemize}
-  \item Resource Factory
-    \begin{itemize}
-        \item Populate factory (happens automatically)
-        \item How to discover available rm types and their resources
-    \end{itemize}
-\end{itemize}
+The ExperimentController (EC) is the entity in charge of turning the 
+experiment description into a running experiment. 
+In order to do this the EC needs to know which resources are to be 
+used, how they should be configured and how resources relate to one another.
+To this pourpose the EC exposes methods to register resources, specify their 
+configuration, and register dependencies between. These methods are part of
+the EC design API.
+Likewise, in order to deploy and control resources, and collect data, 
+the EC exposes another set of methods, which form the execution API. 
+These two APIs are described in detail in the rest of this chapter.
+
+\section{The experiment script}
+
+NEPI is a Python-based language and all classes and functions can
+be used by importing the \emph{nepi} module from a Python script.
+
+In particular, the ExperimentController class can be imported as follows:
+
+\begin{lstlisting}[language=Python]
+
+from nepi.execution.ec import ExperimentController
+
+\end{lstlisting}
+
+Once this is done, an ExperimentController instance must be instantiated
+for a particular experiment. The ExperimentController constructor receives
+the optional argument \emph{exp\_id}. This argument is important because
+it defines the experiment identity and allows to distinguish among different
+experiments. If an experiment id is not explicitly given, NEPI will automatically
+generate a unique id for the experiment. 
+
+\begin{lstlisting}[language=Python]
+
+ec = ExperimentController(exp_id = "my-exp-id")
+
+\end{lstlisting}
+
+The experiment id can always be retrieved as follows
+
+\begin{lstlisting}[language=Python]
+
+exp_id = ec.exp_id 
+
+\end{lstlisting}
+
+%TODO: What is the run_id ??
+
+\section{The design API}
+
+Once an ExperimentController has been instantiated, it is possible to start
+describing the experiment. The design API is the set of methods which
+allow to do so.
+
+\subsection{Registering resources}
+
+Every resource supported by NEPI is controlled by a specific ResourceManager 
+(RM). The RM instances are automatically created by the EC, and the user does 
+not need to interact with them directly. 
+
+Each type of RM is associated with a \emph{type\_id} which uniquely identifies 
+a concrete kind of resource (e.g PlanetLab node, application that runs in
+a Linux machine, etc).
+The \emph{type\_ids} are string identifiers, and they are required  
+to register a resource with the EC.
+
+To discover all the available RMs and their \emph{type\_ids} we
+can make use of the ResourceFactory class.
+This class is a \emph{Singleton} that holds the templates and information 
+of all the RMs supported by NEPI. We can retrieve this information as follows:
+
+\begin{lstlisting}[language=Python]
+
+from nepi.execution.resource import ResourceFactory
+
+for type_id in ResourceFactory.resource_types():
+    rm_type = ResourceFactory.get_resource_type(type_id)
+    print type_id, ":", rm_type.get_help()
+
+\end{lstlisting}
+
+Once the \emph{type\_id} of the resource is known, the registration of a
+new resource with the EC is simple:
+
+\begin{lstlisting}[language=Python]
+
+type_id = "SomeRMType"
+guid = ec.register_resources(type_id)
+
+\end{lstlisting}
+
+When a resource is registered, the EC instantiates a RM of the 
+requested \emph{type\_id} and assigns a global unique identifier 
+(guid) to it. The guid is an incremental integer number and it 
+is the value returned by the \emph{register\_resource} method.
+The EC keeps internal references to all RMs, which the user can
+reference using the corresponding guid value.
+
+\subsection{Attributes}
+
+ResourceManagers expose the configurable parameters of resources
+through a list of attributes. An attribute can be seen as a
+\emph{{name:value}} pair, that represents a certain aspect of
+the resource (whether information or configuration information).
+
+It is possible to discover the list of attributes exposed by an 
+RM type as follows:
+
+\begin{lstlisting}[language=Python]
+from nepi.execution.resource import ResourceFactory
+
+type_id = "SomeRMType"
+rm_type = ResourceFactory.get_resource_type(type_id)
+
+for attr in rm_type.get_attributes():
+    print "       ",  attr.name, ":", attr.help
+    
+\end{lstlisting}
+
+To configure or retrieve the value of a certain attribute of
+an registered resource we can use the \emph{get} and \emph{set}
+methods of the EC.
+
+\begin{lstlisting}[language=Python]
+
+old_value = ec.get(guid, "attr_name")
+ec.set(guid, "attr_name", new_value)
+new_value = ec.get(guid, "attr_name")
+
+\end{lstlisting}
+
+% Critical attribute
+Since each RM type exposes the characteristics of a particular type
+of resource, it is to be expected that different RMs will have different
+attributes. However, there a particular attribute that is common to all RMs.
+This is the \emph{critical} attribute, and it is meant to indicate to the EC
+how it should behave when a failure occurs during the experiment. 
+The \emph{critical} attribute has a default value of \emph{True}, since
+all resources are considered critical by default. 
+When this attribute is set to \emph{False} the EC will ignore failures on that 
+resource and carry on with the experiment. Otherwise, the EC will immediately 
+interrupt the experiment.
+
+\subsection{Traces}
+
+A Trace represent a stream of data collected during the experiment and associated
+to a single resource. ResourceManagers expose a list of traces, which are identified
+by a name. Particular traces might or might not need activation, since some traces
+are enabled by default.
+
+It is possible to discover the list of traces exposed by an 
+RM type as follows:
+
+\begin{lstlisting}[language=Python]
+from nepi.execution.resource import ResourceFactory
+
+type_id = "SomeRMType"
+rm_type = ResourceFactory.get_resource_type(type_id)
+
+for trace in rm_type.get_traces():
+    print "       ",  trace.name, ":", trace.enabled
+    
+\end{lstlisting}
+
+The \emph{enable\_trace} method allows to enable a specific trace for a 
+RM instance
+
+\begin{lstlisting}[language=Python]
+
+ec.enable_trace(guid, "trace-name")
+
+print ec.trace_enabled(guid, "trace-name")
+
+\end{lstlisting}
+
+\subsection{Registering connections}
+
+\subsection{States and actions}
+
+\subsection{Registering conditions}
+
+\section{The execution API}
+
+\subsection{Deploying an experiment}
+
+%TODO: Talk about groups
+%TODO: Talk about interactive deploymet
+
+\subsection{Getting attributes}
+
+\subsection{Quering the state}
+
+\subsection{Getting traces}
+    
+% TODO: Give examples of Traces (how to collect traces to the local repo, talk about the Collector RM)
+
+% how to retrieve an application trace when the Node failed? (critical attribute)
+
+\subsection{The collector RM}
+
+
+
 

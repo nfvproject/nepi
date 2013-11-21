@@ -102,7 +102,7 @@ class OMFApplication(OMFResource):
 
     @property
     def node(self):
-        rm_list = self.get_connected(OMFNode.rtype())
+        rm_list = self.get_connected(OMFNode.get_rtype())
         if rm_list: return rm_list[0]
         return None
 
@@ -124,10 +124,10 @@ class OMFApplication(OMFResource):
 
         """
         rm = self.ec.get_resource(guid)
-        if rm.rtype() not in self._authorized_connections:
+        if rm.get_rtype() not in self._authorized_connections:
             msg = ("Connection between %s %s and %s %s refused: "
                     "An Application can be connected only to a Node" ) % \
-                (self.rtype(), self._guid, rm.rtype(), guid)
+                (self.get_rtype(), self._guid, rm.get_rtype(), guid)
             self.debug(msg)
 
             return False
@@ -135,14 +135,14 @@ class OMFApplication(OMFResource):
         elif len(self.connections) != 0 :
             msg = ("Connection between %s %s and %s %s refused: "
                     "This Application is already connected" ) % \
-                (self.rtype(), self._guid, rm.rtype(), guid)
+                (self.get_rtype(), self._guid, rm.get_rtype(), guid)
             self.debug(msg)
 
             return False
 
         else :
             msg = "Connection between %s %s and %s %s accepted" % (
-                    self.rtype(), self._guid, rm.rtype(), guid)
+                    self.get_rtype(), self._guid, rm.get_rtype(), guid)
             self.debug(msg)
 
             return True
@@ -195,7 +195,7 @@ class OMFApplication(OMFResource):
             self.set('env', " ")
 
         # Some information to check the information in parameter
-        msg = " " + self.rtype() + " ( Guid : " + str(self._guid) +") : " + \
+        msg = " " + self.get_rtype() + " ( Guid : " + str(self._guid) +") : " + \
             self.get('appid') + " : " + self.get('path') + " : " + \
             self.get('args') + " : " + self.get('env')
         self.info(msg)

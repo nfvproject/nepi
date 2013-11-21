@@ -61,7 +61,7 @@ class LinuxCCNPing(LinuxCCNPingServer):
 
     @property
     def ccnpingserver(self):
-        ccnpingserver = self.get_connected(LinuxCCNPingServer.rtype())
+        ccnpingserver = self.get_connected(LinuxCCNPingServer.get_rtype())
         if ccnpingserver: return ccnpingserver[0]
         return None
 

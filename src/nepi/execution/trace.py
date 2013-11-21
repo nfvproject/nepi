@@ -37,10 +37,10 @@ class Trace(object):
 
     """
 
-    def __init__(self, name, help):
+    def __init__(self, name, help, enabled = False):
         self._name = name
         self._help = help
-        self.enabled = False
+        self.enabled = enabled
 
     @property
     def name(self):
