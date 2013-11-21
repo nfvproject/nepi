@@ -130,10 +130,13 @@
   title=\lstname                   % show the filename of files included with \lstinputlisting; also try caption instead of title
 }
 
-
 \title{NEPI v3.0 User Manual}
 \date{}
 \author{}
+\renewcommand{\maketitlehookd}{%
+  \begin{center}
+    \includegraphics[width=6cm]{nepi_logo.png}
+\end{center}}
 
 \begin{document}
 
