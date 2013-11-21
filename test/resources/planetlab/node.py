@@ -59,7 +59,7 @@ def create_node(ec, username, pl_user, pl_password, hostname = None,
 
 class PLNodeFactoryTestCase(unittest.TestCase):
     def test_creation_phase(self):
-        self.assertEquals(PlanetlabNode.rtype(), "PlanetlabNode")
+        self.assertEquals(PlanetlabNode.get_rtype(), "PlanetlabNode")
         self.assertEquals(len(PlanetlabNode._attributes), 29)
 
 

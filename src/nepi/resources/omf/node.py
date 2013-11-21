@@ -83,15 +83,15 @@ class OMFNode(OMFResource):
 
         """
         rm = self.ec.get_resource(guid)
-        if rm.rtype() in self._authorized_connections:
+        if rm.get_rtype() in self._authorized_connections:
             msg = "Connection between %s %s and %s %s accepted" % (
-                    self.rtype(), self._guid, rm.rtype(), guid)
+                    self.get_rtype(), self._guid, rm.get_rtype(), guid)
             self.debug(msg)
 
             return True
 
         msg = "Connection between %s %s and %s %s refused" % (
-                self.rtype(), self._guid, rm.rtype(), guid)
+                self.get_rtype(), self._guid, rm.get_rtype(), guid)
         self.debug(msg)
 
         return False

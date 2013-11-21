@@ -20,6 +20,39 @@
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+Releases in NEPI do not occur in strictly regular periods. Usually a new
+release will be done every 4 or 5 months.
+
+\section{The development branch}
+
+The main development branch for NEPI 3 is \emph{nepi-3-dev}. 
+There might be other branches to develop new features, but they will 
+eventually end up being merged into the \emph{nepi-3-dev} branch. 
+
+\section{Versioning}
+
+Releases are named following the \emph{major.minor.revision} convention.
+The \emph{major} number reflects a major change in functionality or architecture. 
+It is to be expected that this number will remind in 3 for a long period.
+
+The \emph{minor} number reflects the incorporation of new features into NEPI.
+This number is expected to be increased on each release.
+
+The \emph{revision} number is incremented when a considerable number of
+bugs have been fixed. No release will be done when only the \emph{revision}
+number is incremented.
+
+\section{The release process}
+
+The creation of a new NEPI release will always follow the same sequence of steps.
+
+\begin{enumerate}
+  \item A new \emph{nepi-3.<minor>-pre-release} branch will be created from the \emph{nepi-3-dev} branch
+  \item During two to three weeks intensive work on testing will be carried out on the new branch. No new functionality will be added on this branch and only changes that fix bugs will be accepted.
+  \item At the end of this period, the pre-release branch will be branched again into the release branch, named \emph{nepi-3.<minor>-release}
+  \item A tag will be added to this new branch including the revision number (i.e. \emph{release-3.<minor>.<revision>})
+  \item Finally, the pre-release branch will be merged into the development branch, nepi-3-dev, to incorporate to it all the bug fixes.
+\end{enumerate}
+
 %%TODO: Explain how to create patch
 
-TODO

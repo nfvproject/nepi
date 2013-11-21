@@ -248,7 +248,7 @@ class ResourceManager(Logger):
         cls._register_traces()
 
     @classmethod
-    def rtype(cls):
+    def get_rtype(cls):
         """ Returns the type of the Resource Manager
 
         """
@@ -284,7 +284,7 @@ class ResourceManager(Logger):
         return cls._backend
 
     def __init__(self, ec, guid):
-        super(ResourceManager, self).__init__(self.rtype())
+        super(ResourceManager, self).__init__(self.get_rtype())
         
         self._guid = guid
         self._ec = weakref.ref(ec)
@@ -1032,7 +1032,7 @@ class ResourceFactory(object):
     @classmethod
     def register_type(cls, rclass):
         """Register a new Ressource Manager"""
-        cls._resource_types[rclass.rtype()] = rclass
+        cls._resource_types[rclass.get_rtype()] = rclass
 
     @classmethod
     def create(cls, rtype, ec, guid):

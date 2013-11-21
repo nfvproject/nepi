@@ -163,8 +163,8 @@ class LinuxApplication(ResourceManager):
 
     @classmethod
     def _register_traces(cls):
-        stdout = Trace("stdout", "Standard output stream")
-        stderr = Trace("stderr", "Standard error stream")
+        stdout = Trace("stdout", "Standard output stream", enabled = True)
+        stderr = Trace("stderr", "Standard error stream", enabled = True)
 
         cls._register_trace(stdout)
         cls._register_trace(stderr)
@@ -194,7 +194,7 @@ class LinuxApplication(ResourceManager):
 
     @property
     def node(self):
-        node = self.get_connected(LinuxNode.rtype())
+        node = self.get_connected(LinuxNode.get_rtype())
         if node: return node[0]
         return None
 

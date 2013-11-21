@@ -69,16 +69,16 @@ class OVSPort(LinuxApplication):
 
     @property
     def node(self):
-        rm_list = self.get_connected(OVSWitch.rtype())
+        rm_list = self.get_connected(OVSWitch.get_rtype())
         if rm_list:
             for elt in rm_list:
-                node = elt.get_connected(PlanetlabNode.rtype())
+                node = elt.get_connected(PlanetlabNode.get_rtype())
                 if node: return node[0]
         return node[0]
 
     @property
     def ovswitch(self):
-        ovswitch = self.get_connected(OVSWitch.rtype())
+        ovswitch = self.get_connected(OVSWitch.get_rtype())
         if ovswitch: return ovswitch[0]
         return None
         
@@ -99,11 +99,11 @@ class OVSPort(LinuxApplication):
 
 #        """
 #        rm = self.ec.get_resource(guid)
-#        if rm.rtype() in self._authorized_connections:
-#            msg = "Connection between %s %s and %s %s accepted" % (self.rtype(), self._guid, rm.rtype(), guid)
+#        if rm.get_rtype() in self._authorized_connections:
+#            msg = "Connection between %s %s and %s %s accepted" % (self.get_rtype(), self._guid, rm.get_rtype(), guid)
 #            self.debug(msg)
 #            return True
-#        msg = "Connection between %s %s and %s %s refused" % (self.rtype(), self._guid, rm.rtype(), guid)
+#        msg = "Connection between %s %s and %s %s refused" % (self.get_rtype(), self._guid, rm.get_rtype(), guid)
 #        self.debug(msg)
 
     def get_host_ip(self):
@@ -207,7 +207,7 @@ class OVSPort(LinuxApplication):
         # OVS needs to wait until all associated RMs are released
         # to be released
         from nepi.resources.planetlab.openvswitch.tunnel import OVSTunnel
-        rm = self.get_connected(OVSTunnel.rtype())
+        rm = self.get_connected(OVSTunnel.get_rtype())
 
         if rm and rm[0].state < ResourceState.FINISHED:
             self.ec.schedule(reschedule_delay, self.release)
