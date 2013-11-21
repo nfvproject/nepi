@@ -197,9 +197,68 @@ print ec.trace_enabled(guid, "trace-name")
 
 \subsection{Registering connections}
 
-\subsection{States and actions}
+In order to describe the experiment set-up, resources need to be 
+associated to one another. Through the process of connecting resources
+the \emph{topology graph} is constructed. A certain application might
+need to be configured and executed on a certain node, and this
+must be indicated to the EC by connecting the application RM to the node
+RM.
+
+Connections are registered using the \emph{register\_connection} method,
+which receives the guids of the two RM.
+
+\begin{lstlisting}[language=Python]
+
+ec.register_connection(node_guid, app_guid)
+
+\end{lstlisting}
+
+The order in which the guids are given is not important, since the
+\emph{topology\_graph} is not directed, and the corresponding 
+RMs \emph{`know'} internally how to interpret the connection 
+relationship.
 
 \subsection{Registering conditions}
+
+All ResourceMangers must go through the same sequence of state transitions.
+Associated to those states are the actions that trigger the transitions.
+As an example, a RM will initially be in the state NEW. When the DEPLOY action
+is invoked, it will transition to the DISCOVERED, then PROVISIONED, then READY
+states. Likewise, the action START will make a RM pass from state READY to 
+STARTED, and the action STOP will change a RM from state STARTED to STOPPED.
+
+Using these states and actions, it is possible to specify workflow dependencies 
+between resources. For instance, it would be possible to indicate that
+one application should start after another application by registering a 
+condition with the EC.
+
+\begin{lstlisting}[language=Python]
+
+from nepi.execution.resource import ResourceState, ResourceActions
+
+ec.register_condition(app1_guid, ResourceAction.START, app2_guid, ResourceState.STARTED)
+
+\end{lstlisting}
+
+The above invocation should be read "Application 1 should START after application 2 
+has STARTED". It is also possible to indicate a relative time from the moment a state
+change occurs to the moment the action should be taken as follows:
+
+\begin{lstlisting}[language=Python]
+
+from nepi.execution.resource import ResourceState, ResourceActions
+
+ec.register_condition(app1_guid, ResourceAction.START, app2_guid, ResourceState.STARTED, time = "5s")
+
+\end{lstlisting}
+
+This line should be read "Application 1 should START at least 5 seconds after 
+application 2 has STARTED". \\
+
+Allowed actions are: DEPLOY, START and STOP. \\
+
+Existing states are: NEW, DISCOVERED, PROVISIONED, READY, STARTED, STOPPED, 
+FAILED and RELEASED. \\
 
 \section{The execution API}
 
