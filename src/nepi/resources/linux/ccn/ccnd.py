@@ -247,7 +247,7 @@ class LinuxCCND(LinuxApplication):
 
             if retcode == 1 and err.find("No such file or directory") > -1:
                 # ccnd is not running (socket not found)
-                self.set_finished()
+                self.set_stopped()
             elif retcode:
                 # other errors ...
                 msg = " Failed to execute command '%s'" % self.get("command")

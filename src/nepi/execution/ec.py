@@ -238,7 +238,7 @@ class ExperimentController(object):
 
     def wait_finished(self, guids):
         """ Blocking method that wait until all RMs in the 'guid' list 
-            reach a state >= STOPPED (i.e. FINISHED, STOPPED, FAILED or 
+            reach a state >= STOPPED (i.e. STOPPED, FAILED or 
             RELEASED ) or until a System Failure occurs (e.g. Task Failure) 
 
         :param guids: List of guids

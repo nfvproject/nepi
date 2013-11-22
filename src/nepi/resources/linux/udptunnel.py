@@ -266,7 +266,7 @@ class UdpTunnel(LinuxApplication):
                             self.error(msg, err1, err2)
                             self.fail()
                         else:
-                            self.set_finished()
+                            self.set_stopped()
 
                 self._last_state_check = tnow()
 
