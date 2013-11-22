@@ -491,8 +491,8 @@ class LinuxApplication(ResourceManager):
 
         if not command:
             # If no command was given (i.e. Application was used for dependency
-            # installation), then the application is directly marked as FINISHED
-            super(LinuxApplication, self).do_finish()
+            # installation), then the application is directly marked as STOPPED
+            super(LinuxApplication, self).set_stopped()
         else:
             if self.in_foreground:
                 self._run_in_foreground()
@@ -636,7 +636,7 @@ class LinuxApplication(ResourceManager):
                     self.do_fail()
 
                 elif retcode == 0:
-                    self.do_finish()
+                    self.set_stopped()
             else:
                 # We need to query the status of the command we launched in 
                 # background. In order to avoid overwhelming the remote host and
@@ -660,7 +660,7 @@ class LinuxApplication(ResourceManager):
                                 self.error(msg, out, err)
                                 self.do_fail()
                             else:
-                                self.do_finish()
+                                self.set_stopped()
 
                     self._last_state_check = tnow()
 
