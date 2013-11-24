@@ -260,6 +260,14 @@ class ResourceManager(Logger):
         return copy.deepcopy(cls._attributes.values())
 
     @classmethod
+    def get_attribute(cls, name):
+        """ Returns a copy of the attribute with name 'name'
+
+        """
+        return copy.deepcopy(cls._attributes[name])
+
+
+    @classmethod
     def get_traces(cls):
         """ Returns a copy of the traces
 

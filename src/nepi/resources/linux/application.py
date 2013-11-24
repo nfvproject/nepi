@@ -319,7 +319,7 @@ class LinuxApplication(ResourceManager):
 
         super(LinuxApplication, self).do_provision()
 
-    def upload_start_command(self):
+    def upload_start_command(self, overwrite = False):
         # Upload command to remote bash script
         # - only if command can be executed in background and detached
         command = self.get("command")
@@ -339,7 +339,7 @@ class LinuxApplication(ResourceManager):
             self.node.upload_command(command, 
                     shfile = shfile,
                     env = env,
-                    overwrite = False)
+                    overwrite = overwrite)
 
     def execute_deploy_command(self, command):
         if command:

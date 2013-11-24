@@ -389,22 +389,12 @@ class LinuxNode(ResourceManager):
         # TODO: Validate!
         return True
 
-    def clean_processes(self, killer = False):
+    def clean_processes(self):
         self.info("Cleaning up processes")
         
-        if killer:
-            # Hardcore kill
-            cmd = ("sudo -S killall python tcpdump || /bin/true ; " +
-                "sudo -S killall python tcpdump || /bin/true ; " +
-                "sudo -S kill $(ps -N -T -o pid --no-heading | grep -v $PPID | sort) || /bin/true ; " +
-                "sudo -S killall -u root || /bin/true ; " +
-                "sudo -S killall -u root || /bin/true ; ")
-        else:
-            # Be gentler...
-            cmd = ("sudo -S killall tcpdump || /bin/true ; " +
-                "sudo -S killall tcpdump || /bin/true ; " +
-                "sudo -S killall -u %s || /bin/true ; " % self.get("username") +
-                "sudo -S killall -u %s || /bin/true ; " % self.get("username"))
+        cmd = ("sudo -S killall tcpdump || /bin/true ; " +
+            "sudo -S kill $(ps aux | grep '[n]epi' | awk '{print $2}') || /bin/true ; " +
+            "sudo -S killall -u %s || /bin/true ; " % self.get("username"))
 
         out = err = ""
         (out, err), proc = self.execute(cmd, retry = 1, with_lock = True)
