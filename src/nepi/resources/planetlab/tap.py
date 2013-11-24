@@ -92,51 +92,6 @@ class PlanetlabTap(LinuxApplication):
         if node: return node[0]
         return None
 
-    """
-    def trace(self, name, attr = TraceAttr.ALL, block = 512, offset = 0):
-        self.info("Retrieving '%s' trace %s " % (name, attr))
-
-        path = os.path.join(self.run_home, name)
-        
-        command = "(test -f %s && echo 'success') || echo 'error'" % path
-        (out, err), proc = self.node.execute(command)
-
-        if (err and proc.poll()) or out.find("error") != -1:
-            msg = " Couldn't find trace %s " % name
-            self.error(msg, out, err)
-            return None
-    
-        if attr == TraceAttr.PATH:
-            return path
-
-        if attr == TraceAttr.ALL:
-            (out, err), proc = self.node.check_output(self.run_home, name)
-            
-            if proc.poll():
-                msg = " Couldn't read trace %s " % name
-                self.error(msg, out, err)
-                return None
-
-            return out
-
-        if attr == TraceAttr.STREAM:
-            cmd = "dd if=%s bs=%d count=1 skip=%d" % (path, block, offset)
-        elif attr == TraceAttr.SIZE:
-            cmd = "stat -c%%s %s " % path
-
-        (out, err), proc = self.node.execute(cmd)
-
-        if proc.poll():
-            msg = " Couldn't find trace %s " % name
-            self.error(msg, out, err)
-            return None
-        
-        if attr == TraceAttr.SIZE:
-            out = int(out.strip())
-
-        return out
-    """
-
     def upload_sources(self):
         # upload vif-creation python script
         pl_vif_create = os.path.join(os.path.dirname(__file__), "scripts",
@@ -174,11 +129,17 @@ class PlanetlabTap(LinuxApplication):
         stop_command = self.replace_paths(self._stop_command)
         self.node.upload(stop_command,
                 os.path.join(self.app_home, "stop.sh"),
-                text = True, 
-                overwrite = False)
+                text = True,
+                # Overwrite file every time. 
+                # The stop.sh has the path to the socket, wich should change
+                # on every experiment run.
+                overwrite = True)
 
     def upload_start_command(self):
-        super(PlanetlabTap, self).upload_start_command()
+        # Overwrite file every time. 
+        # The stop.sh has the path to the socket, wich should change
+        # on every experiment run.
+        super(PlanetlabTap, self).upload_start_command(overwrite = True)
 
         # We want to make sure the device is up and running
         # before the deploy finishes (so things will be ready
@@ -246,7 +207,7 @@ class PlanetlabTap(LinuxApplication):
 
                 if out.strip().find(self.get("deviceName")) == -1: 
                     # tap is not running is not running (socket not found)
-                    self.finish()
+                    self.set_stopped()
 
             self._last_state_check = tnow()
 

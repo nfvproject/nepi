@@ -32,6 +32,7 @@ Likewise, in order to deploy and control resources, and collect data,
 the EC exposes another set of methods, which form the execution API. 
 These two APIs are described in detail in the rest of this chapter.
 
+
 \section{The experiment script}
 
 NEPI is a Python-based language and all classes and functions can
@@ -45,8 +46,8 @@ from nepi.execution.ec import ExperimentController
 
 \end{lstlisting}
 
-Once this is done, an ExperimentController instance must be instantiated
-for a particular experiment. The ExperimentController constructor receives
+Once this is done, an ExperimentController must be instantiated for
+the experiment. The ExperimentController constructor receives
 the optional argument \emph{exp\_id}. This argument is important because
 it defines the experiment identity and allows to distinguish among different
 experiments. If an experiment id is not explicitly given, NEPI will automatically
@@ -66,13 +67,27 @@ exp_id = ec.exp_id
 
 \end{lstlisting}
 
-%TODO: What is the run_id ??
+Since a same experiment can be ran more than one time, and this is 
+often desirable to obtain statistical data, the EC identifies 
+different runs of an experiment with a same \emph{exp\_id} with  
+another attribute, the \emph{run\_id}. The \emph{run\_id} is
+a timestamp string value, and in combination with the \emph{exp\_id},
+it allows to uniquely identify an experiment instance.
+
+\begin{lstlisting}[language=Python]
+
+run_id = ec.run_id 
+
+\end{lstlisting}
+
+
 
 \section{The design API}
 
 Once an ExperimentController has been instantiated, it is possible to start
 describing the experiment. The design API is the set of methods which
 allow to do so.
+
 
 \subsection{Registering resources}
 
@@ -118,6 +133,7 @@ is the value returned by the \emph{register\_resource} method.
 The EC keeps internal references to all RMs, which the user can
 reference using the corresponding guid value.
 
+
 \subsection{Attributes}
 
 ResourceManagers expose the configurable parameters of resources
@@ -151,7 +167,6 @@ new_value = ec.get(guid, "attr_name")
 
 \end{lstlisting}
 
-% Critical attribute
 Since each RM type exposes the characteristics of a particular type
 of resource, it is to be expected that different RMs will have different
 attributes. However, there a particular attribute that is common to all RMs.
@@ -162,6 +177,7 @@ all resources are considered critical by default.
 When this attribute is set to \emph{False} the EC will ignore failures on that 
 resource and carry on with the experiment. Otherwise, the EC will immediately 
 interrupt the experiment.
+
 
 \subsection{Traces}
 
@@ -195,6 +211,7 @@ print ec.trace_enabled(guid, "trace-name")
 
 \end{lstlisting}
 
+
 \subsection{Registering connections}
 
 In order to describe the experiment set-up, resources need to be 
@@ -217,6 +234,7 @@ The order in which the guids are given is not important, since the
 \emph{topology\_graph} is not directed, and the corresponding 
 RMs \emph{`know'} internally how to interpret the connection 
 relationship.
+
 
 \subsection{Registering conditions}
 
@@ -260,25 +278,222 @@ Allowed actions are: DEPLOY, START and STOP. \\
 Existing states are: NEW, DISCOVERED, PROVISIONED, READY, STARTED, STOPPED, 
 FAILED and RELEASED. \\
 
+
+
 \section{The execution API}
+
+After registering all the resources and connections and setting attributes and
+traces, once the experiment we want to conduct has been described, we can
+proceed to run it. To this purpose we make use of the \emph{execution} methods
+exposed by the EC.
+
 
 \subsection{Deploying an experiment}
 
-%TODO: Talk about groups
-%TODO: Talk about interactive deploymet
+Deploying an experiment is very easy, it only requires to invoke the 
+\emph{deploy} method of the EC.
+
+\begin{lstlisting}[language=Python]
+
+ec.deploy()
+
+\end{lstlisting}
+
+Given the experiment description provided earlier, the EC will take care
+of automatically performing all necessary actions to discover, provision,
+configure and start all resources registered in the experiment. 
+
+Furthermore, NEPI does not restrict deployment to only one time, it allows
+to continue to register, connect and configure resources and deploy them
+at any moment. We call this feature \emph{interactive} or \emph{dynamic}
+deployment. 
+
+The \emph{deploy} method can receive other optional arguments to customize
+deployment. By default, the EC will deploy all registered RMs that are in
+state NEW. However, it is possible to specify a subset of resources to be
+deployed using the \emph{guids} argument.
+
+\begin{lstlisting}[language=Python]
+
+ec.deploy(guids=[guid1, guid2, guid3])
+
+\end{lstlisting}
+
+Another useful argument of the \emph{deploy} method is \emph{wait\_all\_ready}.
+This argument has a default value of \emph{True}, and it is used as a barrier
+to force the START action to be invoked on all RMs being deploy only after
+they have all reached the state READY.
+
+\begin{lstlisting}[language=Python]
+
+ec.deploy(wait_all_ready=False)
+
+\end{lstlisting}
+
 
 \subsection{Getting attributes}
 
+Attribute values can be retrieved at any moment during the experiment run, 
+using the \emph{get} method. 
+However, not all attributes can de modified after a resource has
+been deployed. The possibility of changing the value of a certain attribute 
+depends strongly on the RM and on the attribute itself. 
+As an example, once a \emph{hostname} has been specified for a certain Node 
+RM, it might not be possible to change it after deployment.
+
+\begin{lstlisting}[language=Python]
+
+attr_value = ec.get(guid, "attr-name")
+
+\end{lstlisting}
+
+Attributes have flags that indicate whether their values can be changed
+and when it is possible to change them (e.g. before or after deployment, 
+or both). These flags are \emph{NoFlags} (the attribute value can be 
+modified always), \emph{ReadOnly} (the attribute value can never be
+modified), \emph{ExecReadOnly} (the attribute value can only be modified
+before deployment). The flags of a certain attribute can be validated 
+as shown in the example below, and the value of the attribute can be
+changed using the \emph{set} method.  
+
+\begin{lstlisting}[language=Python]
+
+from nepi.execution.attribute import Flags
+
+attr = ec.get_attribute(guid, "attr-name")
+
+if not attr.has_flag(Flags.ReadOnly):
+    ec.set(guid, "attr-name", attr_value)
+
+\end{lstlisting}
+
 \subsection{Quering the state}
 
+It is possible to query the state of any resource at any moment.
+The state of a resource is requested using the \emph{state} method.
+This method receives the optional parameter \emph{hr} to output the
+state in a \emph{human readable} string format instead of an integer
+state code.
+
+\begin{lstlisting}[language=Python]
+
+state_id = ec.state(guid)
+
+# Human readable state
+state = ec.state(guid, hr = True)
+
+\end{lstlisting}
+
 \subsection{Getting traces}
+
+After a ResourceManager has been deployed it is possible to get information
+about the active traces and the trace streams of the generated data using
+the \emph{trace} method.
+
+Most traces are collected to a file in the host where they are generated, 
+the total trace size and the file path in the (remote) host can be 
+retrieved as follows.
+
+\begin{lstlisting}[language=Python]
+
+from nepi.execution.trace import TraceAttr
+
+path = ec.trace(guid, "trace-name", TraceAttr.PATH)
+size = ec.trace(guid, "trace-name", TraceAttr.SIZE)
+
+\end{lstlisting}
+
+The trace content can be retrieved in a stream, block by block.
+
+\begin{lstlisting}[language=Python]
+
+trace_block = ec.trace(guid, "trace-name", TraceAttr.STREAM, block=1, offset=0)
+
+\end{lstlisting}
+
+It is also possible to directly retrieve the complete trace content.
+
+\begin{lstlisting}[language=Python]
+
+trace_stream = ec.trace(guid, "trace-name")
+
+\end{lstlisting}
+
+Using the \emph{trace} method it is easy to collect all traces 
+to the local user machine. 
+
+\begin{lstlisting}[language=Python]
+
+for trace in ec.get_traces(guid):
+    trace_stream = ec.trace(guid, "trace-name")
+    f = open("trace-name", "w")
+    f.write(trace_stream)
+    f.close()
+
+\end{lstlisting}
+
+
+% TODO: how to retrieve an application trace when the Node failed? (critical attribute)
+
+
+% \subsection{The collector RM}
+
+%%%%%%%%%%
+%% TODO
+%%%%%%%%%%%
+
+\subsection{API reference}
+
+Further information about classes and method signatures
+can be found using the Python \emph{help} method.
+For this inspection work, we recommend instantiating an
+ExperimentController from an IPython console. This is an
+interactive console that allows to dynamically send input
+to the python interpreter. 
+
+If NEPI is not installed in the system, you will need to add the
+NEPI sources path to the PYTHONPATH environmental variable 
+before invoking \emph{ipython}.
+
+\begin{lstlisting}[language=Python]
+
+$ PYTHONPATH=$PYTHONPATH:src ipython
+Python 2.7.3 (default, Jan  2 2013, 13:56:14) 
+Type "copyright", "credits" or "license" for more information.
+
+
+IPython 0.13.1 -- An enhanced Interactive Python.
+?         -> Introduction and overview of IPython's features.
+%quickref -> Quick reference.
+help      -> Python's own help system.
+object?   -> Details about 'object', use 'object??' for extra details.
+
+In [1]: from nepi.execution.ec import ExperimentController
+
+In [2]: ec = ExperimentController(exp_id = "test-tap")
+
+In [3]: help(ec.set)
+
+\end{lstlisting}
+
+The example above will show the following information related to the
+\emph{set} method of the EC API.
+
+\begin{lstlisting}[language=Python]
+
+Help on method set in module nepi.execution.ec:
+
+set(self, guid, name, value) method of nepi.execution.ec.ExperimentController instance
+    Modifies the value of the attribute with name 'name' on the RM with guid 'guid'.
     
-% TODO: Give examples of Traces (how to collect traces to the local repo, talk about the Collector RM)
+    :param guid: Guid of the RM
+    :type guid: int
+    
+    :param name: Name of the attribute
+    :type name: str
+    
+    :param value: Value of the attribute
 
-% how to retrieve an application trace when the Node failed? (critical attribute)
-
-\subsection{The collector RM}
-
-
+\end{lstlisting}
 
 
