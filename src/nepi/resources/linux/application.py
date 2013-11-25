@@ -43,25 +43,25 @@ class LinuxApplication(ResourceManager):
 
     .. note::
 
-    A LinuxApplication RM represents a process that can be executed in
-    a remote Linux host using SSH.
+        A LinuxApplication RM represents a process that can be executed in
+        a remote Linux host using SSH.
 
-    The LinuxApplication RM takes care of uploadin sources and any files
-    needed to run the experiment, to the remote host. 
-    It also allows to provide source compilation (build) and installation 
-    instructions, and takes care of automating the sources build and 
-    installation tasks for the user.
+        The LinuxApplication RM takes care of uploadin sources and any files
+        needed to run the experiment, to the remote host. 
+        It also allows to provide source compilation (build) and installation 
+        instructions, and takes care of automating the sources build and 
+        installation tasks for the user.
 
-    It is important to note that files uploaded to the remote host have
-    two possible scopes: single-experiment or multi-experiment.
-    Single experiment files are those that will not be re-used by other 
-    experiments. Multi-experiment files are those that will.
-    Sources and shared files are always made available to all experiments.
+        It is important to note that files uploaded to the remote host have
+        two possible scopes: single-experiment or multi-experiment.
+        Single experiment files are those that will not be re-used by other 
+        experiments. Multi-experiment files are those that will.
+        Sources and shared files are always made available to all experiments.
 
-    Directory structure:
+        Directory structure:
 
-    The directory structure used by LinuxApplication RM at the Linux
-    host is the following:
+        The directory structure used by LinuxApplication RM at the Linux
+        host is the following:
 
         ${HOME}/nepi-usr --> Base directory for multi-experiment files
                       |

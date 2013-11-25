@@ -187,7 +187,7 @@ class OVSWitch(LinuxApplication):
         (out, err), proc = self.node.check_output(self.ovs_checks, 'start_srv_exitcode')
 
         if out != "0\n":
-            self.debug("Servers have not started")
+            self.error("Servers have not started")
             raise RuntimeError, msg	
 				
         cmd = "ps -A | grep ovsdb-server"
@@ -204,7 +204,7 @@ class OVSWitch(LinuxApplication):
         (out, err), proc = self.node.check_output(self.ovs_checks, 'status_srv_exitcode')
         
         if out != "0\n":
-            self.debug("Servers are not running")
+            self.error("Servers are not running")
             raise RuntimeError, msg
         
         self.info("Servers started")  
@@ -293,7 +293,7 @@ class OVSWitch(LinuxApplication):
         from nepi.resources.planetlab.openvswitch.ovsport import OVSPort
         rm = self.get_connected(OVSPort.get_rtype())
 
-        if rm[0].state < ResourceState.FINISHED:
+        if rm[0].state < ResourceState.STOPPED:
             self.ec.schedule(reschedule_delay, self.release)
             return 
             
