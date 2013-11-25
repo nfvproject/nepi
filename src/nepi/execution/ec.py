@@ -250,7 +250,7 @@ class ExperimentController(object):
         have reached a state >= STOPPED (i.e. STOPPED, FAILED or 
         RELEASED ), or until a failure in the experiment occurs 
         (i.e. abort == True) 
-
+        
             :param guids: List of guids
             :type guids: list
 
@@ -266,7 +266,7 @@ class ExperimentController(object):
         """ Blocking method that waits until all RMs in the 'guids' list 
         have reached a state >= STARTED, or until a failure in the 
         experiment occurs (i.e. abort == True) 
-
+        
             :param guids: List of guids
             :type guids: list
 
@@ -281,7 +281,7 @@ class ExperimentController(object):
     def wait_released(self, guids):
         """ Blocking method that waits until all RMs in the 'guids' list 
         have reached a state == RELEASED, or until the EC fails 
-
+        
             :param guids: List of guids
             :type guids: list
 
@@ -297,7 +297,7 @@ class ExperimentController(object):
         """ Blocking method that waits until all RMs in the 'guids' list 
         have reached a state >= READY, or until a failure in the 
         experiment occurs (i.e. abort == True) 
-
+        
             :param guids: List of guids
             :type guids: list
 
