@@ -20,8 +20,8 @@
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-NEPI is written in Python, so you will need to install Python before
-before being able to run experiments with NEPI. 
+NEPI is written in Python, so you will need to install Python before 
+being able to run experiments with NEPI. 
 NEPI is known to work on Linux (Fedore, Debian, Ubuntu) and Mac (OS X).
 
 \section{Dependencies}
@@ -139,7 +139,7 @@ environmental variable, when you run a NEPI script.
     \fontsize{10pt}{12pt}\selectfont
 
 \begin{verbatim}
-    $ PYTHONATH=$PYTHONPATH:<path-to-nepi>/src python experiment.py
+    $ PYTHONPATH=$PYTHONPATH:<path-to-nepi>/src python experiment.py
 \end{verbatim}
 
 \endgroup
@@ -252,18 +252,18 @@ def add_app(ec, command, node):
 
 The method \textit{register\_resource} declares a resource instance to the 
 Experiment Controller. The method \textit{register\_connection} indicates
-that two resource will interact during the experiment. 
+that two resources will interact during the experiment. 
 Note that invoking \textit{add\_node} or \textit{add\_app} has no effect other
 than informing the EC about the resources that will be used during the experiment.
 The actual deployment of the experiment requires the method \textit{deploy} to
 be invoked.
 
 The Resource Managers (RM) that abstract the concrete resources expose
-configuration attributes. In the LinuxNode RM we set the \emph{hostname} 
+some configuration attributes. In the LinuxNode RM we set the \emph{hostname} 
 and \emph{username} as attributes, while in the LinuxApplication RM 
 we set the \emph{command} attribute.
 
-Apart from teh \emph{command} attribute, the \emph{LinuxApplication} 
+Apart from the \emph{command} attribute, the \emph{LinuxApplication} 
 ResourceManager exposed several other attributes
 that permit to upload, compile and install arbitrary sources, 
 to run any application might be needed to run an experiment. 
@@ -272,8 +272,8 @@ More details will be given in the following sections of this document.
 Lets now use these functions to describe the experiment we will run. 
 Choose a host where you have an account, and can access using SSH
 key authentication. Define string variables with the right
-values for the  \emph{hostname}, \emph{username} and path to the
-SSH public key in as \emph{ssh\_key}, and then type the following lines.
+values for the  \emph{hostname}, \emph{username} and the path to the
+SSH public key in \emph{ssh\_key}, and then type the following lines.
 
 \begin{lstlisting}[language=Python]
 
