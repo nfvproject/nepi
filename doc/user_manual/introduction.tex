@@ -36,7 +36,7 @@ big disparity in the way to carry out an experiment between one platform and
 another. Indeed, different platforms provide their own mechanisms to 
 access resources and different tools to conduct experiments. 
 These tools vary widely, for instance, to run a ns-3 simulation it is 
-necessary to write a C++ program, while to conduct and experiment using
+necessary to write a C++ program, while to conduct an experiment using
 PlanetLab nodes, one must first provision resources through a special web
 service, and then connect to the nodes using SSH to launch any applications
 involved in the experiment.
@@ -48,16 +48,16 @@ Designing and implementing the programs and scripts to run an experiment
 can be a time consuming and difficult task, specially if distributed
 resources need to be synchronised to perform the right action at the
 right time. Detecting and handling possible errors during experiment
-execution also posses a challenge, even more so when dealing with large size
+execution also posses a challenge, even more when dealing with large size
 experiments. Additionally, difficulties related to instrumenting the 
 experiment and gathering the results must also be considered.
 
 % Challenge
 In this context, the challenges that NEPI addresses are manifold. 
-Firstly, simplifying the complexity of running network experiments. 
-Secondly, simplifying the use of different experimentation platforms, 
+Firstly, to simplify the complexity of running network experiments. 
+Secondly, to simplify the use of different experimentation platforms, 
 allowing to easily switch from one to another. 
-Thirdly, simplifying the
+Thirdly, to simplify the
 use of resources from different platforms at the same time in 
 a single experiment.
 
@@ -91,7 +91,7 @@ Resources in NEPI are described by a set of attributes, traces and
 connections. The attributes define the configuration of the resource,
 the traces represent the results that can be collected for that resource
 during the experiment and the connections represent how a resource relates
-to other resources in th experiment.
+to other resources in the experiment.
 
 \begin{figure}[h]
   \centering
@@ -100,7 +100,7 @@ to other resources in th experiment.
   \label{fig:intro_resources}
 \end{figure}
 
-Examples of attributes are a linux host host name, an IP address to be 
+Examples of attributes are a linux hostname, an IP address to be 
 assigned to a network interface, a command to run as a remote application.
 Examples of traces are the standard output or standard error of a
 running application, a tcpdump on a network interface, etc.
@@ -211,9 +211,9 @@ at the beginning of the experiment, making it possible to use
 an \emph{interactive deployment} mode, where new resources can de 
 declared and deployed on the fly, according to the experiment needs.
 This interactive mode can be useful to run experiments with the 
-purpose of exploring a new technology, or to use NEPI as a adaptive
+purpose of exploring a new technology, or to use NEPI as an adaptive
 experimentation tool, that could change an experiment according to
-changing external conditions or measurements. 
+external conditions or measurements. 
 
 \section{Resource Management: The EC \& The RMs}
 
@@ -245,8 +245,8 @@ control concrete resources and relies on other entities called Resource Managers
 
 For each resource that the user registers in the \emph{topology graph}, the EC
 will instantiate a RM of a corresponding type. A RM is a resource specific
-controller and different types of resources require a different type of
-RM, specifically adapted to manage them.
+controller and different types of resources require different type of
+RMs, specifically adapted to manage them.
 
 The EC communicates with the RMs through a well defined API that exposes
 the necessary methods (actions) to achieve all the state transitions defined by the

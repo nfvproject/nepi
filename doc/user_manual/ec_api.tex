@@ -25,7 +25,7 @@ The ExperimentController (EC) is the entity in charge of turning the
 experiment description into a running experiment. 
 In order to do this the EC needs to know which resources are to be 
 used, how they should be configured and how resources relate to one another.
-To this pourpose the EC exposes methods to register resources, specify their 
+To this purpose the EC exposes methods to register resources, specify their 
 configuration, and register dependencies between. These methods are part of
 the EC design API.
 Likewise, in order to deploy and control resources, and collect data, 
@@ -214,8 +214,8 @@ print ec.trace_enabled(guid, "trace-name")
 
 \subsection{Registering connections}
 
-In order to describe the experiment set-up, resources need to be 
-associated to one another. Through the process of connecting resources
+In order to describe the experiment set-up, a resources need to be 
+associated at least to one another. Through the process of connecting resources
 the \emph{topology graph} is constructed. A certain application might
 need to be configured and executed on a certain node, and this
 must be indicated to the EC by connecting the application RM to the node
@@ -335,7 +335,7 @@ ec.deploy(wait_all_ready=False)
 
 Attribute values can be retrieved at any moment during the experiment run, 
 using the \emph{get} method. 
-However, not all attributes can de modified after a resource has
+However, not all attributes can be modified after a resource has
 been deployed. The possibility of changing the value of a certain attribute 
 depends strongly on the RM and on the attribute itself. 
 As an example, once a \emph{hostname} has been specified for a certain Node 
@@ -446,7 +446,7 @@ for trace in ec.get_traces(guid):
 
 Further information about classes and method signatures
 can be found using the Python \emph{help} method.
-For this inspection work, we recommend instantiating an
+For this inspection work, we recommend to instantiate an
 ExperimentController from an IPython console. This is an
 interactive console that allows to dynamically send input
 to the python interpreter. 
