@@ -515,7 +515,7 @@ class PlanetlabNode(LinuxNode):
             alive_nodes_id = self._get_nodes_id(filters)
 
         if len(alive_nodes_id) == 0:
-            self.fail_node_not_alive(self, hostname)
+            self.fail_node_not_alive(hostname)
         else:
             nodes_id = list()
             for node_id in alive_nodes_id:

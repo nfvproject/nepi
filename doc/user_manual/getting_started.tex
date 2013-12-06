@@ -171,17 +171,69 @@ NEPI's libraries.
 
 \endgroup
 
-\subsection{Run interactively}
+\subsection{Run NEPI interactively}
 
-The Python interpreter can be used as an interactive console to execute 
-Python instructions.
-We can take advantage of this feature, to interactively run experiments
-with NEPI. We  use the \textit{ipython} console for the example below, 
-you can install it with \textit{sudo yum/aptitude install ipython} on 
-Fedora/Debian.
+The IPython console can be used as an interactive interpreter to 
+execute Python instructions. We can take advantage of this feature, 
+to interactively run NEPI experiments. 
+We will use the IPython console for the example below. 
+
+You can easily install IPython on Debian, Ubuntu, Fedora or Mac as follows:\\
+
+\textbf{Debian/Ubuntu}
 
 \begingroup
     \fontsize{10pt}{12pt}\selectfont
+
+\begin{verbatim}
+
+$ sudo apt-get install ipython
+
+\end{verbatim}
+
+\endgroup
+
+\textbf{Fedora}\\
+
+\begingroup
+    \fontsize{10pt}{12pt}\selectfont
+
+\begin{verbatim}
+
+$ sudo yum install ipython
+
+\end{verbatim}
+
+\endgroup
+
+\textbf{Mac}\\
+
+\begingroup
+    \fontsize{10pt}{12pt}\selectfont
+
+\begin{verbatim}
+
+$ pip install ipython
+
+\end{verbatim}
+
+\endgroup
+
+Before starting, make sure to add Python and IPython source directory 
+path to the PYTHONPATH environment variable
+
+\begingroup
+    \fontsize{10pt}{12pt}\selectfont
+
+\begin{verbatim}
+
+$ export PYTHONPATH=$PYTHONPATH:/usr/local/lib/python:/usr/local/share/python/ipython
+
+\end{verbatim}
+
+\endgroup
+
+Then you can start IPython as follows: 
 
 \begin{verbatim}
 $ export PYTHONPATH=<path-to-nepi>/src:$PYTHONPATH
@@ -197,14 +249,13 @@ object?   -> Details about 'object', use 'object??' for extra details.
 
 \end{verbatim}
 
-\endgroup
+If you want to paste many lines at once in IPython, you will need 
+to type \emph{\%cpaste} and finish the paste block with \emph{\-\-}.
 
-With ipython, if you want to paste many lines at once you will need to type
-\emph{\%cpaste} and finish the paste block with \emph{\-\-}.
-
-The first thing we have to do is to import the NEPI classes
-we will use. 
-In particular we need to import the ExperimentController class.
+The first thing we need to do to describe an experiment with NEPI 
+is to import the NEPI Python modules. 
+In particular we need to import the ExperimentController class. 
+To do this type the following in the Python console: 
 
 \begin{lstlisting}[language=Python]
 
@@ -212,9 +263,11 @@ from nepi.execution.ec import ExperimentController
 
 \end{lstlisting}
 
-Then we need to create an ExperimentController instance.
-The \textit{exp-id} argument serves as a human readable identifier
-for the experiment to be ran.
+After importing the ExperimentController class, it is possible to 
+create a new instance of an the ExperimentController (EC) for 
+your experiment. 
+The <exp-id> argument is the name you want to give the experiment 
+to identify it and distinguish it from other experiments. 
 
 \begin{lstlisting}[language=Python]
 
@@ -222,20 +275,17 @@ ec = ExperimentController(exp_id = "<your-exp-id>")
 
 \end{lstlisting}
 
-Next we will define two Python functions, one to register \emph{LinuxNode}
-resources and the other to register \emph{LinuxApplication} resources.
-A \emph{LinuxNode} resource (or ResourceManager) will serve as an abstraction
-to a Linux host resource, that can be accessed using SSH key authentication.
-A \emph{LinuxApplication} resource represents anything that can be executed
-on a Linux host as a BASH command.
+Next we will define two Python functions: \emph{add\_node} and \emph{add\_app}.
+The first one to register \textit{LinuxNodes} resources and the second one to 
+register LinuxApplications resources. 
 
 \begin{lstlisting}[language=Python]
 
 %cpaste
-def add_node(ec, host, user, ssh_key):
+def add_node(ec, hostname, username, ssh_key):
     node = ec.register_resource("LinuxNode")
-    ec.set(node, "hostname", host)
-    ec.set(node, "username", user)
+    ec.set(node, "hostname", hostname)
+    ec.set(node, "username", username)
     ec.set(node, "identity", ssh_key)
     ec.set(node, "cleanHome", True)
     ec.set(node, "cleanProcesses", True)
@@ -250,40 +300,54 @@ def add_app(ec, command, node):
 
 \end{lstlisting}
 
-The method \textit{register\_resource} declares a resource instance to the 
-Experiment Controller. The method \textit{register\_connection} indicates
+The method \textit{register\_resource} registers a resource instance with the 
+ExperimentController. The method \textit{register\_connection} indicates
 that two resources will interact during the experiment. 
 Note that invoking \textit{add\_node} or \textit{add\_app} has no effect other
 than informing the EC about the resources that will be used during the experiment.
 The actual deployment of the experiment requires the method \textit{deploy} to
 be invoked.
 
-The Resource Managers (RM) that abstract the concrete resources expose
-some configuration attributes. In the LinuxNode RM we set the \emph{hostname} 
-and \emph{username} as attributes, while in the LinuxApplication RM 
-we set the \emph{command} attribute.
+The \textit{LinuxNode} resource exposes the hostname, username and identity 
+attributes. This attributes provide information about the SSH credentials 
+needed to log in to the Linux host. 
+The \textit{hostname} is the one that identifies the physical host you want
+to access during the experiment. The \textit{username} must correspond to a
+valid account on that host, and the \textit{identity} attribute is the 
+'absolute' path to the SSH private key in your local computer that allows you 
+to log in to the host.
 
+The \textit{command} attribute of the \textit{LinuxApplication} resource 
+expects a BASH command line string to be executed in the remote host.
 Apart from the \emph{command} attribute, the \emph{LinuxApplication} 
-ResourceManager exposed several other attributes
-that permit to upload, compile and install arbitrary sources, 
-to run any application might be needed to run an experiment. 
-More details will be given in the following sections of this document.
+resource exposes several other attributes that allow to upload, 
+compile and install arbitrary sources. 
+The add\_app function registers a connection between a \textit{LinuxNode} and a 
+\textit{LinuxApplication}. 
 
-Lets now use these functions to describe the experiment we will run. 
+Lets now use these functions to describe a simple experiment. 
 Choose a host where you have an account, and can access using SSH
-key authentication. Define string variables with the right
-values for the  \emph{hostname}, \emph{username} and the path to the
-SSH public key in \emph{ssh\_key}, and then type the following lines.
+key authentication. 
 
 \begin{lstlisting}[language=Python]
+
+hostname = "<the-hostname>"
+username = "<my-username>"
+identity = "</home/myuser/.ssh/id_rsa>"
 
 node = add_node(ec, hostname, username, ssh_key)
 app = add_app(ec, "ping -c3 nepi.inria.fr",  node)
 
 \end{lstlisting}
 
-Now that we have described our simple PING experiment, we can deploy
-it. Invoking the \emph{deploy} command will not only configure the 
+The values returned by the functions add\_node and add\_app are global 
+unique identifiers (guid) of the resources that were registered with the EC. 
+The guid is used to reference the ResourceManager associated to a registered
+resource (for instance to retrieve results or change attribute values).
+
+Now that we have registered some resources, we can ask the ExperimentController
+(EC) to deploy them. 
+Invoking the \emph{deploy} command will not only configure the 
 resource but also automatically launch the applications.
 
 \begin{lstlisting}[language=Python]
@@ -292,24 +356,37 @@ resource but also automatically launch the applications.
 
 \end{lstlisting}
 
-After some seconds, we should see some log messages informing about 
-the progress of the deployment.
-If you now open another terminal and connect to the host through SSH, 
-you should find some directories created by NEPI.
-You should see a directory named \emph{nepi-exp}, and under that directory
-you will find another with the identifier you gave when you created the 
-experiment controller (the <exp-id>). 
-Under the experiment directory, you will find directories for each of the 
-resources deployed (e.g. \emph{node-1}, \emph{app-2}). 
-The resource directories are named with a short string that identifies the
-type of resource (e.g. 'node', 'app', etc), followed by a unique number that 
-uniquely identifies a given resource within the experiment, 
-the global unique identifier (guid).
+After some seconds, we should see some output messages informing us about the
+progress in the host deployment.
+If you now open another terminal and you connect to the host using 
+SSH (as indicated below), you should see that a directory for your experiment 
+has been created in the host. In the remote host you will see that two NEPI 
+directories were created in the \$HOME directory: \emph{nepi-src} and \emph{nepi-exp}. 
+The first one is where NEPI will store files that might be re used by many 
+experiments (e.g. source code, input files) . The second directory \emph{nepi-exp}, 
+is where experiment specific files (e.g. results, deployment scripts) will be stored. 
 
-From the ipython console, we can check the deployment status of each resource
-by querying the EC with the method \emph{state}.
-The argument \emph{hr} stand for `human readable`, and will return a string 
-state instead of a state number.
+\begingroup
+    \fontsize{10pt}{12pt}\selectfont
+
+\begin{verbatim}
+
+$ ssh -i identity username@hostname
+
+\end{verbatim}
+
+\endgroup
+
+Inside the \emph{nepi-exp} directory, you will find another directory with 
+the <exp-id> assigned to your EC, and inside that directory you should find 
+one directory named node-1 which will contain the files (e.g. result traces) 
+associated to the LinuxNode reosurce you just deployed. 
+In fact for every resource deployed associated to that host (e.g. each 
+LinuxApplication), NEPI will create a directory to place files related to it. 
+The name of the directory identifies the type of resources (e.g. 'node', 
+'app', etc) and it is followed by the global unique identifier (guid).
+
+We can see if a resource finished deploying by querying its state through the EC 
 
 \begin{lstlisting}[language=Python]
 
@@ -317,9 +394,9 @@ ec.state(app, hr=True)
 
 \end{lstlisting}
 
-Once the LinuxApplication is STARTED, we can retrieve the PING output using
-stored as a \emph{trace} file on the host. For this we use use \emph{trace}
-method, and specify the resource and the trace name (i.e. stdout).
+Once a \textit{LinuxApplication} has reached the state 'STARTED', 
+we can retrieve the 'stdout' trace, which should contain the output 
+of the PING command. 
 
 \begin{lstlisting}[language=Python]
 
@@ -335,5 +412,85 @@ That is it. We can terminate the experiment by invoking the method \emph{shutdow
 
 \end{lstlisting}
 
+\subsection{Define a workflow}
 
+Now that we have introduced to the basics of NEPI, we will register 
+two more applications and define a workflow where one application 
+will start after the other one has finished executing. 
+For this we will use the EC \textit{register\_condition} method described below:
+
+\begin{lstlisting}[language=Python]
+
+register_condition(self, guids1, action, guids2, state, time=None):
+    Registers an action START, STOP or DEPLOY for all RM on list
+    guids1 to occur at time 'time' after all elements in list guids2 
+    have reached state 'state'.
+    
+        :param guids1: List of guids of RMs subjected to action
+        :type guids1: list
+    
+        :param action: Action to perform (either START, STOP or DEPLOY)
+        :type action: ResourceAction
+    
+        :param guids2: List of guids of RMs to we waited for
+        :type guids2: list
+    
+        :param state: State to wait for on RMs of list guids2 (STARTED,
+            STOPPED, etc)
+        :type state: ResourceState
+    
+        :param time: Time to wait after guids2 has reached status 
+        :type time: string
+
+\end{lstlisting}
+
+To use the \textit{register\_condition} method we will need to import the 
+ResourceState and the ResourceAction classes
+
+\begin{lstlisting}[language=Python]
+
+from nepi.execution.resource import ResourceState, ResourceAction
+
+\end{lstlisting}
+
+Then, we register the two applications. The first application will 
+wait for 5 seconds and the create a file in the host called "greetings" 
+with the content "HELLO WORLD". 
+The second application will read the content of the file and output it 
+to standard output. If the file doesn't exist il will instead output the 
+string "FAILED".
+
+\begin{lstlisting}[language=Python]
+
+app1 = add_app(ec, "sleep 5; echo 'HELLO WORLD!' > ~/greetings", node)
+app2 = add_app(ec, "cat ~/greetings || echo 'FAILED'", node)
+
+\end{lstlisting}
+
+In order to guarantee that the second application is successful, we need to 
+make sure that the first application is executed first. For this we register 
+a condition:
+
+\begin{lstlisting}[language=Python]
+
+ec.register_condition (app2, ResourceAction.START, app1, ResourceState.STOPPED)
+
+\end{lstlisting}
+
+We then deploy the two application:
+
+\begin{lstlisting}[language=Python]
+
+ec.deploy(guids=[app1,app2])
+
+\end{lstlisting}
+
+Finally, we retrieve the standard output of the second application, 
+which should return the string "HELLO WORLD!".
+
+\begin{lstlisting}[language=Python]
+
+ec.trace(app2, "stdout")
+
+\end{lstlisting}
 
