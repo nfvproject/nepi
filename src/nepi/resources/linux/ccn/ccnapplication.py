@@ -35,7 +35,7 @@ class LinuxCCNApplication(LinuxApplication):
 
     @property
     def ccnd(self):
-        ccnd = self.get_connected(LinuxCCND.rtype())
+        ccnd = self.get_connected(LinuxCCND.get_rtype())
         if ccnd: return ccnd[0]
         return None
 

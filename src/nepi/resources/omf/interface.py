@@ -93,15 +93,15 @@ class OMFWifiInterface(OMFResource):
 
         """
         rm = self.ec.get_resource(guid)
-        if rm.rtype() in self._authorized_connections:
+        if rm.get_rtype() in self._authorized_connections:
             msg = "Connection between %s %s and %s %s accepted" % \
-                (self.rtype(), self._guid, rm.rtype(), guid)
+                (self.get_rtype(), self._guid, rm.get_rtype(), guid)
             self.debug(msg)
 
             return True
 
         msg = "Connection between %s %s and %s %s refused" % \
-             (self.rtype(), self._guid, rm.rtype(), guid)
+             (self.get_rtype(), self._guid, rm.get_rtype(), guid)
         self.debug(msg)
 
         return False
@@ -112,13 +112,13 @@ class OMFWifiInterface(OMFResource):
 
     @property
     def node(self):
-        rm_list = self.get_connected(OMFNode.rtype())
+        rm_list = self.get_connected(OMFNode.get_rtype())
         if rm_list: return rm_list[0]
         return None
 
     @property
     def channel(self):
-        rm_list = self.get_connected(OMFChannel.rtype())
+        rm_list = self.get_connected(OMFChannel.get_rtype())
         if rm_list: return rm_list[0]
         return None
 
@@ -187,7 +187,7 @@ class OMFWifiInterface(OMFResource):
             raise RuntimeError, msg
 
         # Just for information
-        self.debug(" " + self.rtype() + " ( Guid : " + str(self._guid) +") : " + \
+        self.debug(" " + self.get_rtype() + " ( Guid : " + str(self._guid) +") : " + \
             self.get('mode') + " : " + self.get('type') + " : " + \
             self.get('essid') + " : " + self.get('ip'))
     

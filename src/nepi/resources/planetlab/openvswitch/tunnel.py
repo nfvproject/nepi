@@ -139,11 +139,11 @@ class OVSTunnel(LinuxApplication):
         # Get connected to the nodes
         res = []
         if hasattr(endpoint, "create_port"):
-            rm_list = endpoint.get_connected(OVSWitch.rtype())
+            rm_list = endpoint.get_connected(OVSWitch.get_rtype())
             if rm_list:
-                rm = rm_list[0].get_connected(PlanetlabNode.rtype())
+                rm = rm_list[0].get_connected(PlanetlabNode.get_rtype())
         else:
-            rm = endpoint.get_connected(PlanetlabNode.rtype())
+            rm = endpoint.get_connected(PlanetlabNode.get_rtype())
 
         if rm :
             res.append(rm[0])

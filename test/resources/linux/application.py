@@ -238,8 +238,8 @@ main (void)
         ec.set(node, "cleanHome", True)
         ec.set(node, "cleanProcesses", True)
 
-        sources = "http://nepi.inria.fr/code/nef/archive/tip.tar.gz " \
-                " http://nepi.inria.fr/code/nef/raw-file/8ace577d4079/src/nef/images/menu/connect.png"
+        sources = "http://yans.pl.sophia.inria.fr/code/nef/archive/tip.tar.gz " \
+                " http://yans.pl.sophia.inria.fr/code/nef/raw-file/8ace577d4079/src/nef/images/menu/connect.png"
 
         app = ec.register_resource("LinuxApplication")
         ec.set(app, "sources", sources)

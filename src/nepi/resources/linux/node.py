@@ -298,24 +298,16 @@ class LinuxNode(ResourceManager):
         # To work arround this, repeat the operation N times or
         # until the result is not empty string
         out = ""
-        retrydelay = 1.0
-        for i in xrange(2):
-            try:
-                (out, err), proc = self.execute("cat /etc/issue", 
-                        retry = 5,
-                        with_lock = True,
-                        blocking = True)
-
-                if out.strip() != "":
-                    return out
-            except:
-                trace = traceback.format_exc()
-                msg = "Error detecting OS: %s " % trace
-                self.error(msg, out, err)
-                return False
-
-            time.sleep(min(30.0, retrydelay))
-            retrydelay *= 1.5
+        try:
+            (out, err), proc = self.execute("cat /etc/issue", 
+                    with_lock = True,
+                    blocking = True)
+        except:
+            trace = traceback.format_exc()
+            msg = "Error detecting OS: %s " % trace
+            self.error(msg, out, err)
+        
+        return out
 
     @property
     def use_deb(self):
@@ -368,7 +360,7 @@ class LinuxNode(ResourceManager):
         # Node needs to wait until all associated interfaces are 
         # ready before it can finalize deployment
         from nepi.resources.linux.interface import LinuxInterface
-        ifaces = self.get_connected(LinuxInterface.rtype())
+        ifaces = self.get_connected(LinuxInterface.get_rtype())
         for iface in ifaces:
             if iface.state < ResourceState.READY:
                 self.ec.schedule(reschedule_delay, self.deploy)
@@ -397,22 +389,12 @@ class LinuxNode(ResourceManager):
         # TODO: Validate!
         return True
 
-    def clean_processes(self, killer = False):
+    def clean_processes(self):
         self.info("Cleaning up processes")
         
-        if killer:
-            # Hardcore kill
-            cmd = ("sudo -S killall python tcpdump || /bin/true ; " +
-                "sudo -S killall python tcpdump || /bin/true ; " +
-                "sudo -S kill $(ps -N -T -o pid --no-heading | grep -v $PPID | sort) || /bin/true ; " +
-                "sudo -S killall -u root || /bin/true ; " +
-                "sudo -S killall -u root || /bin/true ; ")
-        else:
-            # Be gentler...
-            cmd = ("sudo -S killall tcpdump || /bin/true ; " +
-                "sudo -S killall tcpdump || /bin/true ; " +
-                "sudo -S killall -u %s || /bin/true ; " % self.get("username") +
-                "sudo -S killall -u %s || /bin/true ; " % self.get("username"))
+        cmd = ("sudo -S killall tcpdump || /bin/true ; " +
+            "sudo -S kill $(ps aux | grep '[n]epi' | awk '{print $2}') || /bin/true ; " +
+            "sudo -S killall -u %s || /bin/true ; " % self.get("username"))
 
         out = err = ""
         (out, err), proc = self.execute(cmd, retry = 1, with_lock = True)
@@ -461,7 +443,7 @@ class LinuxNode(ResourceManager):
 
         if self.localhost:
             (out, err), proc = execfuncs.lexec(command, 
-                    user = user,
+                    user = self.get("username"), # still problem with localhost
                     sudo = sudo,
                     stdin = stdin,
                     env = env)
@@ -963,35 +945,25 @@ class LinuxNode(ResourceManager):
             return True
 
         out = err = ""
+        msg = "Unresponsive host. Wrong answer. "
+
         # The underlying SSH layer will sometimes return an empty
         # output (even if the command was executed without errors).
         # To work arround this, repeat the operation N times or
         # until the result is not empty string
-        retrydelay = 1.0
-        for i in xrange(2):
-            try:
-                (out, err), proc = self.execute("echo 'ALIVE'",
-                        retry = 5,
-                        blocking = True,
-                        with_lock = True)
-        
-                if out.find("ALIVE") > -1:
-                    return True
-            except:
-                trace = traceback.format_exc()
-                msg = "Unresponsive host. Error reaching host: %s " % trace
-                self.error(msg, out, err)
-                return False
+        try:
+            (out, err), proc = self.execute("echo 'ALIVE'",
+                    blocking = True,
+                    with_lock = True)
+    
+            if out.find("ALIVE") > -1:
+                return True
+        except:
+            trace = traceback.format_exc()
+            msg = "Unresponsive host. Error reaching host: %s " % trace
 
-            time.sleep(min(30.0, retrydelay))
-            retrydelay *= 1.5
-
-        if out.find("ALIVE") > -1:
-            return True
-        else:
-            msg = "Unresponsive host. Wrong answer. "
-            self.error(msg, out, err)
-            return False
+        self.error(msg, out, err)
+        return False
 
     def find_home(self):
         """ Retrieves host home directory
@@ -1000,29 +972,20 @@ class LinuxNode(ResourceManager):
         # output (even if the command was executed without errors).
         # To work arround this, repeat the operation N times or
         # until the result is not empty string
-        retrydelay = 1.0
-        for i in xrange(2):
-            try:
-                (out, err), proc = self.execute("echo ${HOME}",
-                        retry = 5,
-                        blocking = True,
-                        with_lock = True)
-        
-                if out.strip() != "":
-                    self._home_dir =  out.strip()
-                    break
-            except:
-                trace = traceback.format_exc()
-                msg = "Impossible to retrieve HOME directory" % trace
-                self.error(msg, out, err)
-                return False
-
-            time.sleep(min(30.0, retrydelay))
-            retrydelay *= 1.5
+        msg = "Impossible to retrieve HOME directory"
+        try:
+            (out, err), proc = self.execute("echo ${HOME}",
+                    blocking = True,
+                    with_lock = True)
+    
+            if out.strip() != "":
+                self._home_dir =  out.strip()
+        except:
+            trace = traceback.format_exc()
+            msg = "Impossible to retrieve HOME directory %s" % trace
 
         if not self._home_dir:
-            msg = "Impossible to retrieve HOME directory"
-            self.error(msg, out, err)
+            self.error(msg)
             raise RuntimeError, msg
 
     def filter_existing_files(self, src, dst):

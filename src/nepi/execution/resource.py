@@ -51,9 +51,8 @@ class ResourceState:
     READY = 3
     STARTED = 4
     STOPPED = 5
-    FINISHED = 6
-    FAILED = 7
-    RELEASED = 8
+    FAILED = 6
+    RELEASED = 7
 
 ResourceState2str = dict({
     ResourceState.NEW : "NEW",
@@ -62,7 +61,6 @@ ResourceState2str = dict({
     ResourceState.READY : "READY",
     ResourceState.STARTED : "STARTED",
     ResourceState.STOPPED : "STOPPED",
-    ResourceState.FINISHED : "FINISHED",
     ResourceState.FAILED : "FAILED",
     ResourceState.RELEASED : "RELEASED",
     })
@@ -108,7 +106,7 @@ def clsinit_copy(cls):
 def failtrap(func):
     """ Decorator function for instance methods that should set the 
     RM state to FAILED when an error is raised. The methods that must be
-    decorated are: discover, provision, deploy, start, stop and finish.
+    decorated are: discover, provision, deploy, start, stop.
 
     """
     def wrapped(self, *args, **kwargs):
@@ -248,7 +246,7 @@ class ResourceManager(Logger):
         cls._register_traces()
 
     @classmethod
-    def rtype(cls):
+    def get_rtype(cls):
         """ Returns the type of the Resource Manager
 
         """
@@ -260,6 +258,14 @@ class ResourceManager(Logger):
 
         """
         return copy.deepcopy(cls._attributes.values())
+
+    @classmethod
+    def get_attribute(cls, name):
+        """ Returns a copy of the attribute with name 'name'
+
+        """
+        return copy.deepcopy(cls._attributes[name])
+
 
     @classmethod
     def get_traces(cls):
@@ -284,7 +290,7 @@ class ResourceManager(Logger):
         return cls._backend
 
     def __init__(self, ec, guid):
-        super(ResourceManager, self).__init__(self.rtype())
+        super(ResourceManager, self).__init__(self.get_rtype())
         
         self._guid = guid
         self._ec = weakref.ref(ec)
@@ -307,7 +313,6 @@ class ResourceManager(Logger):
         self._provision_time = None
         self._ready_time = None
         self._release_time = None
-        self._finish_time = None
         self._failed_time = None
 
         self._state = ResourceState.NEW
@@ -371,11 +376,6 @@ class ResourceManager(Logger):
     def release_time(self):
         """ Returns the release time of the RM as a timestamp """
         return self._release_time
-
-    @property
-    def finish_time(self):
-        """ Returns the finalization time of the RM as a timestamp """
-        return self._finish_time
 
     @property
     def failed_time(self):
@@ -534,23 +534,6 @@ class ResourceManager(Logger):
 
             self.set_released()
             self.debug("----- RELEASED ---- ")
-
-    @failtrap
-    def finish(self):
-        """ Sets the RM to state FINISHED. 
-     
-        The FINISHED state is different from STOPPED state in that it 
-        should not be directly invoked by the user.
-        STOPPED indicates that the user interrupted the RM, FINISHED means
-        that the RM concluded normally the actions it was supposed to perform.
-    
-        This method should not be overriden directly. Specific functionality
-        should be added in the do_finish method.
-        
-        """
-        with self._release_lock:
-            if self._state != ResourceState.RELEASED:
-                self.do_finish()
 
     def fail(self):
         """ Sets the RM to state FAILED.
@@ -748,8 +731,6 @@ class ResourceManager(Logger):
                     t = rm.start_time
                 elif state == ResourceState.STOPPED:
                     t = rm.stop_time
-                elif state == ResourceState.FINISHED:
-                    t = rm.finish_time
                 elif state == ResourceState.RELEASED:
                     t = rm.release_time
                 else:
@@ -965,14 +946,6 @@ class ResourceManager(Logger):
     def do_release(self):
         pass
 
-    def do_finish(self):
-        # In case the RM passed from STARTED directly to FINISHED,
-        # we set the stop_time for consistency
-        if self.stop_time == None:
-            self.set_stopped()
-
-        self.set_finished()
-
     def do_fail(self):
         self.set_failed()
 
@@ -991,10 +964,6 @@ class ResourceManager(Logger):
     def set_released(self):
         """ Mark ResourceManager as REALEASED """
         self.set_state(ResourceState.RELEASED, "_release_time")
-
-    def set_finished(self):
-        """ Mark ResourceManager as FINISHED """
-        self.set_state(ResourceState.FINISHED, "_finish_time")
 
     def set_failed(self):
         """ Mark ResourceManager as FAILED """
@@ -1032,7 +1001,7 @@ class ResourceFactory(object):
     @classmethod
     def register_type(cls, rclass):
         """Register a new Ressource Manager"""
-        cls._resource_types[rclass.rtype()] = rclass
+        cls._resource_types[rclass.get_rtype()] = rclass
 
     @classmethod
     def create(cls, rtype, ec, guid):
