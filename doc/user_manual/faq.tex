@@ -108,8 +108,8 @@ username = # SSH user account on host
 ssh_key = # Path to SSH public key file to access host
 
 node = ec.register_resource("LinuxNode")
-ec.set(node, "hostname", host)
-ec.set(node, "username", user)
+ec.set(node, "hostname", hostname)
+ec.set(node, "username", username)
 ec.set(node, "identity", ssh_key)
 
 app = ec.register_resource("LinuxApplication")
