@@ -38,5 +38,4 @@ ec.wait_finished(app)
 
 print ec.trace(app, "stdout")
 
-
 ec.shutdown()
