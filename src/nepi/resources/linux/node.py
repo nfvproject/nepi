@@ -443,7 +443,7 @@ class LinuxNode(ResourceManager):
 
         if self.localhost:
             (out, err), proc = execfuncs.lexec(command, 
-                    user = user,
+                    user = self.get("username"), # still problem with localhost
                     sudo = sudo,
                     stdin = stdin,
                     env = env)
@@ -982,10 +982,10 @@ class LinuxNode(ResourceManager):
                 self._home_dir =  out.strip()
         except:
             trace = traceback.format_exc()
-            msg = "Impossible to retrieve HOME directory" % trace
+            msg = "Impossible to retrieve HOME directory %s" % trace
 
         if not self._home_dir:
-            self.error(msg, out, err)
+            self.error(msg)
             raise RuntimeError, msg
 
     def filter_existing_files(self, src, dst):
