@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #
 #    NEPI, a framework to manage network experiments
 #    Copyright (C) 2013 INRIA
@@ -17,38 +18,25 @@
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
-class TraceAttr:
-    """ Trace attributes represent different information
-    aspects that can be retrieved from a trace.
-    """
-    ALL = 'all'
-    STREAM = 'stream'
-    PATH = 'path'
-    SIZE = 'size'
+from nepi.execution.ec import ExperimentController 
 
-class Trace(object):
-    """
-    .. class:: Class Args :
-      
-        :param name: Name of the trace
-        :type name: str
-        :param help: Help about the trace
-        :type help: str
+ec = ExperimentController(exp_id = "ping-exp")
+        
+node = ec.register_resource("LinuxNode")
+ec.set(node, "hostname", host)
+ec.set(node, "username", username)
+ec.set(node, "cleanHome", True)
+ec.set(node, "cleanProcesses", True)
 
-    """
+app = ec.register_resource("LinuxApplication")
+ec.set(app, "command", "ping -c3 www.google.com")
+ec.register_connection(app, node)
 
-    def __init__(self, name, help, enabled = False):
-        self._name = name
-        self._help = help
-        self.enabled = enabled
+ec.deploy()
 
-    @property
-    def name(self):
-        """ Returns the name of the trace """
-        return self._name
+ec.wait_finished(app)
 
-    @property
-    def help(self):
-        """ Returns the help of the trace """
-        return self._help
+print ec.trace(app, "stdout")
 
+
+ec.shutdown()

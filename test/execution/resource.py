@@ -65,8 +65,8 @@ class Interface(ResourceManager):
         super(Interface, self).__init__(ec, guid)
 
     def do_deploy(self):
-        node = self.get_connected(Node.rtype())[0]
-        chan = self.get_connected(Channel.rtype())[0]
+        node = self.get_connected(Node.get_rtype())[0]
+        chan = self.get_connected(Channel.get_rtype())[0]
 
         if node.state < ResourceState.PROVISIONED:
             self.ec.schedule("0.5s", self.deploy)
@@ -90,7 +90,7 @@ class Node(ResourceManager):
             self.logger.debug(" -------- PROVISIONED ------- ")
             self.ec.schedule("1s", self.deploy)
         elif self.state == ResourceState.PROVISIONED:
-            ifaces = self.get_connected(Interface.rtype())
+            ifaces = self.get_connected(Interface.get_rtype())
             for rm in ifaces:
                 if rm.state < ResourceState.READY:
                     self.ec.schedule("0.5s", self.deploy)
@@ -106,7 +106,7 @@ class Application(ResourceManager):
         super(Application, self).__init__(ec, guid)
 
     def do_deploy(self):
-        node = self.get_connected(Node.rtype())[0]
+        node = self.get_connected(Node.get_rtype())[0]
         if node.state < ResourceState.READY:
             self.ec.schedule("0.5s", self.deploy)
         else:
@@ -126,7 +126,7 @@ class ErrorApplication(ResourceManager):
         super(ErrorApplication, self).__init__(ec, guid)
 
     def do_deploy(self):
-        node = self.get_connected(Node.rtype())[0]
+        node = self.get_connected(Node.get_rtype())[0]
         if node.state < ResourceState.READY:
             self.ec.schedule("0.5s", self.deploy)
         else:
@@ -141,13 +141,13 @@ class ResourceFactoryTestCase(unittest.TestCase):
         ResourceFactory.register_type(MyResource)
         ResourceFactory.register_type(AnotherResource)
 
-        self.assertEquals(MyResource.rtype(), "MyResource")
+        self.assertEquals(MyResource.get_rtype(), "MyResource")
         self.assertEquals(len(MyResource._attributes), 2)
 
-        self.assertEquals(ResourceManager.rtype(), "Resource")
+        self.assertEquals(ResourceManager.get_rtype(), "Resource")
         self.assertEquals(len(ResourceManager._attributes), 1)
 
-        self.assertEquals(AnotherResource.rtype(), "AnotherResource")
+        self.assertEquals(AnotherResource.get_rtype(), "AnotherResource")
         self.assertEquals(len(AnotherResource._attributes), 1)
 
         self.assertEquals(len(ResourceFactory.resource_types()), 2)

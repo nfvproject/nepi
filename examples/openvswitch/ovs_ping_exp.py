@@ -80,17 +80,17 @@ def add_app(ec, command, node):
     return app
 
 # Create the EC
-ec = ExperimentController(exp_id = "one")
+ec = ExperimentController(exp_id = "test")
 
 switch1 = "planetlab2.virtues.fi"
 switch2 = "planetlab2.upc.es"
 host1 = "planetlab2.ionio.gr"
-host2 = "planetlab2.diku.dk"
+host2 = "iraplab2.iralab.uni-karlsruhe.de"
 
 slicename = "inria_nepi"
 
 pl_user = os.environ.get("PL_USER")
-pl_password =  os.environ.get("PL_PASS")
+pl_password = os.environ.get("PL_PASS")
 
 s1_node = add_node(ec, switch1, slicename, pl_user, pl_password)
 s2_node = add_node(ec, switch2, slicename, pl_user, pl_password)

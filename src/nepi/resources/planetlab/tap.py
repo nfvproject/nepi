@@ -88,7 +88,7 @@ class PlanetlabTap(LinuxApplication):
 
     @property
     def node(self):
-        node = self.get_connected(PlanetlabNode.rtype())
+        node = self.get_connected(PlanetlabNode.get_rtype())
         if node: return node[0]
         return None
 
@@ -129,11 +129,17 @@ class PlanetlabTap(LinuxApplication):
         stop_command = self.replace_paths(self._stop_command)
         self.node.upload(stop_command,
                 os.path.join(self.app_home, "stop.sh"),
-                text = True, 
-                overwrite = False)
+                text = True,
+                # Overwrite file every time. 
+                # The stop.sh has the path to the socket, wich should change
+                # on every experiment run.
+                overwrite = True)
 
     def upload_start_command(self):
-        super(PlanetlabTap, self).upload_start_command()
+        # Overwrite file every time. 
+        # The stop.sh has the path to the socket, wich should change
+        # on every experiment run.
+        super(PlanetlabTap, self).upload_start_command(overwrite = True)
 
         # We want to make sure the device is up and running
         # before the deploy finishes (so things will be ready
@@ -201,7 +207,7 @@ class PlanetlabTap(LinuxApplication):
 
                 if out.strip().find(self.get("deviceName")) == -1: 
                     # tap is not running is not running (socket not found)
-                    self.finish()
+                    self.set_stopped()
 
             self._last_state_check = tnow()
 
@@ -211,7 +217,7 @@ class PlanetlabTap(LinuxApplication):
         # Node needs to wait until all associated RMs are released
         # to be released
         from nepi.resources.linux.udptunnel import UdpTunnel
-        rms = self.get_connected(UdpTunnel.rtype())
+        rms = self.get_connected(UdpTunnel.get_rtype())
         for rm in rms:
             if rm.state < ResourceState.STOPPED:
                 self.ec.schedule(reschedule_delay, self.release)

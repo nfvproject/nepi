@@ -85,14 +85,14 @@ class OMFChannel(OMFResource):
         """
         rm = self.ec.get_resource(guid)
         
-        if rm.rtype() in self._authorized_connections:
+        if rm.get_rtype() in self._authorized_connections:
             msg = "Connection between %s %s and %s %s accepted" % (
-                    self.rtype(), self._guid, rm.rtype(), guid)
+                    self.get_rtype(), self._guid, rm.get_rtype(), guid)
             self.debug(msg)
             return True
 
         msg = "Connection between %s %s and %s %s refused" % (
-                self.rtype(), self._guid, rm.rtype(), guid)
+                self.get_rtype(), self._guid, rm.get_rtype(), guid)
         self.debug(msg)
         
         return False
@@ -112,7 +112,7 @@ class OMFChannel(OMFResource):
             rm_iface = self.ec.get_resource(elt)
             for conn in rm_iface.connections:
                 rm_node = self.ec.get_resource(conn)
-                if rm_node.rtype() == "OMFNode" and rm_node.get('hostname'):
+                if rm_node.get_rtype() == "OMFNode" and rm_node.get('hostname'):
                     if rm_iface.state < ResourceState.PROVISIONED or \
                             rm_node.state < ResourceState.READY:
                         return "reschedule"

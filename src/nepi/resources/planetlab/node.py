@@ -195,6 +195,13 @@ class PlanetlabNode(LinuxNode):
         self._plapi = None
         self._node_to_provision = None
         self._slicenode = False
+
+    def _skip_provision(self):
+        pl_user = self.get("pluser")
+        pl_pass = self.get("plpassword")
+        if not pl_user and not pl_pass:
+            return True
+        else: return False
     
     @property
     def plapi(self):
@@ -205,7 +212,7 @@ class PlanetlabNode(LinuxNode):
             pl_ptn = self.get("plcApiPattern")
 
             self._plapi =  PLCAPIFactory.get_api(pl_user, pl_pass, pl_url,
-                    pl_ptn)
+                pl_ptn)
             
             if not self._plapi:
                 self.fail_plapi()
@@ -217,6 +224,10 @@ class PlanetlabNode(LinuxNode):
         Based on the attributes defined by the user, discover the suitable 
         nodes for provision.
         """
+        if self._skip_provision():
+            super(PlanetlabNode, self).do_discover()
+            return
+
         hostname = self._get_hostname()
         if hostname:
             # the user specified one particular node to be provisioned
@@ -251,7 +262,7 @@ class PlanetlabNode(LinuxNode):
             # more nodes can match these constraints 
             nodes = self._filter_based_on_attributes()
             nodes_alive = self._query_if_alive(nodes)
-    
+
             # nodes that are already part of user's slice have the priority to
             # provisioned
             nodes_inslice = self._check_if_in_slice(nodes_alive)
@@ -288,6 +299,10 @@ class PlanetlabNode(LinuxNode):
         Add node to user's slice after verifing that the node is functioning
         correctly
         """
+        if self._skip_provision():
+            super(PlanetlabNode, self).do_provision()
+            return
+
         provision_ok = False
         ssh_ok = False
         proc_ok = False
@@ -440,7 +455,7 @@ class PlanetlabNode(LinuxNode):
         range, by the user
         """
         node_tags = self.plapi.get_node_tags(filters)
-        if node_tags is not None:
+        if node_tags:
             
             if len(nodes_id) == 0:
                 # first attribute being matched
@@ -515,7 +530,7 @@ class PlanetlabNode(LinuxNode):
             alive_nodes_id = self._get_nodes_id(filters)
 
         if len(alive_nodes_id) == 0:
-            self.fail_node_not_alive(self, hostname)
+            self.fail_node_not_alive(hostname)
         else:
             nodes_id = list()
             for node_id in alive_nodes_id:
@@ -607,10 +622,11 @@ class PlanetlabNode(LinuxNode):
         ip = self._get_ip(node_id)
         if not ip: return ping_ok
 
-        command = "ping -c2 %s" % ip
+        command = "ping -c4 %s" % ip
 
         (out, err) = lexec(command)
-        if not out.find("2 received") < 0:
+        if not out.find("2 received") or not out.find("3 received") or not \
+            out.find("4 received") < 0:
             ping_ok = True
         
         return ping_ok 
@@ -659,7 +675,8 @@ class PlanetlabNode(LinuxNode):
         raise RuntimeError, msg
 
     def fail_plapi(self):
-        msg = "Failing while trying to instanciate the PLC API"
+        msg = "Failing while trying to instanciate the PLC API.\nSet the" + \
+            " attributes pluser and plpassword."
         raise RuntimeError, msg
 
     def valid_connection(self, guid):

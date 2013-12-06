@@ -43,25 +43,25 @@ class LinuxApplication(ResourceManager):
 
     .. note::
 
-    A LinuxApplication RM represents a process that can be executed in
-    a remote Linux host using SSH.
+        A LinuxApplication RM represents a process that can be executed in
+        a remote Linux host using SSH.
 
-    The LinuxApplication RM takes care of uploadin sources and any files
-    needed to run the experiment, to the remote host. 
-    It also allows to provide source compilation (build) and installation 
-    instructions, and takes care of automating the sources build and 
-    installation tasks for the user.
+        The LinuxApplication RM takes care of uploadin sources and any files
+        needed to run the experiment, to the remote host. 
+        It also allows to provide source compilation (build) and installation 
+        instructions, and takes care of automating the sources build and 
+        installation tasks for the user.
 
-    It is important to note that files uploaded to the remote host have
-    two possible scopes: single-experiment or multi-experiment.
-    Single experiment files are those that will not be re-used by other 
-    experiments. Multi-experiment files are those that will.
-    Sources and shared files are always made available to all experiments.
+        It is important to note that files uploaded to the remote host have
+        two possible scopes: single-experiment or multi-experiment.
+        Single experiment files are those that will not be re-used by other 
+        experiments. Multi-experiment files are those that will.
+        Sources and shared files are always made available to all experiments.
 
-    Directory structure:
+        Directory structure:
 
-    The directory structure used by LinuxApplication RM at the Linux
-    host is the following:
+        The directory structure used by LinuxApplication RM at the Linux
+        host is the following:
 
         ${HOME}/nepi-usr --> Base directory for multi-experiment files
                       |
@@ -163,8 +163,8 @@ class LinuxApplication(ResourceManager):
 
     @classmethod
     def _register_traces(cls):
-        stdout = Trace("stdout", "Standard output stream")
-        stderr = Trace("stderr", "Standard error stream")
+        stdout = Trace("stdout", "Standard output stream", enabled = True)
+        stderr = Trace("stderr", "Standard error stream", enabled = True)
 
         cls._register_trace(stdout)
         cls._register_trace(stderr)
@@ -194,7 +194,7 @@ class LinuxApplication(ResourceManager):
 
     @property
     def node(self):
-        node = self.get_connected(LinuxNode.rtype())
+        node = self.get_connected(LinuxNode.get_rtype())
         if node: return node[0]
         return None
 
@@ -319,7 +319,7 @@ class LinuxApplication(ResourceManager):
 
         super(LinuxApplication, self).do_provision()
 
-    def upload_start_command(self):
+    def upload_start_command(self, overwrite = False):
         # Upload command to remote bash script
         # - only if command can be executed in background and detached
         command = self.get("command")
@@ -339,7 +339,7 @@ class LinuxApplication(ResourceManager):
             self.node.upload_command(command, 
                     shfile = shfile,
                     env = env,
-                    overwrite = False)
+                    overwrite = overwrite)
 
     def execute_deploy_command(self, command):
         if command:
@@ -491,8 +491,8 @@ class LinuxApplication(ResourceManager):
 
         if not command:
             # If no command was given (i.e. Application was used for dependency
-            # installation), then the application is directly marked as FINISHED
-            super(LinuxApplication, self).do_finish()
+            # installation), then the application is directly marked as STOPPED
+            super(LinuxApplication, self).set_stopped()
         else:
             if self.in_foreground:
                 self._run_in_foreground()
@@ -636,7 +636,7 @@ class LinuxApplication(ResourceManager):
                     self.do_fail()
 
                 elif retcode == 0:
-                    self.do_finish()
+                    self.set_stopped()
             else:
                 # We need to query the status of the command we launched in 
                 # background. In order to avoid overwhelming the remote host and
@@ -660,7 +660,7 @@ class LinuxApplication(ResourceManager):
                                 self.error(msg, out, err)
                                 self.do_fail()
                             else:
-                                self.do_finish()
+                                self.set_stopped()
 
                     self._last_state_check = tnow()
 
