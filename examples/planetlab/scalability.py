@@ -25,7 +25,8 @@ import os
 import time
 
 def create_node(ec, username, pl_user, pl_password, hostname=None, country=None,
-                operatingSystem=None, minBandwidth=None, minCpu=None):
+                operatingSystem=None, minBandwidth=None, minCpu=None,
+                critical=None):
 
     node = ec.register_resource("PlanetlabNode")
 
@@ -46,6 +47,8 @@ def create_node(ec, username, pl_user, pl_password, hostname=None, country=None,
         ec.set(node, "minBandwidth", minBandwidth)
     if minCpu:
         ec.set(node, "minCpu", minCpu)
+    if critical:
+        ec.set(node, "critical", critical)
 
     ec.set(node, "cleanHome", True)
     ec.set(node, "cleanProcesses", True)
@@ -99,18 +102,20 @@ hostnames = ['planetlab2.utt.fr',
 'planetlab1.rutgers.edu']
 
 for hostname in hostnames:
-    node = create_node(ec, username, pl_user, pl_password, hostname=hostname)
+    node = create_node(ec, username, pl_user, pl_password, hostname=hostname,
+            critical=False)
     first_set_nodes.append(node)
 
 # Second set of nodes will be U.S.A. nodes.
 country = "United States"
 for i in range(15):
-    node = create_node(ec, username, pl_user, pl_password, country=country)
+    node = create_node(ec, username, pl_user, pl_password, country=country,
+            critical=False)
     second_set_nodes.append(node)
 
 # Third set of nodes can be any node in Planetlab testbed.
 for i in range(70):
-    node = create_node(ec, username, pl_user, pl_password)
+    node = create_node(ec, username, pl_user, pl_password, critical=False)
     third_set_nodes.append(node)
 
 # Register conditions
