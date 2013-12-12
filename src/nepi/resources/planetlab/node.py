@@ -28,6 +28,7 @@ from nepi.util import sshfuncs
 
 from random import randint
 import time
+import socket
 import threading
 import datetime
 
@@ -252,10 +253,9 @@ class PlanetlabNode(LinuxNode):
                             self._slicenode = True
                         self._put_node_in_provision(node_id)
                         self._node_to_provision = node_id
-                        super(PlanetlabNode, self).do_discover()
-                
                 else:
                     self.fail_node_not_available(hostname)
+            super(PlanetlabNode, self).do_discover()
         
         else:
             # the user specifies constraints based on attributes, zero, one or 
@@ -285,12 +285,11 @@ class PlanetlabNode(LinuxNode):
                 try:
                     self._set_hostname_attr(node_id)
                     self.info(" Selected node to provision ")
+                    super(PlanetlabNode, self).do_discover()
                 except:
                     with PlanetlabNode.lock:
                         self._blacklist_node(node_id)
-                        self.do_discover()
- 
-                super(PlanetlabNode, self).do_discover()
+                    self.do_discover()
             else:
                self.fail_not_enough_nodes() 
             
@@ -591,7 +590,8 @@ class PlanetlabNode(LinuxNode):
         if hostname:
             return hostname
         elif ip:
-            hostname = sshfuncs.gethostbyname(ip)
+            hostname = socket.gethostbyaddr(ip)[0]
+            self.set('hostname', hostname)
             return hostname
         else:
             return None
@@ -636,14 +636,14 @@ class PlanetlabNode(LinuxNode):
         Add node mal functioning node to blacklist
         """
         self.warn(" Blacklisting malfunctioning node ")
-        self._plapi.blacklist_host(node)
+        self.plapi.blacklist_host(node)
 
     def _put_node_in_provision(self, node):
         """
         Add node to the list of nodes being provisioned, in order for other RMs
         to not try to provision the same one again
         """
-        self._plapi.reserve_host(node)
+        self.plapi.reserve_host(node)
 
     def _get_ip(self, node_id):
         """
