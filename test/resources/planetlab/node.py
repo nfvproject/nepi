@@ -36,7 +36,7 @@ class DummyEC(ExperimentController):
 def create_node(ec, username, pl_user=None, pl_password=None, pl_url=None, 
                 hostname=None, country=None, operatingSystem=None, 
                 minBandwidth=None, minCpu=None,
-                architecture=None, city=None):
+                architecture=None, city=None, ip=None):
 
     node = ec.register_resource("PlanetlabNode")
 
@@ -63,6 +63,8 @@ def create_node(ec, username, pl_user=None, pl_password=None, pl_url=None,
         ec.set(node, "architecture", architecture)
     if city:
         ec.set(node, "city", city)
+    if ip:
+        ec.set(node, "ip", ip)
 
     ec.set(node, "cleanHome", True)
     ec.set(node, "cleanProcesses", True)
@@ -77,8 +79,10 @@ class PLNodeFactoryTestCase(unittest.TestCase):
 
 class PLNodeTestCase(unittest.TestCase):
     """
-    This tests use inria_nepi slice, and  already added to
-    the slice, and ONLY this one in order for the test not to fail.
+    This tests use inria_nepi slice, from the test instance of MyPLC
+    nepiplc.pl.sophia.inria.fr. This test can fail if the user running
+    the test does not have a user in this instance of MyPLC or is not
+    added to the inria_nepi slice.
     """
 
     def setUp(self):
@@ -87,14 +91,18 @@ class PLNodeTestCase(unittest.TestCase):
         self.pl_user = os.environ.get("PL_USER")
         self.pl_password = os.environ.get("PL_PASS")
         self.pl_url = "nepiplc.pl.sophia.inria.fr"
+        commonapi=PLCAPIFactory.get_api(self.pl_user, self.pl_password,
+            self.pl_url)
+        commonapi.add_slice_nodes(self.username, ['nepi2.pl.sophia.inria.fr'])
+        commonapi._reserved = set()
+        commonapi._blacklist = set()
 
     @skipIfNotPLCredentials
     def test_plapi(self):
         """
         Check that the api to discover and reserve resources is well
-        instanciated, and is an instance of PLCAPI. Ignore error while
-        executing the ec.shutdown method, the error is due to the name
-        of the host not being defined yet for this test.
+        instanciated, and is an instance of PLCAPI. Check that using
+        the same credentials, the same object of the api is used.
         """
         node1 = create_node(self.ec, self.username, pl_user=self.pl_user,
             pl_password=self.pl_password, pl_url=self.pl_url, 
@@ -140,8 +148,9 @@ class PLNodeTestCase(unittest.TestCase):
     def test_discover_inslice(self):
         """
         This test uses the fact that the node nepi2.pl.sophia.inria.fr is already in 
-        the slice and match the constraints OS Fedora12 and arch x86_64.
+        the slice and match the constraints OS Fedora12 and arch x86_64. 
         Check nepi2.pl.sophia.inria.fr is alive if the test fails.
+        The node_id of nepi2.pl.sophia.inria.fr is 3.
         """
         node = create_node(self.ec, self.username, pl_user=self.pl_user,
             pl_password=self.pl_password, pl_url=self.pl_url, architecture="x86_64", 
@@ -151,9 +160,6 @@ class PLNodeTestCase(unittest.TestCase):
        
         hostname = plnode_rm.get("hostname")
         self.assertIsNone(hostname)
-
-        api = plnode_rm.plapi
-        api.add_slice_nodes(self.username, ['nepi2.pl.sophia.inria.fr'])        
 
         plnode_rm.do_discover()
         self.assertEquals(plnode_rm._node_to_provision, 3)
@@ -197,6 +203,23 @@ class PLNodeTestCase(unittest.TestCase):
 
         self.assertEquals(plnode_rm._node_to_provision, 3)
         self.assertEquals(plnode_rm.plapi.reserved(), set([3]))
+
+    @skipIfNotPLCredentials
+    def test_discover_ip(self):
+        """
+        This test checks that if the user specify the ip, only that node
+        is discovered.
+        """
+        node = create_node(self.ec, self.username, pl_user=self.pl_user,
+            pl_password=self.pl_password, pl_url=self.pl_url,
+            ip="138.96.116.32")
+
+        plnode_rm = self.ec.get_resource(node)
+        plnode_rm.do_discover()
+
+        self.assertEquals(plnode_rm._node_to_provision, 3)
+        self.assertEquals(plnode_rm.plapi.reserved(), set([3]))
+        self.assertEquals(plnode_rm.get("hostname"), "nepi2.pl.sophia.inria.fr")
 
     @skipIfNotPLCredentials
     def test_discover_with_ranges(self):
@@ -255,9 +278,6 @@ class PLNodeTestCase(unittest.TestCase):
         self.assertEquals(len(plnode_rm.plapi.blacklisted()), 0)
         self.assertEquals(len(plnode_rm.plapi.reserved()), 0)
 
-        api = plnode_rm.plapi
-        api.add_slice_nodes(self.username, ['nepi2.pl.sophia.inria.fr'])
-
         plnode_rm.do_discover()
         plnode_rm.do_provision()
         ip = plnode_rm.get("ip")
@@ -279,9 +299,6 @@ class PLNodeTestCase(unittest.TestCase):
         self.assertEquals(plnode_rm.plapi.blacklisted(), set())
         self.assertEquals(plnode_rm.plapi.reserved(), set())
 
-        api = plnode_rm.plapi
-        api.add_slice_nodes(self.username, ['nepi2.pl.sophia.inria.fr'])
-
         plnode_rm.do_discover()
         plnode_rm.do_provision()
         ip = plnode_rm.get("ip")       
@@ -289,86 +306,71 @@ class PLNodeTestCase(unittest.TestCase):
         result = ["138.96.116.33","138.96.116.35"] 
         self.assertIn(ip, result)
        
-#    @skipIfNotPLCredentials
-#    def test_provision_more_than_available(self):
-#        """
-#        Check that if the user wants to provision 3 nodes in Paris, he
-#        gets RuntimeError, there are only 2 nodes with city=Paris.
-#        """
-#        node1 = create_node(self.ec, self.username, pl_user=self.pl_user,
-#            pl_password=self.pl_password, pl_url=self.pl_url, 
-#            city="Paris", operatingSystem="f12")
-#
-#        plnode_rm1 = self.ec.get_resource(node1)
-#
-#        api = plnode_rm.plapi
-#        api.add_slice_nodes(self.username, ['nepi2.pl.sophia.inria.fr'])
-#
-#        plnode_rm1.do_discover()
-#        plnode_rm1.do_provision()
-#
-#        node2 = create_node(self.ec, self.username, pl_user=self.pl_user,
-#            pl_password=self.pl_password, pl_url=self.pl_url, 
-#            city="Paris", operatingSystem="f12")
-#
-#        plnode_rm2 = self.ec.get_resource(node2)
-#        plnode_rm2.do_discover()
-#        plnode_rm2.do_provision()
-#
-#        node3 = create_node(self.ec, self.username, pl_user=self.pl_user,
-#            pl_password=self.pl_password, pl_url=self.pl_url, 
-#            city="Paris", operatingSystem="f12")
-#
-#        plnode_rm3 = self.ec.get_resource(node3)
-#        with self.assertRaises(RuntimeError):
-#            plnode_rm3.do_discover()
-#            with self.assertRaises(RuntimeError):
-#                plnode_rm3.do_provision()
-#        
-#        host1 = plnode_rm1.get('hostname')
-#
-#        plnode_rm3._set_hostname_attr(host1)
-#
-#    @skipIfNotPLCredentials
-#    def test_concurrence(self):
-#        """
-#        Test with the nodes being discover and provision at the same time.
-#        It should fail as the test before.
-#        """
-#        node1 = create_node(self.ec, self.username, pl_user=self.pl_user,
-#            pl_password=self.pl_password, pl_url=self.pl_url,
-#            architecture="x86_64", operatingSystem="f12")
-#
-#        node2 = create_node(self.ec, self.username, pl_user=self.pl_user,
-#            pl_password=self.pl_password, pl_url=self.pl_url,
-#            architecture="x86_64", operatingSystem="f12")
-#
-#        node3 = create_node(self.ec, self.username, pl_user=self.pl_user,
-#            pl_password=self.pl_password, pl_url=self.pl_url, 
-#            architecture="x86_64", operatingSystem="f12")
-#
-#        node4 = create_node(self.ec, self.username, pl_user=self.pl_user,
-#            pl_password=self.pl_password, pl_url=self.pl_url, 
-#            architecture="x86_64", operatingSystem="f12")
-#
-#        self.ec.deploy()
-#        self.ec.wait_finished([node1, node2, node3, node4])
-#        state = self.ec.state(node1, hr=True)
-#        self.assertIn(state, ['READY', 'FAILED'])
-#        state = self.ec.state(node2, hr=True)
-#        self.assertIn(state, ['READY', 'FAILED'])
-#        state = self.ec.state(node3, hr=True)
-#        self.assertIn(state, ['READY', 'FAILED'])
-#        state = self.ec.state(node4, hr=True)
-#        self.assertIn(state, ['READY', 'FAILED'])
+    @skipIfNotPLCredentials
+    def test_provision_more_than_available(self):
+        """
+        Check that if the user wants to provision 3 nodes in Paris, he
+        gets RuntimeError, there are only 2 nodes with city=Paris.
+        """
+        node1 = create_node(self.ec, self.username, pl_user=self.pl_user,
+            pl_password=self.pl_password, pl_url=self.pl_url, 
+            city="Paris", operatingSystem="f12")
+
+        plnode_rm1 = self.ec.get_resource(node1)
+        plnode_rm1.do_discover()
+        plnode_rm1.do_provision()
+
+        node2 = create_node(self.ec, self.username, pl_user=self.pl_user,
+            pl_password=self.pl_password, pl_url=self.pl_url, 
+            city="Paris", operatingSystem="f12")
+
+        plnode_rm2 = self.ec.get_resource(node2)
+        plnode_rm2.do_discover()
+        plnode_rm2.do_provision()
+
+        node3 = create_node(self.ec, self.username, pl_user=self.pl_user,
+            pl_password=self.pl_password, pl_url=self.pl_url, 
+            city="Paris", operatingSystem="f12")
+
+        plnode_rm3 = self.ec.get_resource(node3)
+        with self.assertRaises(RuntimeError):
+            plnode_rm3.do_discover()
+            with self.assertRaises(RuntimeError):
+                plnode_rm3.do_provision()
+        
+        host1 = plnode_rm1.get('hostname')
+
+        plnode_rm3._set_hostname_attr(host1)
+
+    @skipIfNotPLCredentials
+    def test_concurrence(self):
+        """
+        Test with the nodes being discover and provision at the same time.
+        The deploy should fail as the test before, there aren't 4 nodes of 
+        that carachteristics.
+        """
+        node1 = create_node(self.ec, self.username, pl_user=self.pl_user,
+            pl_password=self.pl_password, pl_url=self.pl_url,
+            architecture="x86_64", operatingSystem="f12")
+
+        node2 = create_node(self.ec, self.username, pl_user=self.pl_user,
+            pl_password=self.pl_password, pl_url=self.pl_url,
+            architecture="x86_64", operatingSystem="f12")
+
+        node3 = create_node(self.ec, self.username, pl_user=self.pl_user,
+            pl_password=self.pl_password, pl_url=self.pl_url, 
+            architecture="x86_64", operatingSystem="f12")
+
+        node4 = create_node(self.ec, self.username, pl_user=self.pl_user,
+            pl_password=self.pl_password, pl_url=self.pl_url, 
+            architecture="x86_64", operatingSystem="f12")
+
+        self.ec.deploy()
+        self.ec.wait_deployed([node1, node2, node3, node4])
+        failure_level = self.ec._fm._failure_level
+        self.assertEqual(failure_level, 2)
 
     def tearDown(self):
-        commonapi=PLCAPIFactory.get_api(self.pl_user, self.pl_password,
-            self.pl_url)
-        #commonapi.add_slice_nodes(self.username, ['nepi2.pl.sophia.inria.fr'])
-        commonapi._reserved = set()
-        commonapi._blacklist = set()
-             
         self.ec.shutdown()
 
 
