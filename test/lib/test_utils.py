@@ -88,8 +88,7 @@ def skipIfNotPLCredentials(func):
     def wrapped(*args, **kwargs):
         pl_user = os.environ.get("PL_USER")
         pl_pass = os.environ.get("PL_PASS")
-        pl_slice = os.environ.get("PL_SLICE")
-        if not (pl_user and pl_pass and pl_slice):
+        if not (pl_user and pl_pass):
             print "*** WARNING: Skipping test %s: Planetlab user, password and slicename not defined\n" % name
             return
 
