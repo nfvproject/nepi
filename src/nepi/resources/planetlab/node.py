@@ -196,6 +196,7 @@ class PlanetlabNode(LinuxNode):
         self._plapi = None
         self._node_to_provision = None
         self._slicenode = False
+        self._hostname = False
 
     def _skip_provision(self):
         pl_user = self.get("pluser")
@@ -232,7 +233,8 @@ class PlanetlabNode(LinuxNode):
         hostname = self._get_hostname()
         if hostname:
             # the user specified one particular node to be provisioned
-            # check with PLCAPI if it is alvive
+            # check with PLCAPI if it is alive
+            self._hostname = True
             node_id = self._query_if_alive(hostname=hostname)
             node_id = node_id.pop()
 
@@ -339,7 +341,7 @@ class PlanetlabNode(LinuxNode):
                     self.warn(" Could not SSH login ")
                     self._blacklist_node(node)
                     #self._delete_node_from_slice(node)
-                self.set('hostname', None)
+                #self.set('hostname', None)
                 self.do_discover()
                 continue
             
@@ -352,12 +354,14 @@ class PlanetlabNode(LinuxNode):
                         self.warn(" Could not find directory /proc ")
                         self._blacklist_node(node)
                         #self._delete_node_from_slice(node)
-                    self.set('hostname', None)
+                    #self.set('hostname', None)
                     self.do_discover()
                     continue
             
                 else:
                     provision_ok = True
+                    if not self.get('hostname'):
+                        self._set_hostname_attr(node)            
                     # set IP attribute
                     ip = self._get_ip(node)
                     self.set("ip", ip)
@@ -562,7 +566,7 @@ class PlanetlabNode(LinuxNode):
                         self._set_hostname_attr(node_id)
                         self.warn(" Node not responding PING ")
                         self._blacklist_node(node_id)
-                        self.set('hostname', None)
+                        #self.set('hostname', None)
                     else:
                         # discovered node for provision, added to provision list
                         self._put_node_in_provision(node_id)
@@ -637,6 +641,8 @@ class PlanetlabNode(LinuxNode):
         """
         self.warn(" Blacklisting malfunctioning node ")
         self.plapi.blacklist_host(node)
+        if not self._hostname:
+            self.set('hostname', None)
 
     def _put_node_in_provision(self, node):
         """
