@@ -24,9 +24,8 @@ from nepi.execution.resource import ResourceAction, ResourceState
 import os
 import time
 
-def create_node(ec, username, pl_user, pl_password, hostname=None, country=None,
-                operatingSystem=None, minBandwidth=None, minCpu=None,
-                critical=None):
+def create_node(ec, username, pl_user, pl_password, critical=True, hostname=None, 
+                country=None, operatingSystem=None, minBandwidth=None, minCpu=None):
 
     node = ec.register_resource("PlanetlabNode")
 
@@ -47,11 +46,10 @@ def create_node(ec, username, pl_user, pl_password, hostname=None, country=None,
         ec.set(node, "minBandwidth", minBandwidth)
     if minCpu:
         ec.set(node, "minCpu", minCpu)
-    if critical:
-        ec.set(node, "critical", critical)
+    ec.set(node, "critical", critical)
 
-    ec.set(node, "cleanHome", True)
-    ec.set(node, "cleanProcesses", True)
+    #ec.set(node, "cleanHome", True)
+    #ec.set(node, "cleanProcesses", True)
     
     return node
 
@@ -129,7 +127,7 @@ for i in range(70):
 
 ec.register_condition(second_set_nodes, ResourceAction.DEPLOY, first_set_nodes, ResourceState.PROVISIONED)
 ec.register_condition(third_set_nodes, ResourceAction.DEPLOY, second_set_nodes, ResourceState.PROVISIONED)
-    
+ 
 # Deploy the experiment:
 ec.deploy()
 
