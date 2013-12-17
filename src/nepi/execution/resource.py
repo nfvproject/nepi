@@ -707,8 +707,10 @@ class ResourceManager(Logger):
             rm = self.ec.get_resource(guid)
             
             # If one of the RMs this resource needs to wait for has FAILED
-            # we raise an exception
+            # and is critical we raise an exception
             if rm.state == ResourceState.FAILED:
+                if not rm.get('critical'):
+                    continue
                 msg = "Resource can not wait for FAILED RM %d. Setting Resource to FAILED"
                 raise RuntimeError, msg
 
@@ -890,7 +892,7 @@ class ResourceManager(Logger):
                 #for guid in group:
                 #    rm = self.ec.get_resource(guid)
                 #    unmet.append((guid, rm._state))
-                #
+                
                 #self.debug("---- WAITED STATES ---- %s" % unmet )
 
                 reschedule, delay = self._needs_reschedule(group, state, time)
