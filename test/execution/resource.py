@@ -117,7 +117,7 @@ class Application(ResourceManager):
     def do_start(self):
         super(Application, self).do_start()
         time.sleep(random.random() * 3)
-        self.ec.schedule("0.5s", self.finish)
+        self.ec.schedule("0.5s", self.stop)
 
 class ErrorApplication(ResourceManager):
     _rtype = "ErrorApplication"
@@ -280,7 +280,7 @@ class ResourceManagerTestCase(unittest.TestCase):
         
         self.assertTrue(ec.state(node) == ResourceState.STARTED)
         self.assertTrue(
-               all([ec.state(guid) == ResourceState.FINISHED \
+               all([ec.state(guid) == ResourceState.STOPPED \
                 for guid in apps])
                 )
 
@@ -343,7 +343,7 @@ class ResourceManagerTestCase(unittest.TestCase):
 
         for app in apps:
             state = ec.state(app)
-            self.assertEquals(state, ResourceState.FINISHED)
+            self.assertEquals(state, ResourceState.STOPPED)
         
         ec.shutdown()
 
