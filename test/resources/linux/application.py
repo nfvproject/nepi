@@ -60,7 +60,7 @@ class LinuxApplicationTestCase(unittest.TestCase):
         ec.wait_finished(app)
 
         self.assertTrue(ec.state(node) == ResourceState.STARTED)
-        self.assertTrue(ec.state(app) == ResourceState.FINISHED)
+        self.assertTrue(ec.state(app) == ResourceState.STOPPED)
 
         stdout = ec.trace(app, "stdout")
         self.assertTrue(stdout.strip() == "HOLA")
@@ -89,7 +89,7 @@ class LinuxApplicationTestCase(unittest.TestCase):
         ec.wait_finished(app)
 
         self.assertTrue(ec.state(node) == ResourceState.STARTED)
-        self.assertTrue(ec.state(app) == ResourceState.FINISHED)
+        self.assertTrue(ec.state(app) == ResourceState.STOPPED)
 
         stdout = ec.trace(app, "stdout")
         size = ec.trace(app, "stdout", attr = TraceAttr.SIZE)
@@ -169,7 +169,7 @@ main (void)
 
         self.assertTrue(ec.state(node) == ResourceState.STARTED)
         self.assertTrue(
-               all([ec.state(guid) == ResourceState.FINISHED \
+               all([ec.state(guid) == ResourceState.STOPPED \
                 for guid in apps])
                 )
 
@@ -219,8 +219,8 @@ main (void)
         ec.wait_finished(apps)
 
         self.assertTrue(ec.state(node) == ResourceState.STARTED)
-        self.assertTrue(ec.state(server) == ResourceState.FINISHED)
-        self.assertTrue(ec.state(client) == ResourceState.FINISHED)
+        self.assertTrue(ec.state(server) == ResourceState.STOPPED)
+        self.assertTrue(ec.state(client) == ResourceState.STOPPED)
 
         stdout = ec.trace(client, "stdout")
         self.assertTrue(stdout.strip() == "HOLA")
@@ -251,7 +251,7 @@ main (void)
         ec.wait_finished([app])
 
         self.assertTrue(ec.state(node) == ResourceState.STARTED)
-        self.assertTrue(ec.state(app) == ResourceState.FINISHED)
+        self.assertTrue(ec.state(app) == ResourceState.STOPPED)
 
         exitcode = ec.trace(app, "deploy_exitcode")
         self.assertTrue(exitcode.strip() == "0")
@@ -284,7 +284,7 @@ main (void)
 
         ec.wait_finished([app])
 
-        self.assertTrue(ec.state(app) == ResourceState.FINISHED)
+        self.assertTrue(ec.state(app) == ResourceState.STOPPED)
 
         ec.shutdown()
 
