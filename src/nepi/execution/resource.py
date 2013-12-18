@@ -980,6 +980,8 @@ class ResourceManager(Logger):
         self.set_state(ResourceState.PROVISIONED, "_provision_time")
 
     def set_state(self, state, state_time_attr):
+        """ Set the state of the RM while saving the time when the state change """
+
         # Ensure that RM state will not change after released
         if self._state == ResourceState.RELEASED:
             return 
