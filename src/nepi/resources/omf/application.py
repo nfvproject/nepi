@@ -107,10 +107,17 @@ class OMFApplication(OMFResource):
         return None
 
     def stdin_hook(self, old_value, new_value):
+        """ Set a hook to the stdin attribute in order to send a message at each time
+        the value of this parameter is changed
+
+        """
         self._omf_api.send_stdin(self.node.get('hostname'), new_value, self.get('appid'))
         return new_value
 
     def add_set_hook(self):
+        """ Initialize the hooks
+
+        """
         attr = self._attrs["stdin"]
         attr.set_hook = self.stdin_hook
 
