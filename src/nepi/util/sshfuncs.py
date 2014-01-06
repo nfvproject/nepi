@@ -205,7 +205,9 @@ def eintr_retry(func):
     return rv
 
 def rexec(command, host, user, 
-        port = None, 
+        port = None,
+        gwuser = None,
+        gw = None, 
         agent = True,
         sudo = False,
         stdin = None,
@@ -226,7 +228,9 @@ def rexec(command, host, user,
     """
     
     tmp_known_hosts = None
-    hostip = gethostbyname(host)
+    if not gw:
+        hostip = gethostbyname(host)
+    else: hostip = None
 
     args = ['ssh', '-C',
             # Don't bother with localhost. Makes test easier
@@ -246,6 +250,13 @@ def rexec(command, host, user,
     if not strict_host_checking:
         # Do not check for Host key. Unsafe.
         args.extend(['-o', 'StrictHostKeyChecking=no'])
+
+    if gw:
+        if gwuser:
+            proxycommand = 'ProxyCommand=ssh %s@%s -W %%h:%%p' % (gwuser, gw)
+        else:
+            proxycommand = 'ProxyCommand=ssh %%r@%s -W %%h:%%p' % gw
+        args.extend(['-o', proxycommand])
 
     if agent:
         args.append('-A')
@@ -328,7 +339,9 @@ def rexec(command, host, user,
     return ((out, err), proc)
 
 def rcopy(source, dest,
-        port = None, 
+        port = None,
+        gwuser = None,
+        gw = None,
         agent = True, 
         recursive = False,
         identity = None,
@@ -380,7 +393,9 @@ def rcopy(source, dest,
         user,host = remspec.rsplit('@',1)
         
         tmp_known_hosts = None
-        hostip = gethostbyname(host)
+        if not gw:
+            hostip = gethostbyname(host)
+        else: hostip = None
         
         args = ['ssh', '-l', user, '-C',
                 # Don't bother with localhost. Makes test easier
@@ -396,6 +411,13 @@ def rcopy(source, dest,
                 '-o', 'ControlMaster=auto',
                 '-o', 'ControlPath=%s' % (make_control_path(agent, False),),
                 '-o', 'ControlPersist=60' ])
+
+        if gw:
+            if gwuser:
+                proxycommand = 'ProxyCommand=ssh %s@%s -W %%h:%%p' % (gwuser, gw)
+            else:
+                proxycommand = 'ProxyCommand=ssh %%r@%s -W %%h:%%p' % gw
+            args.extend(['-o', proxycommand])
 
         if port:
             args.append('-P%d' % port)
@@ -535,6 +557,13 @@ def rcopy(source, dest,
         if port:
             args.append('-P%d' % port)
 
+        if gw:
+            if gwuser:
+                proxycommand = 'ProxyCommand=ssh %s@%s -W %%h:%%p' % (gwuser, gw)
+            else:
+                proxycommand = 'ProxyCommand=ssh %%r@%s -W %%h:%%p' % gw
+            args.extend(['-o', proxycommand])
+
         if recursive:
             args.append('-r')
 
@@ -561,7 +590,7 @@ def rcopy(source, dest,
             args.append(source)
 
         args.append(dest)
-
+        
         for x in xrange(retry):
             # connects to the remote host and starts a remote connection
             proc = subprocess.Popen(args,
@@ -609,6 +638,8 @@ def rspawn(command, pidfile,
         host = None, 
         port = None, 
         user = None, 
+        gwuser = None,
+        gw = None,
         agent = None, 
         identity = None, 
         server_key = None,
@@ -682,6 +713,8 @@ def rspawn(command, pidfile,
         host = host,
         port = port,
         user = user,
+        gwuser = gwuser,
+        gw = gw,
         agent = agent,
         identity = identity,
         server_key = server_key,
@@ -698,6 +731,8 @@ def rgetpid(pidfile,
         host = None, 
         port = None, 
         user = None, 
+        gwuser = None,
+        gw = None,
         agent = None, 
         identity = None,
         server_key = None):
@@ -724,6 +759,8 @@ def rgetpid(pidfile,
         host = host,
         port = port,
         user = user,
+        gwuser = gwuser,
+        gw = gw,
         agent = agent,
         identity = identity,
         server_key = server_key
@@ -744,6 +781,8 @@ def rstatus(pid, ppid,
         host = None, 
         port = None, 
         user = None, 
+        gwuser = None,
+        gw = None,
         agent = None, 
         identity = None,
         server_key = None):
@@ -768,6 +807,8 @@ def rstatus(pid, ppid,
         host = host,
         port = port,
         user = user,
+        gwuser = gwuser,
+        gw = gw,
         agent = agent,
         identity = identity,
         server_key = server_key
@@ -791,6 +832,8 @@ def rkill(pid, ppid,
         host = None, 
         port = None, 
         user = None, 
+        gwuser = None,
+        gw = None,
         agent = None, 
         sudo = False,
         identity = None, 
@@ -845,6 +888,8 @@ fi
         host = host,
         port = port,
         user = user,
+        gwuser = gwuser,
+        gw = gw,
         agent = agent,
         identity = identity,
         server_key = server_key
