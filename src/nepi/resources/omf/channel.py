@@ -56,8 +56,6 @@ class OMFChannel(OMFResource):
         :type ec: ExperimentController
         :param guid: guid of the RM
         :type guid: int
-        :param creds: Credentials to communicate with the rm (XmppClient for OMF)
-        :type creds: dict
 
         """
         super(OMFChannel, self).__init__(ec, guid)
