@@ -39,11 +39,6 @@ class OMFApplication(OMFResource):
         :param creds: Credentials to communicate with the rm (XmppClient)
         :type creds: dict
 
-    .. note::
-
-       This class is used only by the Experiment Controller through the 
-       Resource Factory
-
     """
     _rtype = "OMFApplication"
     _authorized_connections = ["OMFNode"]
