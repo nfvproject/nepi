@@ -32,7 +32,7 @@ class LinuxFIBEntryTestCase(unittest.TestCase):
         self.fedora_user = "inria_test"
 
         self.ubuntu_host = "roseval.pl.sophia.inria.fr"
-        self.ubuntu_user = "alina"
+        self.ubuntu_user = "nepi"
         
         self.target = "nepi5.pl.sophia.inria.fr"
 
