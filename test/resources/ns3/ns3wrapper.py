@@ -105,16 +105,6 @@ class NS3WrapperTest(unittest.TestCase):
         # OnOffHelper onoff = OnOffHelper ("ns3::Ipv4RawSocketFactory", dst);
         onoff = wrapper.create("OnOffHelper", "ns3::Ipv4RawSocketFactory", dst)
 
-        # onoff.SetAttribute ("OnTime", RandomVariableValue (ConstantVariable (1.0)));
-        cv1 = wrapper.create("ConstantVariable", 1.0)
-        rand1 = wrapper.create("RandomVariableValue", cv1)
-        wrapper.invoke(onoff, "SetAttribute", "OnTime", rand1)
-
-        # onoff.SetAttribute ("OffTime", RandomVariableValue (ConstantVariable (0.0)));
-        cv2 = wrapper.create("ConstantVariable", 0.0)
-        rand2 = wrapper.create("RandomVariableValue", cv2)
-        wrapper.invoke(onoff, "SetAttribute", "OffTime", rand2)
-
         # onoff.SetAttribute ("DataRate", DataRateValue (DataRate (15000)));
         dr2 = wrapper.create("DataRate", 15000)
         drv2 = wrapper.create("DataRateValue", dr2)
@@ -183,17 +173,20 @@ class NS3WrapperTest(unittest.TestCase):
         s6 = wrapper.create ("Seconds", 5.0)
         wrapper.invoke (apps, "Stop", s6)
 
+        ### configure tracing
+        #csma.EnablePcapAll ("csma-ping", false);
+        wrapper.invoke(csma, "EnablePcapAll", "csma-ping-pcap", False)
+ 
+        #csma.EnableAsciiAll ("csma-ping", false);
+        wrapper.invoke(csma, "EnableAsciiAll", "csma-ping-ascii")
+ 
         def SinkRx(packet, address):
             print packet
 
         def PingRtt(context, rtt):
             print context, rtt
-
-        ### configure tracing
-        #csma.EnablePcapAll ("csma-ping", false);
-        wrapper.invoke(csma, "EnablePcapAll", "csma-ping", False)
-       
-        # No binging for callback
+      
+        # XXX: No biding for MakeCallback
         #Config::ConnectWithoutContext ("/NodeList/3/ApplicationList/0/$ns3::PacketSink/Rx", 
         # MakeCallback (&SinkRx));
         #cb = wrapper.create("MakeCallback", SinkRx)

@@ -26,19 +26,28 @@ import uuid
 class NS3Wrapper(object):
     def __init__(self, homedir = None):
         super(NS3Wrapper, self).__init__()
-        self._ns3 = None
-        self._uuid = self.make_uuid()
-        self._homedir = homedir or os.path.join("/tmp", self._uuid)
+        # Thread used to run the simulation
         self._simulation_thread = None
         self._condition = None
 
         self._started = False
         self._stopped = False
 
-        # holds reference to all ns-3 objects in the simulation
-        self._resources = dict()
+        # holds reference to all C++ objects and variables in the simulation
+        self._objects = dict()
+
+        # holds the class identifiers of uuid to be able to retrieve
+        # the corresponding ns3 TypeId to set/get attributes.
+        # This is necessary because the method GetInstanceTypeId is not
+        # exposed through the Python bindings
+        self._tids = dict()
+
+        # Generate unique identifier for the simulation wrapper 
+        self._uuid = self.make_uuid()
 
         # create home dir (where all simulation related files will end up)
+        self._homedir = homedir or os.path.join("/tmp", self.uuid)
+        
         home = os.path.normpath(self.homedir)
         if not os.path.exists(home):
             os.makedirs(home, 0755)
@@ -47,13 +56,21 @@ class NS3Wrapper(object):
         loglevel = os.environ.get("NS3LOGLEVEL", "debug")
         self._logger = logging.getLogger("ns3wrapper.%s" % self.uuid)
         self._logger.setLevel(getattr(logging, loglevel.upper()))
+        
         hdlr = logging.FileHandler(os.path.join(self.homedir, "ns3wrapper.log"))
         formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
         hdlr.setFormatter(formatter)
+        
         self._logger.addHandler(hdlr) 
+
+        # Python module to refernce all ns-3 classes and types
+        self._ns3 = None
 
         # Load ns-3 shared libraries and import modules
         self._load_ns3_module()
+        
+        # Add module as anoter object, so we can reference it later
+        self._objects[self.uuid] = self.ns3
         
     @property
     def ns3(self):
@@ -74,77 +91,59 @@ class NS3Wrapper(object):
     def make_uuid(self):
         return "uuid%s" % uuid.uuid4()
 
-    def singleton(self, clazzname):
-        uuid = "uuid%s"%clazzname
-
-        if not uuid in self._resources:
-            if not hasattr(self.ns3, clazzname):
-                msg = "Type %s not supported" % (typeid) 
-                self.logger.error(msg)
-
-            clazz = getattr(self.ns3, clazzname)
-            typeid = "ns3::%s" % clazzname
-            self._resources[uuid] = (clazz, typeid)
-
-        return uuid
-
-    def get_trace(self, trace, offset = None, nbytes = None ):
-        pass
-
     def is_running(self):
         return self._started and not self._stopped
 
-    def get_resource(self, uuid):
-        (resource, typeid) =  self._resources.get(uuid)
-        return resource
-    
+    def get_object(self, uuid):
+        return self._objects.get(uuid)
+
     def get_typeid(self, uuid):
-        (resource, typeid) =  self._resources.get(uuid)
-        return typeid
+        return self._tids.get(uuid)
+
+    def singleton(self, clazzname):
+        uuid = "uuid%s"%clazzname
+
+        if not uuid in self._objects:
+            if not hasattr(self.ns3, clazzname):
+                msg = "Type %s not supported" % (typeid)
+                self.logger.error(msg)
+
+            clazz = getattr(self.ns3, clazzname)
+            self._objects[uuid] = clazz
+
+            typeid = "ns3::%s" % clazzname
+            self._tids[uuid] = typeid
+
+        return uuid
 
     def create(self, clazzname, *args):
         if not hasattr(self.ns3, clazzname):
             msg = "Type %s not supported" % (clazzname) 
             self.logger.error(msg)
 
-        clazz = getattr(self.ns3, clazzname)
-        #typeid = clazz.GetInstanceTypeId().GetName()
-        typeid = "ns3::%s" % clazzname
-
-        realargs = [self.get_resource(arg) if \
+        realargs = [self.get_object(arg) if \
                 str(arg).startswith("uuid") else arg for arg in args]
       
-        resource = clazz(*realargs)
+        clazz = getattr(self.ns3, clazzname)
+        obj = clazz(*realargs)
         
         uuid = self.make_uuid()
-        self._resources[uuid] = (resource, typeid)
+        self._objects[uuid] = obj
+
+        #typeid = clazz.GetInstanceTypeId().GetName()
+        typeid = "ns3::%s" % clazzname
+        self._tids[uuid] = typeid
+
         return uuid
 
-    def set(self, uuid, name, value):
-        resource = self.get_resource(uuid)
-
-        if hasattr(resource, name):
-            setattr(resource, name, value)
-        else:
-            self._set_ns3_attr(uuid, name, value)
-
-    def get(self, name, uuid = None):
-        resource = self.get_resource(uuid)
-
-        value = None
-        if hasattr(resource, name):
-            value = getattr(resource, name)
-        else:
-            value = self._get_ns3_attr(uuid, name)
-
-        return value
-
     def invoke(self, uuid, operation, *args):
-        resource = self.get_resource(uuid)
-        typeid = self.get_typeid(uuid)
-        method = getattr(resource, operation)
+        obj = self.get_object(uuid)
+        
+        method = getattr(obj, operation)
 
-        realargs = [self.get_resource(arg) if \
+        # arguments starting with 'uuid' identifie stored
+        # objects and must be replaced by the actual object
+        realargs = [self.get_object(arg) if \
                 str(arg).startswith("uuid") else arg for arg in args]
 
         result = method(*realargs)
@@ -152,12 +151,51 @@ class NS3Wrapper(object):
         if not result:
             return None
         
-        uuid = self.make_uuid()
-        self._resources[uuid] = (result, typeid)
+        newuuid = self.make_uuid()
+        self._objects[newuuid] = result
 
-        return uuid
+        return newuuid
+
+    def set(self, uuid, name, value):
+        obj = self.get_object(uuid)
+        ns3_value = self._to_ns3_value(uuid, name, value)
+
+        def set_attr(obj, name, ns3_value):
+            obj.SetAttribute(name, ns3_value)
+
+        # If the Simulation thread is not running,
+        # then there will be no thread-safety problems
+        # in changing the value of an attribute directly.
+        # However, if the simulation is running we need
+        # to set the value by scheduling an event, else
+        # we risk to corrupt the state of the
+        # simulation.
+        if self._is_running:
+            # schedule the event in the Simulator
+            self._schedule_event(self._condition, set_attr, obj,
+                    name, ns3_value)
+        else:
+            set_attr(obj, name, ns3_value)
+
+    def get(self, uuid, name):
+        obj = self.get_object(uuid)
+        ns3_value = self._create_ns3_value(uuid, name)
+
+        def get_attr(obj, name, ns3_value):
+            obj.GetAttribute(name, ns3_value)
+
+        if self._is_running:
+            # schedule the event in the Simulator
+            self._schedule_event(self._condition, get_attr, obj,
+                    name, ns3_value)
+        else:
+            get_attr(obj, name, ns3_value)
+
+        return self._from_ns3_value(uuid, name, ns3_value)
 
     def start(self):
+        # Launch the simulator thread and Start the
+        # simulator in that thread
         self._condition = threading.Condition()
         self._simulator_thread = threading.Thread(
                 target = self._simulator_run,
@@ -187,7 +225,8 @@ class NS3Wrapper(object):
             
             self.ns3.Simulator.Destroy()
         
-        self._resources.clear()
+        # Remove all references to ns-3 objects
+        self._objects.clear()
         
         self._ns3 = None
         sys.stdout.flush()
@@ -196,7 +235,8 @@ class NS3Wrapper(object):
     def _simulator_run(self, condition):
         # Run simulation
         self.ns3.Simulator.Run()
-        # Signal condition on simulation end to notify waiting threads
+        # Signal condition to indicate simulation ended and
+        # notify waiting threads
         condition.acquire()
         condition.notifyAll()
         condition.release()
@@ -236,38 +276,8 @@ class NS3Wrapper(object):
         finally:
             condition.release()
 
-    def _set_ns3_attr(self, uuid, name, value):
-        resource = self.get_resource(uuid)
-        ns3_value = self._to_ns3_value(uuid, name, value)
-
-        def set_attr(resource, name, ns3_value):
-            resource.SetAttribute(name, ns3_value)
-
-        if self._is_running:
-            # schedule the event in the Simulator
-            self._schedule_event(self._condition, set_attr, resource,
-                    name, ns3_value)
-        else:
-            set_attr(resource, name, ns3_value)
-
-    def _get_ns3_attr(self, uuid, name):
-        resource = self.get_resource(uuid)
-        ns3_value = self._create_ns3_value(uuid, name)
-
-        def get_attr(resource, name, ns3_value):
-            resource.GetAttribute(name, ns3_value)
-
-        if self._is_running:
-            # schedule the event in the Simulator
-            self._schedule_event(self._condition, get_attr, resource,
-                    name, ns3_value)
-        else:
-            get_attr(resource, name, ns3_value)
-
-        return self._from_ns3_value(uuid, name, ns3_value)
-
     def _create_ns3_value(self, uuid, name):
-        typeid = get_typeid(uuid)
+        typeid = self.get_typeid(uuid)
         TypeId = self.ns3.TypeId()
         tid = TypeId.LookupByName(typeid)
         info = TypeId.AttributeInformation()
@@ -280,7 +290,7 @@ class NS3Wrapper(object):
         return ns3_value
 
     def _from_ns3_value(self, uuid, name, ns3_value):
-        typeid = get_typeid(uuid)
+        typeid = self.get_typeid(uuid)
         TypeId = self.ns3.TypeId()
         tid = TypeId.LookupByName(typeid)
         info = TypeId.AttributeInformation()
@@ -302,9 +312,9 @@ class NS3Wrapper(object):
         return value
 
     def _to_ns3_value(self, uuid, name, value):
-        typeid = get_typeid(uuid)
+        typeid = self.get_typeid(uuid)
         TypeId = self.ns3.TypeId()
-        typeid = TypeId.LookupByName(typeid)
+        tid = TypeId.LookupByName(typeid)
         info = TypeId.AttributeInformation()
         if not tid.LookupAttributeByName(name, info):
             msg = "TypeId %s has no attribute %s" % (typeid, name) 
@@ -363,18 +373,22 @@ class NS3Wrapper(object):
 
         # retrieve all ns3 classes and add them to the ns3 module
         import ns
+
         for importer, modname, ispkg in pkgutil.iter_modules(ns.__path__):
             fullmodname = "ns.%s" % modname
             module = __import__(fullmodname, globals(), locals(), ['*'])
 
-            # netanim.Config singleton overrides ns3::Config
-            if modname in ['netanim']:
-                continue
-
             for sattr in dir(module):
-                if not sattr.startswith("_"):
-                    attr = getattr(module, sattr)
-                    setattr(ns3mod, sattr, attr)
+                if sattr.startswith("_"):
+                    continue
+
+                attr = getattr(module, sattr)
+
+                # netanim.Config and lte.Config singleton overrides ns3::Config
+                if sattr == "Config" and modname in ['netanim', 'lte']:
+                    sattr = "%s.%s" % (modname, sattr)
+
+                setattr(ns3mod, sattr, attr)
 
         self._ns3 = ns3mod
 
