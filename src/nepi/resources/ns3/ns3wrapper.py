@@ -21,7 +21,14 @@ import logging
 import os
 import sys
 import threading
+import time
 import uuid
+
+# TODO: 
+#       1. ns-3 classes should be identified as ns3::clazzname?
+# 
+
+SINGLETON = "singleton::"
 
 class NS3Wrapper(object):
     def __init__(self, homedir = None):
@@ -31,7 +38,6 @@ class NS3Wrapper(object):
         self._condition = None
 
         self._started = False
-        self._stopped = False
 
         # holds reference to all C++ objects and variables in the simulation
         self._objects = dict()
@@ -42,11 +48,8 @@ class NS3Wrapper(object):
         # exposed through the Python bindings
         self._tids = dict()
 
-        # Generate unique identifier for the simulation wrapper 
-        self._uuid = self.make_uuid()
-
         # create home dir (where all simulation related files will end up)
-        self._homedir = homedir or os.path.join("/tmp", self.uuid)
+        self._homedir = homedir or os.path.join("/", "tmp", "ns3_wrapper" )
         
         home = os.path.normpath(self.homedir)
         if not os.path.exists(home):
@@ -54,7 +57,7 @@ class NS3Wrapper(object):
 
         # Logging
         loglevel = os.environ.get("NS3LOGLEVEL", "debug")
-        self._logger = logging.getLogger("ns3wrapper.%s" % self.uuid)
+        self._logger = logging.getLogger("ns3wrapper")
         self._logger.setLevel(getattr(logging, loglevel.upper()))
         
         hdlr = logging.FileHandler(os.path.join(self.homedir, "ns3wrapper.log"))
@@ -69,9 +72,6 @@ class NS3Wrapper(object):
         # Load ns-3 shared libraries and import modules
         self._load_ns3_module()
         
-        # Add module as anoter object, so we can reference it later
-        self._objects[self.uuid] = self.ns3
-        
     @property
     def ns3(self):
         return self._ns3
@@ -81,18 +81,15 @@ class NS3Wrapper(object):
         return self._homedir
 
     @property
-    def uuid(self):
-        return self._uuid
-
-    @property
     def logger(self):
         return self._logger
 
+    @property
+    def is_running(self):
+        return self._started and self._ns3 and not self.ns3.Simulator.IsFinished()
+
     def make_uuid(self):
         return "uuid%s" % uuid.uuid4()
-
-    def is_running(self):
-        return self._started and not self._stopped
 
     def get_object(self, uuid):
         return self._objects.get(uuid)
@@ -100,31 +97,17 @@ class NS3Wrapper(object):
     def get_typeid(self, uuid):
         return self._tids.get(uuid)
 
-    def singleton(self, clazzname):
-        uuid = "uuid%s"%clazzname
-
-        if not uuid in self._objects:
-            if not hasattr(self.ns3, clazzname):
-                msg = "Type %s not supported" % (typeid)
-                self.logger.error(msg)
-
-            clazz = getattr(self.ns3, clazzname)
-            self._objects[uuid] = clazz
-
-            typeid = "ns3::%s" % clazzname
-            self._tids[uuid] = typeid
-
-        return uuid
-
     def create(self, clazzname, *args):
         if not hasattr(self.ns3, clazzname):
             msg = "Type %s not supported" % (clazzname) 
             self.logger.error(msg)
-
-        realargs = [self.get_object(arg) if \
-                str(arg).startswith("uuid") else arg for arg in args]
-      
+     
         clazz = getattr(self.ns3, clazzname)
+ 
+        # arguments starting with 'uuid' identify ns-3 C++
+        # objects and must be replaced by the actual object
+        realargs = self.replace_args(args)
+       
         obj = clazz(*realargs)
         
         uuid = self.make_uuid()
@@ -137,14 +120,16 @@ class NS3Wrapper(object):
         return uuid
 
     def invoke(self, uuid, operation, *args):
-        obj = self.get_object(uuid)
-        
+        if uuid.startswith(SINGLETON):
+            obj = self._singleton(uuid)
+        else:
+            obj = self.get_object(uuid)
+    
         method = getattr(obj, operation)
 
-        # arguments starting with 'uuid' identifie stored
+        # arguments starting with 'uuid' identify ns-3 C++
         # objects and must be replaced by the actual object
-        realargs = [self.get_object(arg) if \
-                str(arg).startswith("uuid") else arg for arg in args]
+        realargs = self.replace_args(args)
 
         result = method(*realargs)
 
@@ -170,12 +155,14 @@ class NS3Wrapper(object):
         # to set the value by scheduling an event, else
         # we risk to corrupt the state of the
         # simulation.
-        if self._is_running:
+        if self.is_running:
             # schedule the event in the Simulator
             self._schedule_event(self._condition, set_attr, obj,
                     name, ns3_value)
         else:
             set_attr(obj, name, ns3_value)
+
+        return value
 
     def get(self, uuid, name):
         obj = self.get_object(uuid)
@@ -184,7 +171,7 @@ class NS3Wrapper(object):
         def get_attr(obj, name, ns3_value):
             obj.GetAttribute(name, ns3_value)
 
-        if self._is_running:
+        if self.is_running:
             # schedule the event in the Simulator
             self._schedule_event(self._condition, get_attr, obj,
                     name, ns3_value)
@@ -212,12 +199,12 @@ class NS3Wrapper(object):
             self.ns3.Simulator.Stop()
         else:
             self.ns3.Simulator.Stop(self.ns3.Time(time))
-        self._stopped = True
 
     def shutdown(self):
         if self.ns3:
-            if not self.ns3.Simulator.IsFinished():
-                self.stop()
+            while not self.ns3.Simulator.IsFinished():
+                #self.logger.debug("Waiting for simulation to finish")
+                time.sleep(0.5)
             
             # TODO!!!! SHOULD WAIT UNTIL THE THREAD FINISHES
             if self._simulator_thread:
@@ -329,6 +316,28 @@ class NS3Wrapper(object):
         ns3_value.DeserializeFromString(str_value, checker)
         return ns3_value
 
+    # singletons are identified as "ns3::ClassName"
+    def _singleton(self, ident):
+        if not ident.startswith(SINGLETON):
+            return None
+
+        clazzname = ident[ident.find("::")+2:]
+        if not hasattr(self.ns3, clazzname):
+            msg = "Type %s not supported" % (clazzname)
+            self.logger.error(msg)
+
+        return getattr(self.ns3, clazzname)
+
+    # replace uuids and singleton references for the real objects
+    def replace_args(self, args):
+        realargs = [self.get_object(arg) if \
+                str(arg).startswith("uuid") else arg for arg in args]
+ 
+        realargs = [self._singleton(arg) if \
+                str(arg).startswith(SINGLETON) else arg for arg in realargs]
+
+        return realargs
+ 
     def _load_ns3_module(self):
         if self.ns3:
             return 
