@@ -531,9 +531,8 @@ class ResourceManager(Logger):
                 import traceback
                 err = traceback.format_exc()
                 self.error(err)
-
-            self.set_released()
-            self.debug("----- RELEASED ---- ")
+                self.set_released()
+                self.debug("----- RELEASED ---- ")
 
     def fail(self):
         """ Sets the RM to state FAILED.
@@ -946,7 +945,8 @@ class ResourceManager(Logger):
         self.set_ready()
 
     def do_release(self):
-        pass
+        self.set_released()
+        self.debug("----- RELEASED ---- ")
 
     def do_fail(self):
         self.set_failed()
