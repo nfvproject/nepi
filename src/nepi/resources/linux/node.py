@@ -188,6 +188,12 @@ class LinuxNode(ResourceManager):
                 "releasing the resource",
                 flags = Flags.ExecReadOnly)
 
+        gateway_user = Attribute("gatewayUser", "Gateway account username",
+                flags = Flags.ExecReadOnly)
+
+        gateway = Attribute("gateway", "Hostname of the gateway machine",
+                flags = Flags.ExecReadOnly)
+
         cls._register_attribute(hostname)
         cls._register_attribute(username)
         cls._register_attribute(port)
@@ -198,12 +204,17 @@ class LinuxNode(ResourceManager):
         cls._register_attribute(clean_experiment)
         cls._register_attribute(clean_processes)
         cls._register_attribute(tear_down)
+        cls._register_attribute(gateway_user)
+        cls._register_attribute(gateway)
 
     def __init__(self, ec, guid):
         super(LinuxNode, self).__init__(ec, guid)
         self._os = None
         # home directory at Linux host
         self._home_dir = ""
+
+        # list of pids before running the app if the user is root
+        self._pids = []
         
         # lock to prevent concurrent applications on the same node,
         # to execute commands at the same time. There are potential
@@ -391,10 +402,26 @@ class LinuxNode(ResourceManager):
 
     def clean_processes(self):
         self.info("Cleaning up processes")
-        
-        cmd = ("sudo -S killall tcpdump || /bin/true ; " +
-            "sudo -S kill $(ps aux | grep '[n]epi' | awk '{print $2}') || /bin/true ; " +
-            "sudo -S killall -u %s || /bin/true ; " % self.get("username"))
+ 
+        if self.get("username") != 'root':
+            cmd = ("sudo -S killall tcpdump || /bin/true ; " +
+                "sudo -S kill $(ps aux | grep '[n]epi' | awk '{print $2}') || /bin/true ; " +
+                "sudo -S killall -u %s || /bin/true ; " % self.get("username"))
+        else:
+            pids_temp = []
+            if self.state >= ResourceState.READY:
+                ps_aux = "ps aux |awk '{print $2}' |sort -u"
+                (out, err), proc = self.execute(ps_aux)
+                pids_temp = out.split()
+                kill_pids = list(set(pids_temp) - set(self._pids))
+                kill_pids = ' '.join(kill_pids)
+
+                cmd = ("killall tcpdump || /bin/true ; " +
+                    "kill $(ps aux | grep '[n]epi' | awk '{print $2}') || /bin/true ; " +
+                    "kill %s || /bin/true ; " % kill_pids)
+            else:
+                cmd = ("killall tcpdump || /bin/true ; " +
+                    "kill $(ps aux | grep '[n]epi' | awk '{print $2}') || /bin/true ; ")
 
         out = err = ""
         (out, err), proc = self.execute(cmd, retry = 1, with_lock = True)
@@ -455,6 +482,8 @@ class LinuxNode(ResourceManager):
                         host = self.get("hostname"),
                         user = self.get("username"),
                         port = self.get("port"),
+                        gwuser = self.get("gatewayUser"),
+                        gw = self.get("gateway"),
                         agent = True,
                         sudo = sudo,
                         stdin = stdin,
@@ -477,6 +506,8 @@ class LinuxNode(ResourceManager):
                     host = self.get("hostname"),
                     user = self.get("username"),
                     port = self.get("port"),
+                    gwuser = self.get("gatewayUser"),
+                    gw = self.get("gateway"),
                     agent = True,
                     sudo = sudo,
                     stdin = stdin,
@@ -530,6 +561,8 @@ class LinuxNode(ResourceManager):
                     host = self.get("hostname"),
                     user = self.get("username"),
                     port = self.get("port"),
+                    gwuser = self.get("gatewayUser"),
+                    gw = self.get("gateway"),
                     agent = True,
                     identity = self.get("identity"),
                     server_key = self.get("serverKey"),
@@ -548,6 +581,8 @@ class LinuxNode(ResourceManager):
                     host = self.get("hostname"),
                     user = self.get("username"),
                     port = self.get("port"),
+                    gwuser = self.get("gatewayUser"),
+                    gw = self.get("gateway"),
                     agent = True,
                     identity = self.get("identity"),
                     server_key = self.get("serverKey")
@@ -565,6 +600,8 @@ class LinuxNode(ResourceManager):
                         host = self.get("hostname"),
                         user = self.get("username"),
                         port = self.get("port"),
+                        gwuser = self.get("gatewayUser"),
+                        gw = self.get("gateway"),
                         agent = True,
                         identity = self.get("identity"),
                         server_key = self.get("serverKey")
@@ -587,6 +624,8 @@ class LinuxNode(ResourceManager):
                         host = self.get("hostname"),
                         user = self.get("username"),
                         port = self.get("port"),
+                        gwuser = self.get("gatewayUser"),
+                        gw = self.get("gateway"),
                         agent = True,
                         sudo = sudo,
                         identity = self.get("identity"),
@@ -605,6 +644,8 @@ class LinuxNode(ResourceManager):
                 (out, err), proc = sshfuncs.rcopy(
                     src, dst, 
                     port = self.get("port"),
+                    gwuser = self.get("gatewayUser"),
+                    gw = self.get("gateway"),
                     identity = self.get("identity"),
                     server_key = self.get("serverKey"),
                     recursive = True,
