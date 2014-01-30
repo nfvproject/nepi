@@ -36,13 +36,6 @@ class OMFApplication(OMFResource):
         :type ec: ExperimentController
         :param guid: guid of the RM
         :type guid: int
-        :param creds: Credentials to communicate with the rm (XmppClient)
-        :type creds: dict
-
-    .. note::
-
-       This class is used only by the Experiment Controller through the 
-       Resource Factory
 
     """
     _rtype = "OMFApplication"
@@ -107,10 +100,17 @@ class OMFApplication(OMFResource):
         return None
 
     def stdin_hook(self, old_value, new_value):
+        """ Set a hook to the stdin attribute in order to send a message at each time
+        the value of this parameter is changed
+
+        """
         self._omf_api.send_stdin(self.node.get('hostname'), new_value, self.get('appid'))
         return new_value
 
     def add_set_hook(self):
+        """ Initialize the hooks
+
+        """
         attr = self._attrs["stdin"]
         attr.set_hook = self.stdin_hook
 

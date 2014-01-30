@@ -29,10 +29,10 @@ import unittest
 class LinuxFIBEntryTestCase(unittest.TestCase):
     def setUp(self):
         self.fedora_host = "nepi2.pl.sophia.inria.fr"
-        self.fedora_user = "inria_nepi"
+        self.fedora_user = "inria_test"
 
         self.ubuntu_host = "roseval.pl.sophia.inria.fr"
-        self.ubuntu_user = "alina"
+        self.ubuntu_user = "nepi"
         
         self.target = "nepi5.pl.sophia.inria.fr"
 
