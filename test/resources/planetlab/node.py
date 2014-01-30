@@ -75,7 +75,7 @@ class PLNodeFactoryTestCase(unittest.TestCase):
 
     def test_creation_phase(self):
         self.assertEquals(PlanetlabNode._rtype, "PlanetlabNode")
-        self.assertEquals(len(PlanetlabNode._attributes), 30)
+        self.assertEquals(len(PlanetlabNode._attributes), 32)
 
 class PLNodeTestCase(unittest.TestCase):
     """
