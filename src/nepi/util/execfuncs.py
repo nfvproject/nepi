@@ -41,10 +41,10 @@ def lexec(command,
         command = "su %s ; %s " % (user, command)
 
 
-    p = subprocess.Popen(command, shell=True, 
+    p = subprocess.Popen(command, 
             stdout = subprocess.PIPE, 
-            stderr = subprocess.PIPE)
-            #stdin  = stdin)
+            stderr = subprocess.PIPE,
+            stdin  = stdin)
 
     out, err = p.communicate()
     return (out, err)
