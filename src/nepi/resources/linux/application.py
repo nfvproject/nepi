@@ -187,7 +187,7 @@ class LinuxApplication(ResourceManager):
 
         # timestamp of last state check of the application
         self._last_state_check = tnow()
-
+        
     def log_message(self, msg):
         return " guid %d - host %s - %s " % (self.guid, 
                 self.node.get("hostname"), msg)
@@ -271,6 +271,13 @@ class LinuxApplication(ResourceManager):
         return out
 
     def do_provision(self):
+        # take a snapshot of the system if user is root
+        # to assure cleanProcess kill every nepi process
+        if self.node.get("username") == 'root':
+            ps_aux = "ps aux |awk '{print $2}' |sort -u"
+            (out, err), proc = self.node.execute(ps_aux)
+            self.node._pids = out.split()
+        
         # create run dir for application
         self.node.mkdir(self.run_home)
    
