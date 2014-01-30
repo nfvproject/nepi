@@ -198,6 +198,10 @@ class PlanetlabNode(LinuxNode):
         self._slicenode = False
         self._hostname = False
 
+        if self.get("gateway") or self.get("gatewayUser"):
+            self.set("gateway", None)
+            self.set("gatewayUser", None)
+
     def _skip_provision(self):
         pl_user = self.get("pluser")
         pl_pass = self.get("plpassword")
@@ -341,7 +345,6 @@ class PlanetlabNode(LinuxNode):
                     self.warn(" Could not SSH login ")
                     self._blacklist_node(node)
                     #self._delete_node_from_slice(node)
-                #self.set('hostname', None)
                 self.do_discover()
                 continue
             
@@ -354,7 +357,6 @@ class PlanetlabNode(LinuxNode):
                         self.warn(" Could not find directory /proc ")
                         self._blacklist_node(node)
                         #self._delete_node_from_slice(node)
-                    #self.set('hostname', None)
                     self.do_discover()
                     continue
             
@@ -566,7 +568,6 @@ class PlanetlabNode(LinuxNode):
                         self._set_hostname_attr(node_id)
                         self.warn(" Node not responding PING ")
                         self._blacklist_node(node_id)
-                        #self.set('hostname', None)
                     else:
                         # discovered node for provision, added to provision list
                         self._put_node_in_provision(node_id)
@@ -626,7 +627,8 @@ class PlanetlabNode(LinuxNode):
         ip = self._get_ip(node_id)
         if not ip: return ping_ok
 
-        command = "ping -c4 %s" % ip
+        command = ['ping', '-c4']
+        command.append(ip)
 
         (out, err) = lexec(command)
         if not out.find("2 received") or not out.find("3 received") or not \
