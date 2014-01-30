@@ -37,8 +37,10 @@ class Flags:
     # Attribute is not modifiable by the user during runtime
     ExecReadOnly        = 0x02
     # Attribute is an access credential
+    # TODO REMOVE!!!
     Credential      = 0x04
     # Attribute is a filter used to discover resources
+    # TODO REMOVE!!!
     Filter      = 0x08
 
 class Attribute(object):

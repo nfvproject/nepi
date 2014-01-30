@@ -30,6 +30,66 @@ import uuid
 
 SINGLETON = "singleton::"
 
+def load_ns3_module():
+    import ctypes
+    import imp
+    import re
+    import pkgutil
+
+    bindings = os.environ.get("NS3BINDINGS")
+    libdir = os.environ.get("NS3LIBRARIES")
+
+    # Load the ns-3 modules shared libraries
+    if libdir:
+        files = os.listdir(libdir)
+        regex = re.compile("(.*\.so)$")
+        libs = [m.group(1) for filename in files for m in [regex.search(filename)] if m]
+
+        libscp = list(libs)
+        while len(libs) > 0:
+            for lib in libs:
+                libfile = os.path.join(libdir, lib)
+                try:
+                    ctypes.CDLL(libfile, ctypes.RTLD_GLOBAL)
+                    libs.remove(lib)
+                except:
+                    pass
+
+            # if did not load any libraries in the last iteration break
+            # to prevent infinit loop
+            if len(libscp) == len(libs):
+                raise RuntimeError("Imposible to load shared libraries %s" % str(libs))
+            libscp = list(libs)
+
+    # import the python bindings for the ns-3 modules
+    if bindings:
+        sys.path.append(bindings)
+
+    # create a module to add all ns3 classes
+    ns3mod = imp.new_module("ns3")
+    sys.modules["ns3"] = ns3mod
+
+    # retrieve all ns3 classes and add them to the ns3 module
+    import ns
+
+    for importer, modname, ispkg in pkgutil.iter_modules(ns.__path__):
+        fullmodname = "ns.%s" % modname
+        module = __import__(fullmodname, globals(), locals(), ['*'])
+
+        for sattr in dir(module):
+            if sattr.startswith("_"):
+                continue
+
+            attr = getattr(module, sattr)
+
+            # netanim.Config and lte.Config singleton overrides ns3::Config
+            if sattr == "Config" and modname in ['netanim', 'lte']:
+                sattr = "%s.%s" % (modname, sattr)
+
+            setattr(ns3mod, sattr, attr)
+
+    return ns3mod
+
 class NS3Wrapper(object):
     def __init__(self, homedir = None):
         super(NS3Wrapper, self).__init__()
@@ -68,12 +128,12 @@ class NS3Wrapper(object):
 
         # Python module to refernce all ns-3 classes and types
         self._ns3 = None
-
-        # Load ns-3 shared libraries and import modules
-        self._load_ns3_module()
         
     @property
     def ns3(self):
+        if not self._ns3:
+            self._ns3 = load_ns3_module()
+
         return self._ns3
 
     @property
@@ -337,67 +397,4 @@ class NS3Wrapper(object):
                 str(arg).startswith(SINGLETON) else arg for arg in realargs]
 
         return realargs
- 
-    def _load_ns3_module(self):
-        if self.ns3:
-            return 
-
-        import ctypes
-        import imp
-        import re
-        import pkgutil
-
-        bindings = os.environ.get("NS3BINDINGS")
-        libdir = os.environ.get("NS3LIBRARIES")
-
-        # Load the ns-3 modules shared libraries
-        if libdir:
-            files = os.listdir(libdir)
-            regex = re.compile("(.*\.so)$")
-            libs = [m.group(1) for filename in files for m in [regex.search(filename)] if m]
-
-            libscp = list(libs)
-            while len(libs) > 0:
-                for lib in libs:
-                    libfile = os.path.join(libdir, lib)
-                    try:
-                        ctypes.CDLL(libfile, ctypes.RTLD_GLOBAL)
-                        libs.remove(lib)
-                    except:
-                        pass
-
-                # if did not load any libraries in the last iteration break
-                # to prevent infinit loop
-                if len(libscp) == len(libs):
-                    raise RuntimeError("Imposible to load shared libraries %s" % str(libs))
-                libscp = list(libs)
-
-        # import the python bindings for the ns-3 modules
-        if bindings:
-            sys.path.append(bindings)
-
-        # create a module to add all ns3 classes
-        ns3mod = imp.new_module("ns3")
-        sys.modules["ns3"] = ns3mod
-
-        # retrieve all ns3 classes and add them to the ns3 module
-        import ns
-
-        for importer, modname, ispkg in pkgutil.iter_modules(ns.__path__):
-            fullmodname = "ns.%s" % modname
-            module = __import__(fullmodname, globals(), locals(), ['*'])
-
-            for sattr in dir(module):
-                if sattr.startswith("_"):
-                    continue
-
-                attr = getattr(module, sattr)
-
-                # netanim.Config and lte.Config singleton overrides ns3::Config
-                if sattr == "Config" and modname in ['netanim', 'lte']:
-                    sattr = "%s.%s" % (modname, sattr)
-
-                setattr(ns3mod, sattr, attr)
-
-        self._ns3 = ns3mod
 
