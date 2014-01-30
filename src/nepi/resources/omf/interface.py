@@ -36,13 +36,6 @@ class OMFWifiInterface(OMFResource):
         :type ec: ExperimentController
         :param guid: guid of the RM
         :type guid: int
-        :param creds: Credentials to communicate with the rm (XmppClient for OMF)
-        :type creds: dict
-
-    .. note::
-
-       This class is used only by the Experiment Controller through the Resource 
-       Factory
 
     """
     _rtype = "OMFWifiInterface"

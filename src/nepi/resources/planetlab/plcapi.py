@@ -144,6 +144,7 @@ class PLCAPI(object):
         self._blacklist = set()
         self._reserved = set()
         self._nodes_cache = None
+        self._already_cached = False
 
         if session_key is not None:
             self.auth = dict(AuthMethod='session', session=session_key)
@@ -340,8 +341,12 @@ class PLCAPI(object):
             filters.update(kw)
 
             if not filters and not fieldstuple:
-                if not self._nodes_cache:
+                if not self._nodes_cache and not self._already_cached:
+                    self._already_cached = True
                     self._nodes_cache = _retry(self.mcapi.GetNodes)(self.auth)
+                elif not self._nodes_cache:
+                    while not self._nodes_cache:
+                        time.sleep(10)
                 return self._nodes_cache
 
             return _retry(self.mcapi.GetNodes)(self.auth, filters, *fieldstuple)

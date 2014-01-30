@@ -410,8 +410,9 @@ class OMFVLCWrongCaseWithNonCriticalDep(unittest.TestCase):
 
         self.ec.wait_finished([self.app1, self.app2, self.app3])
 
+        self.assertEquals(self.ec.get_resource(self.app1).state, ResourceState.STOPPED)
         self.assertEquals(self.ec.get_resource(self.app2).state, ResourceState.FAILED)
-        self.assertEquals(self.ec.get_resource(self.app3).state, ResourceState.FAILED)
+        self.assertEquals(self.ec.get_resource(self.app3).state, ResourceState.STOPPED)
 
         self.ec.shutdown()
 
@@ -494,10 +495,12 @@ class OMFVLCWrongCaseWithNonCriticalDep(unittest.TestCase):
 
         self.ec.wait_finished([self.app1, self.app2, self.app3, self.app4, self.app5, self.app6])
 
+        self.assertEquals(self.ec.get_resource(self.app3).state, ResourceState.STOPPED)
         self.assertEquals(self.ec.get_resource(self.app2).state, ResourceState.FAILED)
-        self.assertEquals(self.ec.get_resource(self.app3).state, ResourceState.FAILED)
+        self.assertEquals(self.ec.get_resource(self.app3).state, ResourceState.STOPPED)
+        self.assertEquals(self.ec.get_resource(self.app3).state, ResourceState.STOPPED)
         self.assertEquals(self.ec.get_resource(self.app5).state, ResourceState.FAILED)
-        self.assertEquals(self.ec.get_resource(self.app6).state, ResourceState.FAILED)
+        self.assertEquals(self.ec.get_resource(self.app6).state, ResourceState.STOPPED)
 
         self.ec.shutdown()
 
