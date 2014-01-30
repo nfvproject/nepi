@@ -239,6 +239,7 @@ def rexec(command, host, user,
             '-o', 'ConnectionAttempts=3',
             '-o', 'ServerAliveInterval=30',
             '-o', 'TCPKeepAlive=yes',
+            '-o', 'Batchmode=yes',
             '-l', user, hostip or host]
 
     if persistent and openssh_has_persist():
@@ -291,7 +292,7 @@ def rexec(command, host, user,
                 stdout = subprocess.PIPE,
                 stdin = subprocess.PIPE, 
                 stderr = subprocess.PIPE)
-        
+       
         # attach tempfile object to the process, to make sure the file stays
         # alive until the process is finished with it
         proc._known_hosts = tmp_known_hosts
