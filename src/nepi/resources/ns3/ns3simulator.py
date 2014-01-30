@@ -17,32 +17,33 @@
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
-class NS3Client(object):
-    """ Common Interface for NS3 client classes """
-    def __init__(self):
-        super(NS3Client, self).__init__()
+class NS3Simulator(object):
+
+    @property
+    def client(self):
+        return self._client
 
     def create(self, clazzname, *args):
-        pass
+        return self.client.create(clazzname, *args)
 
     def invoke(self, uuid, operation, *args):
-        pass
+        return self.client.invoke(uuid, operation, *args)
 
     def set(self, uuid, name, value):
-        pass
+        return self.client.set(uuid, name, value)
 
     def get(self, uuid, name):
-        pass
+        return self.client.get(uuid, name)
 
     def trace(self, *args):
-        pass
+        return self.client.trace(*args)
 
     def start(self):
-        pass
+        return self.client.start()
 
     def stop(self, time = None):
-        pass
+        return self.client.stop(time)
 
     def shutdown(self):
-        pass
+        return self.client.shutdown()
 

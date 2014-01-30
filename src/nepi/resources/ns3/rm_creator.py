@@ -22,7 +22,7 @@ from nepi.resources.ns3.ns3wrapper import load_ns3_module
 import os
 import re
 
-def dump_ns3_rms():
+def create_ns3_rms():
     ns3 = load_ns3_module()
 
     type_id = ns3.TypeId()
@@ -52,6 +52,7 @@ def dump_ns3_rms():
 
         rtype = tid.GetName()
         category = tid.GetGroupName()
+
         classname = rtype.replace("ns3::", "NS3").replace("::","")
         uncamm_rtype = re.sub('([a-z])([A-Z])', r'\1-\2', rtype).lower()
         short_rtype = uncamm_rtype.replace("::","-")
@@ -72,11 +73,11 @@ def dump_ns3_rms():
                 replace('::', ''). \
                 replace("-","_").lower() + ".py"
 
-        f = open(os.path.join(d, fname), "w")
-        print os.path.join(d, fname)
-        print template
+        #f = open(os.path.join(d, "classes", fname), "w")
+        #print os.path.join(d, fname)
+        #print template
         #f.write(template)
-        f.close()
+        #f.close()
 
 def template_attributes(ns3, tid): 
     d = os.path.dirname(os.path.realpath(__file__))
@@ -99,7 +100,7 @@ def template_attributes(ns3, tid):
 
         attr_name = attr_info.name
         checker = attr_info.checker
-        attr_help = attr_info.help
+        attr_help = attr_info.help.replace('"', '\\"').replace("'", "\\'")
         value = attr_info.initialValue
         attr_value = value.SerializeToString(checker)
         attr_allowed = "None"
@@ -149,7 +150,7 @@ def template_traces(ns3, tid):
     for i in xrange(trace_count):
         trace_info = tid.GetTraceSource(i)
         trace_name = trace_info.name
-        trace_help = trace_info.help
+        trace_help = trace_info.help.replace('"', '\\"').replace("'", "\\'")
 
         trace_id = trace_name.lower()
         traces += template.replace("<TRACE_ID>", trace_id) \
@@ -159,4 +160,4 @@ def template_traces(ns3, tid):
     return traces
 
 if __name__ == "__main__":
-    dump_ns3_rms()
+    create_ns3_rms()
