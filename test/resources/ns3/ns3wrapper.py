@@ -360,7 +360,7 @@ class NS3WrapperTest(unittest.TestCase):
         wrapper.invoke(ipv41, "SetUp", ifindex1)
 
         # Enable collection of Ascii format to a specific file
-        filepath1 = "trace-p2p-1.tr"
+        filepath1 = "/tmp/trace-p2p-1.tr"
         stream1 = wrapper.invoke(asciiHelper, "CreateFileStream", filepath1)
         wrapper.invoke(p2pHelper, "EnableAscii", stream1, p1)
        
@@ -380,7 +380,7 @@ class NS3WrapperTest(unittest.TestCase):
         wrapper.invoke(ipv42, "SetUp", ifindex2)
 
         # Enable collection of Ascii format to a specific file
-        filepath2 = "trace-p2p-2.tr"
+        filepath2 = "/tmp/trace-p2p-2.tr"
         stream2 = wrapper.invoke(asciiHelper, "CreateFileStream", filepath2)
         wrapper.invoke(p2pHelper, "EnableAscii", stream2, p2)
 
@@ -413,6 +413,9 @@ class NS3WrapperTest(unittest.TestCase):
 
         # wait until simulation is over
         wrapper.shutdown()
+
+        p = subprocess.Popen("rm /tmp/trace-p2p-*",  shell = True)
+        p.communicate()
 
 if __name__ == '__main__':
     unittest.main()

@@ -39,7 +39,7 @@ class LinuxNS3Simulator(LinuxApplication, NS3Simulator):
             "Sets the CCND_MAX_RTE_MICROSEC environmental variable. ",
             flags = Flags.ExecReadOnly)
 
-        cls._register_attribute(debug)
+        cls._register_attribute(max_rte)
 
     def __init__(self, ec, guid):
         super(LinuxApplication, self).__init__(ec, guid)

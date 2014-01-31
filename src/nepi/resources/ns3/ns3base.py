@@ -20,7 +20,7 @@
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
         ResourceState, reschedule_delay
 
-from nepi.resources.ns3.simulator import NS3Simulator
+from nepi.resources.ns3.ns3simulator import NS3Simulator
 
 @clsinit_copy
 class NS3Base(ResourceManager):
