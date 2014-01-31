@@ -20,6 +20,7 @@ setup(
             "nepi.resources.all",
             "nepi.resources.linux",
             "nepi.resources.linux.ccn",
+            "nepi.resources.linux.ns3",
             "nepi.resources.netns",
             "nepi.resources.ns3",
             "nepi.resources.omf",

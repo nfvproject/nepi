@@ -17,6 +17,7 @@
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
+# Force the load of ns3 libraries
 from nepi.resources.ns3.ns3wrapper import load_ns3_module
 
 import os
