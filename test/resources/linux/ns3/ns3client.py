@@ -31,7 +31,7 @@
 
 
 from nepi.resources.ns3.ns3server import run_server
-from nepi.resources.ns3.linuxns3client import LinuxNS3Client
+from nepi.resources.linux.ns3.ns3client import LinuxNS3Client
 
 import os
 import threading

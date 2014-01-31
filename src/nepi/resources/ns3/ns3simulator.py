@@ -18,7 +18,6 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 class NS3Simulator(object):
-
     @property
     def client(self):
         return self._client

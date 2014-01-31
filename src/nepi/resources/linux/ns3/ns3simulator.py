@@ -24,13 +24,14 @@ from nepi.execution.resource import ResourceManager, clsinit_copy, \
 from nepi.resources.linux.application import LinuxApplication
 from nepi.resources.linux.node import OSType
 from nepi.util.timefuncs import tnow, tdiffsec
-from nepi.resources.ns3.simulator import NS3Simulator
+from nepi.resources.ns3.ns3simulator import NS3Simulator
+from nepi.resources.linux.ns3.ns3client import LinuxNS3Client
 
 import os
 
 @clsinit_copy
 class LinuxNS3Simulator(LinuxApplication, NS3Simulator):
-    _rtype = "LinuxSimulator"
+    _rtype = "LinuxNS3Simulator"
 
     @classmethod
     def _register_attributes(cls):
@@ -38,33 +39,17 @@ class LinuxNS3Simulator(LinuxApplication, NS3Simulator):
             "Sets the CCND_MAX_RTE_MICROSEC environmental variable. ",
             flags = Flags.ExecReadOnly)
 
-        keystore = Attribute("keyStoreDirectory",
-            "Sets the CCND_KEYSTORE_DIRECTORY environmental variable. ",
-            flags = Flags.ExecReadOnly)
-
         cls._register_attribute(debug)
-        cls._register_attribute(port)
-
-    @classmethod
-    def _register_traces(cls):
-        log = Trace("log", "CCND log output")
-        status = Trace("status", "ccndstatus output")
-
-        cls._register_trace(log)
-        cls._register_trace(status)
 
     def __init__(self, ec, guid):
-        super(LinuxCCND, self).__init__(ec, guid)
-        self._home = "ccnd-%s" % self.guid
-        self._version = "ccnx"
+        super(LinuxApplication, self).__init__(ec, guid)
+        super(NS3Simulator, self).__init__()
 
-    @property
-    def version(self):
-        return self._version
+        self._home = "ns3-simu-%s" % self.guid
+        
+        # TODO: Create socket!!
+        self._client = LinuxNS3Client(socket_name)
 
-    @property
-    def path(self):
-        return "PATH=$PATH:${BIN}/%s/" % self.version 
 
     def do_deploy(self):
         if not self.node or self.node.state < ResourceState.READY:
