@@ -20,10 +20,10 @@ from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import Trace, TraceAttr
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
         ResourceState, reschedule_delay
-from nepi.resources.ns3.ns3_base import NS3Base
+<BASE_CLASS_IMPORT>
 
 @clsinit_copy
-class <CLASS_NAME>(NS3Base):
+class <CLASS_NAME>(<BASE_CLASS>):
     _rtype = "<RTYPE>"
 
     @classmethod
@@ -37,10 +37,3 @@ class <CLASS_NAME>(NS3Base):
     def __init__(self, ec, guid):
         super(<CLASS_NAME>, self).__init__(ec, guid)
         self._home = "<SHORT-RTYPE>-%s" % self.guid
-        # TODO!
-        self._version = None
-
-    @property
-    def version(self):
-        return self._version
-

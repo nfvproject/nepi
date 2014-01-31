@@ -53,12 +53,15 @@ def create_ns3_rms():
         rtype = tid.GetName()
         category = tid.GetGroupName()
 
+        base_class_import = "from nepi.resources.ns3.ns3base import NS3Base"
+        base_clas = "NS3Base"
+ 
         classname = rtype.replace("ns3::", "NS3").replace("::","")
         uncamm_rtype = re.sub('([a-z])([A-Z])', r'\1-\2', rtype).lower()
         short_rtype = uncamm_rtype.replace("::","-")
 
         d = os.path.dirname(os.path.realpath(__file__))
-        ftemp = open(os.path.join(d, "templates", "rm_template.txt"), "r")
+        ftemp = open(os.path.join(d, "templates", "resource_manager_template.txt"), "r")
         template = ftemp.read()
         ftemp.close()
 
@@ -67,6 +70,8 @@ def create_ns3_rms():
                 replace("<RTYPE>", rtype). \
                 replace("<ATTRIBUTES>", attributes). \
                 replace("<TRACES>", traces). \
+                replace("<BASE_CLASS_IMPORT>", base_class_import). \
+                replace("<BASE_CLASS>", base_class). \
                 replace("<SHORT-RTYPE>", short_rtype)
 
         fname = uncamm_rtype.replace('ns3::', ''). \
