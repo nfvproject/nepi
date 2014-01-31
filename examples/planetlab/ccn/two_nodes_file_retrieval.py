@@ -16,16 +16,24 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
+#
+# Instructions to run this example:
+#
+# 1. First edit the script file where required (See ASSING messages)
+#
+# 2. Then, run the script:
+#
+# $ cd <path-to-nepi>
+# $ PYTHONPATH=$PYTHONPATHS:src python examples/linux/ccn/two_nodes_file_retrieval.py
+#
 
-
-from nepi.execution.resource import ResourceState, ResourceAction
 from nepi.execution.ec import ExperimentController
 
 import os
 
 pl_user = ######### <<< ASSIGN the username used to login to the PlanetLab website >>>
 pl_pass = ######## <<< ASSIGN the password used to login to the PlanetLab website >>>
-pl_ssh_key = ####### ASSING the absolute path to the private SSH key used for Planetlab >>>
+pl_ssh_key = ####### <<< ASSING the absolute path to the private SSH key used for Planetlab >>>
 slicename = ####### <<< ASSING the PlanetLab slicename >>>
 
 ## Create the experiment controller
@@ -45,12 +53,9 @@ ec.set(node1, "plpassword", pl_pass)
 ec.set(node1, "username", slicename)
 # Absolute path to the SSH private key for PlanetLab
 ec.set(node1, "identity", pl_ssh_key)
-# Clean all files, results, etc, from previous experiments wit the same
-# exp_id
+# Clean all files, results, etc, from previous experiments wit the same exp_id
 ec.set(node1, "cleanExperiment", True)
-ec.set(node1, "cleanHome", True)
-# Kill all running processes in the PlanetLab node before 
-# running the experiment
+# Kill all running processes in the PlanetLab node before running the experiment
 ec.set(node1, "cleanProcesses", True)
 
 ## Register node 2 
@@ -67,12 +72,9 @@ ec.set(node2, "plpassword", pl_pass)
 ec.set(node2, "username", slicename)
 # Absolute path to the SSH private key for PlanetLab
 ec.set(node1, "identity", pl_ssh_key)
-# Clean all files, results, etc, from previous experiments wit the same
-# exp_id
+# Clean all files, results, etc, from previous experiments wit the same exp_id
 ec.set(node2, "cleanExperiment", True)
-ec.set(node2, "cleanHome", True)
-# Kill all running processes in the PlanetLab node before 
-# running the experiment
+# Kill all running processes in the PlanetLab node before running the experiment
 ec.set(node2, "cleanProcesses", True)
 
 ## Register a CCN daemon in node 1
@@ -92,7 +94,10 @@ ccnr1 = ec.register_resource("LinuxCCNR")
 ec.register_connection(ccnr1, ccnd1)
 
 ## Push the file into the repository
-local_path_to_content = ######### <<< ASSIGN the absolute path to a local file >>>
+local_path_to_content = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)),
+            "..", "..",
+            "big_buck_bunny_240p_mpeg4_lq.ts")
 
 co = ec.register_resource("LinuxCCNContent")
 ec.set(co, "contentName", "ccnx:/test/FILE1")
@@ -104,7 +109,8 @@ ec.register_connection(co, ccnr1)
 ## Deploy all resources
 ec.deploy()
 
-## Wait until node 1 and 2 are deployed
+## Wait until node 1 and 2 are deployed, so we can retrieve the hostnames
+## of the nodes automatically allocated in planetlab
 ec.wait_deployed([node1, node2])
 
 ## Get the hostnames of the two PlanetLab nodes
@@ -113,10 +119,12 @@ print "hostname 1: ", hostname1
 hostname2 = ec.get(node2, "hostname")
 print "hostname 2: ", hostname2
 
+# Register a FIB entry from node 1 to node 2
 entry1 = ec.register_resource("LinuxFIBEntry")
 ec.set(entry1, "host", hostname2)
 ec.register_connection(entry1, ccnd1)
 
+# Register a FIB entry from node 1 to node 2
 entry2 = ec.register_resource("LinuxFIBEntry")
 ec.set(entry2, "host", hostname1)
 ec.register_connection(entry2, ccnd2)
