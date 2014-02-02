@@ -27,6 +27,7 @@ from ns3wrapper import NS3Wrapper
 
 class NS3WrapperMessage:
     CREATE = "CREATE"
+    FACTORY = "FACTORY"
     INVOKE = "INVOKE"
     SET = "SET"
     GET = "GET"
@@ -56,6 +57,13 @@ def handle_message(ns3_wrapper, msg, args):
         clazzname = args.pop(0)
         
         uuid = ns3_wrapper.create(clazzname, *args)
+        return uuid
+
+    if msg == NS3WrapperMessage.FACTORY:
+        type_name = args.pop(0)
+        kwargs = args.pop(0)
+
+        uuid = ns3_wrapper.factory(type_name, **kwargs)
         return uuid
 
     if msg == NS3WrapperMessage.INVOKE:

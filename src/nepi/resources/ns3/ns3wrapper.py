@@ -179,7 +179,7 @@ class NS3Wrapper(object):
     def get_object(self, uuid):
         return self._objects.get(uuid)
 
-    def factory(self, type_name, *kwargs):
+    def factory(self, type_name, **kwargs):
         if type_name not in allowed_types:
             msg = "Type %s not supported" % (type_name) 
             self.logger.error(msg)

@@ -17,35 +17,24 @@
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
-class NS3Client(object):
-    """ Common Interface for NS3 client classes """
-    def __init__(self):
-        super(NS3Client, self).__init__()
+from nepi.execution.resource import clsinit_copy
+from nepi.resources.ns3.ns3base import NS3Base
 
-    def create(self, clazzname, *args):
-        pass
+@clsinit_copy
+class NS3BaseIpV4Protocol(Ns3Base):
+    _rtype = "ns3::IpV4Protocol"
 
-    def factory(self, type_name, **kwargs):
-        pass
+    def do_provision(self):
+        # create run dir for ns3 object
+        # self.simulator.node.mkdir(self.run_home)
+        
+        self._instantiate_object()
 
-    def invoke(self, uuid, operation, *args):
-        pass
+        uuid_list_routing = simulator.create("Ipv4ListRouting")
+        simulator.invoke(self.uuid, "SetRoutingProtocol", uuid_list_routing)
 
-    def set(self, uuid, name, value):
-        pass
+        uuid_static_routing = simulator.create("Ipv4StaticRouting")
+        simulator.invoke(self.uuid, "SetRoutingProtocol", uuid_static_routing, 1)
 
-    def get(self, uuid, name):
-        pass
-
-    def trace(self, *args):
-        pass
-
-    def start(self):
-        pass
-
-    def stop(self, time = None):
-        pass
-
-    def shutdown(self):
-        pass
+        super(NS3BaseIpV4Protocol, self).do_provision()
 
