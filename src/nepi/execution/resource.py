@@ -1060,6 +1060,9 @@ def find_types():
                     continue
 
                 if issubclass(attr, ResourceManager):
+                    if find(attr.get_rtype().lower(), "abstract") > -1:
+                        continue 
+
                     types.append(attr)
 
                     if not modname in sys.modules:

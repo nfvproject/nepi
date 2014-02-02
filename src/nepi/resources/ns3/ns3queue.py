@@ -19,14 +19,14 @@
 
 from nepi.execution.resource import clsinit_copy
 from nepi.resources.ns3.ns3base import NS3Base
-from nepi.resources.ns3.ns3device import NS3BaseNetDevice
 
 @clsinit_copy
 class NS3BaseQueue(NS3Base):
-    _rtype = "ns3::Queue"
+    _rtype = "abstract::ns3::Queue"
 
     @property
     def device(self):
+        from nepi.resources.ns3.ns3device import NS3BaseNetDevice
         devices = self.get_connected(NS3BaseNetDevice.get_rtype())
         if devices: return devices[0]
         return None

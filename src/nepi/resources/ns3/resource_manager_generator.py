@@ -24,47 +24,43 @@ import os
 import re
 
 def select_base_class(ns3, tid): 
+    base_class_import = base_class = None
+    
     rtype = tid.GetName()
 
-    type_id = ns3.TypeId()
-    appbase = type_id.LookupByName("ns3::Application")
-    devicebase = type_id.LookupByName("ns3::NetDevice")
-    channelbase = type_id.LookupByName("ns3::Channel")
-    queuebase = type_id.LookupByName("ns3::Queue")
-    lossbase = type_id.LookupByName("ns3::PropagationLossModel")
-    delaybase = type_id.LookupByName("ns3::PropagationDelayModel")
-    managerbase = type_id.LookupByName("ns3::WifiRemoteStationManager")
-
-    if tid.IsChiledOf(appbase):
-       base_class_import = "from nepi.resources.ns3.ns3application import NS3BaseApplication"
-       base_class = "NS3BaseApplication"
-    elif tid.IsChiledOf(devicebase):
-       base_class_import = "from nepi.resources.ns3.ns3device import NS3BaseNetDevice"
-       base_class = "NS3BaseNetDevice"
-    elif tid.IsChiledOf(channelbase):
-       base_class_import = "from nepi.resources.ns3.ns3channel import NS3BaseChannel"
-       base_class = "NS3BaseChannel"
-    elif tid.IsChiledOf(queuebase):
-       base_class_import = "from nepi.resources.ns3.ns3queue import NS3BaseQueue"
-       base_class = "NS3BaseQueue"
-    elif tid.IsChiledOf(lossbase):
-       base_class_import = "from nepi.resources.ns3.ns3loss import NS3BasePropagationLossModel"
-       base_class = "NS3BasePropagationLossDelay"
-    elif tid.IsChiledOf(delaybase):
-       base_class_import = "from nepi.resources.ns3.ns3delay import NS3BasePropagationDelayModel"
-       base_class = "NS3BasePropagationDelayModel"
-    elif tid.IsChiledOf(managerbase):
-       base_class_import = "from nepi.resources.ns3.ns3manager import NS3BaseWifiRemoteStationManager"
-       base_class = "NS3BaseWifiRemoteStationManager"
-    elif rtype == "ns3::Node":
+    if rtype == "ns3::Node":
        base_class_import = "from nepi.resources.ns3.ns3node import NS3BaseNode"
        base_class = "NS3BaseNode"
     elif rtype == "ns3::Ipv4L3Protocol":
-       base_class_import = "from nepi.resources.ns3.ns3ipv4protocol import NS3BaseIpV4Protocol"
-       base_class = "NS3BaseIpV4Protocol"
+       base_class_import = "from nepi.resources.ns3.ns3ipv4protocol import NS3BaseIpv4L3Protocol"
+       base_class = "NS3BaseIpv4L3Protocol"
     else:
        base_class_import = "from nepi.resources.ns3.ns3base import NS3Base"
        base_class = "NS3Base"
+
+
+    if not base_class:
+        type_id = ns3.TypeId()
+
+        bases = ["ns3::Application", 
+                "ns3::NetDevice",
+                "ns3::Channel",
+                "ns3::Queue",
+                "ns3::PropagationLossModel",
+                "ns3::PropagationDelayModel",
+                "ns3::WifiRemoteStationManager",
+                "ns3::WifiPhy",
+                "ns3::WifiMac",
+                "ns3::ErrorModel",
+                "ns3::ErrorRateModel"]
+
+        for base in bases:
+            tid_base = type_id.LookupByName(base)
+            if tid.IsChildOf(tid_base):
+                base_class = "NS3Base" + base.replace("ns3::", "")
+                base_module = "ns3" + base.replace("ns3::", "").lower()
+                base_class_import = "from nepi.resources.ns3.ns3application import %s " % (
+                        base_module, base_class)
 
     return (base_class_import, base_class)
 
@@ -123,11 +119,11 @@ def create_ns3_rms():
                 replace('::', ''). \
                 replace("-","_").lower() + ".py"
 
-        #f = open(os.path.join(d, "classes", fname), "w")
-        #print os.path.join(d, fname)
-        #print template
-        #f.write(template)
-        #f.close()
+        f = open(os.path.join(d, "classes", fname), "w")
+        print os.path.join(d, fname)
+        print template
+        f.write(template)
+        f.close()
 
 def template_attributes(ns3, tid): 
     d = os.path.dirname(os.path.realpath(__file__))

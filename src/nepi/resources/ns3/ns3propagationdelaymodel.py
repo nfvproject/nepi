@@ -19,34 +19,34 @@
 
 from nepi.execution.resource import clsinit_copy
 from nepi.resources.ns3.ns3base import NS3Base
-from nepi.resources.ns3.ns3device import NS3BaseDevice
+from nepi.resources.ns3.ns3channel import NS3BaseChannel
 
 @clsinit_copy
-class NS3BaseWifiRemoteStationManager(NS3Base):
-    _rtype = "ns3::WifiRemoteStationManager"
+class NS3BasePropagationDelayModel(NS3Base):
+    _rtype = "abstract::ns3::PropagationDelayModel"
 
     @property
-    def device(self):
-        devices = self.get_connected(NS3BaseDevice.get_rtype())
-        if devices: return devices[0]
+    def simulator(self):
+        channel = self.channel
+        if channel: return channel.simulator
         return None
 
     @property
-    def node(self):
-        device = self.device
-        if device: return device.node
+    def channel(self):
+        channels = self.get_connected(NS3BaseChannel.get_rtype())
+        if channels: return channels[0]
         return None
 
     @property
     def others_to_wait(self):
         others = set()
-        device = self.device
-        if device: others.add(device)
+        channel = self.channel
+        if channel: others.add(channel)
         return others
 
     def _connect_object(self):
-        device = self.device
-        if device and device.uuid not in self.connected:
-            self.simulator.invoke(device.uuid, "SetRemoteStationManager", self.uuid)
-            self._connected.add(device.uuid)
+        channel = self.channel
+        if channel and channel.uuid not in self.connected:
+            self.simulator.invoke(channel.uuid, "SetPropagationDelayModel", self.uuid)
+            self._connected.add(channel.uuid)
 
