@@ -17,35 +17,19 @@
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
-class NS3Client(object):
-    """ Common Interface for NS3 client classes """
-    def __init__(self):
-        super(NS3Client, self).__init__()
+from nepi.execution.resource import clsinit_copy
+from nepi.resources.ns3.ns3base import NS3Base
 
-    def create(self, clazzname, *args):
-        pass
+@clsinit_copy
+class NS3BaseNode(Ns3Base):
+    _rtype = "ns3::Node"
 
-    def factory(self, type_name, **kwargs):
-        pass
+    @property
+    def others_to_wait(self):
+        return set()
 
-    def invoke(self, uuid, operation, *args):
-        pass
-
-    def set(self, uuid, name, value):
-        pass
-
-    def get(self, uuid, name):
-        pass
-
-    def trace(self, *args):
-        pass
-
-    def start(self):
-        pass
-
-    def stop(self, time = None):
-        pass
-
-    def shutdown(self):
-        pass
+    def _configure_object(self):
+        ### node.AggregateObject(PacketSocketFactory())
+        uuid_packet_socket_factory = self.simulator.create("PacketSocketFactory")
+        self.simulator.invoke(self.uuid, "AggregateObject", uuid_packet_socket_factory)
 

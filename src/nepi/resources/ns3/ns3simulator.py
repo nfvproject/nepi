@@ -25,6 +25,9 @@ class NS3Simulator(object):
     def create(self, clazzname, *args):
         return self.client.create(clazzname, *args)
 
+    def factory(self, type_name, **kwargs):
+        return self.client.factory(type_name, **kwargs)
+
     def invoke(self, uuid, operation, *args):
         return self.client.invoke(uuid, operation, *args)
 
