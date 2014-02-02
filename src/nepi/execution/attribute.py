@@ -154,6 +154,9 @@ class Attribute(object):
 
         if self.type in [Types.Double, Types.Integer] and self.range:
             (min, max) = self.range
+
+            value = float(value)
+
             valid = (value >= min and value <= max) 
         
         valid = valid and self.is_valid_value(value)
