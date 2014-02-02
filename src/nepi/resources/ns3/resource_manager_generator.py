@@ -23,23 +23,37 @@ from nepi.resources.ns3.ns3wrapper import load_ns3_module
 import os
 import re
 
-def select_base_class(ns3, tid): 
-    base_class_import = base_class = None
+def discard(ns3, tid):
+    rtype = tid.GetName()
+
+    words = ["variable", "object", "probe", "adaptor", "wrapper", 
+            "container", "derived", "simple"]
+    for word in words:
+        if rtype.lower().find(word) > -1:
+            return True
     
+    bases = ["ns3::Scheduler", "ns3::SimulatorImpl"]
+    type_id = ns3.TypeId()
+    for base in bases:
+        tid_base = type_id.LookupByName(base)
+        if tid.IsChildOf(tid_base):
+            return True
+
+    return False
+
+def select_base_class(ns3, tid): 
+    base_class_import = "from nepi.resources.ns3.ns3base import NS3Base"
+    base_class = "NS3Base"
+   
     rtype = tid.GetName()
 
     if rtype == "ns3::Node":
        base_class_import = "from nepi.resources.ns3.ns3node import NS3BaseNode"
        base_class = "NS3BaseNode"
     elif rtype == "ns3::Ipv4L3Protocol":
-       base_class_import = "from nepi.resources.ns3.ns3ipv4protocol import NS3BaseIpv4L3Protocol"
+       base_class_import = "from nepi.resources.ns3.ns3ipv4l3protocol import NS3BaseIpv4L3Protocol"
        base_class = "NS3BaseIpv4L3Protocol"
     else:
-       base_class_import = "from nepi.resources.ns3.ns3base import NS3Base"
-       base_class = "NS3Base"
-
-
-    if not base_class:
         type_id = ns3.TypeId()
 
         bases = ["ns3::Application", 
@@ -59,7 +73,7 @@ def select_base_class(ns3, tid):
             if tid.IsChildOf(tid_base):
                 base_class = "NS3Base" + base.replace("ns3::", "")
                 base_module = "ns3" + base.replace("ns3::", "").lower()
-                base_class_import = "from nepi.resources.ns3.ns3application import %s " % (
+                base_class_import = "from nepi.resources.ns3.%s import %s " % (
                         base_module, base_class)
 
     return (base_class_import, base_class)
@@ -75,6 +89,9 @@ def create_ns3_rms():
     # Create a .py file using the ns-3 RM template for each ns-3 TypeId
     for i in xrange(tid_count):
         tid = type_id.GetRegistered(i)
+        
+        if discard(ns3, tid):
+            continue
         
         if tid.MustHideFromDocumentation() or \
                 not tid.HasConstructor() or \
@@ -94,9 +111,9 @@ def create_ns3_rms():
 
         (base_class_import, base_class) = select_base_class(ns3, tid)
 
-        rtype = tid.GetName()
         category = tid.GetGroupName()
 
+        rtype = tid.GetName()
         classname = rtype.replace("ns3::", "NS3").replace("::","")
         uncamm_rtype = re.sub('([a-z])([A-Z])', r'\1-\2', rtype).lower()
         short_rtype = uncamm_rtype.replace("::","-")
@@ -142,7 +159,7 @@ def template_attributes(ns3, tid):
         attr_flags = "None"
         flags = attr_info.flags
         if (flags & ns3.TypeId.ATTR_SET) != ns3.TypeId.ATTR_SET:
-            attr_flags = "Types.ExecReadOnly"
+            attr_flags = "Flags.ExecReadOnly"
 
         attr_name = attr_info.name
         checker = attr_info.checker
@@ -151,7 +168,7 @@ def template_attributes(ns3, tid):
         attr_value = value.SerializeToString(checker)
         attr_allowed = "None"
         attr_range = "None"
-        attr_type = "Types.STRING"
+        attr_type = "Types.String"
 
         if isinstance(value, ns3.ObjectVectorValue):
             continue
@@ -160,19 +177,20 @@ def template_attributes(ns3, tid):
         elif isinstance(value, ns3.WaypointValue):
             continue
         elif isinstance(value, ns3.BooleanValue):
-            attr_type = "Types.BOOL"
+            attr_type = "Types.Bool"
             attr_value = "True" if attr_value == "true" else "False"
         elif isinstance(value, ns3.EnumValue):
-            attr_type = "Types.ENUM"
-            attr_allowed = "[%s]"% checker.GetUnderlyingTypeInformation().replace("|", ",")
+            attr_type = "Types.Enumerate"
+            allowed = checker.GetUnderlyingTypeInformation().split("|")
+            attr_allowed = "[%s]" % ",".join(map(lambda x: "\"%s\"" % x, allowed))
         elif isinstance(value, ns3.DoubleValue):
-            attr_type = "Types.DOUBLE"
+            attr_type = "Types.Double"
             # TODO: range
         elif isinstance(value, ns3.UintegerValue):
-            attr_type = "Types.INTEGER"
+            attr_type = "Types.Integer"
             # TODO: range
 
-        attr_id = attr_name.lower()
+        attr_id = "attr_" + attr_name.lower().replace("-", "_")
         attributes += template.replace("<ATTR_ID>", attr_id) \
                 .replace("<ATTR_NAME>", attr_name) \
                 .replace("<ATTR_HELP>", attr_help) \
