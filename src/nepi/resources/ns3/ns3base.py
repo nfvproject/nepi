@@ -20,13 +20,13 @@
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
         ResourceState, reschedule_delay
 
-from nepi.execute.attributes import Flags
+from nepi.execution.attribute import Flags
 from nepi.resources.ns3.ns3simulator import NS3Simulator
-from nepi.resources.ns3.ns3node import NS3BaseNode
 
 @clsinit_copy
 class NS3Base(ResourceManager):
-    _rtype = "ns3::Object"
+    _rtype = "abstract::ns3::Object"
+    _backend_type = "ns3"
 
     def __init__(self):
         super(NS3Base, self).__init__()
@@ -53,6 +53,7 @@ class NS3Base(ResourceManager):
          
     @property
     def node(self):
+        from nepi.resources.ns3.ns3node import NS3BaseNode
         nodes = self.get_connected(NS3BaseNode.get_rtype())
         if nodes: return nodes[0]
         return None
@@ -104,8 +105,8 @@ class NS3Base(ResourceManager):
         # self.simulator.node.mkdir(self.run_home)
 
         self._instantiate_object()
-        self._configure_object()
         self._connect_object()
+        self._configure_object()
       
         self.info("Provisioning finished")
 

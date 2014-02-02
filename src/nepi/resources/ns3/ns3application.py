@@ -22,7 +22,7 @@ from nepi.resources.ns3.ns3base import NS3Base
 
 @clsinit_copy
 class NS3BaseApplication(NS3Base):
-    _rtype = "ns3::Application"
+    _rtype = "abstract::ns3::Application"
 
     def _connect_object(self):
         node = self.node

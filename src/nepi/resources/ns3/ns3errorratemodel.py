@@ -19,36 +19,28 @@
 
 from nepi.execution.resource import clsinit_copy
 from nepi.resources.ns3.ns3base import NS3Base
-from nepi.resources.ns3.ns3channel import NS3Channel
+from nepi.resources.ns3.ns3wifiphy import NS3BaseWifiPhy
 
 @clsinit_copy
-class NS3BaseNetDevice(NS3Base):
-    _rtype = "ns3::NetDevice"
+class NS3BaseErrorRateModel(NS3Base):
+    _rtype = "abstract::ns3::ErrorRateModel"
 
     @property
-    def channel(self):
-        channels = self.get_connected(NS3BaseChannel.get_rtype())
-        if channels: return channels[0]
+    def phy(self):
+        phys = self.get_connected(NS3BaseWifiPhy.get_rtype())
+        if phys: return phys[0]
         return None
 
     @property
     def others_to_wait(self):
         others = set()
-        node = self.node
-        if node: others.add(node)
-        
-        channel = self.channel
-        if channel: others.add(channel)
+        phy = self.phy
+        if phy: others.add(phy)
         return others
 
     def _connect_object(self):
-        node = self.node
-        if node and node.uuid not in self.connected:
-            self.simulator.invoke(node.uuid, "AddDevice", self.uuid)
-            self._connected.add(node.uuid)
-
-        channel = self.channel
-        if channel and channel.uuid not in self.connected:
-            self.simulator.invoke(self.uuid, "Attach", channel.uuid)
-            self._connected.add(channel.uuid)
+        phy = self.phy
+        if phy and phy.uuid not in self.connected:
+            self.simulator.invoke(phy.uuid, "SetErrorRateModel", self.uuid)
+            self._connected.add(phy.uuid)
 

@@ -21,17 +21,26 @@ from nepi.execution.resource import clsinit_copy
 from nepi.resources.ns3.ns3base import NS3Base
 
 @clsinit_copy
-class NS3BaseChannel(NS3Base):
-    _rtype = "abstract::ns3::Channel"
+class NS3BaseWifiMac(NS3Base):
+    _rtype = "abstract::ns3::WifiMac"
 
     @property
-    def devices(self):
-        from nepi.resources.ns3.ns3netdevice import NS3BaseNetDevice
-        return self.get_connected(NS3BaseNetDevice.get_rtype())
-
-    @property
-    def simulator(self):
-        devices = self.devices
-        if devices: return device[0].node.simulator
+    def device(self):
+        from nepi.resources.ns3.ns3device import NS3BaseNetDevice
+        devices = self.get_connected(NS3BaseNetDevice.get_rtype())
+        if devices: return devices[0]
         return None
-    
+
+    @property
+    def others_to_wait(self):
+        others = set()
+        device = self.device
+        if device: others.add(device)
+        return others
+
+    def _connect_object(self):
+        device = self.device
+        if device and device.uuid not in self.connected:
+            self.simulator.invoke(device.uuid, "SetMac", self.uuid)
+            self._connected.add(device.uuid)
+

@@ -21,20 +21,13 @@ from nepi.execution.resource import clsinit_copy
 from nepi.resources.ns3.ns3base import NS3Base
 
 @clsinit_copy
-class NS3BaseIpV4Protocol(Ns3Base):
-    _rtype = "ns3::IpV4Protocol"
+class NS3BaseIpv4L3Protocol(NS3Base):
+    _rtype = "abstract::ns3::Ipv4L3Protocol"
 
-    def do_provision(self):
-        # create run dir for ns3 object
-        # self.simulator.node.mkdir(self.run_home)
-        
-        self._instantiate_object()
-
+    def _configure_object(self):
         uuid_list_routing = simulator.create("Ipv4ListRouting")
         simulator.invoke(self.uuid, "SetRoutingProtocol", uuid_list_routing)
 
         uuid_static_routing = simulator.create("Ipv4StaticRouting")
         simulator.invoke(self.uuid, "SetRoutingProtocol", uuid_static_routing, 1)
-
-        super(NS3BaseIpV4Protocol, self).do_provision()
 

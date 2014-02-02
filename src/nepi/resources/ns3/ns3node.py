@@ -21,8 +21,15 @@ from nepi.execution.resource import clsinit_copy
 from nepi.resources.ns3.ns3base import NS3Base
 
 @clsinit_copy
-class NS3BaseNode(Ns3Base):
-    _rtype = "ns3::Node"
+class NS3BaseNode(NS3Base):
+    _rtype = "abstract::ns3::Node"
+
+    @property
+    def ipv4(self):
+        from nepi.resources.ns3.ns3ipv4l3protocol import NS3BaseIpv4L3Protocol
+        ipv4s = self.get_connected(NS3BaseIpv4L3Protocol.get_rtype())
+        if ipv4s: return ipv4s[0]
+        return None
 
     @property
     def others_to_wait(self):
