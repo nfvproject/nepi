@@ -159,7 +159,9 @@ def template_attributes(ns3, tid):
         attr_flags = "None"
         flags = attr_info.flags
         if (flags & ns3.TypeId.ATTR_SET) != ns3.TypeId.ATTR_SET:
-            attr_flags = "Flags.ExecReadOnly"
+            attr_flags = "Flags.Design"
+        elif (flags & ns3.TypeId.ATTR_CONSTRUCT) == ns3.TypeId.ATTR_CONSTRUCT:
+            attr_flags = "Flags.Construct"
 
         attr_name = attr_info.name
         checker = attr_info.checker

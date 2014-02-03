@@ -30,3 +30,24 @@ class NS3BaseApplication(NS3Base):
             self.simulator.invoke(node.uuid, "AddApplication", self.uuid)
             self._connected.add(node.uuid)
 
+    def do_start(self):
+        if self.state == ResourceState.READY:
+            self.info("Starting")
+
+            # BUG: without doing this explicit call it doesn't start!!!
+            # Shouldn't be enough to set the StartTime?
+            self.simulator.invoke(self.uuid, "Start")
+            
+            self.set_started()
+        else:
+            msg = " Failed "
+            self.error(msg, out, err)
+            raise RuntimeError, msg
+
+    def do_stop(self):
+        if self.state == ResourceState.STARTED:
+            # No need to do anything, simulator.Destroy() will stop every object
+            self.info("Stopping command '%s'" % command)
+            self.simulator.invoke(self.uuid, "Stop")
+            self.set_stopped()
+

@@ -35,16 +35,16 @@ class LinuxCCNPingServer(LinuxCCNApplication):
             "Run ccnping server as a daemon in background",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         freshness = Attribute("x",
             "Set FreshnessSeconds",
             type = Types.Integer,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         prefix = Attribute("prefix",
             "Prefix to serve content (e.g. ccnx:/name/prefix)",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         cls._register_attribute(daemon)
         cls._register_attribute(freshness)

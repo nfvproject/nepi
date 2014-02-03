@@ -21,6 +21,8 @@ from nepi.execution.attribute import Attribute, Flags
 from nepi.execution.resource import clsinit_copy
 from nepi.resources.ns3.ns3base import NS3Base
 
+import ipaddr
+
 @clsinit_copy
 class NS3BaseNetDevice(NS3Base):
     _rtype = "abstract::ns3::NetDevice"
@@ -28,13 +30,13 @@ class NS3BaseNetDevice(NS3Base):
     @classmethod
     def _register_attributes(cls):
         mac = Attribute("mac", "MAC address for device",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         ip = Attribute("ip", "IP address for device",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         prefix = Attribute("prefix", "Network prefix for device",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         cls._register_attribute(mac)
         cls._register_attribute(ip)
@@ -42,7 +44,7 @@ class NS3BaseNetDevice(NS3Base):
 
     @property
     def channel(self):
-        from nepi.resources.ns3.ns3channel import NS3Channel
+        from nepi.resources.ns3.ns3channel import NS3BaseChannel
         channels = self.get_connected(NS3BaseChannel.get_rtype())
         if channels: return channels[0]
         return None

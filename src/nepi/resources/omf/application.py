@@ -52,11 +52,11 @@ class OMFApplication(OMFResource):
         env = Attribute("env", "Environnement variable of the application")
         stdin = Attribute("stdin", "Input of the application", default = "")
         sources = Attribute("sources", "Sources of the application", 
-                     flags = Flags.ExecReadOnly)
+                     flags = Flags.Design)
         sshuser = Attribute("sshUser", "user to connect with ssh", 
-                     flags = Flags.ExecReadOnly)
+                     flags = Flags.Design)
         sshkey = Attribute("sshKey", "key to use for ssh", 
-                     flags = Flags.ExecReadOnly)
+                     flags = Flags.Design)
         cls._register_attribute(appid)
         cls._register_attribute(path)
         cls._register_attribute(args)

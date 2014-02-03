@@ -149,44 +149,44 @@ class LinuxNode(ResourceManager):
     @classmethod
     def _register_attributes(cls):
         hostname = Attribute("hostname", "Hostname of the machine",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         username = Attribute("username", "Local account username", 
                 flags = Flags.Credential)
 
-        port = Attribute("port", "SSH port", flags = Flags.ExecReadOnly)
+        port = Attribute("port", "SSH port", flags = Flags.Design)
         
         home = Attribute("home",
                 "Experiment home directory to store all experiment related files",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
         
         identity = Attribute("identity", "SSH identity file",
                 flags = Flags.Credential)
         
         server_key = Attribute("serverKey", "Server public key", 
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
         
         clean_home = Attribute("cleanHome", "Remove all nepi files and directories "
                 " from node home folder before starting experiment", 
                 type = Types.Bool,
                 default = False,
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         clean_experiment = Attribute("cleanExperiment", "Remove all files and directories " 
                 " from a previous same experiment, before the new experiment starts", 
                 type = Types.Bool,
                 default = False,
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
         
         clean_processes = Attribute("cleanProcesses", 
                 "Kill all running processes before starting experiment",
                 type = Types.Bool,
                 default = False,
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
         
         tear_down = Attribute("tearDown", "Bash script to be executed before " + \
                 "releasing the resource",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         cls._register_attribute(hostname)
         cls._register_attribute(username)

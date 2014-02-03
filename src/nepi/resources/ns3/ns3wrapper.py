@@ -86,7 +86,7 @@ def load_ns3_module():
     return ns3mod
 
 class NS3Wrapper(object):
-    def __init__(self, homedir = None):
+    def __init__(self, homedir = None, loglevel = logging.INFO):
         super(NS3Wrapper, self).__init__()
         # Thread used to run the simulation
         self._simulation_thread = None
@@ -107,9 +107,8 @@ class NS3Wrapper(object):
             os.makedirs(home, 0755)
 
         # Logging
-        loglevel = os.environ.get("NS3LOGLEVEL", "debug")
         self._logger = logging.getLogger("ns3wrapper")
-        self._logger.setLevel(getattr(logging, loglevel.upper()))
+        self._logger.setLevel(loglevel)
         
         hdlr = logging.FileHandler(os.path.join(self.homedir, "ns3wrapper.log"))
         formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
@@ -180,7 +179,7 @@ class NS3Wrapper(object):
         return self._objects.get(uuid)
 
     def factory(self, type_name, **kwargs):
-        if type_name not in allowed_types:
+        if type_name not in self.allowed_types:
             msg = "Type %s not supported" % (type_name) 
             self.logger.error(msg)
  

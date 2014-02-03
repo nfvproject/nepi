@@ -44,7 +44,7 @@ class PlanetlabNode(LinuxNode):
     @classmethod
     def _register_attributes(cls):
         ip = Attribute("ip", "PlanetLab host public IP address",
-                flags = Flags.ReadOnly)
+                    flags = Flags.Design)
 
         pl_url = Attribute("plcApiUrl", "URL of PlanetLab PLCAPI host \
                     (e.g. www.planet-lab.eu or www.planet-lab.org) ",
@@ -54,7 +54,7 @@ class PlanetlabNode(LinuxNode):
         pl_ptn = Attribute("plcApiPattern", "PLC API service regexp pattern \
                     (e.g. https://%(hostname)s:443/PLCAPI/ ) ",
                     default = "https://%(hostname)s:443/PLCAPI/",
-                    flags = Flags.ExecReadOnly)
+                    flags = Flags.Design)
     
         pl_user = Attribute("pluser", "PlanetLab account user, as the one to \
                     authenticate in the website) ",

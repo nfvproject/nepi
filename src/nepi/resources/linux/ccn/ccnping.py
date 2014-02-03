@@ -34,21 +34,21 @@ class LinuxCCNPing(LinuxCCNPingServer):
         interval = Attribute("i",
             "Set ping interval in seconds (minimum 0.10 second) ",
             type = Types.Integer,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         count = Attribute("c",
             "Total number of pings",
             type = Types.Double,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         number = Attribute("n",
             "Set the starting number, the number is incremented by 1 after each Interest ",
             type = Types.Integer,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
  
         prefix = Attribute("prefix",
             "Prefix to serve content (e.g. ccnx:/name/prefix)",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         cls._register_attribute(interval)
         cls._register_attribute(count)

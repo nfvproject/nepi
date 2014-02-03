@@ -34,41 +34,41 @@ class LinuxMtr(LinuxApplication):
             "sets mtr --report-cycles (-c) option. Determines the number of "
             "pings sent to determine both machines in the networks. Each "
             "cycle lasts one sencond.",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         no_dns = Attribute("noDns",
             "sets mtr --no-dns (-n) option. Forces mtr to display IPs intead of "
             "trying to resolve to host names ",
             type = Types.Bool,
             default = True,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         address = Attribute("address",
             "sets mtr --address (-a) option. Binds the socket to send outgoing "
             "packets to the interface of the specified address, so that any "
             "any packets are sent through this interface. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         interval = Attribute("interval",
             "sets mtr --interval (-i) option. Specifies the number of seconds "
             "between ICMP ECHO requests. Default value is one second ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         countinuous = Attribute("continuous",
             "Run mtr in a while loop",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         print_timestamp = Attribute("printTimestamp",
             "Print timestamp before running mtr",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         target = Attribute("target",
             "mtr target host (host that will be pinged)",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         cls._register_attribute(report_cycles)
         cls._register_attribute(no_dns)

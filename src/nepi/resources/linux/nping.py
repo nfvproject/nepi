@@ -34,84 +34,84 @@ class LinuxNPing(LinuxApplication):
             "Sets nping -c option. "
             "Stop after a given number of rounds. ",
             type = Types.Integer,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         e = Attribute("e",
             "Sets nping -e option. "
             "Set the network interface to be used.",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         delay = Attribute("delay",
             "Sets nping --delay option. "
             "Delay between probes ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         rate = Attribute("rate",
             "Sets nping --rate option. "
             "Send probes at a given rate ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         ttl = Attribute("ttl",
             "Sets nping --ttl option. "
             "Time To Live. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         p = Attribute("p",
             "Sets nping -p option. "
             "Target ports. ",
             type = Types.Integer,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         tcp = Attribute("tcp",
             "Sets nping --tcp option. "
             "TCP mode. ",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         udp = Attribute("udp",
             "Sets nping --udp option. "
             "UDP mode. ",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         icmp = Attribute("icmp",
             "Sets nping --icmp option. "
             "ICMP mode. ",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         arp = Attribute("arp",
             "Sets nping --arp option. "
             "ARP mode. ",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         traceroute = Attribute("traceroute",
             "Sets nping --traceroute option. "
             "Traceroute mode. ",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         countinuous = Attribute("continuous",
             "Run nping in a while loop",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         print_timestamp = Attribute("printTimestamp",
             "Print timestamp before running nping",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         target = Attribute("target",
             "nping target host (host that will be pinged)",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         cls._register_attribute(c)
         cls._register_attribute(e)
