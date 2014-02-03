@@ -58,6 +58,12 @@ class LinuxNS3Client(NS3Client):
         
         return self.send_msg(NS3WrapperMessage.CREATE, *args)
 
+    def factory(self, type_name, **kwargs):
+        args = [type_name]
+        args.append(kwargs)
+        
+        return self.send_msg(NS3WrapperMessage.FACTORY, *args)
+
     def invoke(self, uuid, operation, *args):
         args = list(args)
         args.insert(0, operation)

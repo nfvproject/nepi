@@ -90,43 +90,43 @@ class LinuxApplication(ResourceManager):
         command = Attribute("command", "Command to execute at application start. "
                 "Note that commands will be executed in the ${RUN_HOME} directory, "
                 "make sure to take this into account when using relative paths. ", 
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
         forward_x11 = Attribute("forwardX11", "Enables X11 forwarding for SSH connections", 
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
         env = Attribute("env", "Environment variables string for command execution",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
         sudo = Attribute("sudo", "Run with root privileges", 
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
         depends = Attribute("depends", 
                 "Space-separated list of packages required to run the application",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
         sources = Attribute("sources", 
                 "Space-separated list of regular files to be uploaded to ${SRC} "
                 "directory prior to building. Archives won't be expanded automatically. "
                 "Sources are globally available for all experiments unless "
                 "cleanHome is set to True (This will delete all sources). ",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
         files = Attribute("files", 
                 "Space-separated list of regular miscellaneous files to be uploaded "
                 "to ${SHARE} directory. "
                 "Files are globally available for all experiments unless "
                 "cleanHome is set to True (This will delete all files). ",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
         libs = Attribute("libs", 
                 "Space-separated list of libraries (e.g. .so files) to be uploaded "
                 "to ${LIB} directory. "
                 "Libraries are globally available for all experiments unless "
                 "cleanHome is set to True (This will delete all files). ",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
         bins = Attribute("bins", 
                 "Space-separated list of binary files to be uploaded "
                 "to ${BIN} directory. "
                 "Binaries are globally available for all experiments unless "
                 "cleanHome is set to True (This will delete all files). ",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
         code = Attribute("code", 
                 "Plain text source code to be uploaded to the ${APP_HOME} directory. ",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
         build = Attribute("build", 
                 "Build commands to execute after deploying the sources. "
                 "Sources are uploaded to the ${SRC} directory and code "
@@ -135,16 +135,16 @@ class LinuxApplication(ResourceManager):
                 "./configure && make && make clean.\n"
                 "Make sure to make the build commands return with a nonzero exit "
                 "code on error.",
-                flags = Flags.ReadOnly)
+                flags = Flags.Design)
         install = Attribute("install", 
                 "Commands to transfer built files to their final destinations. "
                 "Install commands are executed after build commands. ",
-                flags = Flags.ReadOnly)
+                flags = Flags.Design)
         stdin = Attribute("stdin", "Standard input for the 'command'", 
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
         tear_down = Attribute("tearDown", "Command to be executed just before " 
                 "releasing the resource", 
-                flags = Flags.ReadOnly)
+                flags = Flags.Design)
 
         cls._register_attribute(command)
         cls._register_attribute(forward_x11)

@@ -193,7 +193,7 @@ class ResourceManager(Logger):
                 "the experiment. ",
                 type = Types.Bool,
                 default = True,
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         cls._register_attribute(critical)
         
@@ -678,6 +678,7 @@ class ResourceManager(Logger):
         rclass = ResourceFactory.get_resource_type(rtype)
         for guid in self.connections:
             rm = self.ec.get_resource(guid)
+
             if not rtype or isinstance(rm, rclass):
                 connected.append(rm)
         return connected
@@ -1033,7 +1034,7 @@ def find_types():
     path = os.path.dirname(nepi.resources.__file__)
     search_path.add(path)
 
-    types = []
+    types = set()
 
     for importer, modname, ispkg in pkgutil.walk_packages(search_path, 
             prefix = "nepi.resources."):
@@ -1041,7 +1042,7 @@ def find_types():
         loader = importer.find_module(modname)
         
         try:
-            # Notice: Repeated calls to load_module will act as a reload of teh module
+            # Notice: Repeated calls to load_module will act as a reload of the module
             if modname in sys.modules:
                 module = sys.modules.get(modname)
             else:
@@ -1060,10 +1061,7 @@ def find_types():
                     continue
 
                 if issubclass(attr, ResourceManager):
-                    if attr.get_rtype().lower().find("abstract") > -1:
-                        continue 
-
-                    types.append(attr)
+                    types.add(attr)
 
                     if not modname in sys.modules:
                         sys.modules[modname] = module
@@ -1076,5 +1074,4 @@ def find_types():
             logger.error("Error while loading Resource Managers %s" % err)
 
     return types
-
 

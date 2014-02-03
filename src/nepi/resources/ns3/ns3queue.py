@@ -26,7 +26,7 @@ class NS3BaseQueue(NS3Base):
 
     @property
     def device(self):
-        from nepi.resources.ns3.ns3device import NS3BaseNetDevice
+        from nepi.resources.ns3.ns3netdevice import NS3BaseNetDevice
         devices = self.get_connected(NS3BaseNetDevice.get_rtype())
         if devices: return devices[0]
         return None

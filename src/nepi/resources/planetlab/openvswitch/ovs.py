@@ -43,13 +43,13 @@ class OVSWitch(LinuxApplication):
 
         """
         bridge_name = Attribute("bridge_name", "Name of the switch/bridge",
-                flags = Flags.ExecReadOnly)	
+                flags = Flags.Design)	
         virtual_ip_pref = Attribute("virtual_ip_pref", "Virtual IP/PREFIX of the switch",
-                flags = Flags.ExecReadOnly)       
+                flags = Flags.Design)	
         controller_ip = Attribute("controller_ip", "IP of the controller",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)	
         controller_port = Attribute("controller_port", "Port of the controller",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)	
 
         cls._register_attribute(bridge_name)
         cls._register_attribute(virtual_ip_pref)

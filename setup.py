@@ -23,6 +23,7 @@ setup(
             "nepi.resources.linux.ns3",
             "nepi.resources.netns",
             "nepi.resources.ns3",
+            "nepi.resources.ns3.classes",
             "nepi.resources.omf",
             "nepi.resources.planetlab",
             "nepi.resources.planetlab.openvswitch",

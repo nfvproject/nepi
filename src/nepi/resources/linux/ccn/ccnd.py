@@ -50,56 +50,56 @@ class LinuxCCND(LinuxApplication):
             "  -1 - max logging \n"
             "  Or apply bitwise OR to these values to get combinations of them",
             type = Types.Integer,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         port = Attribute("port", "Sets the CCN_LOCAL_PORT environmental variable. "
             "Defaults to 9695 ", 
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
  
         sockname = Attribute("sockname",
             "Sets the CCN_LOCAL_SCOKNAME environmental variable. "
             "Defaults to /tmp/.ccnd.sock", 
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         capacity = Attribute("capacity",
             "Sets the CCND_CAP environmental variable. "
             "Capacity limit in terms of ContentObjects",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         mtu = Attribute("mtu", "Sets the CCND_MTU environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
   
         data_pause = Attribute("dataPauseMicrosec",
             "Sets the CCND_DATA_PAUSE_MICROSEC environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         default_stale = Attribute("defaultTimeToStale",
              "Sets the CCND_DEFAULT_TIME_TO_STALE environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         max_stale = Attribute("maxTimeToStale",
             "Sets the CCND_MAX_TIME_TO_STALE environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         max_rte = Attribute("maxRteMicrosec",
             "Sets the CCND_MAX_RTE_MICROSEC environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         keystore = Attribute("keyStoreDirectory",
             "Sets the CCND_KEYSTORE_DIRECTORY environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         listen_on = Attribute("listenOn",
             "Sets the CCND_LISTEN_ON environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         autoreg = Attribute("autoreg",
             "Sets the CCND_AUTOREG environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         prefix = Attribute("prefix",
             "Sets the CCND_PREFIX environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         cls._register_attribute(debug)
         cls._register_attribute(port)

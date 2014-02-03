@@ -35,13 +35,13 @@ class LinuxTraceroute(LinuxApplication):
             "Run traceroute in a while loop",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         print_timestamp = Attribute("printTimestamp",
             "Print timestamp before running traceroute",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         use_ip = Attribute("useIP",
             "Use the IP address instead of the host domain name. "
@@ -49,11 +49,11 @@ class LinuxTraceroute(LinuxApplication):
             "frequently",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         target = Attribute("target",
             "Traceroute target host (host that will be pinged)",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         cls._register_attribute(countinuous)
         cls._register_attribute(print_timestamp)

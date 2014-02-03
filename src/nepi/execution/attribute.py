@@ -30,18 +30,24 @@ class Flags:
     """ Differents flags to characterize an attribute
 
     """
-    # Attribute can be modified by the user 
-    NoFlags         = 0x00
-    # Attribute is not modifiable by the user
-    ReadOnly        = 0x01
-    # Attribute is not modifiable by the user during runtime
-    ExecReadOnly        = 0x02
-    # Attribute is an access credential
-    # TODO REMOVE!!!
-    Credential      = 0x04
+    # Attribute value can not be read (it is hidden to the user) 
+    NoRead    = 1 # 1
+    
+    # Attribute value can not be modified (it is not editable by the user)
+    NoWrite   = 1 << 1 # 2
+    
+    # Attribute value can be modified only before deployment
+    Design  = 1 << 2 # 4
+
+    # Attribute value will be used only during the deployment face
+    Construct    = 1 << 3 | Design # 8 + 4
+
+    # Attribute provides credentials to access resources
+    Credential  = 1 << 4  | Design # 16 + 4
+
     # Attribute is a filter used to discover resources
-    # TODO REMOVE!!!
-    Filter      = 0x08
+    Filter  = 1 << 5 | Design # 32 + 4
+
 
 class Attribute(object):
     """
@@ -85,12 +91,12 @@ class Attribute(object):
 
     """
     def __init__(self, name, help, type = Types.String,
-            flags = Flags.NoFlags, default = None, allowed = None,
+            flags = None, default = None, allowed = None,
             range = None, set_hook = None):
         self._name = name
         self._help = help
         self._type = type
-        self._flags = flags
+        self._flags = flags or 0
         self._allowed = allowed
         self._range = range
         self._default = self._value = default
@@ -178,3 +184,6 @@ class Attribute(object):
         adequate validation"""
         return True
 
+    def has_changed(self):
+        """ Returns true if the value has changed from the default """
+        return self.value != self.default

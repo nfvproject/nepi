@@ -35,23 +35,23 @@ class LinuxCCNR(LinuxApplication):
     def _register_attributes(cls):
         max_fanout = Attribute("maxFanout",
             "Sets the CCNR_BTREE_MAX_FANOUT environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         max_leaf_entries = Attribute("maxLeafEntries",
             "Sets the CCNR_BTREE_MAX_LEAF_ENTRIES environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         max_node_bytes = Attribute("maxNodeBytes",
             "Sets the CCNR_BTREE_MAX_NODE_BYTES environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         max_node_pool = Attribute("maxNodePool",
             "Sets the CCNR_BTREE_MAX_NODE_POOL environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         content_cache = Attribute("contentCache",
             "Sets the CCNR_CONTENT_CACHE environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         debug = Attribute("debug",
             "Sets the CCNR_DEBUG environmental variable. "
@@ -64,92 +64,92 @@ class LinuxCCNR(LinuxApplication):
                     "WARNING",
                     "INFO",
                     "FINE, FINER, FINEST"],
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         directory = Attribute("directory",
             "Sets the CCNR_DIRECTORY environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         global_prefix = Attribute("globalPrefix",
             "Sets the CCNR_GLOBAL_PREFIX environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         listen_on = Attribute("listenOn",
             "Sets the CCNR_LISTEN_ON environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         min_send_bufsize = Attribute("minSendBufsize",
             "Sets the CCNR_MIN_SEND_BUFSIZE environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         proto = Attribute("proto",
             "Sets the CCNR_PROTO environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         status_port = Attribute("statusPort",
             "Sets the CCNR_STATUS_PORT environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         start_write_scope_limit = Attribute("startWriteScopeLimit",
             "Sets the CCNR_START_WRITE_SCOPE_LIMIT environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         ccns_debug = Attribute("ccnsDebug",
             "Sets the CCNS_DEBUG environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         ccns_enable = Attribute("ccnsEnable",
             "Sets the CCNS_ENABLE environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         ccns_faux_error = Attribute("ccnsFauxError",
             "Sets the CCNS_FAUX_ERROR environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         ccns_heartbeat_micros = Attribute("ccnsHeartBeatMicros",
             "Sets the CCNS_HEART_BEAT_MICROS environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         ccns_max_compares_busy = Attribute("ccnsMaxComparesBusy",
             "Sets the CCNS_MAX_COMPARES_BUSY environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         ccns_max_fetch_busy = Attribute("ccnsMaxFetchBusy",
             "Sets the CCNS_MAX_FETCH_BUSY environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         ccns_node_fetch_lifetime = Attribute("ccnsNodeFetchLifetime",
             "Sets the CCNS_NODE_FETCH_LIFETIME environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         ccns_note_err = Attribute("ccnsNoteErr",
             "Sets the CCNS_NOTE_ERR environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         ccns_repo_store = Attribute("ccnsRepoStore",
             "Sets the CCNS_REPO_STORE environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         ccns_root_advise_fresh = Attribute("ccnsRootAdviseFresh",
             "Sets the CCNS_ROOT_ADVISE_FRESH environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         ccns_root_advise_lifetime = Attribute("ccnsRootAdviseLifetime",
             "Sets the CCNS_ROOT_ADVISE_LIFETIME environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         ccns_stable_enabled = Attribute("ccnsStableEnabled",
             "Sets the CCNS_STABLE_ENABLED environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         ccns_sync_scope = Attribute("ccnsSyncScope",
             "Sets the CCNS_SYNC_SCOPE environmental variable. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         repo_file = Attribute("repoFile1",
             "The Repository uses $CCNR_DIRECTORY/repoFile1 for "
             "persistent storage of CCN Content Objects",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         cls._register_attribute(max_fanout)
         cls._register_attribute(max_leaf_entries)

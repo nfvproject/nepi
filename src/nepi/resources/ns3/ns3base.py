@@ -21,15 +21,14 @@ from nepi.execution.resource import ResourceManager, clsinit_copy, \
         ResourceState, reschedule_delay
 
 from nepi.execution.attribute import Flags
-from nepi.resources.ns3.ns3simulator import NS3Simulator
 
 @clsinit_copy
 class NS3Base(ResourceManager):
     _rtype = "abstract::ns3::Object"
     _backend_type = "ns3"
 
-    def __init__(self):
-        super(NS3Base, self).__init__()
+    def __init__(self, ec, guid):
+        super(NS3Base, self).__init__(ec, guid)
         self._uuid = None
         self._connected = set()
 
@@ -43,10 +42,7 @@ class NS3Base(ResourceManager):
 
     @property
     def simulator(self):
-        simulators = self.get_connected(NS3Simulator.get_rtype())
-        if simulators: return simulators[0]
-        # if the object is not directly connected to the simulator,
-        # it should be connected to a node
+        # Ns3 RMs should be connected to the simulator through a ns3 node 
         node = self.node
         if node: return node.simulator
         return None
@@ -70,13 +66,13 @@ class NS3Base(ResourceManager):
             return 
 
         kwargs = dict()
-        for attr in self._attrs:
-            if not attr.value or attr.has_flag(Flags.ReadOnly):
+        for attr in self._attrs.values():
+            if not (attr.has_changed() and attr.has_flag(Flags.Construct)):
                 continue
 
             kwargs[attr.name] = attr.value
 
-        self.uuid = self.simulator.factory(self.get_rtype(), **kwargs)
+        self._uuid = self.simulator.factory(self.get_rtype(), **kwargs)
 
     def _configure_object(self):
         pass

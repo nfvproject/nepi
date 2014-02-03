@@ -32,6 +32,6 @@ class NS3BaseChannel(NS3Base):
     @property
     def simulator(self):
         devices = self.devices
-        if devices: return device[0].node.simulator
+        if devices: return devices[0].node.simulator
         return None
     

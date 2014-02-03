@@ -19,10 +19,20 @@
 
 from nepi.execution.resource import clsinit_copy
 from nepi.resources.ns3.ns3base import NS3Base
+from nepi.resources.ns3.ns3simulator import NS3Simulator
 
 @clsinit_copy
 class NS3BaseNode(NS3Base):
     _rtype = "abstract::ns3::Node"
+
+    @property
+    def simulator(self):
+        for guid in self.connections:
+            rm = self.ec.get_resource(guid)
+            if isinstance(rm, NS3Simulator):
+                return rm
+
+        return None
 
     @property
     def ipv4(self):

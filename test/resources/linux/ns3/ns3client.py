@@ -41,6 +41,8 @@ import unittest
 class LinuxNS3ClientTest(unittest.TestCase):
     def setUp(self):
         self.socket_name = os.path.join("/", "tmp", "NS3WrapperServer.sock")
+        if os.path.exists(self.socket_name):
+            os.remove(self.socket_name) 
 
     def tearDown(self):
         os.remove(self.socket_name) 

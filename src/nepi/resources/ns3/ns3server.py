@@ -20,7 +20,10 @@
 import base64
 import cPickle
 import errno
+import logging
+import os
 import socket
+
 from optparse import OptionParser, SUPPRESS_HELP
 
 from ns3wrapper import NS3Wrapper
@@ -39,6 +42,9 @@ class NS3WrapperMessage:
 def handle_message(ns3_wrapper, msg, args):
     if msg == NS3WrapperMessage.SHUTDOWN:
         ns3_wrapper.shutdown()
+        
+        ns3_wrapper.logger.debug("SHUTDOWN")
+        
         return "BYEBYE"
     
     if msg == NS3WrapperMessage.STOP:
@@ -46,22 +52,30 @@ def handle_message(ns3_wrapper, msg, args):
         if args:
             time = args[0]
 
+        ns3_wrapper.logger.debug("STOP time=%s" % str(time))
+
         ns3_wrapper.stop(time=time)
         return "STOPPED"
 
     if msg == NS3WrapperMessage.START:
+        ns3_wrapper.logger.debug("START") 
+
         ns3_wrapper.start()
         return "STARTED"
 
     if msg == NS3WrapperMessage.CREATE:
         clazzname = args.pop(0)
         
+        ns3_wrapper.logger.debug("CREATE %s %s" % (clazzname, str(args)))
+
         uuid = ns3_wrapper.create(clazzname, *args)
         return uuid
 
     if msg == NS3WrapperMessage.FACTORY:
         type_name = args.pop(0)
         kwargs = args.pop(0)
+
+        ns3_wrapper.logger.debug("FACTORY %s %s" % (type_name, str(kwargs)))
 
         uuid = ns3_wrapper.factory(type_name, **kwargs)
         return uuid
@@ -70,12 +84,16 @@ def handle_message(ns3_wrapper, msg, args):
         uuid = args.pop(0)
         operation = args.pop(0)
         
+        ns3_wrapper.logger.debug("INVOKE %s %s %s" % (uuid, operation, str(args)))
+    
         uuid = ns3_wrapper.invoke(uuid, operation, *args)
         return uuid
 
     if msg == NS3WrapperMessage.GET:
         uuid = args.pop(0)
         name = args.pop(0)
+
+        ns3_wrapper.logger.debug("GET %s %s" % (uuid, name))
 
         value = ns3_wrapper.get(uuid, name)
         return value
@@ -85,10 +103,13 @@ def handle_message(ns3_wrapper, msg, args):
         name = args.pop(0)
         value = args.pop(0)
 
+        ns3_wrapper.logger.debug("SET %s %s" % (uuid, name, str(value)))
+
         value = ns3_wrapper.set(uuid, name, value)
         return value
  
     if msg == NS3WrapperMessage.TRACE:
+        ns3_wrapper.logger.debug("TRACE") 
         return "NOT IMPLEMENTED"
 
 def create_socket(socket_name):
@@ -135,7 +156,7 @@ def send_reply(conn, reply):
     conn.send("%s\n" % encoded)
 
 def get_options():
-    usage = ("usage: %prog -S <socket-name>")
+    usage = ("usage: %prog -S <socket-name> -L <NS_LOG> -v ")
     
     parser = OptionParser(usage = usage)
 
@@ -143,12 +164,30 @@ def get_options():
         help = "Name for the unix socket used to interact with this process", 
         default = "tap.sock", type="str")
 
+    parser.add_option("-L", "--ns-log", dest="ns_log",
+        help = "NS_LOG environmental variable to be set", 
+        default = "", type="str")
+
+    parser.add_option("-v", "--verbose",
+        help="Print debug output",
+        action="store_true", 
+        dest="verbose", default=False)
+
     (options, args) = parser.parse_args()
     
-    return options.socket_name
+    return options.socket_name, options.verbose, options.ns_log
 
-def run_server(socket_name): 
-    ns3_wrapper = NS3Wrapper()
+def run_server(socket_name, verbose = False, ns_log = None):
+
+    level = logging.DEBUG if verbose else logging.INFO
+
+    # Sets NS_LOG environmental variable for NS debugging
+    if ns_log:
+        os.environ["NS_LOG"] = ns_log
+
+    ###### ns-3 wrapper instantiation
+
+    ns3_wrapper = NS3Wrapper(loglevel=level)
 
     # create unix socket to receive instructions
     sock = create_socket(socket_name)
@@ -170,8 +209,6 @@ def run_server(socket_name):
         if not msg:
             # Ignore - connection lost
             break
- 
-        ns3_wrapper.logger.debug("Message received %s args %s" % ( msg, str(args)))
 
         if msg == NS3WrapperMessage.SHUTDOWN:
            stop = True
@@ -185,7 +222,7 @@ def run_server(socket_name):
 
 if __name__ == '__main__':
             
-    socket_name = get_options()
+    (socket_name, verbose, ns_log) = get_options()
 
-    run_server(socket_name)
+    run_server(socket_name, verbose, ns_log)
 

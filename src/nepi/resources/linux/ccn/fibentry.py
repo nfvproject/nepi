@@ -42,7 +42,7 @@ class LinuxFIBEntry(LinuxApplication):
         uri = Attribute("uri",
                 "URI prefix to match and route for this FIB entry",
                 default = "ccnx:/",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         protocol = Attribute("protocol",
                 "Transport protocol used in network connection to peer "
@@ -50,20 +50,20 @@ class LinuxFIBEntry(LinuxApplication):
                 type = Types.Enumerate, 
                 default = "udp",
                 allowed = ["udp", "tcp"],
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         host = Attribute("host",
                 "Peer hostname used in network connection for this FIB entry. ",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         port = Attribute("port",
                 "Peer port address used in network connection to peer "
                 "for this FIB entry.",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         ip = Attribute("ip",
                 "Peer host public IP used in network connection for this FIB entry. ",
-                flags = Flags.ReadOnly)
+                flags = Flags.Design)
 
         cls._register_attribute(uri)
         cls._register_attribute(protocol)
