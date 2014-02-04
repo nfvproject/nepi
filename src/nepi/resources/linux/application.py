@@ -274,10 +274,15 @@ class LinuxApplication(ResourceManager):
         # take a snapshot of the system if user is root
         # to assure cleanProcess kill every nepi process
         if self.node.get("username") == 'root':
-            ps_aux = "ps aux |awk '{print $2}' |sort -u"
+            import pickle
+            procs = dict()
+            ps_aux = "ps aux |awk '{print $2,$11}'"
             (out, err), proc = self.node.execute(ps_aux)
-            self.node._pids = out.split()
-        
+            for line in out.strip().split("\n"):
+                parts = line.strip().split(" ")
+                procs[parts[0]] = parts[1]
+            pickle.dump(procs, open("save.proc", "wb"))
+            
         # create run dir for application
         self.node.mkdir(self.run_home)
    
