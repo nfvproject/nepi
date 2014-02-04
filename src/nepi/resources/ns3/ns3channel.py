@@ -25,13 +25,24 @@ class NS3BaseChannel(NS3Base):
     _rtype = "abstract::ns3::Channel"
 
     @property
-    def devices(self):
-        from nepi.resources.ns3.ns3netdevice import NS3BaseNetDevice
-        return self.get_connected(NS3BaseNetDevice.get_rtype())
+    def simulator(self):
+        return self.devices[0].node.simulator
 
     @property
-    def simulator(self):
-        devices = self.devices
-        if devices: return devices[0].node.simulator
-        return None
-    
+    def devices(self):
+        from nepi.resources.ns3.ns3netdevice import NS3BaseNetDevice
+        devices = self.get_connected(NS3BaseNetDevice.get_rtype())
+
+        if not devices: 
+            msg = "Channel not connected to devices"
+            self.error(msg)
+            raise RuntimeError, msg
+
+        return devices
+
+    @property
+    def _rms_to_wait(self):
+        rms = set()
+        rms.add(self.simulator)
+        return rms
+

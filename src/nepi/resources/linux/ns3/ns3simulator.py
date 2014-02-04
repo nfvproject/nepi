@@ -54,7 +54,6 @@ class LinuxNS3Simulator(LinuxApplication, NS3Simulator):
             # ccnd needs to wait until node is deployed and running
             self.ec.schedule(reschedule_delay, self.deploy)
         else:
-            
             # TODO: Create socket!!
             socket_name = self.get("socketName")
             self._client = LinuxNS3Client(socket_name)
@@ -62,6 +61,15 @@ class LinuxNS3Simulator(LinuxApplication, NS3Simulator):
             #self.do_discover()
             #self.do_provision()
 
-            self.debug("----- READY ---- ")
             self.set_ready()
 
+    def do_start(self):
+        command = self.get("command")
+
+        self.info("Starting ns-3 simulation")
+        
+        self._client.start()
+
+        self.set_started()
+
+    # TODO! DESTROY SOCKET AND SHUTDOWN CLIENT

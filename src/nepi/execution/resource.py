@@ -512,7 +512,6 @@ class ResourceManager(Logger):
         with self._release_lock:
             if self._state != ResourceState.RELEASED:
                 self.do_deploy()
-                self.debug("----- READY ---- ")
 
     def release(self):
         """ Perform actions to free resources used by the RM.
@@ -533,7 +532,6 @@ class ResourceManager(Logger):
                 self.error(err)
 
             self.set_released()
-            self.debug("----- RELEASED ---- ")
 
     def fail(self):
         """ Sets the RM to state FAILED.
@@ -955,30 +953,37 @@ class ResourceManager(Logger):
     def set_started(self):
         """ Mark ResourceManager as STARTED """
         self.set_state(ResourceState.STARTED, "_start_time")
+        self.debug("----- STARTED ---- ")
         
     def set_stopped(self):
         """ Mark ResourceManager as STOPPED """
         self.set_state(ResourceState.STOPPED, "_stop_time")
+        self.debug("----- STOPPED ---- ")
 
     def set_ready(self):
         """ Mark ResourceManager as READY """
         self.set_state(ResourceState.READY, "_ready_time")
+        self.debug("----- READY ---- ")
 
     def set_released(self):
         """ Mark ResourceManager as REALEASED """
         self.set_state(ResourceState.RELEASED, "_release_time")
+        self.debug("----- RELEASED ---- ")
 
     def set_failed(self):
         """ Mark ResourceManager as FAILED """
         self.set_state(ResourceState.FAILED, "_failed_time")
+        self.debug("----- FAILED ---- ")
 
     def set_discovered(self):
         """ Mark ResourceManager as DISCOVERED """
         self.set_state(ResourceState.DISCOVERED, "_discover_time")
+        self.debug("----- DISCOVERED ---- ")
 
     def set_provisioned(self):
         """ Mark ResourceManager as PROVISIONED """
         self.set_state(ResourceState.PROVISIONED, "_provision_time")
+        self.debug("----- PROVISIONED ---- ")
 
     def set_state(self, state, state_time_attr):
         """ Set the state of the RM while keeping a trace of the time """

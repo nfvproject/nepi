@@ -23,23 +23,32 @@ from nepi.resources.ns3.ns3wrapper import load_ns3_module
 import os
 import re
 
+base_types = ["ns3::Node",
+        "ns3::Application", 
+        "ns3::NetDevice",
+        "ns3::Channel",
+        "ns3::Queue",
+        "ns3::Icmpv4L4Protocol",
+        "ns3::ArpL3Protocol",
+        "ns3::Ipv4L3Protocol",
+        "ns3::PropagationLossModel",
+        "ns3::PropagationDelayModel",
+        "ns3::WifiRemoteStationManager",
+        "ns3::WifiPhy",
+        "ns3::WifiMac",
+        "ns3::ErrorModel",
+        "ns3::ErrorRateModel"]
+
 def discard(ns3, tid):
     rtype = tid.GetName()
-
-    words = ["variable", "object", "probe", "adaptor", "wrapper", 
-            "container", "derived", "simple"]
-    for word in words:
-        if rtype.lower().find(word) > -1:
-            return True
-    
-    bases = ["ns3::Scheduler", "ns3::SimulatorImpl"]
     type_id = ns3.TypeId()
-    for base in bases:
-        tid_base = type_id.LookupByName(base)
-        if tid.IsChildOf(tid_base):
-            return True
 
-    return False
+    for type_name in base_types:
+        tid_base = type_id.LookupByName(type_name)
+        if type_name == rtype or tid.IsChildOf(tid_base):
+            return False
+
+    return True
 
 def select_base_class(ns3, tid): 
     base_class_import = "from nepi.resources.ns3.ns3base import NS3Base"
@@ -47,34 +56,15 @@ def select_base_class(ns3, tid):
    
     rtype = tid.GetName()
 
-    if rtype == "ns3::Node":
-       base_class_import = "from nepi.resources.ns3.ns3node import NS3BaseNode"
-       base_class = "NS3BaseNode"
-    elif rtype == "ns3::Ipv4L3Protocol":
-       base_class_import = "from nepi.resources.ns3.ns3ipv4l3protocol import NS3BaseIpv4L3Protocol"
-       base_class = "NS3BaseIpv4L3Protocol"
-    else:
-        type_id = ns3.TypeId()
+    type_id = ns3.TypeId()
 
-        bases = ["ns3::Application", 
-                "ns3::NetDevice",
-                "ns3::Channel",
-                "ns3::Queue",
-                "ns3::PropagationLossModel",
-                "ns3::PropagationDelayModel",
-                "ns3::WifiRemoteStationManager",
-                "ns3::WifiPhy",
-                "ns3::WifiMac",
-                "ns3::ErrorModel",
-                "ns3::ErrorRateModel"]
-
-        for base in bases:
-            tid_base = type_id.LookupByName(base)
-            if tid.IsChildOf(tid_base):
-                base_class = "NS3Base" + base.replace("ns3::", "")
-                base_module = "ns3" + base.replace("ns3::", "").lower()
-                base_class_import = "from nepi.resources.ns3.%s import %s " % (
-                        base_module, base_class)
+    for type_name in base_types:
+        tid_base = type_id.LookupByName(type_name)
+        if type_name == rtype or tid.IsChildOf(tid_base):
+            base_class = "NS3Base" + type_name.replace("ns3::", "")
+            base_module = "ns3" + type_name.replace("ns3::", "").lower()
+            base_class_import = "from nepi.resources.ns3.%s import %s " % (
+                    base_module, base_class)
 
     return (base_class_import, base_class)
 

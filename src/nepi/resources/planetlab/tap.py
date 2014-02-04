@@ -169,7 +169,6 @@ class PlanetlabTap(LinuxApplication):
             self.do_discover()
             self.do_provision()
 
-            self.debug("----- READY ---- ")
             self.set_ready()
 
     def do_start(self):

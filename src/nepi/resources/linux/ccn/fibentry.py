@@ -134,7 +134,6 @@ class LinuxFIBEntry(LinuxApplication):
             self.do_provision()
             self.configure()
 
-            self.debug("----- READY ---- ")
             self.set_ready()
 
     def upload_start_command(self):
