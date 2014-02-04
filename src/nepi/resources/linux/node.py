@@ -407,7 +407,7 @@ class LinuxNode(ResourceManager):
         else:
             if self.state >= ResourceState.READY:
                 import pickle
-                pids = pickle.load(open("save.proc", "rb"))
+                pids = pickle.load(open("/tmp/save.proc", "rb"))
                 pids_temp = dict()
                 ps_aux = "ps aux |awk '{print $2,$11}'"
                 (out, err), proc = self.execute(ps_aux)
