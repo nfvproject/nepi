@@ -213,9 +213,6 @@ class LinuxNode(ResourceManager):
         # home directory at Linux host
         self._home_dir = ""
 
-        # list of pids before running the app if the user is root
-        self._pids = []
-        
         # lock to prevent concurrent applications on the same node,
         # to execute commands at the same time. There are potential
         # concurrency issues when using SSH to a same host from 
@@ -408,13 +405,17 @@ class LinuxNode(ResourceManager):
                 "sudo -S kill $(ps aux | grep '[n]epi' | awk '{print $2}') || /bin/true ; " +
                 "sudo -S killall -u %s || /bin/true ; " % self.get("username"))
         else:
-            pids_temp = []
             if self.state >= ResourceState.READY:
-                ps_aux = "ps aux |awk '{print $2}' |sort -u"
+                import pickle
+                pids = pickle.load(open("save.proc", "rb"))
+                pids_temp = dict()
+                ps_aux = "ps aux |awk '{print $2,$11}'"
                 (out, err), proc = self.execute(ps_aux)
-                pids_temp = out.split()
-                kill_pids = list(set(pids_temp) - set(self._pids))
-                kill_pids = ' '.join(kill_pids)
+                for line in out.strip().split("\n"):
+                    parts = line.strip().split(" ")
+                    pids_temp[parts[0]] = parts[1]
+                kill_pids = set(pids_temp.items()) - set(pids.items())
+                kill_pids = ' '.join(dict(kill_pids).keys())
 
                 cmd = ("killall tcpdump || /bin/true ; " +
                     "kill $(ps aux | grep '[n]epi' | awk '{print $2}') || /bin/true ; " +
