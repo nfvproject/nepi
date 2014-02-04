@@ -26,27 +26,30 @@ class NS3BaseWifiRemoteStationManager(NS3Base):
     _rtype = "abstract::ns3::WifiRemoteStationManager"
 
     @property
-    def device(self):
-        devices = self.get_connected(NS3BaseNetDevice.get_rtype())
-        if devices: return devices[0]
-        return None
-
-    @property
     def node(self):
-        device = self.device
-        if device: return device.node
-        return None
+        return self.device.node
 
     @property
-    def others_to_wait(self):
-        others = set()
-        device = self.device
-        if device: others.add(device)
-        return others
+    def device(self):
+        from nepi.resources.ns3.ns3device import NS3BaseNetDevice
+        devices = self.get_connected(NS3BaseNetDevice.get_rtype())
+
+        if not devices: 
+            msg = "WifiRemoteStationManager not connected to device"
+            self.error(msg)
+            raise RuntimeError, msg
+
+        return devices[0]
+
+    @property
+    def _rms_to_wait(self):
+        rms = set()
+        rms.add(self.device)
+        return rms
 
     def _connect_object(self):
         device = self.device
-        if device and device.uuid not in self.connected:
+        if device.uuid not in self.connected:
             self.simulator.invoke(device.uuid, "SetRemoteStationManager", self.uuid)
             self._connected.add(device.uuid)
 

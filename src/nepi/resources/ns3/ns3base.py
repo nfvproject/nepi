@@ -42,11 +42,8 @@ class NS3Base(ResourceManager):
 
     @property
     def simulator(self):
-        # Ns3 RMs should be connected to the simulator through a ns3 node 
-        node = self.node
-        if node: return node.simulator
-        return None
-         
+        return self.node.simulator 
+
     @property
     def node(self):
         from nepi.resources.ns3.ns3node import NS3BaseNode
@@ -55,11 +52,18 @@ class NS3Base(ResourceManager):
         return None
 
     @property
-    def others_to_wait(self):
-        others = set()
+    def _rms_to_wait(self):
+        """ Returns the collection of ns-3 RMs that this RM needs to
+        wait for before start
+
+        This method should be overriden to wait for other ns-3
+        objects to be deployed before proceeding with the deployment
+
+        """
+        rms = set()
         node = self.node
-        if node: others.add(node)
-        return others
+        if node: rms.add(node)
+        return rms
 
     def _instantiate_object(self):
         if self.uuid:
@@ -83,21 +87,16 @@ class NS3Base(ResourceManager):
             self.simulator.invoke(node.uuid, "AggregateObject", self.uuid)
             self._connected.add(node.uuid)
 
-    def _wait_others(self):
-        """ Returns the collection of ns-3 RMs that this RM needs to
-        wait for before start
-
-        This method should be overriden to wait for other ns-3
-        objects to be deployed before proceeding with the deployment
-
-        """
-        for other in self.others_to_wait:
-            if other and other.state < ResourceState.READY:
+    def _wait_rms(self):
+        """ Returns True if dependent RMs are not yer READY, False otherwise"""
+        for rm in self._rms_to_wait:
+            if rm and rm.state < ResourceState.READY:
+                rm.debug("Not yet READY")
                 return True
         return False
 
     def do_provision(self):
-        # create run dir for ns3 object
+        # TODO: create run dir for ns3 object !!!!
         # self.simulator.node.mkdir(self.run_home)
 
         self._instantiate_object()
@@ -109,18 +108,14 @@ class NS3Base(ResourceManager):
         super(NS3Base, self).do_provision()
 
     def do_deploy(self):
-        if not self.simulator or self.simulator.state < ResourceState.READY or \
-                self._wait_others():
+        if self._wait_rms():
             self.debug("---- RESCHEDULING DEPLOY ----" )
-            
-            # ccnd needs to wait until node is deployed and running
             self.ec.schedule(reschedule_delay, self.deploy)
         else:
-            # TODO: CREATE AND CONFIGURE NS-3 C++ OBJECT
+            self.info("Entering deploy")
             self.do_discover()
             self.do_provision()
 
-            self.debug("----- READY ---- ")
             self.set_ready()
 
     def do_start(self):

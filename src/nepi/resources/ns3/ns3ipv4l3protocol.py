@@ -24,6 +24,24 @@ from nepi.resources.ns3.ns3base import NS3Base
 class NS3BaseIpv4L3Protocol(NS3Base):
     _rtype = "abstract::ns3::Ipv4L3Protocol"
 
+    @property
+    def node(self):
+        from nepi.resources.ns3.ns3node import NS3BaseNode
+        nodes = self.get_connected(NS3BaseNode.get_rtype())
+
+        if not nodes: 
+            msg = "Ipv4L3Protocol not connected to node"
+            self.error(msg)
+            raise RuntimeError, msg
+
+        return nodes[0]
+
+    @property
+    def _rms_to_wait(self):
+        rms = set()
+        rms.add(self.node)
+        return rms
+
     def _configure_object(self):
         simulator = self.simulator
 

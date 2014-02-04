@@ -83,7 +83,7 @@ class LinuxNS3ClientTest(unittest.TestCase):
         ec.set(p1, "prefix", "30")
         ec.register_connection(nsnode1, p1)
         q1 = ec.register_resource("ns3::DropTailQueue")
-        ec.register_connection(nsnode1, q1)
+        ec.register_connection(p1, q1)
 
         nsnode2 = ec.register_resource("ns3::Node")
         ec.register_connection(nsnode2, simu)
@@ -102,7 +102,7 @@ class LinuxNS3ClientTest(unittest.TestCase):
         ec.set(p2, "prefix", "30")
         ec.register_connection(nsnode2, p2)
         q2 = ec.register_resource("ns3::DropTailQueue")
-        ec.register_connection(nsnode2, q2)
+        ec.register_connection(p2, q2)
 
         # Create channel
         chan = ec.register_resource("ns3::PointToPointChannel")
@@ -121,7 +121,7 @@ class LinuxNS3ClientTest(unittest.TestCase):
 
         ec.deploy()
 
-        time.sleep(5)
+        time.sleep(30)
 
         ec.shutdown()
  

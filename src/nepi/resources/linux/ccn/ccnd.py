@@ -176,7 +176,6 @@ class LinuxCCND(LinuxApplication):
             self.do_discover()
             self.do_provision()
 
-            self.debug("----- READY ---- ")
             self.set_ready()
 
     def upload_start_command(self):

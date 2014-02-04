@@ -24,12 +24,31 @@ from nepi.resources.ns3.ns3base import NS3Base
 class NS3BaseApplication(NS3Base):
     _rtype = "abstract::ns3::Application"
 
+    @property
+    def node(self):
+        from nepi.resources.ns3.ns3node import NS3BaseNode
+        nodes = self.get_connected(NS3BaseNode.get_rtype())
+
+        if not nodes: 
+            msg = "Application not connected to node"
+            self.error(msg)
+            raise RuntimeError, msg
+
+        return nodes[0]
+
+    @property
+    def _rms_to_wait(self):
+        rms = set()
+        rms.add(self.node)
+        return rms
+
     def _connect_object(self):
         node = self.node
-        if node and node.uuid not in self.connected:
+        if node.uuid not in self.connected:
             self.simulator.invoke(node.uuid, "AddApplication", self.uuid)
             self._connected.add(node.uuid)
 
+    """
     def do_start(self):
         if self.state == ResourceState.READY:
             self.info("Starting")
@@ -50,4 +69,5 @@ class NS3BaseApplication(NS3Base):
             self.info("Stopping command '%s'" % command)
             self.simulator.invoke(self.uuid, "Stop")
             self.set_stopped()
+    """
 

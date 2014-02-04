@@ -747,7 +747,6 @@ class ExperimentController(object):
                     break
 
             if reschedule:
-
                 callback = functools.partial(wait_all_and_start, group)
                 self.schedule("1s", callback)
             else:

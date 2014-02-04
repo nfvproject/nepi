@@ -43,20 +43,41 @@ class NS3BaseNetDevice(NS3Base):
         cls._register_attribute(prefix)
 
     @property
+    def node(self):
+        from nepi.resources.ns3.ns3node import NS3BaseNode
+        nodes = self.get_connected(NS3BaseNode.get_rtype())
+
+        if not nodes: 
+            msg = "Device not connected to node"
+            self.error(msg)
+            raise RuntimeError, msg
+
+        return nodes[0]
+
+    @property
     def channel(self):
         from nepi.resources.ns3.ns3channel import NS3BaseChannel
         channels = self.get_connected(NS3BaseChannel.get_rtype())
-        if channels: return channels[0]
-        return None
+
+        if not channels: 
+            msg = "Device not connected to channel"
+            self.error(msg)
+            raise RuntimeError, msg
+
+        return channels[0]
 
     @property
-    def others_to_wait(self):
+    def _rms_to_wait(self):
         others = set()
-        node = self.node
-        if node: others.add(node)
         
-        channel = self.channel
-        if channel: others.add(channel)
+        node = self.node
+        others.add(node)
+
+        ipv4 = node.ipv4
+        if node.ipv4:
+            others.add(ipv4)
+
+        others.add(self.channel)
         return others
 
     def _configure_object(self):

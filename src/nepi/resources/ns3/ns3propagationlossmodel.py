@@ -19,7 +19,6 @@
 
 from nepi.execution.resource import clsinit_copy
 from nepi.resources.ns3.ns3base import NS3Base
-from nepi.resources.ns3.ns3channel import NS3BaseChannel
 
 @clsinit_copy
 class NS3BasePropagationLossModel(NS3Base):
@@ -27,26 +26,29 @@ class NS3BasePropagationLossModel(NS3Base):
 
     @property
     def simulator(self):
-        channel = self.channel
-        if channel: return channel.simulator
-        return None
+        return self.channel.simulator
 
     @property
     def channel(self):
+        from nepi.resources.ns3.ns3channel import NS3BaseChannel
         channels = self.get_connected(NS3BaseChannel.get_rtype())
-        if channels: return channels[0]
-        return None
+
+        if not channels: 
+            msg = "PropagationLossModel not connected to channel"
+            self.error(msg)
+            raise RuntimeError, msg
+
+        return channels[0]
 
     @property
-    def others_to_wait(self):
+    def _rms_to_wait(self):
         others = set()
-        channel = self.channel
-        if channel: others.add(channel)
+        others.add(self.channel)
         return others
 
     def _connect_object(self):
         channel = self.channel
-        if channel and channel.uuid not in self.connected:
+        if channel.uuid not in self.connected:
             self.simulator.invoke(channel.uuid, "SetPropagationLossModel", self.uuid)
             self._connected.add(channel.uuid)
 

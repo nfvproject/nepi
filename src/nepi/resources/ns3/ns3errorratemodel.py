@@ -19,7 +19,6 @@
 
 from nepi.execution.resource import clsinit_copy
 from nepi.resources.ns3.ns3base import NS3Base
-from nepi.resources.ns3.ns3wifiphy import NS3BaseWifiPhy
 
 @clsinit_copy
 class NS3BaseErrorRateModel(NS3Base):
@@ -27,20 +26,25 @@ class NS3BaseErrorRateModel(NS3Base):
 
     @property
     def phy(self):
+        from nepi.resources.ns3.ns3wifiphy import NS3BaseWifiPhy
         phys = self.get_connected(NS3BaseWifiPhy.get_rtype())
-        if phys: return phys[0]
-        return None
+
+        if not phys: 
+            msg = "ErrorRateModel not connected to phy"
+            self.error(msg)
+            raise RuntimeError, msg
+
+        return phys[0]
 
     @property
-    def others_to_wait(self):
-        others = set()
-        phy = self.phy
-        if phy: others.add(phy)
-        return others
+    def _rms_to_wait(self):
+        rms = set()
+        rms.add(self.phy)
+        return rms
 
     def _connect_object(self):
         phy = self.phy
-        if phy and phy.uuid not in self.connected:
+        if phy.uuid not in self.connected:
             self.simulator.invoke(phy.uuid, "SetErrorRateModel", self.uuid)
             self._connected.add(phy.uuid)
 
