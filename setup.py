@@ -31,6 +31,7 @@ setup(
         package_dir = {"": "src"},
         package_data = {
             "nepi.resources.planetlab" : [ "scripts/*.py" ],
-            "nepi.resources.linux" : [ "scripts/*.py" ]
+            "nepi.resources.linux" : [ "scripts/*.py" ],
+            "nepi.resources.linux.ns3" : [ "dependencies/*.tar.gz" ]
             }
     )

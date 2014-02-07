@@ -19,20 +19,20 @@
 
 from nepi.execution.resource import clsinit_copy
 from nepi.resources.ns3.ns3base import NS3Base
-from nepi.resources.ns3.ns3simulator import NS3Simulator
 
 @clsinit_copy
 class NS3BaseNode(NS3Base):
     _rtype = "abstract::ns3::Node"
 
     @property
-    def simulator(self):
+    def simulation(self):
+        from nepi.resources.ns3.ns3simulation import NS3Simulation
         for guid in self.connections:
             rm = self.ec.get_resource(guid)
-            if isinstance(rm, NS3Simulator):
+            if isinstance(rm, NS3Simulation):
                 return rm
 
-        msg = "Node not connected to simulator"
+        msg = "Node not connected to simulation"
         self.error(msg)
         raise RuntimeError, msg
  
@@ -46,11 +46,11 @@ class NS3BaseNode(NS3Base):
     @property
     def _rms_to_wait(self):
         rms = set()
-        rms.add(self.simulator)
+        rms.add(self.simulation)
         return rms
 
     def _configure_object(self):
         ### node.AggregateObject(PacketSocketFactory())
-        uuid_packet_socket_factory = self.simulator.create("PacketSocketFactory")
-        self.simulator.invoke(self.uuid, "AggregateObject", uuid_packet_socket_factory)
+        uuid_packet_socket_factory = self.simulation.create("PacketSocketFactory")
+        self.simulation.invoke(self.uuid, "AggregateObject", uuid_packet_socket_factory)
 

@@ -45,6 +45,6 @@ class NS3BaseErrorModel(NS3Base):
     def _connect_object(self):
         device = self.device
         if device.uuid not in self.connected:
-            self.simulator.invoke(device.uuid, "SetReceiveErrorModel", self.uuid)
+            self.simulation.invoke(device.uuid, "SetReceiveErrorModel", self.uuid)
             self._connected.add(device.uuid)
 

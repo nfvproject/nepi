@@ -507,10 +507,6 @@ class LinuxApplication(ResourceManager):
         x11 = self.get("forwardX11")
         env = self.get("env")
 
-        # For a command being executed in foreground, if there is stdin,
-        # it is expected to be text string not a file or pipe
-        stdin = self.get("stdin") or None
-
         # Command will be launched in foreground and attached to the
         # terminal using the node 'execute' in non blocking mode.
 
@@ -521,7 +517,6 @@ class LinuxApplication(ResourceManager):
         (out, err), self._proc = self.execute_command(command, 
                 env = env,
                 sudo = sudo,
-                stdin = stdin,
                 forward_x11 = x11,
                 blocking = False)
 
@@ -669,7 +664,6 @@ class LinuxApplication(ResourceManager):
     def execute_command(self, command, 
             env = None,
             sudo = False,
-            stdin = None,
             forward_x11 = False,
             blocking = False):
 
@@ -681,7 +675,6 @@ class LinuxApplication(ResourceManager):
 
         return self.node.execute(command,
                 sudo = sudo,
-                stdin = stdin,
                 forward_x11 = forward_x11,
                 blocking = blocking)
 

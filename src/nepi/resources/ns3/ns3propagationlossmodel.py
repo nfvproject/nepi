@@ -25,8 +25,8 @@ class NS3BasePropagationLossModel(NS3Base):
     _rtype = "ns3::PropagationLossModel"
 
     @property
-    def simulator(self):
-        return self.channel.simulator
+    def simulation(self):
+        return self.channel.simulation
 
     @property
     def channel(self):
@@ -49,6 +49,6 @@ class NS3BasePropagationLossModel(NS3Base):
     def _connect_object(self):
         channel = self.channel
         if channel.uuid not in self.connected:
-            self.simulator.invoke(channel.uuid, "SetPropagationLossModel", self.uuid)
+            self.simulation.invoke(channel.uuid, "SetPropagationLossModel", self.uuid)
             self._connected.add(channel.uuid)
 

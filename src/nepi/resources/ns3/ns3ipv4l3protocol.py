@@ -43,11 +43,11 @@ class NS3BaseIpv4L3Protocol(NS3Base):
         return rms
 
     def _configure_object(self):
-        simulator = self.simulator
+        simulation = self.simulation
 
-        uuid_list_routing = simulator.create("Ipv4ListRouting")
-        simulator.invoke(self.uuid, "SetRoutingProtocol", uuid_list_routing)
+        uuid_list_routing = simulation.create("Ipv4ListRouting")
+        simulation.invoke(self.uuid, "SetRoutingProtocol", uuid_list_routing)
 
-        uuid_static_routing = simulator.create("Ipv4StaticRouting")
-        simulator.invoke(uuid_list_routing, "AddRoutingProtocol", uuid_static_routing, 1)
+        uuid_static_routing = simulation.create("Ipv4StaticRouting")
+        simulation.invoke(uuid_list_routing, "AddRoutingProtocol", uuid_static_routing, 1)
 

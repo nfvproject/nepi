@@ -45,29 +45,40 @@ class NS3BaseApplication(NS3Base):
     def _connect_object(self):
         node = self.node
         if node.uuid not in self.connected:
-            self.simulator.invoke(node.uuid, "AddApplication", self.uuid)
+            self.simulation.invoke(node.uuid, "AddApplication", self.uuid)
             self._connected.add(node.uuid)
 
-    """
-    def do_start(self):
-        if self.state == ResourceState.READY:
-            self.info("Starting")
-
-            # BUG: without doing this explicit call it doesn't start!!!
-            # Shouldn't be enough to set the StartTime?
-            self.simulator.invoke(self.uuid, "Start")
-            
-            self.set_started()
-        else:
-            msg = " Failed "
-            self.error(msg, out, err)
-            raise RuntimeError, msg
 
     def do_stop(self):
         if self.state == ResourceState.STARTED:
-            # No need to do anything, simulator.Destroy() will stop every object
+            # No need to do anything, simulation.Destroy() will stop every object
             self.info("Stopping command '%s'" % command)
-            self.simulator.invoke(self.uuid, "Stop")
+            self.simulation.invoke(self.uuid, "Stop")
             self.set_stopped()
-    """
+
+    @property
+    def state(self):
+        #if self._state == ResourceState.STARTED:
+
+        return self._state
+        """
+        now = testbed_instance.ns3.Simulator.Now()
+        if now.IsZero():
+            return STATUS_NOT_STARTED
+        app = testbed_instance.elements[guid]
+        parameters = testbed_instance._get_parameters(guid)
+        if "StartTime" in parameters and parameters["StartTime"]:
+            start_value = parameters["StartTime"]
+            start_time = testbed_instance.ns3.Time(start_value)
+            if now.Compare(start_time) < 0:
+                return STATUS_NOT_STARTED
+        if "StopTime" in parameters and parameters["StopTime"]:
+            stop_value = parameters["StopTime"]
+            stop_time = testbed_instance.ns3.Time(stop_value)
+            if now.Compare(stop_time) < 0:
+                return STATUS_RUNNING
+            else:
+                return STATUS_FINISHED
+        return STATUS_UNDETERMINED
+        """
 

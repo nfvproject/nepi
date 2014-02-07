@@ -206,11 +206,82 @@ def eintr_retry(func):
             return func(*p, **kw)
     return rv
 
+def socat(local_socket_name, remote_socket_name,
+        host, user,
+        port = None, 
+        agent = True,
+        sudo = False,
+        identity = None,
+        server_key = None,
+        env = None,
+        tty = False,
+        connect_timeout = 30,
+        retry = 3,
+        strict_host_checking = True):
+    """
+    Executes a remote command, returns ((stdout,stderr),process)
+    """
+    
+    tmp_known_hosts = None
+    hostip = gethostbyname(host)
+
+
+    args = ["socat"]
+    args.append("UNIX-LISTEN:%s,unlink-early,fork" % local_socket_name)
+
+    ssh_args = ['ssh', '-C',
+            # Don't bother with localhost. Makes test easier
+            '-o', 'NoHostAuthenticationForLocalhost=yes',
+            '-o', 'ConnectTimeout=%d' % (int(connect_timeout),),
+            '-o', 'ConnectionAttempts=3',
+            '-o', 'ServerAliveInterval=30',
+            '-o', 'TCPKeepAlive=yes',
+            '-l', user, hostip or host]
+
+    if not strict_host_checking:
+        # Do not check for Host key. Unsafe.
+        ssh_args.extend(['-o', 'StrictHostKeyChecking=no'])
+
+    if agent:
+        ssh_args.append('-A')
+
+    if port:
+        ssh_args.append('-p%d' % port)
+
+    if identity:
+        ssh_args.extend(('-i', identity))
+
+    if tty:
+        ssh_args.append('-t')
+        ssh_args.append('-t')
+
+    if server_key:
+        # Create a temporary server key file
+        tmp_known_hosts = make_server_key_args(server_key, host, port)
+        ssh_args.extend(['-o', 'UserKnownHostsFile=%s' % (tmp_known_hosts.name,)])
+
+    ssh_cmd = " ".join(ssh_args)
+
+    exec_cmd = "EXEC:'%s socat STDIO UNIX-CONNECT\:%s'" % (ssh_cmd, 
+            remote_socket_name)
+
+    args.append(exec_cmd)
+    
+    log_msg = " socat - host %s - command %s " % (host, " ".join(args))
+
+    return _retry_rexec(args, log_msg, 
+            stdout = None,
+            stdin = None,
+            stderr = None,
+            env = env, 
+            retry = retry, 
+            tmp_known_hosts = tmp_known_hosts,
+            blocking = False)
+
 def rexec(command, host, user, 
         port = None, 
         agent = True,
         sudo = False,
-        stdin = None,
         identity = None,
         server_key = None,
         env = None,
@@ -275,7 +346,16 @@ def rexec(command, host, user,
     
     log_msg = " rexec - host %s - command %s " % (host, " ".join(args))
 
-    return _retry_rexec(args, log_msg, env = env, retry = retry, 
+    stdout = stderr = stdin = subprocess.PIPE
+    if forward_x11:
+        stdout = stderr = stdin = None
+
+    return _retry_rexec(args, log_msg, 
+            stderr = stderr,
+            stdin = stdin,
+            stdout = stdout,
+            env = env, 
+            retry = retry, 
             tmp_known_hosts = tmp_known_hosts,
             blocking = blocking)
 
@@ -338,7 +418,7 @@ def rcopy(source, dest,
         # Do not check for Host key. Unsafe.
         args.extend(['-o', 'StrictHostKeyChecking=no'])
 
-    if isinstance(source,list):
+    if isinstance(source, list):
         args.extend(source)
     else:
         if openssh_has_persist():
@@ -614,6 +694,9 @@ fi
 
 def _retry_rexec(args,
         log_msg,
+        stdout = subprocess.PIPE,
+        stdin = subprocess.PIPE, 
+        stderr = subprocess.PIPE,
         env = None,
         retry = 3,
         tmp_known_hosts = None,
@@ -623,9 +706,9 @@ def _retry_rexec(args,
         # connects to the remote host and starts a remote connection
         proc = subprocess.Popen(args,
                 env = env,
-                stdout = subprocess.PIPE,
-                stdin = subprocess.PIPE, 
-                stderr = subprocess.PIPE)
+                stdout = stdout,
+                stdin = stdin, 
+                stderr = stderr)
         
         # attach tempfile object to the process, to make sure the file stays
         # alive until the process is finished with it
@@ -634,11 +717,13 @@ def _retry_rexec(args,
         # The argument block == False forces to rexec to return immediately, 
         # without blocking 
         try:
+            err = out = " "
             if blocking:
                 (out, err) = proc.communicate()
-            else:
-                err = proc.stderr.read()
+            elif stdout:
                 out = proc.stdout.read()
+                if proc.poll() and stderr:
+                    err = proc.stderr.read()
 
             log(log_msg, logging.DEBUG, out, err)
 
