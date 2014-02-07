@@ -351,9 +351,10 @@ class PlanetlabNode(LinuxNode):
             else:
                 cmd = 'mount |grep proc'
                 ((out1, err1), proc1) = self.execute(cmd)
-                cmd = 'touch /tmp/tmpfile'
+                cmd = 'touch /tmp/tmpfile; rm /tmp/tmpfile'
                 ((out2, err2), proc2) = self.execute(cmd)
-                if out1.find("/proc type proc") < 0 or err2.find("Read-only file system") > 0:
+                if out1.find("/proc type proc") < 0 or \
+                    "Read-only file system".lower() in err2.lower():
                     with PlanetlabNode.lock:
                         self.warn(" Corrupted file system ")
                         self._blacklist_node(node)
