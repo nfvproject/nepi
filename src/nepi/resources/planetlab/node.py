@@ -347,12 +347,15 @@ class PlanetlabNode(LinuxNode):
                 continue
             
             # check /proc directory is mounted (ssh_ok = True)
+            # and file system is not read only
             else:
                 cmd = 'mount |grep proc'
-                ((out, err), proc) = self.execute(cmd)
-                if out.find("/proc type proc") < 0:
+                ((out1, err1), proc1) = self.execute(cmd)
+                cmd = 'touch /tmp/tmpfile'
+                ((out2, err2), proc2) = self.execute(cmd)
+                if out1.find("/proc type proc") < 0 or err2.find("Read-only file system") > 0:
                     with PlanetlabNode.lock:
-                        self.warn(" Could not find directory /proc ")
+                        self.warn(" Corrupted file system ")
                         self._blacklist_node(node)
                         #self._delete_node_from_slice(node)
                     self.do_discover()
