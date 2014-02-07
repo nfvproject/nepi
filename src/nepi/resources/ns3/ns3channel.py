@@ -25,8 +25,8 @@ class NS3BaseChannel(NS3Base):
     _rtype = "abstract::ns3::Channel"
 
     @property
-    def simulator(self):
-        return self.devices[0].node.simulator
+    def simulation(self):
+        return self.devices[0].node.simulation
 
     @property
     def devices(self):
@@ -43,6 +43,6 @@ class NS3BaseChannel(NS3Base):
     @property
     def _rms_to_wait(self):
         rms = set()
-        rms.add(self.simulator)
+        rms.add(self.simulation)
         return rms
 

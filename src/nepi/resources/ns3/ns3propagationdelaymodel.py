@@ -25,8 +25,8 @@ class NS3BasePropagationDelayModel(NS3Base):
     _rtype = "abstract::ns3::PropagationDelayModel"
 
     @property
-    def simulator(self):
-        return self.channel.simulator
+    def simulation(self):
+        return self.channel.simulation
 
     @property
     def channel(self):

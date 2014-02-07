@@ -23,6 +23,7 @@ import errno
 import logging
 import os
 import socket
+import sys
 
 from optparse import OptionParser, SUPPRESS_HELP
 
@@ -156,7 +157,7 @@ def send_reply(conn, reply):
     conn.send("%s\n" % encoded)
 
 def get_options():
-    usage = ("usage: %prog -S <socket-name> -L <NS_LOG> -v ")
+    usage = ("usage: %prog -S <socket-name> -L <NS_LOG> -H <home_dir> -v ")
     
     parser = OptionParser(usage = usage)
 
@@ -168,6 +169,10 @@ def get_options():
         help = "NS_LOG environmental variable to be set", 
         default = "", type="str")
 
+    parser.add_option("-H", "--homedir", dest="homedir",
+        help = "Home directory where to store results", 
+        default = "", type="str")
+
     parser.add_option("-v", "--verbose",
         help="Print debug output",
         action="store_true", 
@@ -175,11 +180,11 @@ def get_options():
 
     (options, args) = parser.parse_args()
     
-    return options.socket_name, options.verbose, options.ns_log
+    return (options.socket_name, options.homedir, options.verbose, 
+            options.ns_log)
 
-def run_server(socket_name, verbose = False, ns_log = None):
-
-    level = logging.DEBUG if verbose else logging.INFO
+def run_server(socket_name, homedir = None, level = logging.INFO, 
+        ns_log = None):
 
     # Sets NS_LOG environmental variable for NS debugging
     if ns_log:
@@ -187,7 +192,9 @@ def run_server(socket_name, verbose = False, ns_log = None):
 
     ###### ns-3 wrapper instantiation
 
-    ns3_wrapper = NS3Wrapper(loglevel=level)
+    ns3_wrapper = NS3Wrapper(homedir = homedir, loglevel=level)
+    
+    ns3_wrapper.logger.info("STARTING...")
 
     # create unix socket to receive instructions
     sock = create_socket(socket_name)
@@ -212,17 +219,38 @@ def run_server(socket_name, verbose = False, ns_log = None):
 
         if msg == NS3WrapperMessage.SHUTDOWN:
            stop = True
-   
-        reply = handle_message(ns3_wrapper, msg, args)
+  
+        try:
+            reply = handle_message(ns3_wrapper, msg, args)  
+        except:
+            import traceback
+            err = traceback.format_exc()
+            ns3_wrapper.logger.error(err) 
+            raise
 
         try:
             send_reply(conn, reply)
         except socket.error:
             break
+        
+    ns3_wrapper.logger.info("EXITING...")
 
 if __name__ == '__main__':
             
-    (socket_name, verbose, ns_log) = get_options()
+    (socket_name, homedir, verbose, ns_log) = get_options()
 
-    run_server(socket_name, verbose, ns_log)
+    ## configure logging
+    FORMAT = "%(asctime)s %(name)s %(levelname)-4s %(message)s"
+    level = logging.DEBUG if verbose else logging.INFO
+
+    logging.basicConfig(format = FORMAT, level = level)
+
+    # Make sure to send DEBUG messages to stdout instead of stderr
+    root = logging.getLogger()
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.DEBUG)
+    root.addHandler(handler)
+
+    ## Run the server
+    run_server(socket_name, homedir, level, ns_log)
 

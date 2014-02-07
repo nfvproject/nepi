@@ -21,25 +21,38 @@ import base64
 import cPickle
 import errno
 import socket
+import weakref
+
 from optparse import OptionParser, SUPPRESS_HELP
 
 from nepi.resources.ns3.ns3client import NS3Client
 from nepi.resources.ns3.ns3server import NS3WrapperMessage
 
 class LinuxNS3Client(NS3Client):
-    def __init__(self, socket_name):
+    def __init__(self, simulation):
         super(LinuxNS3Client, self).__init__()
-        self._socket_name = socket_name
+        self._simulation = weakref.ref(simulation)
+
+        self._socat_proc = None
+        self.connect_client()
 
     @property
-    def socket_name(self):
-        return self._socket_name
+    def simulation(self):
+        return self._simulation()
+
+    def connect_client(self):
+        if self.simulation.node.get("hostname") in ['localhost', '127.0.0.1']:
+            return
+
+        (out, err), self._socat_proc = self.simulation.node.socat(
+                self.simulation.local_socket,
+                self.simulation.remote_socket) 
 
     def send_msg(self, msg, *args):
         args = list(args)
 
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.connect(self.socket_name)
+        sock.connect(self.simulation.local_socket)
 
         args.insert(0, msg)
         def encode(arg):
@@ -95,5 +108,23 @@ class LinuxNS3Client(NS3Client):
         return self.send_msg(NS3WrapperMessage.STOP, *args)
 
     def shutdown(self):
-        return self.send_msg(NS3WrapperMessage.SHUTDOWN, [])
+        ret = None
+
+        try:
+            ret = self.send_msg(NS3WrapperMessage.SHUTDOWN, [])
+        except:
+            pass
+
+        try:
+            if self._socat_proc:
+                self._socat_proc.kill()
+        except:
+            pass
+
+        try:
+            os.remove(self.simulation.local_socket)
+        except:
+            pass
+
+        return ret
 

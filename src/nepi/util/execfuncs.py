@@ -24,7 +24,6 @@ import subprocess
 def lexec(command, 
         user = None, 
         sudo = False,
-        stdin = None,
         env = None):
     """
     Executes a local command, returns ((stdout,stderr),process)
@@ -44,7 +43,6 @@ def lexec(command,
     proc = subprocess.Popen(command, shell=True, 
             stdout = subprocess.PIPE, 
             stderr = subprocess.PIPE)
-            #stdin  = stdin)
 
     out, err = proc.communicate()
     return ((out, err), proc)

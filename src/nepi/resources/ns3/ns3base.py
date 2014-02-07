@@ -22,6 +22,8 @@ from nepi.execution.resource import ResourceManager, clsinit_copy, \
 
 from nepi.execution.attribute import Flags
 
+reschedule_delay = "2s"
+
 @clsinit_copy
 class NS3Base(ResourceManager):
     _rtype = "abstract::ns3::Object"
@@ -41,8 +43,8 @@ class NS3Base(ResourceManager):
         return self._uuid
 
     @property
-    def simulator(self):
-        return self.node.simulator 
+    def simulation(self):
+        return self.node.simulation
 
     @property
     def node(self):
@@ -76,7 +78,7 @@ class NS3Base(ResourceManager):
 
             kwargs[attr.name] = attr.value
 
-        self._uuid = self.simulator.factory(self.get_rtype(), **kwargs)
+        self._uuid = self.simulation.factory(self.get_rtype(), **kwargs)
 
     def _configure_object(self):
         pass
@@ -84,20 +86,19 @@ class NS3Base(ResourceManager):
     def _connect_object(self):
         node = self.node
         if node and node.uuid not in self.connected:
-            self.simulator.invoke(node.uuid, "AggregateObject", self.uuid)
+            self.simulation.invoke(node.uuid, "AggregateObject", self.uuid)
             self._connected.add(node.uuid)
 
     def _wait_rms(self):
         """ Returns True if dependent RMs are not yer READY, False otherwise"""
         for rm in self._rms_to_wait:
             if rm and rm.state < ResourceState.READY:
-                rm.debug("Not yet READY")
                 return True
         return False
 
     def do_provision(self):
         # TODO: create run dir for ns3 object !!!!
-        # self.simulator.node.mkdir(self.run_home)
+        # self.simulation.node.mkdir(self.run_home)
 
         self._instantiate_object()
         self._connect_object()
@@ -120,7 +121,7 @@ class NS3Base(ResourceManager):
 
     def do_start(self):
         if self.state == ResourceState.READY:
-            # No need to do anything, simulator.Run() will start every object
+            # No need to do anything, simulation.Run() will start every object
             self.info("Starting")
             self.set_started()
         else:
@@ -130,7 +131,7 @@ class NS3Base(ResourceManager):
 
     def do_stop(self):
         if self.state == ResourceState.STARTED:
-            # No need to do anything, simulator.Destroy() will stop every object
+            # No need to do anything, simulation.Destroy() will stop every object
             self.info("Stopping command '%s'" % command)
             self.set_stopped()
     

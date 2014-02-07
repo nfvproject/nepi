@@ -422,9 +422,40 @@ class LinuxNode(ResourceManager):
             
         return self.execute(cmd, with_lock = True)
 
+    def socat(self, local_socket_name, 
+        remote_socket_name,
+        sudo = False,
+        identity = None,
+        server_key = None,
+        env = None,
+        tty = False,
+        connect_timeout = 30,
+        retry = 3,
+        strict_host_checking = True):
+        """ Connectes a local and a remote UNIX socket through SSH using socat """ 
+
+        if self.localhost:
+            return (None, None), None
+        else:
+            return sshfuncs.socat(
+                local_socket_name,
+                remote_socket_name,
+                host = self.get("hostname"),
+                user = self.get("username"),
+                port = self.get("port"),
+                agent = True,
+                sudo = sudo,
+                identity = self.get("identity"),
+                server_key = self.get("serverKey"),
+                env = env,
+                tty = tty,
+                retry = retry,
+                connect_timeout = connect_timeout,
+                strict_host_checking = strict_host_checking
+                )
+
     def execute(self, command,
             sudo = False,
-            stdin = None, 
             env = None,
             tty = False,
             forward_x11 = False,
@@ -443,10 +474,13 @@ class LinuxNode(ResourceManager):
             (out, err), proc = execfuncs.lexec(command, 
                     user = self.get("username"), # still problem with localhost
                     sudo = sudo,
-                    stdin = stdin,
                     env = env)
         else:
             if with_lock:
+                # If the execute command is blocking, we don't want to keep
+                # the node lock. This lock is used to avoid race conditions
+                # when creating the ControlMaster sockets. A more elegant
+                # solution is needed.
                 with self._node_lock:
                     (out, err), proc = sshfuncs.rexec(
                         command, 
@@ -455,7 +489,6 @@ class LinuxNode(ResourceManager):
                         port = self.get("port"),
                         agent = True,
                         sudo = sudo,
-                        stdin = stdin,
                         identity = self.get("identity"),
                         server_key = self.get("serverKey"),
                         env = env,
@@ -475,7 +508,6 @@ class LinuxNode(ResourceManager):
                     port = self.get("port"),
                     agent = True,
                     sudo = sudo,
-                    stdin = stdin,
                     identity = self.get("identity"),
                     server_key = self.get("serverKey"),
                     env = env,
@@ -595,14 +627,13 @@ class LinuxNode(ResourceManager):
                     recursive = True,
                     strict_host_checking = False)
         else:
-            with self._node_lock:
-                (out, err), proc = sshfuncs.rcopy(
-                    src, dst, 
-                    port = self.get("port"),
-                    identity = self.get("identity"),
-                    server_key = self.get("serverKey"),
-                    recursive = True,
-                    strict_host_checking = False)
+            (out, err), proc = sshfuncs.rcopy(
+                src, dst, 
+                port = self.get("port"),
+                identity = self.get("identity"),
+                server_key = self.get("serverKey"),
+                recursive = True,
+                strict_host_checking = False)
 
         return (out, err), proc
 

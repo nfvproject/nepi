@@ -50,6 +50,6 @@ class NS3BaseWifiRemoteStationManager(NS3Base):
     def _connect_object(self):
         device = self.device
         if device.uuid not in self.connected:
-            self.simulator.invoke(device.uuid, "SetRemoteStationManager", self.uuid)
+            self.simulation.invoke(device.uuid, "SetRemoteStationManager", self.uuid)
             self._connected.add(device.uuid)
 

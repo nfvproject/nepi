@@ -39,7 +39,9 @@ def load_ns3_module():
         regex = re.compile("(.*\.so)$")
         libs = [m.group(1) for filename in files for m in [regex.search(filename)] if m]
 
-        libscp = list(libs)
+        initial_size = len(libs)
+        # Try to load the libraries in the right order by trial and error.
+        # Loop until all libraries are loaded.
         while len(libs) > 0:
             for lib in libs:
                 libfile = os.path.join(libdir, lib)
@@ -47,13 +49,16 @@ def load_ns3_module():
                     ctypes.CDLL(libfile, ctypes.RTLD_GLOBAL)
                     libs.remove(lib)
                 except:
+                    #import traceback
+                    #err = traceback.format_exc()
+                    #print err
                     pass
 
             # if did not load any libraries in the last iteration break
             # to prevent infinit loop
-            if len(libscp) == len(libs):
+            if initial_size == len(libs):
                 raise RuntimeError("Imposible to load shared libraries %s" % str(libs))
-            libscp = list(libs)
+            initial_size = list(libs)
 
     # import the python bindings for the ns-3 modules
     if bindings:
@@ -63,11 +68,14 @@ def load_ns3_module():
     import imp
     import ns
 
-    # create a module to add all ns3 classes
+    # create a Python module to add all ns3 classes
     ns3mod = imp.new_module("ns3")
     sys.modules["ns3"] = ns3mod
 
     for importer, modname, ispkg in pkgutil.iter_modules(ns.__path__):
+        if modname in [ "visualizer" ]:
+            continue
+
         fullmodname = "ns.%s" % modname
         module = __import__(fullmodname, globals(), locals(), ['*'])
 
@@ -109,12 +117,6 @@ class NS3Wrapper(object):
         # Logging
         self._logger = logging.getLogger("ns3wrapper")
         self._logger.setLevel(loglevel)
-        
-        hdlr = logging.FileHandler(os.path.join(self.homedir, "ns3wrapper.log"))
-        formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-        hdlr.setFormatter(formatter)
-        
-        self._logger.addHandler(hdlr)
 
         ## NOTE that the reason to create a handler to the ns3 module,
         # that is re-loaded each time a ns-3 wrapper is instantiated,
@@ -146,7 +148,6 @@ class NS3Wrapper(object):
             tid_count = type_id.GetRegisteredN()
             base = type_id.LookupByName("ns3::Object")
 
-            # Create a .py file using the ns-3 RM template for each ns-3 TypeId
             for i in xrange(tid_count):
                 tid = type_id.GetRegistered(i)
                 

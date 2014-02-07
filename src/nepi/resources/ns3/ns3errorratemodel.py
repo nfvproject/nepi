@@ -45,6 +45,6 @@ class NS3BaseErrorRateModel(NS3Base):
     def _connect_object(self):
         phy = self.phy
         if phy.uuid not in self.connected:
-            self.simulator.invoke(phy.uuid, "SetErrorRateModel", self.uuid)
+            self.simulation.invoke(phy.uuid, "SetErrorRateModel", self.uuid)
             self._connected.add(phy.uuid)
 

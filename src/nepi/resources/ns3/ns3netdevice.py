@@ -84,10 +84,10 @@ class NS3BaseNetDevice(NS3Base):
         # Set Mac
         mac = self.get("mac")
         if mac:
-            mac_uuid = self.simulator.create("Mac48Address", mac)
+            mac_uuid = self.simulation.create("Mac48Address", mac)
         else:
-            mac_uuid = self.simulator.invoke("singleton::Mac48Address", "Allocate")
-        self.simulator.invoke(self.uuid, "SetAddress", mac_uuid)
+            mac_uuid = self.simulation.invoke("singleton::Mac48Address", "Allocate")
+        self.simulation.invoke(self.uuid, "SetAddress", mac_uuid)
 
         # Set IP address
         ip = self.get("ip")
@@ -97,16 +97,16 @@ class NS3BaseNetDevice(NS3Base):
         if i.version == 4:
             # IPv4
             ipv4 = self.node.ipv4
-            ifindex_uuid = self.simulator.invoke(ipv4.uuid, "AddInterface", 
+            ifindex_uuid = self.simulation.invoke(ipv4.uuid, "AddInterface", 
                     self.uuid)
-            ipv4_addr_uuid = self.simulator.create("Ipv4Address", ip)
-            ipv4_mask_uuid = self.simulator.create("Ipv4Mask", "/%s" % str(prefix))
-            inaddr_uuid = self.simulator.create("Ipv4InterfaceAddress", 
+            ipv4_addr_uuid = self.simulation.create("Ipv4Address", ip)
+            ipv4_mask_uuid = self.simulation.create("Ipv4Mask", "/%s" % str(prefix))
+            inaddr_uuid = self.simulation.create("Ipv4InterfaceAddress", 
                     ipv4_addr_uuid, ipv4_mask_uuid)
-            self.simulator.invoke(ipv4.uuid, "AddAddress", ifindex_uuid, 
+            self.simulation.invoke(ipv4.uuid, "AddAddress", ifindex_uuid, 
                     inaddr_uuid)
-            self.simulator.invoke(ipv4.uuid, "SetMetric", ifindex_uuid, 1)
-            self.simulator.invoke(ipv4.uuid, "SetUp", ifindex_uuid)
+            self.simulation.invoke(ipv4.uuid, "SetMetric", ifindex_uuid, 1)
+            self.simulation.invoke(ipv4.uuid, "SetUp", ifindex_uuid)
         else:
             # IPv6
             # TODO!
@@ -115,11 +115,11 @@ class NS3BaseNetDevice(NS3Base):
     def _connect_object(self):
         node = self.node
         if node and node.uuid not in self.connected:
-            self.simulator.invoke(node.uuid, "AddDevice", self.uuid)
+            self.simulation.invoke(node.uuid, "AddDevice", self.uuid)
             self._connected.add(node.uuid)
 
         channel = self.channel
         if channel and channel.uuid not in self.connected:
-            self.simulator.invoke(self.uuid, "Attach", channel.uuid)
+            self.simulation.invoke(self.uuid, "Attach", channel.uuid)
             self._connected.add(channel.uuid)
 
