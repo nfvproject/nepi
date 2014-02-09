@@ -36,22 +36,23 @@ import time
 import unittest
 
 class LinuxNS3ClientTest(unittest.TestCase):
-    def test_runtime_attr_modify(self):
-        ssh_key = "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'])
+    def setUp(self):
+        self.fedora_host = "nepi2.pl.sophia.inria.fr"
+        #self.fedora_host = "peeramide.irisa.fr"
+        self.fedora_user = "inria_test"
 
+    def test_simple_ping(self):
         ec = ExperimentController(exp_id = "test-ns3-simu")
         
         node = ec.register_resource("LinuxNode")
-        #ec.set(node, "hostname", "roseval.pl.sophia.inria.fr")
-        #ec.set(node, "username", "alina")
-        ec.set(node, "hostname", "peeramide.irisa.fr")
-        #ec.set(node, "hostname", "planetlab2.upc.es")
-        ec.set(node, "username", "inria_alina")
-        ec.set(node, "identity", ssh_key)
+        ec.set(node, "hostname", self.fedora_host)
+        ec.set(node, "username", self.fedora_user)
         ec.set(node, "cleanProcesses", True)
+        ec.set(node, "cleanHome", True)
 
         simu = ec.register_resource("LinuxNS3Simulation")
         ec.set(simu, "verbose", True)
+        ec.set(simu, "nsLog", "V4Ping:Node")
         ec.register_connection(simu, node)
 
         nsnode1 = ec.register_resource("ns3::Node")
@@ -109,9 +110,12 @@ class LinuxNS3ClientTest(unittest.TestCase):
 
         ec.deploy()
 
-        #time.sleep(60)
-        ec.wait_started([ping])
-        #ec.wait_finised([ping])
+        ec.wait_finished([ping])
+        
+        stdout = ec.trace(simu, "stdout") 
+
+        expected = "20 packets transmitted, 20 received, 0% packet loss"
+        self.assertTrue(stdout.find(expected) > -1)
 
         ec.shutdown()
 

@@ -40,6 +40,9 @@ class NS3Client(object):
     def trace(self, *args):
         pass
 
+    def flush(self):
+        pass
+
     def start(self):
         pass
 

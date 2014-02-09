@@ -35,7 +35,8 @@ class NS3WrapperMessage:
     INVOKE = "INVOKE"
     SET = "SET"
     GET = "GET"
-    TRACE = "TRACE"
+    ENABLE_TRACE = "ENABLE_TRACE"
+    FLUSH = "FLUSH"
     START = "START"
     STOP = "STOP"
     SHUTDOWN = "SHUTDOWN"
@@ -85,7 +86,8 @@ def handle_message(ns3_wrapper, msg, args):
         uuid = args.pop(0)
         operation = args.pop(0)
         
-        ns3_wrapper.logger.debug("INVOKE %s %s %s" % (uuid, operation, str(args)))
+        ns3_wrapper.logger.debug("INVOKE %s %s %s " % (uuid, operation, 
+            str(args)))
     
         uuid = ns3_wrapper.invoke(uuid, operation, *args)
         return uuid
@@ -104,14 +106,26 @@ def handle_message(ns3_wrapper, msg, args):
         name = args.pop(0)
         value = args.pop(0)
 
-        ns3_wrapper.logger.debug("SET %s %s" % (uuid, name, str(value)))
+        ns3_wrapper.logger.debug("SET %s %s %s" % (uuid, name, str(value)))
 
         value = ns3_wrapper.set(uuid, name, value)
         return value
  
-    if msg == NS3WrapperMessage.TRACE:
-        ns3_wrapper.logger.debug("TRACE") 
-        return "NOT IMPLEMENTED"
+    if msg == NS3WrapperMessage.ENABLE_TRACE:
+        ns3_wrapper.logger.debug("ENABLE_TRACE")
+
+        return "NOT YET IMPLEMENTED"
+ 
+    if msg == NS3WrapperMessage.FLUSH:
+        # Forces flushing output and error streams.
+        # NS-3 output will stay unflushed until the program exits or 
+        # explicit invocation flush is done
+        sys.stdout.flush()
+        sys.stderr.flush()
+
+        ns3_wrapper.logger.debug("FLUSHED") 
+        
+        return "FLUSHED"
 
 def create_socket(socket_name):
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -157,7 +171,7 @@ def send_reply(conn, reply):
     conn.send("%s\n" % encoded)
 
 def get_options():
-    usage = ("usage: %prog -S <socket-name> -L <NS_LOG> -H <home_dir> -v ")
+    usage = ("usage: %prog -S <socket-name> -L <NS_LOG> -v ")
     
     parser = OptionParser(usage = usage)
 
@@ -169,10 +183,6 @@ def get_options():
         help = "NS_LOG environmental variable to be set", 
         default = "", type="str")
 
-    parser.add_option("-H", "--homedir", dest="homedir",
-        help = "Home directory where to store results", 
-        default = "", type="str")
-
     parser.add_option("-v", "--verbose",
         help="Print debug output",
         action="store_true", 
@@ -180,11 +190,9 @@ def get_options():
 
     (options, args) = parser.parse_args()
     
-    return (options.socket_name, options.homedir, options.verbose, 
-            options.ns_log)
+    return (options.socket_name, options.verbose, options.ns_log)
 
-def run_server(socket_name, homedir = None, level = logging.INFO, 
-        ns_log = None):
+def run_server(socket_name, level = logging.INFO, ns_log = None):
 
     # Sets NS_LOG environmental variable for NS debugging
     if ns_log:
@@ -192,7 +200,7 @@ def run_server(socket_name, homedir = None, level = logging.INFO,
 
     ###### ns-3 wrapper instantiation
 
-    ns3_wrapper = NS3Wrapper(homedir = homedir, loglevel=level)
+    ns3_wrapper = NS3Wrapper(loglevel=level)
     
     ns3_wrapper.logger.info("STARTING...")
 
@@ -237,7 +245,7 @@ def run_server(socket_name, homedir = None, level = logging.INFO,
 
 if __name__ == '__main__':
             
-    (socket_name, homedir, verbose, ns_log) = get_options()
+    (socket_name, verbose, ns_log) = get_options()
 
     ## configure logging
     FORMAT = "%(asctime)s %(name)s %(levelname)-4s %(message)s"
@@ -245,12 +253,6 @@ if __name__ == '__main__':
 
     logging.basicConfig(format = FORMAT, level = level)
 
-    # Make sure to send DEBUG messages to stdout instead of stderr
-    root = logging.getLogger()
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(logging.DEBUG)
-    root.addHandler(handler)
-
     ## Run the server
-    run_server(socket_name, homedir, level, ns_log)
+    run_server(socket_name, level, ns_log)
 

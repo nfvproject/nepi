@@ -35,7 +35,8 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
     @classmethod
     def _register_attributes(cls):
         ns_log = Attribute("nsLog",
-            "NS_LOG environment variable ",
+            "NS_LOG environment variable. " \
+                    " Will only generate output if ns-3 is compiled in DEBUG mode. ",
             flags = Flags.Design)
 
         verbose = Attribute("verbose",
@@ -69,6 +70,10 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
             return self.remote_socket
 
         return os.path.join("/", "tmp", self.socket_name)
+
+    def trace(self, name, attr = TraceAttr.ALL, block = 512, offset = 0):
+        self._client.flush() 
+        return LinuxApplication.trace(self, name, attr, block, offset)
 
     def upload_sources(self):
         self.node.mkdir(os.path.join(self.node.src_dir, "ns3wrapper"))
@@ -156,6 +161,7 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         self.info("Starting ns-3 simulation")
 
         if self.state == ResourceState.READY:
+            self._client.start() 
             self.set_started()
         else:
             msg = " Failed to execute command '%s'" % command
@@ -167,7 +173,8 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
 
         """
         if self.state == ResourceState.STARTED:
-            # TODO: Stop simulation
+            self._client.stop() 
+            self._client.shutdown()
             LinuxApplication.do_stop(self)
 
     def do_release(self):
@@ -178,8 +185,6 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
             self.node.execute(tear_down)
 
         self.do_stop()
-
-        self._client.shutdown()
         
         super(LinuxApplication, self).do_release()
 
@@ -193,12 +198,10 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         ns_log = self.get("nsLog")
         if ns_log:
             command.append("-L %s" % ns_log)
+
         if self.get("verbose"):
             command.append("-v")
 
-        command.append("-H")
-        command.append(self.run_home)
-        
         command = " ".join(command)
         return command
 

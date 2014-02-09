@@ -32,7 +32,9 @@
 
 from nepi.resources.ns3.ns3wrapper import NS3Wrapper
 
+import StringIO
 import subprocess
+import sys
 import time
 import unittest
 
@@ -218,6 +220,7 @@ class NS3WrapperTest(unittest.TestCase):
         p.communicate()
 
     def test_start(self):
+        # Instantiate ns-3
         wrapper = NS3Wrapper()
 
         ### create 2  nodes
@@ -290,6 +293,8 @@ class NS3WrapperTest(unittest.TestCase):
 
         # wait until simulation is over
         wrapper.shutdown()
+
+        # TODO: Add assertions !!
 
     def test_runtime_attr_modify(self):
         wrapper = NS3Wrapper()
@@ -416,6 +421,8 @@ class NS3WrapperTest(unittest.TestCase):
 
         p = subprocess.Popen("rm /tmp/trace-p2p-*",  shell = True)
         p.communicate()
+        
+        # TODO: Add assertions !!
 
 if __name__ == '__main__':
     unittest.main()

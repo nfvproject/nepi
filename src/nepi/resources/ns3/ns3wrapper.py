@@ -94,25 +94,17 @@ def load_ns3_module():
     return ns3mod
 
 class NS3Wrapper(object):
-    def __init__(self, homedir = None, loglevel = logging.INFO):
+    def __init__(self, loglevel = logging.INFO):
         super(NS3Wrapper, self).__init__()
         # Thread used to run the simulation
         self._simulation_thread = None
         self._condition = None
 
-        # XXX: Started should be global. There is no support for more than
-        # one simulator per process
+        # True if Simulator::Run was invoked
         self._started = False
 
         # holds reference to all C++ objects and variables in the simulation
         self._objects = dict()
-
-        # create home dir (where all simulation related files will end up)
-        self._homedir = homedir or os.path.join("/", "tmp", "ns3_wrapper" )
-        
-        home = os.path.normpath(self.homedir)
-        if not os.path.exists(home):
-            os.makedirs(home, 0755)
 
         # Logging
         self._logger = logging.getLogger("ns3wrapper")
@@ -160,10 +152,6 @@ class NS3Wrapper(object):
                 self._allowed_types.add(type_name)
         
         return self._allowed_types
-
-    @property
-    def homedir(self):
-        return self._homedir
 
     @property
     def logger(self):
@@ -217,11 +205,14 @@ class NS3Wrapper(object):
         return uuid
 
     def invoke(self, uuid, operation, *args):
+        if operation == "isAppRunning":
+            return self._is_app_running(uuid)
+
         if uuid.startswith(SINGLETON):
             obj = self._singleton(uuid)
         else:
             obj = self.get_object(uuid)
-    
+        
         method = getattr(obj, operation)
 
         # arguments starting with 'uuid' identify ns-3 C++
@@ -231,8 +222,8 @@ class NS3Wrapper(object):
         result = method(*realargs)
 
         if not result:
-            return None
-        
+            return result
+       
         newuuid = self.make_uuid()
         self._objects[newuuid] = result
 
@@ -253,11 +244,15 @@ class NS3Wrapper(object):
         # to set the value by scheduling an event, else
         # we risk to corrupt the state of the
         # simulation.
+        
+        event_executed = [False]
+
         if self.is_running:
             # schedule the event in the Simulator
-            self._schedule_event(self._condition, self._set_attr, 
-                    obj, name, ns3_value)
-        else:
+            self._schedule_event(self._condition, event_executed, 
+                    self._set_attr, obj, name, ns3_value)
+
+        if not event_executed[0]:
             self._set_attr(obj, name, ns3_value)
 
         return value
@@ -270,12 +265,15 @@ class NS3Wrapper(object):
         type_name = obj.GetInstanceTypeId().GetName()
         ns3_value = self._create_attr_ns3_value(type_name, name)
 
+        event_executed = [False]
+
         if self.is_running:
             # schedule the event in the Simulator
-            self._schedule_event(self._condition, self._get_attr, obj,
-                    name, ns3_value)
-        else:
-            get_attr(obj, name, ns3_value)
+            self._schedule_event(self._condition, event_executed,
+                    self._get_attr, obj, name, ns3_value)
+
+        if not event_executed[0]:
+            self._get_attr(obj, name, ns3_value)
 
         return self._attr_from_ns3_value_to_string(type_name, name, ns3_value)
 
@@ -301,7 +299,6 @@ class NS3Wrapper(object):
             #self.logger.debug("Waiting for simulation to finish")
             time.sleep(0.5)
         
-        # TODO!!!! SHOULD WAIT UNTIL THE THREAD FINISHES
         if self._simulator_thread:
             self._simulator_thread.join()
         
@@ -322,17 +319,16 @@ class NS3Wrapper(object):
         condition.notifyAll()
         condition.release()
 
-    def _schedule_event(self, condition, func, *args):
+    def _schedule_event(self, condition, event_executed, func, *args):
         """ Schedules event on running simulation, and wait until
             event is executed"""
 
-        def execute_event(contextId, condition, has_event_occurred, func, *args):
+        def execute_event(contextId, condition, event_executed, func, *args):
             try:
                 func(*args)
+                event_executed[0] = True
             finally:
-                # flag event occured
-                has_event_occurred[0] = True
-                # notify condition indicating attribute was set
+                # notify condition indicating event was executed
                 condition.acquire()
                 condition.notifyAll()
                 condition.release()
@@ -342,21 +338,16 @@ class NS3Wrapper(object):
 
         # delay 0 means that the event is expected to execute inmediately
         delay = self.ns3.Seconds(0)
+    
+        # Mark event as not executed
+        event_executed[0] = False
 
-        # flag to indicate that the event occured
-        # because bool is an inmutable object in python, in order to create a
-        # bool flag, a list is used as wrapper
-        has_event_occurred = [False]
         condition.acquire()
-
-        simu = self.ns3.Simulator
-
         try:
-            if not simu.IsFinished():
-                simu.ScheduleWithContext(contextId, delay, execute_event,
-                     condition, has_event_occurred, func, *args)
-                while not has_event_occurred[0] and not simu.IsFinished():
-                    condition.wait()
+            self.ns3.Simulator.ScheduleWithContext(contextId, delay, execute_event, 
+                    condition, event_executed, func, *args)
+            if not self.ns3.Simulator.IsFinished():
+                condition.wait()
         finally:
             condition.release()
 
@@ -431,4 +422,20 @@ class NS3Wrapper(object):
                 str(arg).startswith(SINGLETON) else arg for arg in realargs]
 
         return realargs
+
+    def _is_app_running(self, uuid): 
+        now = self.ns3.Simulator.Now()
+        if now.IsZero():
+            return False
+
+        stop_value = self.get(uuid, "StopTime")
+        stop_time = self.ns3.Time(stop_value)
+        
+        start_value = self.get(uuid, "StartTime")
+        start_time = self.ns3.Time(start_value)
+        
+        if now.Compare(start_time) >= 0 and now.Compare(stop_time) <= 0:
+            return True
+
+        return False
 
