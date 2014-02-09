@@ -17,7 +17,7 @@
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
-from nepi.execution.resource import clsinit_copy
+from nepi.execution.resource import clsinit_copy, ResourceState
 from nepi.resources.ns3.ns3base import NS3Base
 
 @clsinit_copy
@@ -48,7 +48,6 @@ class NS3BaseApplication(NS3Base):
             self.simulation.invoke(node.uuid, "AddApplication", self.uuid)
             self._connected.add(node.uuid)
 
-
     def do_stop(self):
         if self.state == ResourceState.STARTED:
             # No need to do anything, simulation.Destroy() will stop every object
@@ -58,27 +57,10 @@ class NS3BaseApplication(NS3Base):
 
     @property
     def state(self):
-        #if self._state == ResourceState.STARTED:
+        if self._state == ResourceState.STARTED:
+            is_running = self.simulation.invoke(self.uuid, "isAppRunning")
+            if not is_running:
+                self._state = ResourceState.STOPPED
 
         return self._state
-        """
-        now = testbed_instance.ns3.Simulator.Now()
-        if now.IsZero():
-            return STATUS_NOT_STARTED
-        app = testbed_instance.elements[guid]
-        parameters = testbed_instance._get_parameters(guid)
-        if "StartTime" in parameters and parameters["StartTime"]:
-            start_value = parameters["StartTime"]
-            start_time = testbed_instance.ns3.Time(start_value)
-            if now.Compare(start_time) < 0:
-                return STATUS_NOT_STARTED
-        if "StopTime" in parameters and parameters["StopTime"]:
-            stop_value = parameters["StopTime"]
-            stop_time = testbed_instance.ns3.Time(stop_value)
-            if now.Compare(stop_time) < 0:
-                return STATUS_RUNNING
-            else:
-                return STATUS_FINISHED
-        return STATUS_UNDETERMINED
-        """
 

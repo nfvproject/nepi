@@ -38,6 +38,15 @@ import threading
 import time
 import unittest
 
+class DummySimulation(object):
+    def __init__(self, socket_name):
+        self.socket_name = socket_name
+        self.node = dict({'hostname': 'localhost'})
+
+    @property
+    def local_socket(self):
+        return self.socket_name
+
 class LinuxNS3ClientTest(unittest.TestCase):
     def setUp(self):
         self.socket_name = os.path.join("/", "tmp", "NS3WrapperServer.sock")
@@ -59,8 +68,11 @@ class LinuxNS3ClientTest(unittest.TestCase):
         # Verify that the communication socket was created
         self.assertTrue(os.path.exists(self.socket_name))
 
+        # Create a dummy simulation object
+        simulation = DummySimulation(self.socket_name) 
+
         # Instantiate the NS3 client
-        client = LinuxNS3Client(self.socket_name)
+        client = LinuxNS3Client(simulation)
  
         # Define a real time simulation 
         stype = client.create("StringValue", "ns3::RealtimeSimulatorImpl")
@@ -181,6 +193,7 @@ class LinuxNS3ClientTest(unittest.TestCase):
         # wait until simulation is over
         client.shutdown()
 
+        ## TODO: Add assertions !!
 
 if __name__ == '__main__':
     unittest.main()

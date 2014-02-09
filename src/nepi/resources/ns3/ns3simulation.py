@@ -37,8 +37,11 @@ class NS3Simulation(object):
     def get(self, uuid, name):
         return self.client.get(uuid, name)
 
-    def trace(self, *args):
-        return self.client.trace(*args)
+    def enable_trace(self, *args):
+        return self.client.enable_trace(*args)
+
+    def flush(self):
+        return self.client.flush()
 
     def start(self):
         return self.client.start()

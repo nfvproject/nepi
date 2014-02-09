@@ -94,16 +94,19 @@ class LinuxNS3Client(NS3Client):
 
         return self.send_msg(NS3WrapperMessage.GET, *args)
 
-    def trace(self, *args):
-        return self.send_msg(NS3WrapperMessage.TRACE, *args)
+    def enable_trace(self, *args):
+        return self.send_msg(NS3WrapperMessage.ENABLE_TRACE, *args)
+
+    def flush(self):
+        return self.send_msg(NS3WrapperMessage.FLUSH, [])
 
     def start(self):
         return self.send_msg(NS3WrapperMessage.START, [])
 
     def stop(self, time = None):
-        args = None
+        args = []
         if time:
-            args = [time]
+            args.append(time)
 
         return self.send_msg(NS3WrapperMessage.STOP, *args)
 

@@ -593,7 +593,7 @@ class LinuxApplication(ResourceManager):
                             sudo = self._sudo_kill)
 
                     # TODO: check if execution errors occurred
-                    if proc.poll() or err:
+                    if (proc and proc.poll()) or err:
                         msg = " Failed to STOP command '%s' " % self.get("command")
                         self.error(msg, out, err)
         

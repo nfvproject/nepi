@@ -29,6 +29,8 @@ class NS3Base(ResourceManager):
     _rtype = "abstract::ns3::Object"
     _backend_type = "ns3"
 
+    SIMULATOR_UUID = "singleton::Simulator"
+
     def __init__(self, ec, guid):
         super(NS3Base, self).__init__(ec, guid)
         self._uuid = None
