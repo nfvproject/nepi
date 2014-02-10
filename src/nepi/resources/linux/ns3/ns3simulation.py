@@ -24,7 +24,7 @@ from nepi.execution.resource import ResourceManager, clsinit_copy, \
 from nepi.resources.linux.application import LinuxApplication
 from nepi.util.timefuncs import tnow, tdiffsec
 from nepi.resources.ns3.ns3simulation import NS3Simulation
-from nepi.resources.ns3.ns3wrapper import GLOBAL_VALUE_UUID
+from nepi.resources.ns3.ns3wrapper import SIMULATOR_UUID, GLOBAL_VALUE_UUID
 from nepi.resources.linux.ns3.ns3client import LinuxNS3Client
 
 import os
@@ -61,10 +61,6 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
             type = Types.Bool,
             flags = Flags.Design)
 
-        stop_time = Attribute("stopTime",
-                "Time to stop the simulation",
-            flags = Flags.Design)
-
         ns_log = Attribute("nsLog",
             "NS_LOG environment variable. " \
                     " Will only generate output if ns-3 is compiled in DEBUG mode. ",
@@ -78,7 +74,6 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         cls._register_attribute(impl_type)
         cls._register_attribute(sched_type)
         cls._register_attribute(check_sum)
-        cls._register_attribute(stop_time)
         cls._register_attribute(ns_log)
         cls._register_attribute(verbose)
 
@@ -174,10 +169,6 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
             stype = self.create("StringValue", sched_type)
             self.invoke(GLOBAL_VALUE_UUID, "Bind", "SchedulerType", btrue)
         
-        if self._attrs.get("stopTime").has_changed():
-            stop_time = self.get("stopTime")
-            self.stop(time = stop_time)
-
     def do_deploy(self):
         if not self.node or self.node.state < ResourceState.READY:
             self.debug("---- RESCHEDULING DEPLOY ---- node state %s " % self.node.state )
@@ -240,8 +231,7 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         """
         if self.state == ResourceState.STARTED:
             self._client.stop() 
-            self._client.shutdown()
-            LinuxApplication.do_stop(self)
+            self.set_stopped()
 
     def do_release(self):
         self.info("Releasing resource")
@@ -251,21 +241,10 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
             self.node.execute(tear_down)
 
         self.do_stop()
+        self._client.shutdown()
+        LinuxApplication.do_stop(self)
         
         super(LinuxApplication, self).do_release()
-
-    @property
-    def state(self):
-        """ Returns the state of the application
-        """
-        state = super(LinuxApplication, self).state
-        if state == ResourceState.STARTED:
-            # Check simulator
-            is_finished = self.invoke(SIMULATOR_UUID, "IsFinished")
-            if is_finished:
-                self.do_stop()
-
-        return self._state
 
     @property
     def _start_command(self):

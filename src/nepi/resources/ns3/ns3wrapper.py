@@ -224,9 +224,10 @@ class NS3Wrapper(object):
 
         result = method(*realargs)
 
-        if not result:
+        if result is None or \
+                isinstance(result, bool):
             return result
-       
+      
         newuuid = self.make_uuid()
         self._objects[newuuid] = result
 
