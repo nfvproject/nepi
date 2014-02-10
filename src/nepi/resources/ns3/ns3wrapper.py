@@ -25,6 +25,9 @@ import time
 import uuid
 
 SINGLETON = "singleton::"
+SIMULATOR_UUID = "singleton::Simulator"
+CONFIG_UUID = "singleton::Config"
+GLOBAL_VALUE_UUID = "singleton::GlobalValue"
 
 def load_ns3_module():
     import ctypes
@@ -434,7 +437,11 @@ class NS3Wrapper(object):
         start_value = self.get(uuid, "StartTime")
         start_time = self.ns3.Time(start_value)
         
-        if now.Compare(start_time) >= 0 and now.Compare(stop_time) <= 0:
+        self.logger.debug("NOW %s" % now.GetSeconds())
+        self.logger.debug("START TIME %s" % start_value)
+        self.logger.debug("STOP TIME %s" % stop_value)
+
+        if now.Compare(start_time) >= 0 and now.Compare(stop_time) < 0:
             return True
 
         return False

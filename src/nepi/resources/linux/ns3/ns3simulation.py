@@ -24,9 +24,11 @@ from nepi.execution.resource import ResourceManager, clsinit_copy, \
 from nepi.resources.linux.application import LinuxApplication
 from nepi.util.timefuncs import tnow, tdiffsec
 from nepi.resources.ns3.ns3simulation import NS3Simulation
+from nepi.resources.ns3.ns3wrapper import GLOBAL_VALUE_UUID
 from nepi.resources.linux.ns3.ns3client import LinuxNS3Client
 
 import os
+import time
 
 @clsinit_copy
 class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
@@ -34,6 +36,35 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
 
     @classmethod
     def _register_attributes(cls):
+        impl_type = Attribute("simulatorImplementationType",
+                "The object class to use as the simulator implementation",
+            allowed = ["ns3::DefaultSimulatorImpl", "ns3::RealtimeSimulatorImpl"],
+            default = "ns3::DefaultSimulatorImpl",
+            type = Types.Enumerate,
+            flags = Flags.Design)
+
+        sched_type = Attribute("schedulerType",
+                "The object class to use as the scheduler implementation",
+                allowed = ["ns3::MapScheduler",
+                            "ns3::ListScheduler",
+                            "ns3::HeapScheduler",
+                            "ns3::MapScheduler",
+                            "ns3::CalendarScheduler"
+                    ],
+            default = "ns3::MapScheduler",
+            type = Types.Enumerate,
+            flags = Flags.Design)
+
+        check_sum = Attribute("checksumEnabled",
+                "A global switch to enable all checksums for all protocols",
+            default = False,
+            type = Types.Bool,
+            flags = Flags.Design)
+
+        stop_time = Attribute("stopTime",
+                "Time to stop the simulation",
+            flags = Flags.Design)
+
         ns_log = Attribute("nsLog",
             "NS_LOG environment variable. " \
                     " Will only generate output if ns-3 is compiled in DEBUG mode. ",
@@ -44,8 +75,11 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
             type = Types.Bool,
             flags = Flags.Design)
 
+        cls._register_attribute(impl_type)
+        cls._register_attribute(sched_type)
+        cls._register_attribute(check_sum)
+        cls._register_attribute(stop_time)
         cls._register_attribute(ns_log)
-        
         cls._register_attribute(verbose)
 
     def __init__(self, ec, guid):
@@ -124,6 +158,26 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         # Run the ns3wrapper 
         self._run_in_background()
 
+    def configure(self):
+        if self._attrs.get("simulatorImplementationType").has_changed():
+            simu_type = self.get("simulatorImplementationType")
+            stype = self.create("StringValue", simu_type)
+            self.invoke(GLOBAL_VALUE_UUID, "Bind", "SimulatorImplementationType", stype)
+
+        if self._attrs.get("checksumEnabled").has_changed():
+            check_sum = self.get("checksumEnabled")
+            btrue = self.create("BooleanValue", check_sum)    
+            self.invoke(GLOBAL_VALUE_UUID, "Bind", "ChecksumEnabled", btrue)
+        
+        if self._attrs.get("schedulerType").has_changed():
+            sched_type = self.get("schedulerType")
+            stype = self.create("StringValue", sched_type)
+            self.invoke(GLOBAL_VALUE_UUID, "Bind", "SchedulerType", btrue)
+        
+        if self._attrs.get("stopTime").has_changed():
+            stop_time = self.get("stopTime")
+            self.stop(time = stop_time)
+
     def do_deploy(self):
         if not self.node or self.node.state < ResourceState.READY:
             self.debug("---- RESCHEDULING DEPLOY ---- node state %s " % self.node.state )
@@ -150,18 +204,30 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
             self.do_provision()
 
             # Create client
-            self._client = LinuxNS3Client(self) 
+            self._client = LinuxNS3Client(self)
+           
+            # Wait until local socket is created
+            for i in [1, 5, 15, 30, 60]:
+                if os.path.exists(self.local_socket):
+                    break
+                time.sleep(i)
 
+            if not os.path.exists(self.local_socket):
+                raise RuntimeError("Problem starting socat")
+
+            self.configure()
+            
             self.set_ready()
 
     def do_start(self):
         """ Starts simulation execution
 
         """
-        self.info("Starting ns-3 simulation")
+        self.info("Starting")
 
         if self.state == ResourceState.READY:
             self._client.start() 
+
             self.set_started()
         else:
             msg = " Failed to execute command '%s'" % command
