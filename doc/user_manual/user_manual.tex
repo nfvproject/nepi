@@ -1,0 +1,198 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%    NEPI, a framework to manage network experiments
+%    Copyright (C) 2013 INRIA
+%
+%    This program is free software: you can redistribute it and/or modify
+%    it under the terms of the GNU General Public License as published by
+%    the Free Software Foundation, either version 3 of the License, or
+%    (at your option) any later version.
+%
+%    This program is distributed in the hope that it will be useful,
+%    but WITHOUT ANY WARRANTY; without even the implied warranty of
+%    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+%    GNU General Public License for more details.
+%
+%    You should have received a copy of the GNU General Public License
+%    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+%
+% Author: Alina Quereilhac <alina.quereilhac@inria.fr>
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%\documentclass[12pt, openright,twoside]{memoir}
+%% avoid blank page between chapters with openany
+\documentclass[12pt,openany]{memoir}
+%% Make margings on even and odd pages equal
+\setulmarginsandblock{3cm}{3cm}{*}
+\setlrmarginsandblock{3cm}{3cm}{*}
+\checkandfixthelayout
+
+\usepackage[T1]{fontenc}
+\usepackage{kpfonts}
+\setSingleSpace{1.1}
+\SingleSpacing
+\usepackage{xcolor,calc}
+\definecolor{chaptercolor}{gray}{0.8}
+
+% helper macros
+\newcommand\numlifter[1]{\raisebox{-2cm}[0pt][0pt]{\smash{#1}}}
+\newcommand\numindent{\kern37pt}
+\newlength\chaptertitleboxheight
+
+\makechapterstyle{hansen}{
+   \renewcommand\printchaptername{\raggedleft}
+    \renewcommand\printchapternum{%
+        \begingroup%
+        \leavevmode%
+        \chapnumfont%
+        \strut%
+        \numlifter{\thechapter}%
+        \numindent%
+        \endgroup%
+    }
+    \renewcommand*{\printchapternonum}{%
+        \vphantom{\begingroup%
+            \leavevmode%
+            \chapnumfont%
+            \numlifter{\vphantom{9}}%
+            \numindent%
+        \endgroup}
+    \afterchapternum}
+   \setlength\midchapskip{0pt}
+   \setlength\beforechapskip{0.5\baselineskip}
+    \setlength{\afterchapskip}{3\baselineskip}
+    \renewcommand\chapnumfont{%
+        \fontsize{4cm}{0cm}%
+        \bfseries%
+        \sffamily%
+        \color{chaptercolor}%
+    }
+    \renewcommand\chaptitlefont{%
+        \normalfont%
+        \huge%
+        \bfseries%
+        \raggedleft%
+    }%
+    \settototalheight\chaptertitleboxheight{%
+    \parbox{\textwidth}{\chaptitlefont \strut bg\\bg\strut}}
+    \renewcommand\printchaptertitle[1]{%
+        \parbox[t][\chaptertitleboxheight][t]{\textwidth}{%
+            %\microtypesetup{protrusion=false}% add this if you use microtype
+        \chaptitlefont\strut ##1\strut}%
+    }
+}
+\chapterstyle{hansen}
+
+\usepackage{verbatim}
+\usepackage{hyperref}
+%% Remove red squares on top of hyperlinks
+\hypersetup{%
+        pdfborder = {0 0 0}
+    }
+
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{color}
+\usepackage[scaled]{beramono}
+
+\definecolor{mygreen}{rgb}{0,0.6,0}
+\definecolor{mygray}{rgb}{0.5,0.5,0.5}
+\definecolor{mymauve}{rgb}{0.58,0,0.82}
+\definecolor{mylightgray}{gray}{0.95}
+
+\lstset{ %
+  backgroundcolor=\color{mylightgray},   % choose the background color; you must add \usepackage{color} or \usepackage{xcolor}
+  basicstyle=\footnotesize\ttfamily,        % the size of the fonts that are used for the code
+  breakatwhitespace=false,         % sets if automatic breaks should only happen at whitespace
+  breaklines=true,                 % sets automatic line breaking
+  captionpos=b,                    % sets the caption-position to bottom
+  commentstyle=\color{mygreen},    % comment style
+  deletekeywords={...},            % if you want to delete keywords from the given language
+  escapeinside={\%*}{*)},          % if you want to add LaTeX within your code
+  extendedchars=true,              % lets you use non-ASCII characters; for 8-bits encodings only, does not work with UTF-8
+  %frame=single,                    % adds a frame around the code
+  keepspaces=true,                 % keeps spaces in text, useful for keeping indentation of code (possibly needs columns=flexible)
+  keywordstyle=\color{blue},       % keyword style
+  language=Python,                 % the language of the code
+  morekeywords={*,...},            % if you want to add more keywords to the set
+  %numbers=left,                    % where to put the line-numbers; possible values are (none, left, right)
+  %numbersep=5pt,                   % how far the line-numbers are from the code
+  %numberstyle=\tiny\color{mygray}, % the style that is used for the line-numbers
+  %stepnumber=1,                    % the step between two line-numbers. If it's 1, each line will be numbered
+  rulecolor=\color{black},         % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. comments (green here))
+  showspaces=false,                % show spaces everywhere adding particular underscores; it overrides 'showstringspaces'
+  showstringspaces=false,          % underline spaces within strings only
+  showtabs=false,                  % show tabs within strings adding particular underscores
+  stringstyle=\color{mymauve},     % string literal style
+  tabsize=2,                       % sets default tabsize to 2 spaces
+  title=\lstname                   % show the filename of files included with \lstinputlisting; also try caption instead of title
+}
+
+\title{NEPI v3.0 User Manual}
+\date{}
+\author{}
+\renewcommand{\maketitlehookd}{%
+  \begin{center}
+    \includegraphics[width=6cm]{nepi_logo.png}
+\end{center}}
+
+\begin{document}
+
+% clear numbering from first page
+\clearpage\maketitle
+\thispagestyle{empty}
+
+\pagebreak
+\tableofcontents
+
+\chapter{FAQ}
+\label{faq}
+\input{faq.tex}
+
+\chapter{Getting started}
+\label{getting_started}
+\input{getting_started.tex}
+
+\chapter{Introduction to NEPI}
+\label{introduction}
+\input{introduction.tex}
+
+\chapter{The ExperimentController API}
+\label{ec_api}
+\input{ec_api.tex}
+
+\chapter{Supported resources}
+\label{supported_resources}
+\input{supported_resources.tex}
+
+%%\chapter{ExperimentController internals}
+%%\label{ec_internals}
+%%\input{ec_internals.tex}
+
+%%\chapter{ResourceManager internals}
+%%\label{rm_internals}
+%%\input{rm_internals.tex}
+
+%%\chapter{Extending NEPI: The CCNx case}
+%%\label{extending_nepi}
+%%\input{extending_nepi.tex}
+
+\chapter{Debbuging}
+\label{debugging}
+\input{debugging.tex}
+
+%%\chapter{Unit testing}
+%%\label{unit_testing}
+%%\input{unit_testing.tex}
+
+\chapter{Release Cycle}
+\label{release_cycle}
+\input{release_cycle.tex}
+
+%%\chapter{Coding Style}
+%%\label{coding_style}
+%%\input{coding_style.tex}
+
+\end{document}
