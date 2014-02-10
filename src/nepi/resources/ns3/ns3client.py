@@ -22,33 +22,33 @@ class NS3Client(object):
     def __init__(self):
         super(NS3Client, self).__init__()
 
-    def create(self, clazzname, *args):
+    def create(self, *args, **kwargs):
         pass
 
-    def factory(self, type_name, **kwargs):
+    def factory(self, *args, **kwargs):
         pass
 
-    def invoke(self, uuid, operation, *args):
+    def invoke(self, *args, **kwargs):
         pass
 
-    def set(self, uuid, name, value):
+    def set(self, *args, **kwargs):
         pass
 
-    def get(self, uuid, name):
+    def get(self, *args, **kwargs):
         pass
 
-    def trace(self, *args):
+    def trace(self, *args, **kwargs):
         pass
 
-    def flush(self):
+    def flush(self, *args, **kwargs):
         pass
 
-    def start(self):
+    def start(self, *args, **kwargs):
         pass
 
-    def stop(self, time = None):
+    def stop(self, *args, **kwargs):
         pass
 
-    def shutdown(self):
+    def shutdown(self, *args, **kwargs):
         pass
 

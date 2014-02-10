@@ -22,33 +22,33 @@ class NS3Simulation(object):
     def client(self):
         return self._client
 
-    def create(self, clazzname, *args):
-        return self.client.create(clazzname, *args)
+    def create(self, *args, **kwargs):
+        return self.client.create(*args, **kwargs)
 
-    def factory(self, type_name, **kwargs):
-        return self.client.factory(type_name, **kwargs)
+    def factory(self, *args, **kwargs):
+        return self.client.factory(*args, **kwargs)
 
-    def invoke(self, uuid, operation, *args):
-        return self.client.invoke(uuid, operation, *args)
+    def invoke(self, *args, **kwargs):
+        return self.client.invoke(*args, **kwargs)
 
-    def set(self, uuid, name, value):
-        return self.client.set(uuid, name, value)
+    def set(self, *args, **kwargs):
+        return self.client.set(*args, **kwargs)
 
-    def get(self, uuid, name):
-        return self.client.get(uuid, name)
+    def get(self, *args, **kwargs):
+        return self.client.get(*args, **kwargs)
 
-    def enable_trace(self, *args):
-        return self.client.enable_trace(*args)
+    def enable_trace(self, *args, **kwargs):
+        return self.client.enable_trace(*args, **kwargs)
 
-    def flush(self):
-        return self.client.flush()
+    def flush(self, *args, **kwargs):
+        return self.client.flush(*args, **kwargs)
 
-    def start(self):
-        return self.client.start()
+    def start(self, *args, **kwargs):
+        return self.client.start(*args, **kwargs)
 
-    def stop(self, time = None):
-        return self.client.stop(time)
+    def stop(self, *args, **kwargs):
+        return self.client.stop(*args, **kwargs)
 
-    def shutdown(self):
-        return self.client.shutdown()
+    def shutdown(self, *args, **kwargs):
+        return self.client.shutdown(*args, **kwargs)
 

@@ -41,14 +41,14 @@ class LinuxNS3ClientTest(unittest.TestCase):
         #self.fedora_host = "peeramide.irisa.fr"
         self.fedora_user = "inria_test"
 
-    def ztest_simple_ping(self):
+    def test_simple_ping(self):
         ec = ExperimentController(exp_id = "test-ns3-ping")
         
         node = ec.register_resource("LinuxNode")
         ec.set(node, "hostname", self.fedora_host)
         ec.set(node, "username", self.fedora_user)
         ec.set(node, "cleanProcesses", True)
-        ec.set(node, "cleanHome", True)
+        #ec.set(node, "cleanHome", True)
 
         simu = ec.register_resource("LinuxNS3Simulation")
         ec.set(simu, "verbose", True)
@@ -119,14 +119,14 @@ class LinuxNS3ClientTest(unittest.TestCase):
 
         ec.shutdown()
 
-    def ztest_real_time(self):
+    def test_real_time(self):
         ec = ExperimentController(exp_id = "test-ns3-real-time")
         
         node = ec.register_resource("LinuxNode")
         ec.set(node, "hostname", self.fedora_host)
         ec.set(node, "username", self.fedora_user)
         ec.set(node, "cleanProcesses", True)
-        ec.set(node, "cleanHome", True)
+        #ec.set(node, "cleanHome", True)
 
         simu = ec.register_resource("LinuxNS3Simulation")
         ec.set(simu, "verbose", True)
@@ -201,37 +201,6 @@ class LinuxNS3ClientTest(unittest.TestCase):
         stop_time = rm.stop_time
         delta =  stop_time - start_time
 
-        self.assertTrue(delta.seconds >= 20)
-        self.assertTrue(delta.seconds < 25)
-
-        ec.shutdown()
-
-    def test_stop_time(self):
-        ec = ExperimentController(exp_id = "test-ns3-stop-time")
-        
-        node = ec.register_resource("LinuxNode")
-        ec.set(node, "hostname", self.fedora_host)
-        ec.set(node, "username", self.fedora_user)
-        ec.set(node, "cleanProcesses", True)
-        #ec.set(node, "cleanHome", True)
-
-        simu = ec.register_resource("LinuxNS3Simulation")
-        ec.set(simu, "verbose", True)
-        ec.set(simu, "simulatorImplementationType", "ns3::RealtimeSimulatorImpl")
-        ec.set(simu, "checksumEnabled", True)
-        ec.set(simu, "stopTime", "20s")
-        ec.register_connection(simu, node)
-
-        ec.deploy()
-
-        ec.wait_finished([simu])
-       
-        rm = ec.get_resource(simu)
-        start_time = rm.start_time
-        stop_time = rm.stop_time
-        delta =  stop_time - start_time
-
-        print delta.seconds
         self.assertTrue(delta.seconds >= 20)
         self.assertTrue(delta.seconds < 25)
 
