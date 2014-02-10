@@ -255,6 +255,19 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         super(LinuxApplication, self).do_release()
 
     @property
+    def state(self):
+        """ Returns the state of the application
+        """
+        state = super(LinuxApplication, self).state
+        if state == ResourceState.STARTED:
+            # Check simulator
+            is_finished = self.invoke(SIMULATOR_UUID, "IsFinished")
+            if is_finished:
+                self.do_stop()
+
+        return self._state
+
+    @property
     def _start_command(self):
         command = [] 
         command.append("PYTHONPATH=$PYTHONPATH:${SRC}/ns3wrapper/")
