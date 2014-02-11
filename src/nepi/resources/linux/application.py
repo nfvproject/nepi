@@ -227,10 +227,13 @@ class LinuxApplication(ResourceManager):
         """
         return self.get("forwardX11") or self._in_foreground
 
+    def trace_filepath(self, filename):
+        return os.path.join(self.run_home, filename)
+
     def trace(self, name, attr = TraceAttr.ALL, block = 512, offset = 0):
         self.info("Retrieving '%s' trace %s " % (name, attr))
 
-        path = os.path.join(self.run_home, name)
+        path = self.trace_filepath(name)
         
         command = "(test -f %s && echo 'success') || echo 'error'" % path
         (out, err), proc = self.node.execute(command)

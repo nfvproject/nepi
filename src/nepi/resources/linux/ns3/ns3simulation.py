@@ -154,21 +154,21 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         self._run_in_background()
 
     def configure(self):
-        if self._attrs.get("simulatorImplementationType").has_changed():
+        if self.has_changed("simulatorImplementationType"):
             simu_type = self.get("simulatorImplementationType")
             stype = self.create("StringValue", simu_type)
             self.invoke(GLOBAL_VALUE_UUID, "Bind", "SimulatorImplementationType", stype)
 
-        if self._attrs.get("checksumEnabled").has_changed():
+        if self.has_changed("checksumEnabled"):
             check_sum = self.get("checksumEnabled")
             btrue = self.create("BooleanValue", check_sum)    
             self.invoke(GLOBAL_VALUE_UUID, "Bind", "ChecksumEnabled", btrue)
         
-        if self._attrs.get("schedulerType").has_changed():
+        if self.has_changed("schedulerType"):
             sched_type = self.get("schedulerType")
             stype = self.create("StringValue", sched_type)
             self.invoke(GLOBAL_VALUE_UUID, "Bind", "SchedulerType", btrue)
-        
+       
     def do_deploy(self):
         if not self.node or self.node.state < ResourceState.READY:
             self.debug("---- RESCHEDULING DEPLOY ---- node state %s " % self.node.state )

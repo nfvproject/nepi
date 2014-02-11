@@ -207,7 +207,7 @@ class NS3Wrapper(object):
 
         return uuid
 
-    def invoke(self, uuid, operation, *args):
+    def invoke(self, uuid, operation, *args, **kwargs):
         if operation == "isAppRunning":
             return self._is_app_running(uuid)
 
@@ -221,8 +221,9 @@ class NS3Wrapper(object):
         # arguments starting with 'uuid' identify ns-3 C++
         # objects and must be replaced by the actual object
         realargs = self.replace_args(args)
+        realkwargs = self.replace_kwargs(kwargs)
 
-        result = method(*realargs)
+        result = method(*realargs, **realkwargs)
 
         if result is None or \
                 isinstance(result, bool):
@@ -305,7 +306,7 @@ class NS3Wrapper(object):
         
         if self._simulator_thread:
             self._simulator_thread.join()
-        
+       
         self.ns3.Simulator.Destroy()
         
         # Remove all references to ns-3 objects
@@ -426,6 +427,18 @@ class NS3Wrapper(object):
                 str(arg).startswith(SINGLETON) else arg for arg in realargs]
 
         return realargs
+
+    # replace uuids and singleton references for the real objects
+    def replace_kwargs(self, kwargs):
+        realkwargs = dict([(k, self.get_object(v) \
+                if str(v).startswith("uuid") else v) \
+                for k,v in kwargs.iteritems()])
+ 
+        realkwargs = dict([(k, self._singleton(v) \
+                if str(v).startswith(SINGLETON) else v )\
+                for k, v in realkwargs.iteritems()])
+
+        return realkwargs
 
     def _is_app_running(self, uuid): 
         now = self.ns3.Simulator.Now()
