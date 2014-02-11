@@ -35,37 +35,34 @@ class NS3WrapperMessage:
     INVOKE = "INVOKE"
     SET = "SET"
     GET = "GET"
-    ENABLE_TRACE = "ENABLE_TRACE"
     FLUSH = "FLUSH"
     START = "START"
     STOP = "STOP"
     SHUTDOWN = "SHUTDOWN"
 
-def handle_message(ns3_wrapper, msg, args):
-    if msg == NS3WrapperMessage.SHUTDOWN:
+def handle_message(ns3_wrapper, msg_type, args, kwargs):
+    if msg_type == NS3WrapperMessage.SHUTDOWN:
         ns3_wrapper.shutdown()
         
         ns3_wrapper.logger.debug("SHUTDOWN")
         
         return "BYEBYE"
     
-    if msg == NS3WrapperMessage.STOP:
-        time = None
-        if args:
-            time = args[0]
+    if msg_type == NS3WrapperMessage.STOP:
+        time = kwargs.get("time")
 
         ns3_wrapper.logger.debug("STOP time=%s" % str(time))
 
         ns3_wrapper.stop(time=time)
         return "STOPPED"
 
-    if msg == NS3WrapperMessage.START:
+    if msg_type == NS3WrapperMessage.START:
         ns3_wrapper.logger.debug("START") 
 
         ns3_wrapper.start()
         return "STARTED"
 
-    if msg == NS3WrapperMessage.CREATE:
+    if msg_type == NS3WrapperMessage.CREATE:
         clazzname = args.pop(0)
         
         ns3_wrapper.logger.debug("CREATE %s %s" % (clazzname, str(args)))
@@ -73,26 +70,25 @@ def handle_message(ns3_wrapper, msg, args):
         uuid = ns3_wrapper.create(clazzname, *args)
         return uuid
 
-    if msg == NS3WrapperMessage.FACTORY:
+    if msg_type == NS3WrapperMessage.FACTORY:
         type_name = args.pop(0)
-        kwargs = args.pop(0)
 
         ns3_wrapper.logger.debug("FACTORY %s %s" % (type_name, str(kwargs)))
 
         uuid = ns3_wrapper.factory(type_name, **kwargs)
         return uuid
 
-    if msg == NS3WrapperMessage.INVOKE:
+    if msg_type == NS3WrapperMessage.INVOKE:
         uuid = args.pop(0)
         operation = args.pop(0)
         
-        ns3_wrapper.logger.debug("INVOKE %s %s %s " % (uuid, operation, 
-            str(args)))
+        ns3_wrapper.logger.debug("INVOKE %s %s %s %s " % (uuid, operation, 
+            str(args), str(kwargs)))
     
-        uuid = ns3_wrapper.invoke(uuid, operation, *args)
+        uuid = ns3_wrapper.invoke(uuid, operation, *args, **kwargs)
         return uuid
 
-    if msg == NS3WrapperMessage.GET:
+    if msg_type == NS3WrapperMessage.GET:
         uuid = args.pop(0)
         name = args.pop(0)
 
@@ -101,7 +97,7 @@ def handle_message(ns3_wrapper, msg, args):
         value = ns3_wrapper.get(uuid, name)
         return value
 
-    if msg == NS3WrapperMessage.SET:
+    if msg_type == NS3WrapperMessage.SET:
         uuid = args.pop(0)
         name = args.pop(0)
         value = args.pop(0)
@@ -111,12 +107,7 @@ def handle_message(ns3_wrapper, msg, args):
         value = ns3_wrapper.set(uuid, name, value)
         return value
  
-    if msg == NS3WrapperMessage.ENABLE_TRACE:
-        ns3_wrapper.logger.debug("ENABLE_TRACE")
-
-        return "NOT YET IMPLEMENTED"
- 
-    if msg == NS3WrapperMessage.FLUSH:
+    if msg_type == NS3WrapperMessage.FLUSH:
         # Forces flushing output and error streams.
         # NS-3 output will stay unflushed until the program exits or 
         # explicit invocation flush is done
@@ -151,20 +142,25 @@ def recv_msg(conn):
             # empty chunk = EOF
             break
  
-    msg = ''.join(msg).split('\n')[0]
+    msg = ''.join(msg).strip()
 
-    # The message might have arguments that will be appended
-    # as a '|' separated list after the message identifier
-    def decode(arg):
-        arg = base64.b64decode(arg).rstrip()
-        return cPickle.loads(arg)
+    # The message is formatted as follows:
+    #   MESSAGE_TYPE|args|kwargs
+    #
+    #   where MESSAGE_TYPE, args and kwargs are pickld and enoded in base64
 
-    dargs = map(decode, msg.split("|"))
+    def decode(item):
+        item = base64.b64decode(item).rstrip()
+        return cPickle.loads(item)
+
+    decoded = map(decode, msg.split("|"))
 
     # decoded message
-    dmsg = dargs.pop(0)
+    dmsg_type = decoded.pop(0)
+    dargs = list(decoded.pop(0)) # transforming touple into list
+    dkwargs = decoded.pop(0)
 
-    return (dmsg, dargs)
+    return (dmsg_type, dargs, dkwargs)
 
 def send_reply(conn, reply):
     encoded = base64.b64encode(cPickle.dumps(reply))
@@ -216,20 +212,20 @@ def run_server(socket_name, level = logging.INFO, ns_log = None):
         conn.settimeout(5)
 
         try:
-            (msg, args) = recv_msg(conn)
+            (msg_type, args, kwargs) = recv_msg(conn)
         except socket.timeout, e:
             # Ingore time-out
             continue
 
-        if not msg:
+        if not msg_type:
             # Ignore - connection lost
             break
 
-        if msg == NS3WrapperMessage.SHUTDOWN:
+        if msg_type == NS3WrapperMessage.SHUTDOWN:
            stop = True
   
         try:
-            reply = handle_message(ns3_wrapper, msg, args)  
+            reply = handle_message(ns3_wrapper, msg_type, args, kwargs)  
         except:
             import traceback
             err = traceback.format_exc()

@@ -30,15 +30,41 @@
 
 
 from nepi.execution.ec import ExperimentController 
+from nepi.execution.trace import TraceAttr
 
 import os
 import time
 import unittest
 
+def add_ns3_node(ec, simu):
+    ns3_node = ec.register_resource("ns3::Node")
+    ec.register_connection(ns3_node, simu)
+
+    ipv4 = ec.register_resource("ns3::Ipv4L3Protocol")
+    ec.register_connection(ns3_node, ipv4)
+
+    arp = ec.register_resource("ns3::ArpL3Protocol")
+    ec.register_connection(ns3_node, arp)
+    
+    icmp = ec.register_resource("ns3::Icmpv4L4Protocol")
+    ec.register_connection(ns3_node, icmp)
+
+    return ns3_node
+
+def add_point2point_device(ec, ns3_node, address, prefix):
+    dev = ec.register_resource("ns3::PointToPointNetDevice")
+    ec.set(dev, "ip", address)
+    ec.set(dev, "prefix", prefix)
+    ec.register_connection(ns3_node, dev)
+
+    queue = ec.register_resource("ns3::DropTailQueue")
+    ec.register_connection(dev, queue)
+
+    return dev
+
 class LinuxNS3ClientTest(unittest.TestCase):
     def setUp(self):
         self.fedora_host = "nepi2.pl.sophia.inria.fr"
-        #self.fedora_host = "peeramide.irisa.fr"
         self.fedora_user = "inria_test"
 
     def test_simple_ping(self):
@@ -55,43 +81,11 @@ class LinuxNS3ClientTest(unittest.TestCase):
         ec.set(simu, "nsLog", "V4Ping:Node")
         ec.register_connection(simu, node)
 
-        nsnode1 = ec.register_resource("ns3::Node")
-        ec.register_connection(nsnode1, simu)
+        nsnode1 = add_ns3_node(ec, simu)
+        p1 = add_point2point_device(ec, nsnode1, "10.0.0.1", "30")
 
-        ipv41 = ec.register_resource("ns3::Ipv4L3Protocol")
-        ec.register_connection(nsnode1, ipv41)
-
-        arp1 = ec.register_resource("ns3::ArpL3Protocol")
-        ec.register_connection(nsnode1, arp1)
-        
-        icmp1 = ec.register_resource("ns3::Icmpv4L4Protocol")
-        ec.register_connection(nsnode1, icmp1)
-
-        p1 = ec.register_resource("ns3::PointToPointNetDevice")
-        ec.set(p1, "ip", "10.0.0.1")
-        ec.set(p1, "prefix", "30")
-        ec.register_connection(nsnode1, p1)
-        q1 = ec.register_resource("ns3::DropTailQueue")
-        ec.register_connection(p1, q1)
-
-        nsnode2 = ec.register_resource("ns3::Node")
-        ec.register_connection(nsnode2, simu)
-
-        ipv42 = ec.register_resource("ns3::Ipv4L3Protocol")
-        ec.register_connection(nsnode2, ipv42)
-
-        arp2 = ec.register_resource("ns3::ArpL3Protocol")
-        ec.register_connection(nsnode2, arp2)
-        
-        icmp2 = ec.register_resource("ns3::Icmpv4L4Protocol")
-        ec.register_connection(nsnode2, icmp2)
-
-        p2 = ec.register_resource("ns3::PointToPointNetDevice")
-        ec.set(p2, "ip", "10.0.0.2")
-        ec.set(p2, "prefix", "30")
-        ec.register_connection(nsnode2, p2)
-        q2 = ec.register_resource("ns3::DropTailQueue")
-        ec.register_connection(p2, q2)
+        nsnode2 = add_ns3_node(ec, simu)
+        p2 = add_point2point_device(ec, nsnode2, "10.0.0.2", "30")
 
         # Create channel
         chan = ec.register_resource("ns3::PointToPointChannel")
@@ -134,43 +128,11 @@ class LinuxNS3ClientTest(unittest.TestCase):
         ec.set(simu, "checksumEnabled", True)
         ec.register_connection(simu, node)
 
-        nsnode1 = ec.register_resource("ns3::Node")
-        ec.register_connection(nsnode1, simu)
+        nsnode1 = add_ns3_node(ec, simu)
+        p1 = add_point2point_device(ec, nsnode1, "10.0.0.1", "30")
 
-        ipv41 = ec.register_resource("ns3::Ipv4L3Protocol")
-        ec.register_connection(nsnode1, ipv41)
-
-        arp1 = ec.register_resource("ns3::ArpL3Protocol")
-        ec.register_connection(nsnode1, arp1)
-        
-        icmp1 = ec.register_resource("ns3::Icmpv4L4Protocol")
-        ec.register_connection(nsnode1, icmp1)
-
-        p1 = ec.register_resource("ns3::PointToPointNetDevice")
-        ec.set(p1, "ip", "10.0.0.1")
-        ec.set(p1, "prefix", "30")
-        ec.register_connection(nsnode1, p1)
-        q1 = ec.register_resource("ns3::DropTailQueue")
-        ec.register_connection(p1, q1)
-
-        nsnode2 = ec.register_resource("ns3::Node")
-        ec.register_connection(nsnode2, simu)
-
-        ipv42 = ec.register_resource("ns3::Ipv4L3Protocol")
-        ec.register_connection(nsnode2, ipv42)
-
-        arp2 = ec.register_resource("ns3::ArpL3Protocol")
-        ec.register_connection(nsnode2, arp2)
-        
-        icmp2 = ec.register_resource("ns3::Icmpv4L4Protocol")
-        ec.register_connection(nsnode2, icmp2)
-
-        p2 = ec.register_resource("ns3::PointToPointNetDevice")
-        ec.set(p2, "ip", "10.0.0.2")
-        ec.set(p2, "prefix", "30")
-        ec.register_connection(nsnode2, p2)
-        q2 = ec.register_resource("ns3::DropTailQueue")
-        ec.register_connection(p2, q2)
+        nsnode2 = add_ns3_node(ec, simu)
+        p2 = add_point2point_device(ec, nsnode2, "10.0.0.2", "30")
 
         # Create channel
         chan = ec.register_resource("ns3::PointToPointChannel")
@@ -203,6 +165,80 @@ class LinuxNS3ClientTest(unittest.TestCase):
 
         self.assertTrue(delta.seconds >= 20)
         self.assertTrue(delta.seconds < 25)
+
+        ec.shutdown()
+
+    def test_p2p_traces(self):
+        ec = ExperimentController(exp_id = "test-ns3-p2p-traces")
+        
+        node = ec.register_resource("LinuxNode")
+        ec.set(node, "hostname", self.fedora_host)
+        ec.set(node, "username", self.fedora_user)
+        ec.set(node, "cleanProcesses", True)
+        #ec.set(node, "cleanHome", True)
+
+        simu = ec.register_resource("LinuxNS3Simulation")
+        ec.set(simu, "verbose", True)
+        ec.set(simu, "nsLog", "V4Ping:Node")
+        ec.register_connection(simu, node)
+
+        nsnode1 = add_ns3_node(ec, simu)
+        p1 = add_point2point_device(ec, nsnode1, "10.0.0.1", "30")
+
+        nsnode2 = add_ns3_node(ec, simu)
+        p2 = add_point2point_device(ec, nsnode2, "10.0.0.2", "30")
+
+        # Create channel
+        chan = ec.register_resource("ns3::PointToPointChannel")
+        ec.set(chan, "Delay", "0s")
+        ec.register_connection(chan, p1)
+        ec.register_connection(chan, p2)
+
+        ### create pinger
+        ping = ec.register_resource("ns3::V4Ping")
+        ec.set (ping, "Remote", "10.0.0.2")
+        ec.set (ping, "Interval", "1s")
+        ec.set (ping, "Verbose", True)
+        ec.set (ping, "StartTime", "0s")
+        ec.set (ping, "StopTime", "20s")
+        ec.register_connection(ping, nsnode1)
+
+        # enable traces
+        ec.enable_trace(p1, "pcap")
+        ec.enable_trace(p1, "promiscPcap")
+        ec.enable_trace(p1, "ascii")
+
+        ec.enable_trace(p2, "pcap")
+        ec.enable_trace(p2, "promiscPcap")
+        ec.enable_trace(p2, "ascii")
+
+        ec.deploy()
+
+        ec.wait_finished([ping])
+
+        # Trace verification
+        rm_simu = ec.get_resource(simu)
+
+        # TODO: Fix this in ns-3: pcap traces do not flush until the Simulator 
+        #   process is ended, so we can't get the traces of the 'pcap' and
+        #   'promiscPcap' traces.
+        #
+        #for trace in ["pcap", "promiscPcap", "ascii"]:
+        for trace in ["ascii"]:
+            for guid in [p1, p2]:
+                output = ec.trace(guid, trace)
+
+                size = ec.trace(guid, trace, attr = TraceAttr.SIZE)
+                self.assertEquals(size, len(output))
+                self.assertTrue(size > 100)
+                
+                block = ec.trace(guid, trace, attr = TraceAttr.STREAM, block = 5, offset = 1)
+                self.assertEquals(block, output[5:10])
+
+                trace_path = ec.trace(guid, trace, attr = TraceAttr.PATH)
+                rm = ec.get_resource(guid)
+                path = os.path.join(rm_simu.run_home, rm._trace_filename.get(trace))
+                self.assertEquals(trace_path, path)
 
         ec.shutdown()
 

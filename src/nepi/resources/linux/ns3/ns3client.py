@@ -48,76 +48,47 @@ class LinuxNS3Client(NS3Client):
                 self.simulation.local_socket,
                 self.simulation.remote_socket) 
 
-    def send_msg(self, msg, *args, **kwargs):
-        args = list(args)
-             
+    def send_msg(self, msg_type, *args, **kwargs):
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         sock.connect(self.simulation.local_socket)
 
-        timeout = kwargs.get("timeout")
-        if timeout:
-             sock.settimeout(timeout)
+        msg = [msg_type, args, kwargs]
 
-        args.insert(0, msg)
-        def encode(arg):
-            arg = cPickle.dumps(arg)
-            return base64.b64encode(arg) 
+        def encode(item):
+            item = cPickle.dumps(item)
+            return base64.b64encode(item)
 
-        encoded = "|".join(map(encode, args))
+        encoded = "|".join(map(encode, msg))
         sock.send("%s\n" % encoded)
        
         reply = sock.recv(1024)
         return cPickle.loads(base64.b64decode(reply))
 
-    def create(self, clazzname, *args, **kwargs):
-        args = list(args)
-        args.insert(0, clazzname)
-        
+    def create(self, *args, **kwargs):
         return self.send_msg(NS3WrapperMessage.CREATE, *args, **kwargs)
 
-    def factory(self, type_name, **kwargs):
-        args = [type_name]
-        args.append(kwargs)
-        
+    def factory(self, *args, **kwargs):
         return self.send_msg(NS3WrapperMessage.FACTORY, *args, **kwargs)
 
-    def invoke(self, uuid, operation, *args, **kwargs):
-        args = list(args)
-        args.insert(0, operation)
-        args.insert(0, uuid)
-
+    def invoke(self, *args, **kwargs):
         return self.send_msg(NS3WrapperMessage.INVOKE, *args, **kwargs)
 
-    def set(self, uuid, name, value, **kwargs):
-        args = [uuid, name, value]
-
+    def set(self, *args, **kwargs):
         return self.send_msg(NS3WrapperMessage.SET, *args, **kwargs)
 
-    def get(self, uuid, name, **kwargs):
-        args = [uuid, name]
-
+    def get(self, *args, **kwargs):
         return self.send_msg(NS3WrapperMessage.GET, *args, **kwargs)
 
-    def enable_trace(self, *args, **kwargs):
-        return self.send_msg(NS3WrapperMessage.ENABLE_TRACE, *args, **kwargs)
-
-    def flush(self, **kwargs):
-        args = []
+    def flush(self, *args, **kwargs):
         return self.send_msg(NS3WrapperMessage.FLUSH, *args, **kwargs)
 
-    def start(self, **kwargs):
-        args = []
+    def start(self, *args, **kwargs):
         return self.send_msg(NS3WrapperMessage.START, *args, **kwargs)
 
-    def stop(self, **kwargs):
-        args = []
-        time = kwargs.get("time")
-        if time: args.append(time)
-
+    def stop(self, *args, **kwargs):
         return self.send_msg(NS3WrapperMessage.STOP, *args, **kwargs)
 
-    def shutdown(self, **kwargs):
-        args = []
+    def shutdown(self, *args, **kwargs):
         ret = None
 
         try:

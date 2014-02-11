@@ -37,9 +37,6 @@ class NS3Simulation(object):
     def get(self, *args, **kwargs):
         return self.client.get(*args, **kwargs)
 
-    def enable_trace(self, *args, **kwargs):
-        return self.client.enable_trace(*args, **kwargs)
-
     def flush(self, *args, **kwargs):
         return self.client.flush(*args, **kwargs)
 

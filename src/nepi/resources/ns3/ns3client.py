@@ -37,9 +37,6 @@ class NS3Client(object):
     def get(self, *args, **kwargs):
         pass
 
-    def trace(self, *args, **kwargs):
-        pass
-
     def flush(self, *args, **kwargs):
         pass
 

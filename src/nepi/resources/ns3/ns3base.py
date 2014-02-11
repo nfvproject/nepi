@@ -21,6 +21,7 @@ from nepi.execution.resource import ResourceManager, clsinit_copy, \
         ResourceState, reschedule_delay
 
 from nepi.execution.attribute import Flags
+from nepi.execution.trace import TraceAttr
 
 reschedule_delay = "2s"
 
@@ -33,6 +34,7 @@ class NS3Base(ResourceManager):
         super(NS3Base, self).__init__(ec, guid)
         self._uuid = None
         self._connected = set()
+        self._trace_filename = dict()
 
     @property
     def connected(self):
@@ -52,6 +54,14 @@ class NS3Base(ResourceManager):
         nodes = self.get_connected(NS3BaseNode.get_rtype())
         if nodes: return nodes[0]
         return None
+
+    def trace(self, name, attr = TraceAttr.ALL, block = 512, offset = 0):
+        filename = self._trace_filename.get(name)
+        if not filename:
+            self.error("Can resolve trace %s. Did you enabled it?" % name)
+            return ""
+
+        return self.simulation.trace(filename, attr, block, offset)
 
     @property
     def _rms_to_wait(self):
@@ -113,7 +123,6 @@ class NS3Base(ResourceManager):
             self.debug("---- RESCHEDULING DEPLOY ----" )
             self.ec.schedule(reschedule_delay, self.deploy)
         else:
-            self.info("Entering deploy")
             self.do_discover()
             self.do_provision()
 

@@ -565,6 +565,17 @@ class ResourceManager(Logger):
         attr = self._attrs[name]
         return attr.value
 
+    def has_changed(self, name):
+        """ Returns the True is the value of the attribute
+            has been modified by the user.
+
+        :param name: Name of the attribute
+        :type name: str
+        :rtype: str
+        """
+        attr = self._attrs[name]
+        return attr.has_changed()
+
     def enable_trace(self, name):
         """ Explicitly enable trace generation
 
