@@ -71,11 +71,31 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
             type = Types.Bool,
             flags = Flags.Design)
 
+        build_mode = Attribute("buildMode",
+            "Mode used to build ns-3 with waf. One if: debug, release, oprimized ",
+            default = "release", 
+            allowed = ["debug", "release", "optimized"],
+            type = Types.Enumerate,
+            flags = Flags.Design)
+
+        ns3_version = Attribute("ns3Version",
+            "Version of ns-3 to install from nsam repo",
+            default = "ns-3.19", 
+            flags = Flags.Design)
+
+        pybindgen_version = Attribute("pybindgenVersion",
+            "Version of pybindgen to install from bazar repo",
+            default = "834", 
+            flags = Flags.Design)
+
         cls._register_attribute(impl_type)
         cls._register_attribute(sched_type)
         cls._register_attribute(check_sum)
         cls._register_attribute(ns_log)
         cls._register_attribute(verbose)
+        cls._register_attribute(build_mode)
+        cls._register_attribute(ns3_version)
+        cls._register_attribute(pybindgen_version)
 
     def __init__(self, ec, guid):
         LinuxApplication.__init__(self, ec, guid)
@@ -273,19 +293,11 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
 
     @property
     def ns3_repo(self):
-       return "http://code.nsnam.org"
-
-    @property
-    def ns3_version(self):
-       return "ns-3.19"
-
-    @property
-    def pybindgen_version(self):
-       return "834"
+        return "http://code.nsnam.org"
 
     @property
     def pygccxml_version(self):
-       return "pygccxml-1.0.0"
+        return "pygccxml-1.0.0"
 
     @property
     def _build(self):
@@ -293,8 +305,9 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
                 # Test if ns-3 is alredy installed
                 " ( "
                 " (( "
-                "  ( test -d ${SRC}/%(ns3_version)s ) || (test -d ${NS3BINDINGS:='None'} && test -d ${NS3LIBRARIES:='None'}) ) && "
-                "  echo 'binaries found, nothing to do' )"
+                "    ( test -d ${SRC}/ns-3/%(ns3_version)s ) || "
+                "    ( test -d ${NS3BINDINGS:='None'} && test -d ${NS3LIBRARIES:='None'}) "
+                "  ) && echo 'binaries found, nothing to do' )"
                 " ) "
                 "  || " 
                 # If not, install ns-3 and its dependencies
@@ -316,14 +329,15 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
                 "  && "
                 "   (   "
                 "     ( "
-                "       test -d ${BIN}/pybindgen && "
+                "       test -d ${BIN}/pybindgen/%(pybindgen_version)s && "
                 "       echo 'binaries found, nothing to do' "
                 "     ) "
                 "      || "
                 # If not, clone and build
                 "      ( cd ${SRC} && "
-                "        bzr checkout lp:pybindgen -r %(pybindgen_version)s && "
-                "        cd ${SRC}/pybindgen && "
+                "        mkdir -p ${SRC}/pybindgen && "
+                "        bzr checkout lp:pybindgen -r %(pybindgen_version)s ${SRC}/pybindgen/%(pybindgen_version)s && "
+                "        cd ${SRC}/pybindgen/%(pybindgen_version)s && "
                 "        ./waf configure && "
                 "        ./waf "
                 "      ) "
@@ -331,17 +345,14 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
                "  && "
                 # Clone and build ns-3
                 "  ( "
-                "    hg clone %(ns3_repo)s/%(ns3_version)s ${SRC}/%(ns3_version)s && "
-                "    cd ${SRC}/%(ns3_version)s && "
-                "    ./waf configure -d optimized  && "
-                "    ./waf "
-                "   ) "
+                "    hg clone %(ns3_repo)s/%(ns3_version)s ${SRC}/ns-3/%(ns3_version)s"
+               "   ) "
                 " ) "
              ) % ({ 
                     'ns3_repo':  self.ns3_repo,       
-                    'ns3_version': self.ns3_version,
-                    'pybindgen_version': self.pybindgen_version,
-                    'pygccxml_version': self.pygccxml_version
+                    'ns3_version': self.get("ns3Version"),
+                    'pybindgen_version': self.get("pybindgenVersion"),
+                    'pygccxml_version': self.pygccxml_version,
                  })
 
     @property
@@ -349,28 +360,35 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         return (
                  # Test if ns-3 is alredy cloned
                 " ( "
-                "  ( ( (test -d ${BIN}/%(ns3_version)s/build ) || "
+                "  ( ( (test -d ${BIN}/ns-3/%(ns3_version)s/%(build_mode)s/build ) || "
                 "    (test -d ${NS3BINDINGS:='None'} && test -d ${NS3LIBRARIES:='None'}) ) && "
                 "    echo 'binaries found, nothing to do' )"
                 " ) "
                 " ||" 
                 " (   "
                  # If not, copy ns-3 build to bin
-                "  mkdir -p ${BIN}/%(ns3_version)s && "
-                "  mv ${SRC}/%(ns3_version)s/build ${BIN}/%(ns3_version)s/build "
+                "  cd ${SRC}/ns-3/%(ns3_version)s && "
+                "  ./waf configure -d %(build_mode)s --with-pybindgen=${SRC}/pybindgen/%(pybindgen_version)s && "
+                "  ./waf && "
+                "  mkdir -p ${BIN}/ns-3/%(ns3_version)s/%(build_mode)s && "
+                "  mv ${SRC}/ns-3/%(ns3_version)s/build ${BIN}/ns-3/%(ns3_version)s/%(build_mode)s/build "
                 " )"
              ) % ({ 
-                    'ns3_version': self.ns3_version
+                    'ns3_version': self.get("ns3Version"),
+                    'pybindgen_version': self.get("pybindgenVersion"),
+                    'build_mode': self.get("buildMode"),
                  })
 
     @property
     def _environment(self):
         env = []
-        env.append("NS3BINDINGS=${NS3BINDINGS:=${BIN}/%(ns3_version)s/build/bindings/python/}" % ({ 
-                    'ns3_version': self.ns3_version,
+        env.append("NS3BINDINGS=${NS3BINDINGS:=${BIN}/ns-3/%(ns3_version)s/%(build_mode)s/build/bindings/python/}" % ({ 
+                    'ns3_version': self.get("ns3Version"),
+                    'build_mode': self.get("buildMode")
                  }))
-        env.append("NS3LIBRARIES=${NS3LIBRARIES:=${BIN}/%(ns3_version)s/build/}" % ({ 
-                    'ns3_version': self.ns3_version,
+        env.append("NS3LIBRARIES=${NS3LIBRARIES:=${BIN}/ns-3/%(ns3_version)s/%(build_mode)s/build/}" % ({ 
+                    'ns3_version': self.get("ns3Version"),
+                    'build_mode': self.get("buildMode")
                  }))
 
         return " ".join(env) 

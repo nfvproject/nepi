@@ -24,6 +24,8 @@ from nepi.resources.ns3.ns3base import NS3Base
 
 import ipaddr
 
+# TODO: Validate that device must be connected to queue!! If not a segmentation fault occurs
+
 @clsinit_copy
 class NS3BaseNetDevice(NS3Base):
     _rtype = "abstract::ns3::NetDevice"

@@ -62,17 +62,32 @@ def add_point2point_device(ec, ns3_node, address, prefix):
 
     return dev
 
+def add_csma_device(ec, ns3_node, address, prefix):
+    dev = ec.register_resource("ns3::CsmaNetDevice")
+    ec.set(dev, "ip", address)
+    ec.set(dev, "prefix", prefix)
+    ec.register_connection(ns3_node, dev)
+
+    queue = ec.register_resource("ns3::DropTailQueue")
+    ec.register_connection(dev, queue)
+
+    return dev
+
 class LinuxNS3ClientTest(unittest.TestCase):
     def setUp(self):
         self.fedora_host = "nepi2.pl.sophia.inria.fr"
+        #self.fedora_host = "peeramide.irisa.fr"
         self.fedora_user = "inria_test"
+        #self.fedora_user = "inria_alina"
+        self.fedora_identity = "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'])
 
-    def test_simple_ping(self):
-        ec = ExperimentController(exp_id = "test-ns3-ping")
+    def test_simple_p2p_ping(self):
+        ec = ExperimentController(exp_id = "test-ns3-p2p-ping")
         
         node = ec.register_resource("LinuxNode")
         ec.set(node, "hostname", self.fedora_host)
         ec.set(node, "username", self.fedora_user)
+        ec.set(node, "identity", self.fedora_identity)
         ec.set(node, "cleanProcesses", True)
         #ec.set(node, "cleanHome", True)
 
@@ -82,16 +97,64 @@ class LinuxNS3ClientTest(unittest.TestCase):
         ec.register_connection(simu, node)
 
         nsnode1 = add_ns3_node(ec, simu)
-        p1 = add_point2point_device(ec, nsnode1, "10.0.0.1", "30")
+        dev1 = add_point2point_device(ec, nsnode1, "10.0.0.1", "30")
 
         nsnode2 = add_ns3_node(ec, simu)
-        p2 = add_point2point_device(ec, nsnode2, "10.0.0.2", "30")
+        dev2 = add_point2point_device(ec, nsnode2, "10.0.0.2", "30")
 
         # Create channel
         chan = ec.register_resource("ns3::PointToPointChannel")
         ec.set(chan, "Delay", "0s")
-        ec.register_connection(chan, p1)
-        ec.register_connection(chan, p2)
+        ec.register_connection(chan, dev1)
+        ec.register_connection(chan, dev2)
+
+        ### create pinger
+        ping = ec.register_resource("ns3::V4Ping")
+        ec.set (ping, "Remote", "10.0.0.2")
+        ec.set (ping, "Interval", "1s")
+        ec.set (ping, "Verbose", True)
+        ec.set (ping, "StartTime", "0s")
+        ec.set (ping, "StopTime", "20s")
+        ec.register_connection(ping, nsnode1)
+
+        ec.deploy()
+
+        ec.wait_finished([ping])
+        
+        stdout = ec.trace(simu, "stdout") 
+
+        expected = "20 packets transmitted, 20 received, 0% packet loss"
+        self.assertTrue(stdout.find(expected) > -1)
+
+        ec.shutdown()
+
+    def test_simple_cmsa_ping(self):
+        ec = ExperimentController(exp_id = "test-ns3-csma-ping")
+        
+        node = ec.register_resource("LinuxNode")
+        ec.set(node, "hostname", self.fedora_host)
+        ec.set(node, "username", self.fedora_user)
+        ec.set(node, "identity", self.fedora_identity)
+        ec.set(node, "cleanProcesses", True)
+        #ec.set(node, "cleanHome", True)
+
+        simu = ec.register_resource("LinuxNS3Simulation")
+        ec.set(simu, "verbose", True)
+        ec.set(simu, "nsLog", "V4Ping:Node")
+        ec.set(simu, "buildMode", "debug")
+        ec.register_connection(simu, node)
+
+        nsnode1 = add_ns3_node(ec, simu)
+        dev1 = add_csma_device(ec, nsnode1, "10.0.0.1", "30")
+
+        nsnode2 = add_ns3_node(ec, simu)
+        dev2 = add_csma_device(ec, nsnode2, "10.0.0.2", "30")
+
+        # Create channel
+        chan = ec.register_resource("ns3::CsmaChannel")
+        ec.set(chan, "Delay", "0s")
+        ec.register_connection(chan, dev1)
+        ec.register_connection(chan, dev2)
 
         ### create pinger
         ping = ec.register_resource("ns3::V4Ping")
@@ -119,6 +182,7 @@ class LinuxNS3ClientTest(unittest.TestCase):
         node = ec.register_resource("LinuxNode")
         ec.set(node, "hostname", self.fedora_host)
         ec.set(node, "username", self.fedora_user)
+        ec.set(node, "identity", self.fedora_identity)
         ec.set(node, "cleanProcesses", True)
         #ec.set(node, "cleanHome", True)
 
@@ -129,16 +193,16 @@ class LinuxNS3ClientTest(unittest.TestCase):
         ec.register_connection(simu, node)
 
         nsnode1 = add_ns3_node(ec, simu)
-        p1 = add_point2point_device(ec, nsnode1, "10.0.0.1", "30")
+        dev1 = add_point2point_device(ec, nsnode1, "10.0.0.1", "30")
 
         nsnode2 = add_ns3_node(ec, simu)
-        p2 = add_point2point_device(ec, nsnode2, "10.0.0.2", "30")
+        dev2 = add_point2point_device(ec, nsnode2, "10.0.0.2", "30")
 
         # Create channel
         chan = ec.register_resource("ns3::PointToPointChannel")
         ec.set(chan, "Delay", "0s")
-        ec.register_connection(chan, p1)
-        ec.register_connection(chan, p2)
+        ec.register_connection(chan, dev1)
+        ec.register_connection(chan, dev2)
 
         ### create pinger
         ping = ec.register_resource("ns3::V4Ping")
@@ -168,12 +232,13 @@ class LinuxNS3ClientTest(unittest.TestCase):
 
         ec.shutdown()
 
-    def test_p2p_traces(self):
-        ec = ExperimentController(exp_id = "test-ns3-p2p-traces")
+    def test_dev2p_traces(self):
+        ec = ExperimentController(exp_id = "test-ns3-dev2p-traces")
         
         node = ec.register_resource("LinuxNode")
         ec.set(node, "hostname", self.fedora_host)
         ec.set(node, "username", self.fedora_user)
+        ec.set(node, "identity", self.fedora_identity)
         ec.set(node, "cleanProcesses", True)
         #ec.set(node, "cleanHome", True)
 
@@ -183,16 +248,16 @@ class LinuxNS3ClientTest(unittest.TestCase):
         ec.register_connection(simu, node)
 
         nsnode1 = add_ns3_node(ec, simu)
-        p1 = add_point2point_device(ec, nsnode1, "10.0.0.1", "30")
+        dev1 = add_point2point_device(ec, nsnode1, "10.0.0.1", "30")
 
         nsnode2 = add_ns3_node(ec, simu)
-        p2 = add_point2point_device(ec, nsnode2, "10.0.0.2", "30")
+        dev2 = add_point2point_device(ec, nsnode2, "10.0.0.2", "30")
 
         # Create channel
         chan = ec.register_resource("ns3::PointToPointChannel")
         ec.set(chan, "Delay", "0s")
-        ec.register_connection(chan, p1)
-        ec.register_connection(chan, p2)
+        ec.register_connection(chan, dev1)
+        ec.register_connection(chan, dev2)
 
         ### create pinger
         ping = ec.register_resource("ns3::V4Ping")
@@ -204,13 +269,13 @@ class LinuxNS3ClientTest(unittest.TestCase):
         ec.register_connection(ping, nsnode1)
 
         # enable traces
-        ec.enable_trace(p1, "pcap")
-        ec.enable_trace(p1, "promiscPcap")
-        ec.enable_trace(p1, "ascii")
+        ec.enable_trace(dev1, "pcap")
+        ec.enable_trace(dev1, "promiscPcap")
+        ec.enable_trace(dev1, "ascii")
 
-        ec.enable_trace(p2, "pcap")
-        ec.enable_trace(p2, "promiscPcap")
-        ec.enable_trace(p2, "ascii")
+        ec.enable_trace(dev2, "pcap")
+        ec.enable_trace(dev2, "promiscPcap")
+        ec.enable_trace(dev2, "ascii")
 
         ec.deploy()
 
@@ -225,7 +290,7 @@ class LinuxNS3ClientTest(unittest.TestCase):
         #
         #for trace in ["pcap", "promiscPcap", "ascii"]:
         for trace in ["ascii"]:
-            for guid in [p1, p2]:
+            for guid in [dev1, dev2]:
                 output = ec.trace(guid, trace)
 
                 size = ec.trace(guid, trace, attr = TraceAttr.SIZE)
