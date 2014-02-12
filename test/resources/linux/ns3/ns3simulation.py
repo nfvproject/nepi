@@ -75,9 +75,10 @@ def add_csma_device(ec, ns3_node, address, prefix):
 
 class LinuxNS3ClientTest(unittest.TestCase):
     def setUp(self):
-        self.fedora_host = "nepi2.pl.sophia.inria.fr"
+        #self.fedora_host = "nepi2.pl.sophia.inria.fr"
+        self.fedora_host = "planetlabpc1.upf.edu"
         #self.fedora_host = "peeramide.irisa.fr"
-        self.fedora_user = "inria_test"
+        self.fedora_user = "inria_nepi"
         #self.fedora_user = "inria_alina"
         self.fedora_identity = "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'])
 
@@ -92,8 +93,6 @@ class LinuxNS3ClientTest(unittest.TestCase):
         #ec.set(node, "cleanHome", True)
 
         simu = ec.register_resource("LinuxNS3Simulation")
-        ec.set(simu, "verbose", True)
-        ec.set(simu, "nsLog", "V4Ping:Node")
         ec.register_connection(simu, node)
 
         nsnode1 = add_ns3_node(ec, simu)
@@ -139,9 +138,6 @@ class LinuxNS3ClientTest(unittest.TestCase):
         #ec.set(node, "cleanHome", True)
 
         simu = ec.register_resource("LinuxNS3Simulation")
-        ec.set(simu, "verbose", True)
-        ec.set(simu, "nsLog", "V4Ping:Node")
-        ec.set(simu, "buildMode", "debug")
         ec.register_connection(simu, node)
 
         nsnode1 = add_ns3_node(ec, simu)
@@ -176,6 +172,106 @@ class LinuxNS3ClientTest(unittest.TestCase):
 
         ec.shutdown()
 
+    def test_compile_local_source(self):
+        ec = ExperimentController(exp_id = "test-ns3-local-source")
+        
+        node = ec.register_resource("LinuxNode")
+        ec.set(node, "hostname", self.fedora_host)
+        ec.set(node, "username", self.fedora_user)
+        ec.set(node, "identity", self.fedora_identity)
+        ec.set(node, "cleanProcesses", True)
+        #ec.set(node, "cleanHome", True)
+
+        simu = ec.register_resource("LinuxNS3Simulation")
+        sources = os.path.join(os.path.dirname(os.path.realpath(__file__)), 
+                "ns-3.18-user.tar.gz")
+        ec.set(simu, "sources", sources)
+        ec.register_connection(simu, node)
+
+        nsnode1 = add_ns3_node(ec, simu)
+        dev1 = add_csma_device(ec, nsnode1, "10.0.0.1", "30")
+
+        nsnode2 = add_ns3_node(ec, simu)
+        dev2 = add_csma_device(ec, nsnode2, "10.0.0.2", "30")
+
+        # Create channel
+        chan = ec.register_resource("ns3::CsmaChannel")
+        ec.set(chan, "Delay", "0s")
+        ec.register_connection(chan, dev1)
+        ec.register_connection(chan, dev2)
+
+        ### create pinger
+        ping = ec.register_resource("ns3::V4Ping")
+        ec.set (ping, "Remote", "10.0.0.2")
+        ec.set (ping, "Interval", "1s")
+        ec.set (ping, "Verbose", True)
+        ec.set (ping, "StartTime", "0s")
+        ec.set (ping, "StopTime", "20s")
+        ec.register_connection(ping, nsnode1)
+
+        ec.deploy()
+
+        ec.wait_finished([ping])
+        
+        stdout = ec.trace(simu, "stdout") 
+
+        expected = "20 packets transmitted, 20 received, 0% packet loss"
+        self.assertTrue(stdout.find(expected) > -1)
+        
+        ec.shutdown()
+
+    def test_compile_debug_mode(self):
+        ec = ExperimentController(exp_id = "test-ns3-debug-mode")
+        
+        node = ec.register_resource("LinuxNode")
+        ec.set(node, "hostname", self.fedora_host)
+        ec.set(node, "username", self.fedora_user)
+        ec.set(node, "identity", self.fedora_identity)
+        ec.set(node, "cleanProcesses", True)
+        #ec.set(node, "cleanHome", True)
+
+        simu = ec.register_resource("LinuxNS3Simulation")
+        ec.set(simu, "verbose", True)
+        ec.set(simu, "nsLog", "V4Ping:Node")
+        ec.set(simu, "buildMode", "debug")
+        ec.register_connection(simu, node)
+
+        nsnode1 = add_ns3_node(ec, simu)
+        dev1 = add_csma_device(ec, nsnode1, "10.0.0.1", "30")
+
+        nsnode2 = add_ns3_node(ec, simu)
+        dev2 = add_csma_device(ec, nsnode2, "10.0.0.2", "30")
+
+        # Create channel
+        chan = ec.register_resource("ns3::CsmaChannel")
+        ec.set(chan, "Delay", "0s")
+        ec.register_connection(chan, dev1)
+        ec.register_connection(chan, dev2)
+
+        ### create pinger
+        ping = ec.register_resource("ns3::V4Ping")
+        ec.set (ping, "Remote", "10.0.0.2")
+        ec.set (ping, "Interval", "1s")
+        ec.set (ping, "Verbose", True)
+        ec.set (ping, "StartTime", "0s")
+        ec.set (ping, "StopTime", "20s")
+        ec.register_connection(ping, nsnode1)
+
+        ec.deploy()
+
+        ec.wait_finished([ping])
+        
+        stdout = ec.trace(simu, "stdout") 
+
+        expected = "20 packets transmitted, 20 received, 0% packet loss"
+        self.assertTrue(stdout.find(expected) > -1)
+        
+        stderr = ec.trace(simu, "stderr")
+        expected = "V4Ping:Read32"
+        self.assertTrue(stderr.find(expected) > -1)
+
+        ec.shutdown()
+
     def test_real_time(self):
         ec = ExperimentController(exp_id = "test-ns3-real-time")
         
@@ -187,9 +283,9 @@ class LinuxNS3ClientTest(unittest.TestCase):
         #ec.set(node, "cleanHome", True)
 
         simu = ec.register_resource("LinuxNS3Simulation")
-        ec.set(simu, "verbose", True)
         ec.set(simu, "simulatorImplementationType", "ns3::RealtimeSimulatorImpl")
         ec.set(simu, "checksumEnabled", True)
+        ec.set(simu, "verbose", True)
         ec.register_connection(simu, node)
 
         nsnode1 = add_ns3_node(ec, simu)
@@ -216,7 +312,7 @@ class LinuxNS3ClientTest(unittest.TestCase):
         ec.deploy()
 
         ec.wait_finished([ping])
-       
+      
         stdout = ec.trace(simu, "stdout") 
 
         expected = "20 packets transmitted, 20 received, 0% packet loss"
@@ -243,8 +339,6 @@ class LinuxNS3ClientTest(unittest.TestCase):
         #ec.set(node, "cleanHome", True)
 
         simu = ec.register_resource("LinuxNS3Simulation")
-        ec.set(simu, "verbose", True)
-        ec.set(simu, "nsLog", "V4Ping:Node")
         ec.register_connection(simu, node)
 
         nsnode1 = add_ns3_node(ec, simu)
