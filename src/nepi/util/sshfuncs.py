@@ -355,282 +355,111 @@ def rcopy(source, dest,
     Source and destination should have the user and host encoded
     as per scp specs.
     
-    If source is a file object, a special mode will be used to
-    create the remote file with the same contents.
-    
-    If dest is a file object, the remote file (source) will be
-    read and written into dest.
-    
-    In these modes, recursive cannot be True.
-    
-    Source can be a list of files to copy to a single destination,
-    in which case it is advised that the destination be a folder.
+    Source can be a list of files to copy to a single destination, 
+    (in which case it is advised that the destination be a folder),
+    a single string or a string list of colon-separeted files.
     """
-    
-    if isinstance(source, file) and source.tell() == 0:
-        source = source.name
-    elif hasattr(source, 'read'):
-        tmp = tempfile.NamedTemporaryFile()
-        while True:
-            buf = source.read(65536)
-            if buf:
-                tmp.write(buf)
-            else:
-                break
-        tmp.seek(0)
-        source = tmp.name
-    
-    if isinstance(source, file) or isinstance(dest, file) \
-            or hasattr(source, 'read')  or hasattr(dest, 'write'):
-        assert not recursive
-        
-        # Parse source/destination as <user>@<server>:<path>
-        if isinstance(dest, basestring) and ':' in dest:
-            remspec, path = dest.split(':',1)
-        elif isinstance(source, basestring) and ':' in source:
-            remspec, path = source.split(':',1)
-        else:
-            raise ValueError, "Both endpoints cannot be local"
-        user,host = remspec.rsplit('@',1)
-        
-        tmp_known_hosts = None
-        if not gw:
-            hostip = gethostbyname(host)
-        else: hostip = None
-        
-        args = ['ssh', '-l', user, '-C',
-                # Don't bother with localhost. Makes test easier
-                '-o', 'NoHostAuthenticationForLocalhost=yes',
-                '-o', 'ConnectTimeout=60',
-                '-o', 'ConnectionAttempts=3',
-                '-o', 'ServerAliveInterval=30',
-                '-o', 'TCPKeepAlive=yes',
-                hostip or host ]
 
-        if openssh_has_persist():
-            args.extend([
-                '-o', 'ControlMaster=auto',
-                '-o', 'ControlPath=%s' % (make_control_path(agent, False),),
-                '-o', 'ControlPersist=60' ])
-
-        if gw:
-            if gwuser:
-                proxycommand = 'ProxyCommand=ssh %s@%s -W %%h:%%p' % (gwuser, gw)
-            else:
-                proxycommand = 'ProxyCommand=ssh %%r@%s -W %%h:%%p' % gw
-            args.extend(['-o', proxycommand])
-
-        if port:
-            args.append('-P%d' % port)
-
-        if identity:
-            args.extend(('-i', identity))
-
-        if server_key:
-            # Create a temporary server key file
-            tmp_known_hosts = make_server_key_args(server_key, host, port)
-            args.extend(['-o', 'UserKnownHostsFile=%s' % (tmp_known_hosts.name,)])
-        
-        if isinstance(source, file) or hasattr(source, 'read'):
-            args.append('cat > %s' % (shell_escape(path),))
-        elif isinstance(dest, file) or hasattr(dest, 'write'):
-            args.append('cat %s' % (shell_escape(path),))
-        else:
-            raise AssertionError, "Unreachable code reached! :-Q"
-        
-        # connects to the remote host and starts a remote connection
-        if isinstance(source, file):
-            proc = subprocess.Popen(args, 
-                    stdout = open('/dev/null','w'),
-                    stderr = subprocess.PIPE,
-                    stdin = source)
-            err = proc.stderr.read()
-            proc._known_hosts = tmp_known_hosts
-            eintr_retry(proc.wait)()
-            return ((None,err), proc)
-        elif isinstance(dest, file):
-            proc = subprocess.Popen(args, 
-                    stdout = open('/dev/null','w'),
-                    stderr = subprocess.PIPE,
-                    stdin = source)
-            err = proc.stderr.read()
-            proc._known_hosts = tmp_known_hosts
-            eintr_retry(proc.wait)()
-            return ((None,err), proc)
-        elif hasattr(source, 'read'):
-            # file-like (but not file) source
-            proc = subprocess.Popen(args, 
-                    stdout = open('/dev/null','w'),
-                    stderr = subprocess.PIPE,
-                    stdin = subprocess.PIPE)
-            
-            buf = None
-            err = []
-            while True:
-                if not buf:
-                    buf = source.read(4096)
-                if not buf:
-                    #EOF
-                    break
-                
-                rdrdy, wrdy, broken = select.select(
-                    [proc.stderr],
-                    [proc.stdin],
-                    [proc.stderr,proc.stdin])
-                
-                if proc.stderr in rdrdy:
-                    # use os.read for fully unbuffered behavior
-                    err.append(os.read(proc.stderr.fileno(), 4096))
-                
-                if proc.stdin in wrdy:
-                    proc.stdin.write(buf)
-                    buf = None
-                
-                if broken:
-                    break
-            proc.stdin.close()
-            err.append(proc.stderr.read())
-                
-            proc._known_hosts = tmp_known_hosts
-            eintr_retry(proc.wait)()
-            return ((None,''.join(err)), proc)
-        elif hasattr(dest, 'write'):
-            # file-like (but not file) dest
-            proc = subprocess.Popen(args, 
-                    stdout = subprocess.PIPE,
-                    stderr = subprocess.PIPE,
-                    stdin = open('/dev/null','w'))
-            
-            buf = None
-            err = []
-            while True:
-                rdrdy, wrdy, broken = select.select(
-                    [proc.stderr, proc.stdout],
-                    [],
-                    [proc.stderr, proc.stdout])
-                
-                if proc.stderr in rdrdy:
-                    # use os.read for fully unbuffered behavior
-                    err.append(os.read(proc.stderr.fileno(), 4096))
-                
-                if proc.stdout in rdrdy:
-                    # use os.read for fully unbuffered behavior
-                    buf = os.read(proc.stdout.fileno(), 4096)
-                    dest.write(buf)
-                    
-                    if not buf:
-                        #EOF
-                        break
-                
-                if broken:
-                    break
-            err.append(proc.stderr.read())
-                
-            proc._known_hosts = tmp_known_hosts
-            eintr_retry(proc.wait)()
-            return ((None,''.join(err)), proc)
-        else:
-            raise AssertionError, "Unreachable code reached! :-Q"
+    # Parse destination as <user>@<server>:<path>
+    if isinstance(dest, str) and ':' in dest:
+        remspec, path = dest.split(':',1)
+    elif isinstance(source, str) and ':' in source:
+        remspec, path = source.split(':',1)
     else:
-        # Parse destination as <user>@<server>:<path>
-        if isinstance(dest, basestring) and ':' in dest:
-            remspec, path = dest.split(':',1)
-        elif isinstance(source, basestring) and ':' in source:
-            remspec, path = source.split(':',1)
-        else:
-            raise ValueError, "Both endpoints cannot be local"
-        user,host = remspec.rsplit('@',1)
-        
-        # plain scp
-        tmp_known_hosts = None
+        raise ValueError, "Both endpoints cannot be local"
+    user,host = remspec.rsplit('@',1)
+    
+    # plain scp
+    tmp_known_hosts = None
 
-        args = ['scp', '-q', '-p', '-C',
-                # Speed up transfer using blowfish cypher specification which is 
-                # faster than the default one (3des)
-                '-c', 'blowfish',
-                # Don't bother with localhost. Makes test easier
-                '-o', 'NoHostAuthenticationForLocalhost=yes',
-                '-o', 'ConnectTimeout=60',
-                '-o', 'ConnectionAttempts=3',
-                '-o', 'ServerAliveInterval=30',
-                '-o', 'TCPKeepAlive=yes' ]
-                
-        if port:
-            args.append('-P%d' % port)
-
-        if gw:
-            if gwuser:
-                proxycommand = 'ProxyCommand=ssh %s@%s -W %%h:%%p' % (gwuser, gw)
-            else:
-                proxycommand = 'ProxyCommand=ssh %%r@%s -W %%h:%%p' % gw
-            args.extend(['-o', proxycommand])
-
-        if recursive:
-            args.append('-r')
-
-        if identity:
-            args.extend(('-i', identity))
-
-        if server_key:
-            # Create a temporary server key file
-            tmp_known_hosts = make_server_key_args(server_key, host, port)
-            args.extend(['-o', 'UserKnownHostsFile=%s' % (tmp_known_hosts.name,)])
-
-        if not strict_host_checking:
-            # Do not check for Host key. Unsafe.
-            args.extend(['-o', 'StrictHostKeyChecking=no'])
-
-        if ' ' in source:
-            source = source.split(' ')
-
-        if isinstance(source,list):
-            args.extend(source)
-        else:
-            if openssh_has_persist():
-                args.extend([
-                    '-o', 'ControlMaster=auto',
-                    '-o', 'ControlPath=%s' % (make_control_path(agent, False),)
-                    ])
-            args.append(source)
-
-        args.append(dest)
-
-        for x in xrange(retry):
-            # connects to the remote host and starts a remote connection
-            proc = subprocess.Popen(args,
-                    stdout = subprocess.PIPE,
-                    stdin = subprocess.PIPE, 
-                    stderr = subprocess.PIPE)
+    args = ['scp', '-q', '-p', '-C',
+            # Speed up transfer using blowfish cypher specification which is 
+            # faster than the default one (3des)
+            '-c', 'blowfish',
+            # Don't bother with localhost. Makes test easier
+            '-o', 'NoHostAuthenticationForLocalhost=yes',
+            '-o', 'ConnectTimeout=60',
+            '-o', 'ConnectionAttempts=3',
+            '-o', 'ServerAliveInterval=30',
+            '-o', 'TCPKeepAlive=yes' ]
             
-            # attach tempfile object to the process, to make sure the file stays
-            # alive until the process is finished with it
-            proc._known_hosts = tmp_known_hosts
+    if port:
+        args.append('-P%d' % port)
+
+    if gw:
+        if gwuser:
+            proxycommand = 'ProxyCommand=ssh %s@%s -W %%h:%%p' % (gwuser, gw)
+        else:
+            proxycommand = 'ProxyCommand=ssh %%r@%s -W %%h:%%p' % gw
+        args.extend(['-o', proxycommand])
+
+    if recursive:
+        args.append('-r')
+
+    if identity:
+        args.extend(('-i', identity))
+
+    if server_key:
+        # Create a temporary server key file
+        tmp_known_hosts = make_server_key_args(server_key, host, port)
+        args.extend(['-o', 'UserKnownHostsFile=%s' % (tmp_known_hosts.name,)])
+
+    if not strict_host_checking:
+        # Do not check for Host key. Unsafe.
+        args.extend(['-o', 'StrictHostKeyChecking=no'])
+
+    if openssh_has_persist():
+        args.extend([
+            '-o', 'ControlMaster=auto',
+            '-o', 'ControlPath=%s' % (make_control_path(agent, False),)
+            ])
+
+    if isinstance(dest, str):
+        dest = map(str.strip, dest.split(";"))
+
+    if isinstance(source, str):
+        source = map(str.strip, source.split(";"))
+
+    args.extend(source)
+
+    args.extend(dest)
+
+    for x in xrange(retry):
+        # connects to the remote host and starts a remote connection
+        proc = subprocess.Popen(args,
+                stdout = subprocess.PIPE,
+                stdin = subprocess.PIPE, 
+                stderr = subprocess.PIPE)
         
-            try:
-                (out, err) = proc.communicate()
-                eintr_retry(proc.wait)()
-                msg = " rcopy - host %s - command %s " % (host, " ".join(args))
-                log(msg, logging.DEBUG, out, err)
+        # attach tempfile object to the process, to make sure the file stays
+        # alive until the process is finished with it
+        proc._known_hosts = tmp_known_hosts
+    
+        try:
+            (out, err) = proc.communicate()
+            eintr_retry(proc.wait)()
+            msg = " rcopy - host %s - command %s " % (host, " ".join(args))
+            log(msg, logging.DEBUG, out, err)
 
-                if proc.poll():
-                    t = x*2
-                    msg = "SLEEPING %d ... ATEMPT %d - host %s - command %s " % ( 
-                            t, x, host, " ".join(args))
-                    log(msg, logging.DEBUG)
+            if proc.poll():
+                t = x*2
+                msg = "SLEEPING %d ... ATEMPT %d - host %s - command %s " % ( 
+                        t, x, host, " ".join(args))
+                log(msg, logging.DEBUG)
 
-                    time.sleep(t)
-                    continue
+                time.sleep(t)
+                continue
 
-                break
-            except RuntimeError, e:
-                msg = " rcopy EXCEPTION - host %s - command %s - TIMEOUT -> %s" % (host, " ".join(args), e.args)
-                log(msg, logging.DEBUG, out, err)
+            break
+        except RuntimeError, e:
+            msg = " rcopy EXCEPTION - host %s - command %s - TIMEOUT -> %s" % (host, " ".join(args), e.args)
+            log(msg, logging.DEBUG, out, err)
 
-                if retry <= 0:
-                    raise
-                retry -= 1
-            
-        return ((out, err), proc)
+            if retry <= 0:
+                raise
+            retry -= 1
+        
+    return ((out, err), proc)
 
 def rspawn(command, pidfile, 
         stdout = '/dev/null', 

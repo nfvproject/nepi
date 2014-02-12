@@ -101,7 +101,7 @@ class LinuxApplication(ResourceManager):
                 "Space-separated list of packages required to run the application",
                 flags = Flags.ExecReadOnly)
         sources = Attribute("sources", 
-                "Space-separated list of regular files to be uploaded to ${SRC} "
+                "Colon-separated list of regular files to be uploaded to ${SRC} "
                 "directory prior to building. Archives won't be expanded automatically. "
                 "Sources are globally available for all experiments unless "
                 "cleanHome is set to True (This will delete all sources). ",
@@ -375,7 +375,7 @@ class LinuxApplication(ResourceManager):
         if sources:
             self.info("Uploading sources ")
 
-            sources = sources.split(' ')
+            sources = map(str.strip, sources.split(";"))
 
             # Separate sources that should be downloaded from 
             # the web, from sources that should be uploaded from

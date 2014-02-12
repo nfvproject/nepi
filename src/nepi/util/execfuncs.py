@@ -60,10 +60,17 @@ def lcopy(source, dest, recursive = False):
     command = ["cp"]
     if recursive:
         command.append("-R")
-    
-    command.append(src)
-    command.append(dst)
-    
+  
+    if isinstance(dest, str):
+        dest = dest.split(";")
+
+    if isinstance(src, str):
+        src = src.split(";")
+           
+    args.extend(src)
+
+    args.extend(dest)
+
     p = subprocess.Popen(command, 
         stdout=subprocess.PIPE, 
         stderr=subprocess.PIPE)
