@@ -152,6 +152,12 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
                     os.path.join(self.node.src_dir, "%s.tar.gz" % self.pygccxml_version),
                     overwrite = False)
 
+        # Upload user defined ns-3 sources
+        self.node.mkdir(os.path.join(self.node.src_dir, "ns-3"))
+        src_dir = os.path.join(self.node.src_dir, "ns-3")
+
+        super(LinuxNS3Simulation, self).upload_sources(src_dir = src_dir)
+
     def upload_start_command(self):
         command = self.get("command")
         env = self.get("env")
@@ -201,6 +207,18 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
             
             if not self.get("depends"):
                 self.set("depends", self._dependencies)
+
+            if self.get("sources"):
+                sources = self.get("sources")
+                source = sources.split(" ")[0]
+                basename = os.path.basename(source)
+                version = ( basename.strip().replace(".tar.gz", "")
+                    .replace(".tar","")
+                    .replace(".gz","")
+                    .replace(".zip","") )
+
+                self.set("ns3Version", version)
+                self.set("sources", source)
 
             if not self.get("build"):
                 self.set("build", self._build)
@@ -286,9 +304,9 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
     @property
     def _dependencies(self):
         if self.node.use_rpm:
-            return ( " gcc gcc-c++ python python-devel mercurial bzr tcpdump socat gccxml")
+            return ( " gcc gcc-c++ python python-devel mercurial bzr tcpdump socat gccxml unzip")
         elif self.node.use_deb:
-            return ( " gcc g++ python python-dev mercurial bzr tcpdump socat gccxml python-pygccxml")
+            return ( " gcc g++ python python-dev mercurial bzr tcpdump socat gccxml python-pygccxml unzip")
         return ""
 
     @property
@@ -301,6 +319,47 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
 
     @property
     def _build(self):
+        # If the user defined local sources for ns-3, we uncompress the sources
+        # on the remote sources directory. Else we clone ns-3 from the official repo.
+        source = self.get("sources")
+        if not source:
+            copy_ns3_cmd = "hg clone %(ns3_repo)s/%(ns3_version)s ${SRC}/ns-3/%(ns3_version)s" \
+                    % ({
+                        'ns3_version': self.get("ns3Version"),
+                        'ns3_repo':  self.ns3_repo,       
+                       })
+        else:
+            if source.find(".tar.gz") > -1:
+                copy_ns3_cmd = ( 
+                            "tar xzf ${SRC}/ns-3/%(basename)s " 
+                            " --strip-components=1 -C ${SRC}/ns-3/%(ns3_version)s "
+                            ) % ({
+                                'basename': os.path.basename(source),
+                                'ns3_version': self.get("ns3Version"),
+                                })
+            elif source.find(".tar") > -1:
+                copy_ns3_cmd = ( 
+                            "tar xf ${SRC}/ns-3/%(basename)s " 
+                            " --strip-components=1 -C ${SRC}/ns-3/%(ns3_version)s "
+                            ) % ({
+                                'basename': os.path.basename(source),
+                                'ns3_version': self.get("ns3Version"),
+                                })
+            elif source.find(".zip") > -1:
+                basename = os.path.basename(source)
+                bare_basename = basename.replace(".zip", "") \
+                        .replace(".tar", "") \
+                        .replace(".tar.gz", "")
+
+                copy_ns3_cmd = ( 
+                            "unzip ${SRC}/ns-3/%(basename)s && "
+                            "mv ${SRC}/ns-3/%(bare_basename)s ${SRC}/ns-3/%(ns3_version)s "
+                            ) % ({
+                                'bare_basename': basename_name,
+                                'basename': basename,
+                                'ns3_version': self.get("ns3Version"),
+                                })
+
         return (
                 # Test if ns-3 is alredy installed
                 " ( "
@@ -329,7 +388,7 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
                 "  && "
                 "   (   "
                 "     ( "
-                "       test -d ${BIN}/pybindgen/%(pybindgen_version)s && "
+                "       test -d ${SRC}/pybindgen/%(pybindgen_version)s && "
                 "       echo 'binaries found, nothing to do' "
                 "     ) "
                 "      || "
@@ -342,17 +401,18 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
                 "        ./waf "
                 "      ) "
                 "   ) " 
-               "  && "
-                # Clone and build ns-3
+                " && "
+                # Get ns-3 source code
                 "  ( "
-                "    hg clone %(ns3_repo)s/%(ns3_version)s ${SRC}/ns-3/%(ns3_version)s"
-               "   ) "
+                "     mkdir -p ${SRC}/ns-3/%(ns3_version)s && "
+                "     %(copy_ns3_cmd)s "
+                "  ) "
                 " ) "
              ) % ({ 
-                    'ns3_repo':  self.ns3_repo,       
                     'ns3_version': self.get("ns3Version"),
                     'pybindgen_version': self.get("pybindgenVersion"),
                     'pygccxml_version': self.pygccxml_version,
+                    'copy_ns3_cmd': copy_ns3_cmd,
                  })
 
     @property

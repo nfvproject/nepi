@@ -59,7 +59,7 @@ class NS3BaseApplication(NS3Base):
     def state(self):
         if self._state == ResourceState.STARTED:
             is_running = self.simulation.invoke(self.uuid, "isAppRunning")
-
+            
             if not is_running:
                 self.set_stopped()
 

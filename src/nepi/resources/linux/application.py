@@ -358,10 +358,13 @@ class LinuxApplication(ResourceManager):
                     stdout = "deploy_stdout", 
                     stderr = "deploy_stderr")
 
-    def upload_sources(self):
+    def upload_sources(self, src_dir = None):
         sources = self.get("sources")
    
         command = ""
+
+        if not src_dir:
+            src_dir = self.node.src_dir
 
         if sources:
             self.info("Uploading sources ")
@@ -379,15 +382,16 @@ class LinuxApplication(ResourceManager):
 
                     command.append( " ( " 
                             # Check if the source already exists
-                            " ls ${SRC}/%(basename)s "
+                            " ls %(src_dir)s/%(basename)s "
                             " || ( "
                             # If source doesn't exist, download it and check
                             # that it it downloaded ok
-                            "   wget -c --directory-prefix=${SRC} %(source)s && "
-                            "   ls ${SRC}/%(basename)s "
+                            "   wget -c --directory-prefix=%(src_dir)s %(source)s && "
+                            "   ls %(src_dir)s/%(basename)s "
                             " ) ) " % {
                                 "basename": os.path.basename(source),
-                                "source": source
+                                "source": source,
+                                "src_dir": src_dir
                                 })
 
             command = " && ".join(command)
@@ -397,7 +401,7 @@ class LinuxApplication(ResourceManager):
        
             if sources:
                 sources = ' '.join(sources)
-                self.node.upload(sources, self.node.src_dir, overwrite = False)
+                self.node.upload(sources, src_dir, overwrite = False)
 
         return command
 
