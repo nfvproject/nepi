@@ -580,6 +580,9 @@ def rcopy(source, dest,
             # Do not check for Host key. Unsafe.
             args.extend(['-o', 'StrictHostKeyChecking=no'])
 
+        if ' ' in source:
+            source = source.split(' ')
+
         if isinstance(source,list):
             args.extend(source)
         else:
@@ -591,7 +594,7 @@ def rcopy(source, dest,
             args.append(source)
 
         args.append(dest)
-        
+
         for x in xrange(retry):
             # connects to the remote host and starts a remote connection
             proc = subprocess.Popen(args,
