@@ -71,7 +71,7 @@ ec.set(node2, "plpassword", pl_pass)
 # username should be your PlanetLab slice name 
 ec.set(node2, "username", slicename)
 # Absolute path to the SSH private key for PlanetLab
-ec.set(node1, "identity", pl_ssh_key)
+ec.set(node2, "identity", pl_ssh_key)
 # Clean all files, results, etc, from previous experiments wit the same exp_id
 ec.set(node2, "cleanExperiment", True)
 # Kill all running processes in the PlanetLab node before running the experiment
