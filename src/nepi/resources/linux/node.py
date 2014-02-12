@@ -657,11 +657,17 @@ class LinuxNode(ResourceManager):
     def upload(self, src, dst, text = False, overwrite = True):
         """ Copy content to destination
 
-           src  content to copy. Can be a local file, directory or a list of files
+        src  string with the content to copy. Can be:
+            - plain text
+            - a string with the path to a local file
+            - a string with a colon-separeted list of local files
+            - a string with a local directory
 
-           dst  destination path on the remote host (remote is always self.host)
+        dst  string with destination path on the remote host (remote is 
+            always self.host)
 
-           text src is text input, it must be stored into a temp file before uploading
+        text src is text input, it must be stored into a temp file before 
+        uploading
         """
         # If source is a string input 
         f = None
@@ -674,11 +680,14 @@ class LinuxNode(ResourceManager):
             src = f.name
 
         # If dst files should not be overwritten, check that the files do not
-        # exits already 
+        # exits already
+        if isinstance(src, str):
+            src = map(str.strip, src.split(";"))
+    
         if overwrite == False:
             src = self.filter_existing_files(src, dst)
             if not src:
-                return ("", ""), None 
+                return ("", ""), None
 
         if not self.localhost:
             # Build destination as <user>@<server>:<path>
@@ -1034,8 +1043,9 @@ class LinuxNode(ResourceManager):
         """ Removes files that already exist in the Linux host from src list
         """
         # construct a dictionary with { dst: src }
-        dests = dict(map(lambda x: ( os.path.join(dst, os.path.basename(x) ),  x ), 
-            src.strip().split(" ") ) ) if src.strip().find(" ") != -1 else dict({dst: src})
+        dests = dict(map(
+            lambda s: (os.path.join(dst, os.path.basename(s)), s ), s)) \
+                    if len(src) > 1 else dict({dst: src[0]})
 
         command = []
         for d in dests.keys():
@@ -1050,7 +1060,7 @@ class LinuxNode(ResourceManager):
                 del dests[d]
 
         if not dests:
-            return ""
+            return []
 
-        return " ".join(dests.values())
+        return dests.values()
 
