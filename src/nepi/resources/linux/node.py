@@ -660,7 +660,7 @@ class LinuxNode(ResourceManager):
         src  string with the content to copy. Can be:
             - plain text
             - a string with the path to a local file
-            - a string with a colon-separeted list of local files
+            - a string with a semi-colon separeted list of local files
             - a string with a local directory
 
         dst  string with destination path on the remote host (remote is 
