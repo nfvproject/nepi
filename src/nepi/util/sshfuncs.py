@@ -266,6 +266,7 @@ def rexec(command, host, user,
         args.append('-p%d' % port)
 
     if identity:
+        identity = os.path.expanduser(identity)
         args.extend(('-i', identity))
 
     if tty:
@@ -398,6 +399,7 @@ def rcopy(source, dest,
         args.append('-r')
 
     if identity:
+        identity = os.path.expanduser(identity)
         args.extend(('-i', identity))
 
     if server_key:
