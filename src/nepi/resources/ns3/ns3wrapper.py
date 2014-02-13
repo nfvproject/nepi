@@ -445,16 +445,15 @@ class NS3Wrapper(object):
         if now.IsZero():
             return False
 
-        stop_value = self.get(uuid, "StopTime")
-        stop_time = self.ns3.Time(stop_value)
-        
-        start_value = self.get(uuid, "StartTime")
-        start_time = self.ns3.Time(start_value)
-        
-        self.logger.debug("NOW %s" % now.GetSeconds())
-        self.logger.debug("START TIME %s" % start_value)
-        self.logger.debug("STOP TIME %s" % stop_value)
+        app = self.get_object(uuid)
+        stop_time_value = self.ns3.TimeValue()
+        app.GetAttribute("StopTime", stop_time_value)
+        stop_time = stop_time_value.Get()
 
+        start_time_value = self.ns3.TimeValue()
+        app.GetAttribute("StartTime", start_time_value)
+        start_time = start_time_value.Get()
+        
         if now.Compare(start_time) >= 0 and now.Compare(stop_time) < 0:
             return True
 

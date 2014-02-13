@@ -73,13 +73,70 @@ def add_csma_device(ec, ns3_node, address, prefix):
 
     return dev
 
+def add_wifi_device(ec, ns3_node, address, prefix, 
+        access_point = False):
+    dev = ec.register_resource("ns3::WifiNetDevice")
+    ec.set(dev, "ip", address)
+    ec.set(dev, "prefix", prefix)
+    ec.register_connection(ns3_node, dev)
+
+    phy = ec.register_resource("ns3::YansWifiPhy")
+    ec.set(phy, "Standard", "WIFI_PHY_STANDARD_80211a")
+    ec.register_connection(dev, phy)
+
+    error = ec.register_resource("ns3::NistErrorRateModel")
+    ec.register_connection(phy, error)
+
+    manager = ec.register_resources("ns3::ArfWifiManager")
+    ec.register_connection(dev, manager)
+
+    if access_point:
+        mac = ec.register_resources("ns3::ApWifiMac")
+    else:
+        mac = ec.register_resources("ns3::StaWifiMac")
+
+    ec.set(mac, "Standard", "WIFI_PHY_STANDARD_80211a")
+    ec.register_connection(dev, mac)
+
+    return dev
+
+def add_random_mobility(ec, ns3_node, x, y, z, speed, bounds_width, 
+        bounds_height):
+    position = "%d:%d:%d" % (x, y, z)
+    bounds = "0|%d|0|%d" % (bounds_width, bounds_height) 
+    speed = "Constant:%d" % speed
+    
+    mobility = ec.register_resource("ns3::RandomDirection2dMobilityModel")
+    ec.set(mobility, "Position", position)
+    ec.set(mobility, "Bounds", bounds)
+    ec.set(mobility, "Speed", speed)
+    ec.set(mobility, "Pause",  "Constant:1")
+    ec.register_connection(node, mobility)
+    return mobility
+
+def add_constant_mobility(ec, ns3_node, x, y, z):
+    mobility = ec.register_resource("ns3::ConstantPositionMobilityModel") 
+    position = "%d:%d:%d" % (x, y, z)
+    ec.set(mobility, "Position", position)
+    ec.register_connection(node, mobility)
+    return mobility
+
+def add_wifi_channel(ec):
+    channel = ec.register_resource("ns3::YansWifiChannel")
+    delay = ec.register_resource("ns3::ConstantSpeedPropagationDelayModel")
+    ec.register_connection(channel, delay)
+
+    loss  = ec.register_resource("ns3::LogDistancePropagationLossModel")
+    ec.register_connection(channel, loss)
+
+    return channel
+
 class LinuxNS3ClientTest(unittest.TestCase):
     def setUp(self):
         #self.fedora_host = "nepi2.pl.sophia.inria.fr"
         self.fedora_host = "planetlabpc1.upf.edu"
         #self.fedora_host = "peeramide.irisa.fr"
         self.fedora_user = "inria_nepi"
-        #self.fedora_user = "inria_alina"
         self.fedora_identity = "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'])
 
     def test_simple_p2p_ping(self):
@@ -398,6 +455,58 @@ class LinuxNS3ClientTest(unittest.TestCase):
                 rm = ec.get_resource(guid)
                 path = os.path.join(rm_simu.run_home, rm._trace_filename.get(trace))
                 self.assertEquals(trace_path, path)
+
+        ec.shutdown()
+
+    def ztest_simple_wifi_ping(self):
+        bounds_width = bounds_height = 200
+        x = y = 100
+        speed = 1
+
+        ec = ExperimentController(exp_id = "test-ns3-wifi-ping")
+        
+        node = ec.register_resource("LinuxNode")
+        ec.set(node, "hostname", self.fedora_host)
+        ec.set(node, "username", self.fedora_user)
+        ec.set(node, "identity", self.fedora_identity)
+        ec.set(node, "cleanProcesses", True)
+        #ec.set(node, "cleanHome", True)
+
+        simu = ec.register_resource("LinuxNS3Simulation")
+        ec.register_connection(simu, node)
+
+        nsnode1 = add_ns3_node(ec, simu)
+        dev1 = add_wifi_node(ec, nsnode1, "10.0.0.1", "30", access_point = True)
+        mobility1 = add_constant_mobility(ec, nsnode1, x, y, 0)
+
+        nsnode2 = add_ns3_node(ec, simu)
+        dev2 = add_wifi_node(ec, nsnode1, "10.0.0.2", "30", access_point = False)
+        mobility2 = add_random_mobility(ec, nsnode2, x, y, 0, speed, 
+                bounds_width, bounds_height)
+
+        # Create channel
+        chan = add_wifi_channel(ec)
+        ec.register_connection(chan, dev1)
+        ec.register_connection(chan, dev2)
+
+        ### create pinger
+        ping = ec.register_resource("ns3::V4Ping")
+        ec.set (ping, "Remote", "10.0.0.1")
+        ec.set (ping, "Interval", "1s")
+        ec.set (ping, "Verbose", True)
+        ec.set (ping, "StartTime", "0s")
+        ec.set (ping, "StopTime", "20s")
+        ec.register_connection(ping, nsnode2)
+
+        ec.deploy()
+
+        ec.wait_finished([ping])
+        
+        stdout = ec.trace(simu, "stdout")
+        print stdout
+
+        expected = "20 packets transmitted, 20 received, 0% packet loss"
+        self.assertTrue(stdout.find(expected) > -1)
 
         ec.shutdown()
 
