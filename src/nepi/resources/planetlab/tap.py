@@ -231,7 +231,7 @@ class PlanetlabTap(LinuxApplication):
         if_name = None
         delay = 1.0
 
-        for i in xrange(10):
+        for i in xrange(20):
             (out, err), proc = self.node.check_output(self.run_home, "if_name")
 
             if out:

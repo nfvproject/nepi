@@ -290,7 +290,7 @@ class UdpTunnel(LinuxApplication):
         result = None
         delay = 1.0
 
-        for i in xrange(4):
+        for i in xrange(20):
             (out, err), proc = endpoint.node.check_output(
                     self.run_home(endpoint), filename)
 
