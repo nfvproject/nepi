@@ -81,13 +81,16 @@ def add_app(ec, command, node):
     return app
 
 # Create the EC
-ec = ExperimentController(exp_id = "test")
+ec = ExperimentController(exp_id = "test-tr")
 
 switch1 = "planetlab2.virtues.fi"
 switch2 = "planetlab2.upc.es"
+switch3 = "planetlab2.cs.aueb.gr"
 host1 = "planetlab2.ionio.gr"
 host2 = "iraplab2.iralab.uni-karlsruhe.de"
+host3 = "planetlab2.diku.dk"
 
+ip_controller = "194.254.215.12"
 network = "192.168.3.0"
 
 slicename = "inria_nepi"
@@ -97,42 +100,55 @@ pl_password = os.environ.get("PL_PASS")
 
 s1_node = add_node(ec, switch1, slicename, pl_user, pl_password)
 s2_node = add_node(ec, switch2, slicename, pl_user, pl_password)
+s3_node = add_node(ec, switch3, slicename, pl_user, pl_password)
 
 # Add switches 
-ovs1 = add_ovs(ec, "nepi_bridge", "192.168.3.1/24", "85.23.168.77", "6633", s1_node)
-ovs2 = add_ovs(ec, "nepi_bridge", "192.168.3.2/24", "85.23.168.77", "6633", s2_node)
+ovs1 = add_ovs(ec, "nepi_bridge_1", "192.168.3.2/24", ip_controller, "6633", s1_node)
+ovs2 = add_ovs(ec, "nepi_bridge_2", "192.168.3.4/24", ip_controller, "6633", s2_node)
+ovs3 = add_ovs(ec, "nepi_bridge_3", "192.168.3.6/24", ip_controller, "6633", s3_node)
 
 # Add ports on ovs
 port1 = add_port(ec, "nepi_port1", ovs1)
-port3 = add_port(ec, "nepi_port3", ovs1)
+port4 = add_port(ec, "nepi_port4", ovs1)
+port7 = add_port(ec, "nepi_port7", ovs1)
 port2 = add_port(ec, "nepi_port2", ovs2)
-port4 = add_port(ec, "nepi_port4", ovs2)
+port5 = add_port(ec, "nepi_port5", ovs2)
+#port8 = add_port(ec, "nepi_port8", ovs2)
+port3 = add_port(ec, "nepi_port3", ovs3)
+port6 = add_port(ec, "nepi_port6", ovs3)
+#port9 = add_port(ec, "nepi_port9", ovs3)
 
 h1_node = add_node(ec, host1, slicename, pl_user, pl_password)
 h2_node = add_node(ec, host2, slicename, pl_user, pl_password)
+h3_node = add_node(ec, host3, slicename, pl_user, pl_password)
 
 # Add tap devices
-tap1 = add_tap(ec, "192.168.3.3", 24, "192.168.3.1", h1_node)
-tap2 = add_tap(ec, "192.168.3.4", 24, "192.168.3.2", h2_node)
+tap1 = add_tap(ec, "192.168.3.1", 24, "192.168.3.2", h1_node)
+tap2 = add_tap(ec, "192.168.3.3", 24, "192.168.3.4", h2_node)
+tap3 = add_tap(ec, "192.168.3.5", 24, "192.168.3.6", h3_node)
 
 # Connect the nodes
 tunnel1 = add_tunnel(ec, network, port1, tap1)
 tunnel2 = add_tunnel(ec, network, port2, tap2)
-tunnel3 = add_tunnel(ec, network, port3, port4)
+tunnel3 = add_tunnel(ec, network, port3, tap3)
+tunnel4 = add_tunnel(ec, network, port4, port5)
+tunnel5 = add_tunnel(ec, network, port7, port6)
+#tunnel6 = add_tunnel(ec, network, port8, port9)
 
 # Add ping commands
-app1 = add_app(ec, "ping -c5 192.168.3.2", s1_node)
-app2 = add_app(ec, "ping -c5 192.168.3.3", s1_node)
-app3 = add_app(ec, "ping -c5 192.168.3.4", s1_node)
-app4 = add_app(ec, "ping -c5 192.168.3.1", s2_node)
-app5 = add_app(ec, "ping -c5 192.168.3.3", s2_node)
-app6 = add_app(ec, "ping -c5 192.168.3.4", s2_node)
-app7 = add_app(ec, "ping -c5 192.168.3.1", h1_node)
-app8 = add_app(ec, "ping -c5 192.168.3.2", h1_node)
-app9 = add_app(ec, "ping -c5 192.168.3.4", h1_node)
-app10 = add_app(ec, "ping -c5 192.168.3.1", h2_node)
-app11 = add_app(ec, "ping -c5 192.168.3.2", h2_node)
-app12 = add_app(ec, "ping -c5 192.168.3.3", h2_node)
+app1 = add_app(ec, "ping -c5 192.168.3.4", s1_node)
+app2 = add_app(ec, "ping -c5 192.168.3.6", s1_node)
+app3 = add_app(ec, "ping -c5 192.168.3.2", s2_node)
+app4 = add_app(ec, "ping -c5 192.168.3.6", s2_node)
+app5 = add_app(ec, "ping -c5 192.168.3.2", s3_node)
+app6 = add_app(ec, "ping -c5 192.168.3.4", s3_node)
+
+app7 = add_app(ec, "ping -c5 192.168.3.3", h1_node)
+app8 = add_app(ec, "ping -c5 192.168.3.5", h1_node)
+app9 = add_app(ec, "ping -c5 192.168.3.1", h2_node)
+app10 = add_app(ec, "ping -c5 192.168.3.5", h2_node)
+app11 = add_app(ec, "ping -c5 192.168.3.1", h3_node)
+app12 = add_app(ec, "ping -c5 192.168.3.3", h3_node)
 
 ec.deploy()
 
@@ -154,22 +170,34 @@ ping11 = ec.trace(app11, 'stdout')
 ping12 = ec.trace(app12, 'stdout')
 
 
-f = open("examples/openvswitch/ping_res.txt", 'w')
+f = open("examples/openvswitch/ovs_ping_3switches_line.txt", 'w')
 
 if not ping12:
   ec.shutdown()
 
+f.write("************ Ping From Switch 1 : 192.168.3.2 ********************\n\n")
 f.write(ping1)
+f.write("--------------------------------------\n")
 f.write(ping2)
+f.write("************ Ping From Switch 2 : 192.168.3.4 ********************\n\n")
 f.write(ping3)
+f.write("--------------------------------------\n")
 f.write(ping4)
+f.write("************ Ping From Switch 3 : 192.168.3.6 ********************\n\n")
 f.write(ping5)
+f.write("--------------------------------------\n")
 f.write(ping6)
+f.write("************ Ping From Host 1 : 192.168.3.1 ********************\n\n")
 f.write(ping7)
+f.write("--------------------------------------\n")
 f.write(ping8)
+f.write("************ Ping From Host 2 : 192.168.3.3 ********************\n\n")
 f.write(ping9)
+f.write("--------------------------------------\n")
 f.write(ping10)
+f.write("************ Ping From Host 3 : 192.168.3.5 ********************\n\n")
 f.write(ping11)
+f.write("--------------------------------------\n")
 f.write(ping12)
 f.close()
 

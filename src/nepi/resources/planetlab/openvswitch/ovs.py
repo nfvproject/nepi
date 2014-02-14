@@ -30,7 +30,6 @@ reschedule_delay = "0.5s"
 
 @clsinit_copy                    
 class OVSWitch(LinuxApplication):
-    
     _rtype = "OVSWitch"
     _help = "Runs an OpenVSwitch on a PlanetLab host"
     _backend = "planetlab"
@@ -122,6 +121,23 @@ class OVSWitch(LinuxApplication):
         self.node.mkdir(self.ovs_checks)
         
         super(OVSWitch, self).do_provision()
+				
+    def do_deploy(self):
+        """ Wait until node is associated and deployed
+        """
+        if not self.node or self.node.state < ResourceState.READY:
+            self.ec.schedule(reschedule_delay, self.deploy)
+            return
+
+        self.do_discover()
+        self.do_provision()
+        self.check_sliver_ovs()
+        self.servers_on()
+        self.create_bridge()
+        self.assign_controller()
+        self.ovs_status()
+            
+        super(OVSWitch, self).do_deploy()
 
     def check_sliver_ovs(self):  
         """ Check if sliver-ovs exists. If it does not exist, we interrupt
@@ -146,34 +162,15 @@ class OVSWitch(LinuxApplication):
             raise RuntimeError, msg
 
         msg = "Command sliver-ovs exists" 
-        self.debug(msg)						
-
-    def do_deploy(self):
-        """ Wait until node is associated and deployed
-        """
-        node = self.node
-        if not node or node.state < ResourceState.READY:
-            #self.debug("---- RESCHEDULING DEPLOY ---- node state %s " % self.node.state )
-            self.ec.schedule(reschedule_delay, self.deploy)
-            return
-
-        self.do_discover()
-        self.do_provision()
-        self.check_sliver_ovs()
-        self.servers_on()
-        self.create_bridge()
-        self.assign_controller()
-        self.ovs_status()
-            
-        super(OVSWitch, self).do_deploy()
+        self.debug(msg)
 
     def servers_on(self):
         """ Start the openvswitch servers and also checking 
             if they started successfully 
         """
-        self.info("Starting the OVSWitch servers")
-        command = ("sliver-ovs start") 
-                   		
+
+        # Start the server
+        command = "sliver-ovs start"   		
         out = err = ""									
         (out, err), proc = self.node.run_and_wait(command, self.ovs_checks,   
                 shfile = "start_srv.sh",
@@ -183,13 +180,13 @@ class OVSWitch(LinuxApplication):
                 raise_on_error = True,
                 stdout = "start_srv_stdout", 
                 stderr = "start_srv_stderr")
-
         (out, err), proc = self.node.check_output(self.ovs_checks, 'start_srv_exitcode')
 
         if out != "0\n":
             self.error("Servers have not started")
             raise RuntimeError, msg	
 				
+        # Check if the servers are running or not
         cmd = "ps -A | grep ovsdb-server"
         out = err = ""
         (out, err), proc = self.node.run_and_wait(cmd, self.ovs_checks, 
@@ -199,42 +196,35 @@ class OVSWitch(LinuxApplication):
                 sudo = True, 
                 stdout = "status_srv_stdout", 
                 stderr = "status_srv_stderr")
-
-        # Check if the servers are running or not
         (out, err), proc = self.node.check_output(self.ovs_checks, 'status_srv_exitcode')
         
         if out != "0\n":
-            self.error("Servers are not running")
+            msg = "Servers are not running"
+            self.error(msg)
             raise RuntimeError, msg
         
-        self.info("Servers started")  
+        self.info("Server OVS Started Correctly")  
 
-    def del_old_br(self):
-        # TODO: Delete old bridges that might exist maybe by adding atribute
-        """ With ovs-vsctl list-br
-        """
-        pass
+#   def del_old_br(self):
+#        # TODO: Delete old bridges that might exist maybe by adding atribute
+#        """ With ovs-vsctl list-br
+#        """
+#        pass
 
     def create_bridge(self):
         """ Create the bridge/switch and we check if we have any 
             error during the SSH connection         
         """
         # TODO: Add check for virtual_ip belonging to vsys_tag
-        self.del_old_br()
+        #self.del_old_br()
 	
         if not (self.get("bridge_name") and self.get("virtual_ip_pref")):
             msg = "No assignment in one or both attributes"
             self.error(msg)
-            self.debug("Bridge name is %s and virtual_ip_pref is %s" %\
-                (self.get("bridge_name"), self.get("virtual_ip_pref")) )
             raise AttributeError, msg
-	
-        bridge_name = self.get("bridge_name")
-        virtual_ip_pref = self.get("virtual_ip_pref")
-        self.info(" Creating the bridge %s and assigning %s" %\
-            (bridge_name, virtual_ip_pref) )
+
         cmd = "sliver-ovs create-bridge '%s' '%s'" %\
-            (bridge_name, virtual_ip_pref) 
+            (self.get("bridge_name"), self.get("virtual_ip_pref")) 
         out = err = ""
         (out, err), proc = self.node.run_and_wait(cmd, self.ovs_checks,
                 shfile = "create_br.sh",
@@ -243,37 +233,43 @@ class OVSWitch(LinuxApplication):
                 sudo = True, 
                 stdout = "create_br_stdout", 
                 stderr = "create_br_stderr") 
-
         (out, err), proc = self.node.check_output(self.ovs_checks, 'create_br_exitcode')
+
         if out != "0\n":
             msg = "No such pltap netdev\novs-appctl: ovs-vswitchd: server returned an error"
-            self.debug("Check again the virtual IP")			
+            self.error(msg)			
             raise RuntimeError, msg
 
-        self.info("Bridge %s created" % bridge_name)
+        self.info(" Bridge %s Created and Assigned to %s" %\
+            (self.get("bridge_name"), self.get("virtual_ip_pref")) )
           
 
     def assign_controller(self):
         """ Set the controller IP
         """
-        if self.get("controller_ip") and self.get("controller_port"):
-            controller_ip = self.get("controller_ip")
-            controller_port = self.get("controller_port")
-            self.info("Assigning the controller to the %s" % self.get("bridge_name"))
-            cmd = "ovs-vsctl set-controller %s tcp:%s:%s" %\
-                (self.get("bridge_name"), controller_ip, controller_port)
-            out = err = ""
-            (out, err), proc = self.node.run(cmd, self.ovs_checks,
-                    sudo = True, 
-                    stdout = "stdout", 
-                    stderr = "stderr")
-            if err != "":
-                self.debug("SSH connection refusing in assign_contr")
-                raise RuntimeError, msg
-            self.info("Controller assigned")
+
+        if not (self.get("controller_ip") and self.get("controller_port")):
+            msg = "No assignment in one or both attributes"
+            self.error(msg)
+            raise AttributeError, msg
+
+        cmd = "ovs-vsctl set-controller %s tcp:%s:%s" %\
+            (self.get("bridge_name"), self.get("controller_ip"), self.get("controller_port"))
+        out = err = ""
+        (out, err), proc = self.node.run(cmd, self.ovs_checks,
+                sudo = True, 
+                stdout = "stdout", 
+                stderr = "stderr")
+
+        if err != "":
+            msg = "SSH connection in the method assign_controller"
+            self.error(msg)
+            raise RuntimeError, msg
+
+        self.info("Controller assigned to the bridge %s" % self.get("bridge_name"))
 	    
     def ovs_status(self):
-        """ Print the status of the created bridge					
+        """ Print the status of the bridge					
         """
         cmd = "sliver-ovs show | tail -n +2"
         out = err = ""
@@ -282,29 +278,38 @@ class OVSWitch(LinuxApplication):
                 stdout = "show_stdout", 
                 stderr = "show_stderr") 
         (out, err), proc = self.node.check_output(self.ovs_home, 'show_stdout')
+        
+        if out == "":
+            msg = "Error when checking the status of the OpenVswitch"
+            self.error(msg)
+            raise RuntimeError, msg
+        
         self.info(out)
 
     def do_release(self):
-        """ Delete the bridge and 
-            close the servers
+        """ Delete the bridge and close the servers.  
+        It need to wait for the others RM (OVSPort and OVSTunnel)
+        to be released before releasing itself
+
         """
-        # Node needs to wait until all associated RMs are released
-        # to be released
+
         from nepi.resources.planetlab.openvswitch.ovsport import OVSPort
         rm = self.get_connected(OVSPort.get_rtype())
 
-        if rm[0].state < ResourceState.STOPPED:
+        if rm[0].state < ResourceState.RELEASED:
             self.ec.schedule(reschedule_delay, self.release)
             return 
             
-        msg = "Deleting the bridge %s" % self.get('bridge_name')
-        self.info(msg)
         cmd = "sliver-ovs del-bridge %s" % self.get('bridge_name')
         (out, err), proc = self.node.run(cmd, self.ovs_checks,
                 sudo = True)
+
         cmd = "sliver-ovs stop"
         (out, err), proc = self.node.run(cmd, self.ovs_checks,
                 sudo = True)
+
+        msg = "Deleting the bridge %s" % self.get('bridge_name')
+        self.info(msg)
         
         if proc.poll():
             self.error(msg, out, err)
