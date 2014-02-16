@@ -31,10 +31,10 @@ class NS3Simulation(object):
     def invoke(self, *args, **kwargs):
         return self.client.invoke(*args, **kwargs)
 
-    def set(self, *args, **kwargs):
+    def ns3_set(self, *args, **kwargs):
         return self.client.set(*args, **kwargs)
 
-    def get(self, *args, **kwargs):
+    def ns3_get(self, *args, **kwargs):
         return self.client.get(*args, **kwargs)
 
     def flush(self, *args, **kwargs):

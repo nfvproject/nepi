@@ -46,3 +46,6 @@ class NS3BaseChannel(NS3Base):
         rms.add(self.simulation)
         return rms
 
+    def _connect_object(self):
+        pass
+

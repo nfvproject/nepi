@@ -30,8 +30,8 @@ class NS3BasePropagationLossModel(NS3Base):
 
     @property
     def channel(self):
-        from nepi.resources.ns3.ns3channel import NS3BaseChannel
-        channels = self.get_connected(NS3BaseChannel.get_rtype())
+        from nepi.resources.ns3.ns3wifichannel import NS3BaseWifiChannel
+        channels = self.get_connected(NS3BaseWifiChannel.get_rtype())
 
         if not channels: 
             msg = "PropagationLossModel not connected to channel"

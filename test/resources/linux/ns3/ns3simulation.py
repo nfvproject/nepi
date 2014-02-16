@@ -37,48 +37,48 @@ import time
 import unittest
 
 def add_ns3_node(ec, simu):
-    ns3_node = ec.register_resource("ns3::Node")
-    ec.register_connection(ns3_node, simu)
+    node = ec.register_resource("ns3::Node")
+    ec.register_connection(node, simu)
 
     ipv4 = ec.register_resource("ns3::Ipv4L3Protocol")
-    ec.register_connection(ns3_node, ipv4)
+    ec.register_connection(node, ipv4)
 
     arp = ec.register_resource("ns3::ArpL3Protocol")
-    ec.register_connection(ns3_node, arp)
+    ec.register_connection(node, arp)
     
     icmp = ec.register_resource("ns3::Icmpv4L4Protocol")
-    ec.register_connection(ns3_node, icmp)
+    ec.register_connection(node, icmp)
 
-    return ns3_node
+    return node
 
-def add_point2point_device(ec, ns3_node, address, prefix):
+def add_point2point_device(ec, node, address, prefix):
     dev = ec.register_resource("ns3::PointToPointNetDevice")
     ec.set(dev, "ip", address)
     ec.set(dev, "prefix", prefix)
-    ec.register_connection(ns3_node, dev)
+    ec.register_connection(node, dev)
 
     queue = ec.register_resource("ns3::DropTailQueue")
     ec.register_connection(dev, queue)
 
     return dev
 
-def add_csma_device(ec, ns3_node, address, prefix):
+def add_csma_device(ec, node, address, prefix):
     dev = ec.register_resource("ns3::CsmaNetDevice")
     ec.set(dev, "ip", address)
     ec.set(dev, "prefix", prefix)
-    ec.register_connection(ns3_node, dev)
+    ec.register_connection(node, dev)
 
     queue = ec.register_resource("ns3::DropTailQueue")
     ec.register_connection(dev, queue)
 
     return dev
 
-def add_wifi_device(ec, ns3_node, address, prefix, 
+def add_wifi_device(ec, node, address, prefix, 
         access_point = False):
     dev = ec.register_resource("ns3::WifiNetDevice")
     ec.set(dev, "ip", address)
     ec.set(dev, "prefix", prefix)
-    ec.register_connection(ns3_node, dev)
+    ec.register_connection(node, dev)
 
     phy = ec.register_resource("ns3::YansWifiPhy")
     ec.set(phy, "Standard", "WIFI_PHY_STANDARD_80211a")
@@ -87,34 +87,35 @@ def add_wifi_device(ec, ns3_node, address, prefix,
     error = ec.register_resource("ns3::NistErrorRateModel")
     ec.register_connection(phy, error)
 
-    manager = ec.register_resources("ns3::ArfWifiManager")
+    manager = ec.register_resource("ns3::ArfWifiManager")
     ec.register_connection(dev, manager)
 
     if access_point:
-        mac = ec.register_resources("ns3::ApWifiMac")
+        mac = ec.register_resource("ns3::ApWifiMac")
     else:
-        mac = ec.register_resources("ns3::StaWifiMac")
+        mac = ec.register_resource("ns3::StaWifiMac")
 
     ec.set(mac, "Standard", "WIFI_PHY_STANDARD_80211a")
     ec.register_connection(dev, mac)
 
-    return dev
+    return dev, phy
 
-def add_random_mobility(ec, ns3_node, x, y, z, speed, bounds_width, 
+def add_random_mobility(ec, node, x, y, z, speed, bounds_width, 
         bounds_height):
     position = "%d:%d:%d" % (x, y, z)
     bounds = "0|%d|0|%d" % (bounds_width, bounds_height) 
-    speed = "Constant:%d" % speed
+    speed = "ns3::UniformRandomVariable[Min=%d|Max=%s]" % (speed, speed)
+    pause = "ns3::ConstantRandomVariable[Constant=1.0]"
     
     mobility = ec.register_resource("ns3::RandomDirection2dMobilityModel")
     ec.set(mobility, "Position", position)
     ec.set(mobility, "Bounds", bounds)
     ec.set(mobility, "Speed", speed)
-    ec.set(mobility, "Pause",  "Constant:1")
+    ec.set(mobility, "Pause",  pause)
     ec.register_connection(node, mobility)
     return mobility
 
-def add_constant_mobility(ec, ns3_node, x, y, z):
+def add_constant_mobility(ec, node, x, y, z):
     mobility = ec.register_resource("ns3::ConstantPositionMobilityModel") 
     position = "%d:%d:%d" % (x, y, z)
     ec.set(mobility, "Position", position)
@@ -458,7 +459,7 @@ class LinuxNS3ClientTest(unittest.TestCase):
 
         ec.shutdown()
 
-    def ztest_simple_wifi_ping(self):
+    def test_simple_wifi_ping(self):
         bounds_width = bounds_height = 200
         x = y = 100
         speed = 1
@@ -473,29 +474,30 @@ class LinuxNS3ClientTest(unittest.TestCase):
         #ec.set(node, "cleanHome", True)
 
         simu = ec.register_resource("LinuxNS3Simulation")
+        ec.set(simu, "verbose", True)
         ec.register_connection(simu, node)
 
         nsnode1 = add_ns3_node(ec, simu)
-        dev1 = add_wifi_node(ec, nsnode1, "10.0.0.1", "30", access_point = True)
+        dev1, phy1 = add_wifi_device(ec, nsnode1, "10.0.0.1", "24", access_point = True)
         mobility1 = add_constant_mobility(ec, nsnode1, x, y, 0)
 
         nsnode2 = add_ns3_node(ec, simu)
-        dev2 = add_wifi_node(ec, nsnode1, "10.0.0.2", "30", access_point = False)
-        mobility2 = add_random_mobility(ec, nsnode2, x, y, 0, speed, 
-                bounds_width, bounds_height)
+        dev2, phy2 = add_wifi_device(ec, nsnode2, "10.0.0.2", "24", access_point = False)
+        mobility1 = add_constant_mobility(ec, nsnode2, x, y, 0)
+        #mobility2 = add_random_mobility(ec, nsnode2, x, y, 0, speed, bounds_width, bounds_height)
 
         # Create channel
         chan = add_wifi_channel(ec)
-        ec.register_connection(chan, dev1)
-        ec.register_connection(chan, dev2)
+        ec.register_connection(chan, phy1)
+        ec.register_connection(chan, phy2)
 
         ### create pinger
         ping = ec.register_resource("ns3::V4Ping")
         ec.set (ping, "Remote", "10.0.0.1")
         ec.set (ping, "Interval", "1s")
         ec.set (ping, "Verbose", True)
-        ec.set (ping, "StartTime", "0s")
-        ec.set (ping, "StopTime", "20s")
+        ec.set (ping, "StartTime", "1s")
+        ec.set (ping, "StopTime", "21s")
         ec.register_connection(ping, nsnode2)
 
         ec.deploy()
@@ -503,7 +505,6 @@ class LinuxNS3ClientTest(unittest.TestCase):
         ec.wait_finished([ping])
         
         stdout = ec.trace(simu, "stdout")
-        print stdout
 
         expected = "20 packets transmitted, 20 received, 0% packet loss"
         self.assertTrue(stdout.find(expected) > -1)

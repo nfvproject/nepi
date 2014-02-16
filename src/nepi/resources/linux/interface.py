@@ -30,8 +30,9 @@ import re
 import tempfile
 import time
 
-# TODO: UP, MTU attributes!
-
+# TODO: 
+#     - check UP, MTU attributes!
+#     - clean up code and test!
 
 @clsinit_copy
 class LinuxInterface(ResourceManager):
@@ -266,6 +267,7 @@ class LinuxInterface(ResourceManager):
         attr = self._attrs["up"]
         attr._value = up
         attr = self._attrs["mtu"]
+        attr._value = mtu 
 
     def add_set_hooks(self):
         attrup = self._attrs["up"]
@@ -275,7 +277,7 @@ class LinuxInterface(ResourceManager):
         attrmtu.set_hook = self.set_hook_mtu
 
     def set_hook_up(self, oldval, newval):
-        if oldval == newval:
+        if self.state == ResourceState.NEW or oldval == newval:
             return oldval
 
         # configure interface up
@@ -294,7 +296,7 @@ class LinuxInterface(ResourceManager):
         return newval
 
     def set_hook_mtu(self, oldval, newval):
-        if oldval == newval:
+        if self.state == ResourceState.NEW or oldval == newval:
             return oldval
 
         cmd = "ifconfig %s mtu %d" % (self.get("deviceName"), newval)

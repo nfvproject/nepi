@@ -83,10 +83,10 @@ class NS3Base(ResourceManager):
 
         kwargs = dict()
         for attr in self._attrs.values():
-            if not (attr.has_changed() and attr.has_flag(Flags.Construct)):
+            if not ( attr.has_flag(Flags.Construct) and attr.has_changed() ):
                 continue
 
-            kwargs[attr.name] = attr.value
+            kwargs[attr.name] = attr._value
 
         self._uuid = self.simulation.factory(self.get_rtype(), **kwargs)
 
@@ -147,4 +147,24 @@ class NS3Base(ResourceManager):
     @property
     def state(self):
         return self._state
+
+    def get(self, name):
+        if self.state in [ResourceState.READY, ResourceState.STARTED] and \
+                self.has_flag(name, Flags.Reserved) and \
+                not self.has_flag(name, Flags.NoRead): 
+            return self.simulation.ns3_get(self.uuid, name)
+        else:
+            value = super(NS3Base, self).get(name)
+
+        return value
+
+    def set(self, name, value):
+        if self.state in [ResourceState.READY, ResourceState.STARTED] and \
+                self.has_flag(name, Flags.Reserved) and \
+                not (self.has_flag(Flags.NoWrite) or self.has_flag(name, Flags.Design)): 
+            self.simulation.ns3_set(self.uuid, name, value)
+        
+        value = super(NS3Base, self).set(name, value)
+
+        return value
 

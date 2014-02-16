@@ -20,36 +20,25 @@
 from nepi.execution.resource import clsinit_copy
 from nepi.resources.ns3.ns3base import NS3Base
 
+# TODO: 
+#       - mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
+#       - set hook for Position - SetPosition(Vector)
+
 @clsinit_copy
-class NS3BaseIpv4L3Protocol(NS3Base):
-    _rtype = "abstract::ns3::Ipv4L3Protocol"
+class NS3BaseMobilityModel(NS3Base):
+    _rtype = "abstract::ns3::MobilityModel"
 
-    @property
-    def node(self):
-        from nepi.resources.ns3.ns3node import NS3BaseNode
-        nodes = self.get_connected(NS3BaseNode.get_rtype())
-
-        if not nodes: 
-            msg = "Ipv4L3Protocol not connected to node"
-            self.error(msg)
-            raise RuntimeError, msg
-
-        return nodes[0]
+    def _configure_object(self):
+        # Set initial position
+        position = self.get("Position")
+        if position:
+            self.simulation.ns3_set(self.uuid, "Position", position)
 
     @property
     def _rms_to_wait(self):
         rms = set()
         rms.add(self.simulation)
         return rms
-
-    def _configure_object(self):
-        simulation = self.simulation
-
-        uuid_list_routing = simulation.create("Ipv4ListRouting")
-        simulation.invoke(self.uuid, "SetRoutingProtocol", uuid_list_routing)
-
-        uuid_static_routing = simulation.create("Ipv4StaticRouting")
-        simulation.invoke(uuid_list_routing, "AddRoutingProtocol", uuid_static_routing, 1)
 
     def _connect_object(self):
         pass

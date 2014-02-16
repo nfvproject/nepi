@@ -113,28 +113,38 @@ class NS3BaseNetDevice(NS3Base):
 
     @property
     def _rms_to_wait(self):
-        others = set()
+        rms = set()
         
         node = self.node
-        others.add(node)
+        rms.add(node)
 
         ipv4 = node.ipv4
         if node.ipv4:
-            others.add(ipv4)
+            rms.add(ipv4)
 
-        others.add(self.channel)
-        return others
+        rms.add(self.channel)
+        return rms
 
     def _configure_object(self):
         # Set Mac
+        self._configure_mac_address()
+
+        # Set IP address
+        self._configure_ip_address()
+        
+        # Enable traces
+        self._configure_traces()
+
+    def _configure_mac_address(self):
         mac = self.get("mac")
         if mac:
             mac_uuid = self.simulation.create("Mac48Address", mac)
         else:
             mac_uuid = self.simulation.invoke("singleton::Mac48Address", "Allocate")
+
         self.simulation.invoke(self.uuid, "SetAddress", mac_uuid)
 
-        # Set IP address
+    def _configure_ip_address(self):
         ip = self.get("ip")
         prefix = self.get("prefix")
 
@@ -156,9 +166,6 @@ class NS3BaseNetDevice(NS3Base):
             # IPv6
             # TODO!
             pass
-        
-        # Enable traces
-        self._configure_traces()
 
     def _configure_traces(self):
         if self.trace_enabled("pcap"):
