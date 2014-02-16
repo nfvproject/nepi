@@ -17,12 +17,24 @@
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
+from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.resource import clsinit_copy
 from nepi.resources.ns3.ns3base import NS3Base
+from nepi.resources.ns3.ns3wifinetdevice import WIFI_STANDARDS
 
 @clsinit_copy
 class NS3BaseWifiMac(NS3Base):
     _rtype = "abstract::ns3::WifiMac"
+
+    @classmethod
+    def _register_attributes(cls):
+        standard = Attribute("Standard", "Wireless standard",
+                default = "WIFI_PHY_STANDARD_80211a",
+                allowed = WIFI_STANDARDS.keys(),
+                type = Types.Enumerate,
+                flags = Flags.Design)
+
+        cls._register_attribute(standard)
 
     @property
     def node(self):
@@ -30,8 +42,8 @@ class NS3BaseWifiMac(NS3Base):
 
     @property
     def device(self):
-        from nepi.resources.ns3.ns3device import NS3BaseNetDevice
-        devices = self.get_connected(NS3BaseNetDevice.get_rtype())
+        from nepi.resources.ns3.ns3wifinetdevice import NS3BaseWifiNetDevice
+        devices = self.get_connected(NS3BaseWifiNetDevice.get_rtype())
 
         if not devices: 
             msg = "WifiMac not connected to device"
@@ -49,6 +61,20 @@ class NS3BaseWifiMac(NS3Base):
     def _connect_object(self):
         device = self.device
         if device.uuid not in self.connected:
-            self.simulation.invoke(device.uuid, "SetMac", self.uuid)
             self._connected.add(device.uuid)
+
+            self.simulation.invoke(device.uuid, "SetMac", self.uuid)
+
+            standard = self.get("Standard")
+            self.simulation.invoke(self.uuid, "ConfigureStandard", WIFI_STANDARDS[standard])
+
+            # Delayed configuration of MAC address
+            mac = device.get("mac")
+            if mac:
+                mac_uuid = self.simulation.create("Mac48Address", mac)
+            else:
+                mac_uuid = self.simulation.invoke("singleton::Mac48Address", "Allocate")
+
+            self.simulation.invoke(self.uuid, "SetAddress", mac_uuid)
+
 

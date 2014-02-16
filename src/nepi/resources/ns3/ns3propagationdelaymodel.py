@@ -30,8 +30,8 @@ class NS3BasePropagationDelayModel(NS3Base):
 
     @property
     def channel(self):
-        from nepi.resources.ns3.ns3channel import NS3BaseChannel
-        channels = self.get_connected(NS3BaseChannel.get_rtype())
+        from nepi.resources.ns3.ns3wifichannel import NS3BaseWifiChannel
+        channels = self.get_connected(NS3BaseWifiChannel.get_rtype())
 
         if not channels: 
             msg = "PropagationDelayModel not connected to channel"
@@ -49,6 +49,6 @@ class NS3BasePropagationDelayModel(NS3Base):
     def _connect_object(self):
         channel = self.channel
         if channel.uuid not in self.connected:
-            self.simulator.invoke(channel.uuid, "SetPropagationDelayModel", self.uuid)
+            self.simulation.invoke(channel.uuid, "SetPropagationDelayModel", self.uuid)
             self._connected.add(channel.uuid)
 

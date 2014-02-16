@@ -18,38 +18,45 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 from nepi.execution.resource import clsinit_copy
-from nepi.resources.ns3.ns3base import NS3Base
 from nepi.resources.ns3.ns3netdevice import NS3BaseNetDevice
 
+WIFI_STANDARDS = dict({
+    "WIFI_PHY_STANDARD_holland": 5,
+    "WIFI_PHY_STANDARD_80211p_SCH": 7,
+    "WIFI_PHY_STANDARD_80211_5Mhz": 4,
+    "WIFI_PHY_UNKNOWN": 8,
+    "WIFI_PHY_STANDARD_80211_10Mhz": 3,
+    "WIFI_PHY_STANDARD_80211g": 2,
+    "WIFI_PHY_STANDARD_80211p_CCH": 6,
+    "WIFI_PHY_STANDARD_80211a": 0,
+    "WIFI_PHY_STANDARD_80211b": 1
+})
+
 @clsinit_copy
-class NS3BaseWifiRemoteStationManager(NS3Base):
-    _rtype = "abstract::ns3::WifiRemoteStationManager"
-
-    @property
-    def node(self):
-        return self.device.node
-
-    @property
-    def device(self):
-        from nepi.resources.ns3.ns3wifinetdevice import NS3BaseWifiNetDevice
-        devices = self.get_connected(NS3BaseWifiNetDevice.get_rtype())
-
-        if not devices: 
-            msg = "WifiRemoteStationManager not connected to device"
-            self.error(msg)
-            raise RuntimeError, msg
-
-        return devices[0]
+class NS3BaseWifiNetDevice(NS3BaseNetDevice):
+    _rtype = "abstract::ns3::WifiNetDevice"
 
     @property
     def _rms_to_wait(self):
         rms = set()
-        rms.add(self.device)
+        
+        node = self.node
+        rms.add(node)
+
+        ipv4 = node.ipv4
+        if node.ipv4:
+            rms.add(ipv4)
+
         return rms
 
+    def _configure_mac_address(self):
+        # The wifimac is the one responsible for
+        # configuring the MAC address
+        pass
+
     def _connect_object(self):
-        device = self.device
-        if device.uuid not in self.connected:
-            self.simulation.invoke(device.uuid, "SetRemoteStationManager", self.uuid)
-            self._connected.add(device.uuid)
+        node = self.node
+        if node and node.uuid not in self.connected:
+            self.simulation.invoke(node.uuid, "AddDevice", self.uuid)
+            self._connected.add(node.uuid)
 

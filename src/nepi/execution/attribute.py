@@ -39,14 +39,18 @@ class Flags:
     # Attribute value can be modified only before deployment
     Design  = 1 << 2 # 4
 
-    # Attribute value will be used only during the deployment face
-    Construct    = 1 << 3 | Design # 8 + 4
+    # Attribute value will be used at deployment time for initial configuration
+    Construct    = 1 << 3 #  8
 
     # Attribute provides credentials to access resources
     Credential  = 1 << 4  | Design # 16 + 4
 
     # Attribute is a filter used to discover resources
     Filter  = 1 << 5 | Design # 32 + 4
+
+    # Attribute Flag is reserved for internal RM usage (i.e. should be 
+    # transparent to the user)
+    Reserved  = 1 << 6 # 64
 
 
 class Attribute(object):
@@ -85,7 +89,7 @@ class Attribute(object):
                 attributes.
         :type range: (int, int) or (float, float)
         
-        :param set_hook: Function that will be executed when ever a new 
+        :param set_hook: Function that will be executed whenever a new 
                 value is set for the attribute.
         :type set_hook: function
 
@@ -142,7 +146,7 @@ class Attribute(object):
     def has_flag(self, flag):
         """ Returns true if the attribute has the flag 'flag'
 
-        :param flag: Flag that need to be ckecked
+        :param flag: Flag to be checked
         :type flag: Flags
         """
         return (self._flags & flag) == flag

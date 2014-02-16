@@ -32,8 +32,11 @@ base_types = ["ns3::Node",
         "ns3::ArpL3Protocol",
         "ns3::Ipv4L3Protocol",
         "ns3::PropagationLossModel",
+        "ns3::MobilityModel",
         "ns3::PropagationDelayModel",
         "ns3::WifiRemoteStationManager",
+        "ns3::WifiNetDevice",
+        "ns3::WifiChannel",
         "ns3::WifiPhy",
         "ns3::WifiMac",
         "ns3::ErrorModel",
@@ -146,12 +149,15 @@ def template_attributes(ns3, tid):
         if not attr_info.accessor.HasGetter():
             continue
 
-        attr_flags = "None"
+        attr_flags = "Flags.Reserved"
         flags = attr_info.flags
-        if (flags & ns3.TypeId.ATTR_SET) != ns3.TypeId.ATTR_SET:
-            attr_flags = "Flags.Design"
-        elif (flags & ns3.TypeId.ATTR_CONSTRUCT) == ns3.TypeId.ATTR_CONSTRUCT:
-            attr_flags = "Flags.Construct"
+        if (flags & ns3.TypeId.ATTR_CONSTRUCT) == ns3.TypeId.ATTR_CONSTRUCT:
+            attr_flags += " | Flags.Construct"
+        else:
+            if (flags & ns3.TypeId.ATTR_GET) != ns3.TypeId.ATTR_GET:
+                attr_flags += " | Flags.NoRead"
+            elif (flags & ns3.TypeId.ATTR_SET) != ns3.TypeId.ATTR_SET:
+                attr_flags += " | Flags.NoWrite"
 
         attr_name = attr_info.name
         checker = attr_info.checker

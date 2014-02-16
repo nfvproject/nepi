@@ -25,6 +25,10 @@ class NS3BaseErrorRateModel(NS3Base):
     _rtype = "abstract::ns3::ErrorRateModel"
 
     @property
+    def node(self):
+        return self.phy.node
+
+    @property
     def phy(self):
         from nepi.resources.ns3.ns3wifiphy import NS3BaseWifiPhy
         phys = self.get_connected(NS3BaseWifiPhy.get_rtype())

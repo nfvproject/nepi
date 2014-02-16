@@ -554,6 +554,7 @@ class ResourceManager(Logger):
         """
         attr = self._attrs[name]
         attr.value = value
+        return value
 
     def get(self, name):
         """ Returns the value of the attribute
@@ -575,6 +576,15 @@ class ResourceManager(Logger):
         """
         attr = self._attrs[name]
         return attr.has_changed()
+
+    def has_flag(self, name, flag):
+        """ Returns true if the attribute has the flag 'flag'
+
+        :param flag: Flag to be checked
+        :type flag: Flags
+        """
+        attr = self._attrs[name]
+        return attr.has_flag(flag)
 
     def enable_trace(self, name):
         """ Explicitly enable trace generation

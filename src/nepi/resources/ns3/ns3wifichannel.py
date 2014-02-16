@@ -21,20 +21,24 @@ from nepi.execution.resource import clsinit_copy
 from nepi.resources.ns3.ns3base import NS3Base
 
 @clsinit_copy
-class NS3BaseIpv4L3Protocol(NS3Base):
-    _rtype = "abstract::ns3::Ipv4L3Protocol"
+class NS3BaseWifiChannel(NS3Base):
+    _rtype = "abstract::ns3::WifiChannel"
 
     @property
-    def node(self):
-        from nepi.resources.ns3.ns3node import NS3BaseNode
-        nodes = self.get_connected(NS3BaseNode.get_rtype())
+    def simulation(self):
+        return self.phys[0].device.node.simulation
 
-        if not nodes: 
-            msg = "Ipv4L3Protocol not connected to node"
+    @property
+    def phys(self):
+        from nepi.resources.ns3.ns3wifiphy import NS3BaseWifiPhy
+        phys = self.get_connected(NS3BaseWifiPhy.get_rtype())
+
+        if not phys: 
+            msg = "Channel not connected to phy"
             self.error(msg)
             raise RuntimeError, msg
 
-        return nodes[0]
+        return phys
 
     @property
     def _rms_to_wait(self):
@@ -42,14 +46,6 @@ class NS3BaseIpv4L3Protocol(NS3Base):
         rms.add(self.simulation)
         return rms
 
-    def _configure_object(self):
-        simulation = self.simulation
-
-        uuid_list_routing = simulation.create("Ipv4ListRouting")
-        simulation.invoke(self.uuid, "SetRoutingProtocol", uuid_list_routing)
-
-        uuid_static_routing = simulation.create("Ipv4StaticRouting")
-        simulation.invoke(uuid_list_routing, "AddRoutingProtocol", uuid_static_routing, 1)
-
     def _connect_object(self):
         pass
+

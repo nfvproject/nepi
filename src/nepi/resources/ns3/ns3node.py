@@ -44,13 +44,39 @@ class NS3BaseNode(NS3Base):
         return None
 
     @property
+    def mobility(self):
+        from nepi.resources.ns3.ns3mobilitymodel import NS3BaseMobilityModel
+        mobility = self.get_connected(NS3BaseMobilityModel.get_rtype())
+        if mobility: return mobility[0]
+        return None
+
+    @property
     def _rms_to_wait(self):
         rms = set()
         rms.add(self.simulation)
+
+        ipv4 = self.ipv4
+        if ipv4:
+            rms.add(ipv4)
+
+        mobility = self.mobility
+        if mobility:
+            rms.add(mobility)
+
         return rms
 
     def _configure_object(self):
         ### node.AggregateObject(PacketSocketFactory())
         uuid_packet_socket_factory = self.simulation.create("PacketSocketFactory")
         self.simulation.invoke(self.uuid, "AggregateObject", uuid_packet_socket_factory)
+
+    def _connect_object(self):
+        ipv4 = self.ipv4
+        if ipv4:
+            self.simulation.invoke(self.uuid, "AggregateObject", ipv4.uuid)
+
+        mobility = self.mobility
+        if mobility:
+            self.simulation.invoke(self.uuid, "AggregateObject", mobility.uuid)
+
 
