@@ -16,14 +16,16 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Author: Alina Quereilhac <alina.quereilhac@inria.fr>
-#         Alexandros Kouvakas <alexandros.kouvakas@gmail.com>
+# Authors :  Julien Tribino <julien.tribino@inria.fr>
+#          Alina Quereilhac <alina.quereilhac@inria.fr>
 #
-#         Switch1 ------- Switch2         
-#            /                \           
-#           /                  \          
-#          /                    \         
-#       Host1                  Host2      
+# Topology :
+#
+#         Switch1 ------ Switch2 ------- Switch2         
+#            /              |                \           
+#           /               |                 \          
+#          /                |                  \         
+#       Host1             Host3               Host2   
 
 
 
