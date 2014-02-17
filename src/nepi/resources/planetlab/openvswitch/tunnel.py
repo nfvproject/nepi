@@ -58,7 +58,7 @@ class OVSTunnel(LinuxApplication):
 
         """
         network = Attribute("network", "IPv4 Network Address",
-               flags = Flags.ExecReadOnly)
+               flags = Flags.Design)
 
         cipher = Attribute("cipher",
                "Cipher to encript communication. "
