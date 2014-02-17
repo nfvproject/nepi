@@ -210,6 +210,8 @@ class NS3Wrapper(object):
     def invoke(self, uuid, operation, *args, **kwargs):
         if operation == "isAppRunning":
             return self._is_app_running(uuid)
+        if operation == "addStaticRoute":
+            return self._add_static_route(uuid, *args)
 
         if uuid.startswith(SINGLETON):
             obj = self._singleton(uuid)
@@ -458,4 +460,53 @@ class NS3Wrapper(object):
             return True
 
         return False
+
+    def _add_static_route(self, ipv4_uuid, network, prefix, nexthop):
+        ipv4 = self.get_object(ipv4_uuid)
+
+        list_routing = ipv4.GetRoutingProtocol()
+        (static_routing, priority) = list_routing.GetRoutingProtocol(0)
+
+        ifindex = self._find_ifindex(ipv4, nexthop)
+        if ifindex == -1:
+            return False
+        
+        nexthop = self.ns3.Ipv4Address(nexthop)
+
+        if network in ["0.0.0.0", "0", None]:
+            # Default route: 0.0.0.0/0
+            static_routing.SetDefaultRoute(nexthop, ifindex)
+        else:
+            mask = self.ns3.Ipv4Mask("/%s" % prefix) 
+            network = self.ns3.Ipv4Address(network)
+
+            if prefix == 32:
+                # Host route: x.y.z.w/32
+                static_routing.AddHostRouteTo(network, nexthop, ifindex)
+            else:
+                # Network route: x.y.z.w/n
+                static_routing.AddNetworkRouteTo(network, mask, nexthop, 
+                        ifindex) 
+        return True
+
+    def _find_ifindex(self, ipv4, nexthop):
+        ifindex = -1
+
+        nexthop = self.ns3.Ipv4Address(nexthop)
+
+        # For all the interfaces registered with the ipv4 object, find
+        # the one that matches the network of the nexthop
+        nifaces = ipv4.GetNInterfaces()
+        for ifidx in xrange(nifaces):
+            iface = ipv4.GetInterface(ifidx)
+            naddress = iface.GetNAddresses()
+            for addridx in xrange(naddress):
+                ifaddr = iface.GetAddress(addridx)
+                ifmask = ifaddr.GetMask()
+                
+                ifindex = ipv4.GetInterfaceForPrefix(nexthop, ifmask)
+
+                if ifindex == ifidx:
+                    return ifindex
+        return ifindex
 

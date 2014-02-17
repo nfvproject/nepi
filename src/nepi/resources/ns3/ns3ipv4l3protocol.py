@@ -24,6 +24,11 @@ from nepi.resources.ns3.ns3base import NS3Base
 class NS3BaseIpv4L3Protocol(NS3Base):
     _rtype = "abstract::ns3::Ipv4L3Protocol"
 
+    def __init__(self, ec, guid):
+        super(NS3BaseIpv4L3Protocol, self).__init__(ec, guid)
+        self.list_routing_uuid = None
+        self.static_routing_uuid = None
+
     @property
     def node(self):
         from nepi.resources.ns3.ns3node import NS3BaseNode
@@ -45,11 +50,12 @@ class NS3BaseIpv4L3Protocol(NS3Base):
     def _configure_object(self):
         simulation = self.simulation
 
-        uuid_list_routing = simulation.create("Ipv4ListRouting")
-        simulation.invoke(self.uuid, "SetRoutingProtocol", uuid_list_routing)
+        self.list_routing_uuid = simulation.create("Ipv4ListRouting")
+        simulation.invoke(self.uuid, "SetRoutingProtocol", self.list_routing_uuid)
 
-        uuid_static_routing = simulation.create("Ipv4StaticRouting")
-        simulation.invoke(uuid_list_routing, "AddRoutingProtocol", uuid_static_routing, 1)
+        self.static_routing_uuid = simulation.create("Ipv4StaticRouting")
+        simulation.invoke(self.list_routing_uuid, "AddRoutingProtocol", 
+                self.static_routing_uuid, 1)
 
     def _connect_object(self):
         pass

@@ -24,8 +24,6 @@ from nepi.resources.ns3.ns3base import NS3Base
 
 import ipaddr
 
-# TODO: Validate that device must be connected to queue!! If not a segmentation fault occurs
-
 @clsinit_copy
 class NS3BaseNetDevice(NS3Base):
     _rtype = "abstract::ns3::NetDevice"
@@ -83,6 +81,18 @@ class NS3BaseNetDevice(NS3Base):
             raise RuntimeError, msg
 
         return channels[0]
+
+    @property
+    def queue(self):
+        from nepi.resources.ns3.ns3queue import NS3BaseQueue
+        queue = self.get_connected(NS3BaseQueue.get_rtype())
+
+        if not queue: 
+            msg = "Device not connected to queue"
+            self.error(msg)
+            raise RuntimeError, msg
+
+        return queue[0]
 
     @property
     def ascii_helper_uuid(self):
@@ -213,4 +223,9 @@ class NS3BaseNetDevice(NS3Base):
         if channel and channel.uuid not in self.connected:
             self.simulation.invoke(self.uuid, "Attach", channel.uuid)
             self._connected.add(channel.uuid)
-
+        
+        queue = self.queue
+        # Verify that the device has a queue. If no queue is added a segfault 
+        # error occurs
+        if queue and queue.uuid not in self.connected:
+            self._connected.add(queue.uuid)
