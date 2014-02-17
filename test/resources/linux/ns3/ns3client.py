@@ -44,7 +44,7 @@ class DummySimulation(object):
         self.node = dict({'hostname': 'localhost'})
 
     @property
-    def local_socket(self):
+    def remote_socket(self):
         return self.socket_name
 
 class LinuxNS3ClientTest(unittest.TestCase):

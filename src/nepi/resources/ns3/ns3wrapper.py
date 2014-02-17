@@ -28,6 +28,7 @@ SINGLETON = "singleton::"
 SIMULATOR_UUID = "singleton::Simulator"
 CONFIG_UUID = "singleton::Config"
 GLOBAL_VALUE_UUID = "singleton::GlobalValue"
+IPV4_GLOBAL_ROUTING_HELPER_UUID = "singleton::Ipv4GlobalRoutingHelper"
 
 def load_ns3_module():
     import ctypes

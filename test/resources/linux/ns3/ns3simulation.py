@@ -51,10 +51,12 @@ def add_ns3_node(ec, simu):
 
     return node
 
-def add_point2point_device(ec, node, address, prefix):
+def add_point2point_device(ec, node, address = None,  prefix = None):
     dev = ec.register_resource("ns3::PointToPointNetDevice")
-    ec.set(dev, "ip", address)
-    ec.set(dev, "prefix", prefix)
+    if address:
+       ec.set(dev, "ip", address)
+    if prefix:
+       ec.set(dev, "prefix", prefix)
     ec.register_connection(node, dev)
 
     queue = ec.register_resource("ns3::DropTailQueue")
@@ -62,10 +64,12 @@ def add_point2point_device(ec, node, address, prefix):
 
     return dev
 
-def add_csma_device(ec, node, address, prefix):
+def add_csma_device(ec, node, address = None, prefix = None):
     dev = ec.register_resource("ns3::CsmaNetDevice")
-    ec.set(dev, "ip", address)
-    ec.set(dev, "prefix", prefix)
+    if address:
+        ec.set(dev, "ip", address)
+    if prefix:
+        ec.set(dev, "prefix", prefix)
     ec.register_connection(node, dev)
 
     queue = ec.register_resource("ns3::DropTailQueue")
@@ -73,11 +77,13 @@ def add_csma_device(ec, node, address, prefix):
 
     return dev
 
-def add_wifi_device(ec, node, address, prefix, 
+def add_wifi_device(ec, node, address = None, prefix = None, 
         access_point = False):
     dev = ec.register_resource("ns3::WifiNetDevice")
-    ec.set(dev, "ip", address)
-    ec.set(dev, "prefix", prefix)
+    if address:
+        ec.set(dev, "ip", address)
+    if prefix:
+        ec.set(dev, "prefix", prefix)
     ec.register_connection(node, dev)
 
     phy = ec.register_resource("ns3::YansWifiPhy")
@@ -577,30 +583,30 @@ class LinuxNS3ClientTest(unittest.TestCase):
 
         # Add routes - n1 - n6
         r1 = ec.register_resource("ns3::Route")
-        ec.set(r1, "Network", "10.0.2.0")
-        ec.set(r1, "Prefix", "30")
-        ec.set(r1, "Nexthop", "10.0.0.2")
+        ec.set(r1, "network", "10.0.2.0")
+        ec.set(r1, "prefix", "30")
+        ec.set(r1, "nexthop", "10.0.0.2")
         ec.register_connection(r1, nsnode1)
 
         # Add routes - n2 - n6
         r2 = ec.register_resource("ns3::Route")
-        ec.set(r2, "Network", "10.0.2.0")
-        ec.set(r2, "Prefix", "30")
-        ec.set(r2, "Nexthop", "10.0.1.4")
+        ec.set(r2, "network", "10.0.2.0")
+        ec.set(r2, "prefix", "30")
+        ec.set(r2, "nexthop", "10.0.1.4")
         ec.register_connection(r2, nsnode2)
 
         # Add routes - n5 - n1
         r5 = ec.register_resource("ns3::Route")
-        ec.set(r5, "Network", "10.0.0.0")
-        ec.set(r5, "Prefix", "30")
-        ec.set(r5, "Nexthop", "10.0.1.1")
+        ec.set(r5, "network", "10.0.0.0")
+        ec.set(r5, "prefix", "30")
+        ec.set(r5, "nexthop", "10.0.1.1")
         ec.register_connection(r5, nsnode5)
 
         # Add routes - n6 - n1
         r6 = ec.register_resource("ns3::Route")
-        ec.set(r6, "Network", "10.0.0.0")
-        ec.set(r6, "Prefix", "30")
-        ec.set(r6, "Nexthop", "10.0.2.1")
+        ec.set(r6, "network", "10.0.0.0")
+        ec.set(r6, "prefix", "30")
+        ec.set(r6, "nexthop", "10.0.2.1")
         ec.register_connection(r6, nsnode6)
 
         ### create pinger
@@ -617,6 +623,93 @@ class LinuxNS3ClientTest(unittest.TestCase):
         ec.wait_finished([ping])
         
         stdout = ec.trace(simu, "stdout")
+
+        expected = "20 packets transmitted, 20 received, 0% packet loss"
+        self.assertTrue(stdout.find(expected) > -1)
+
+        ec.shutdown()
+
+    def ztest_automatic_routing(self):
+        """ 
+        network topology:
+                                n4
+                                |
+           n1 -- p2p -- n2 -- csma -- n5 -- p2p -- n6
+           |                    | 
+           ping n6              n3
+           
+
+        """
+        ec = ExperimentController(exp_id = "test-ns3-auto-routes")
+        
+        node = ec.register_resource("LinuxNode")
+        ec.set(node, "hostname", self.fedora_host)
+        ec.set(node, "username", self.fedora_user)
+        ec.set(node, "identity", self.fedora_identity)
+        ec.set(node, "cleanProcesses", True)
+        #ec.set(node, "cleanHome", True)
+
+        simu = ec.register_resource("LinuxNS3Simulation")
+        ec.set(simu, "verbose", True)
+        ec.set(simu, "populateRoutingTables", True)
+        ec.register_connection(simu, node)
+
+        nsnode1 = add_ns3_node(ec, simu)
+        p2p12 = add_point2point_device(ec, nsnode1, "10.0.0.1", "30")
+
+        nsnode2 = add_ns3_node(ec, simu)
+        p2p21 = add_point2point_device(ec, nsnode2, "10.0.0.2", "30")
+        csma2 = add_csma_device(ec, nsnode2, "10.0.1.1", "24")
+
+        nsnode3 = add_ns3_node(ec, simu)
+        csma3 = add_csma_device(ec, nsnode3, "10.0.1.2", "24")
+
+        nsnode4 = add_ns3_node(ec, simu)
+        csma4 = add_csma_device(ec, nsnode4, "10.0.1.3", "24")
+
+        nsnode5 = add_ns3_node(ec, simu)
+        p2p56 = add_point2point_device(ec, nsnode5, "10.0.2.1", "30")
+        csma5 = add_csma_device(ec, nsnode5, "10.0.1.4", "24")
+
+        nsnode6 = add_ns3_node(ec, simu)
+        p2p65 = add_point2point_device(ec, nsnode6, "10.0.2.2", "30")
+
+        # P2P chan1
+        p2p_chan1 = ec.register_resource("ns3::PointToPointChannel")
+        ec.set(p2p_chan1, "Delay", "0s")
+        ec.register_connection(p2p_chan1, p2p12)
+        ec.register_connection(p2p_chan1, p2p21)
+
+        # CSMA chan
+        csma_chan = ec.register_resource("ns3::CsmaChannel")
+        ec.set(csma_chan, "Delay", "0s")
+        ec.register_connection(csma_chan, csma2)
+        ec.register_connection(csma_chan, csma3)
+        ec.register_connection(csma_chan, csma4)
+        ec.register_connection(csma_chan, csma5)
+
+        # P2P chan2
+        p2p_chan2 = ec.register_resource("ns3::PointToPointChannel")
+        ec.set(p2p_chan2, "Delay", "0s")
+        ec.register_connection(p2p_chan2, p2p56)
+        ec.register_connection(p2p_chan2, p2p65)
+
+        ### create pinger
+        ping = ec.register_resource("ns3::V4Ping")
+        ec.set (ping, "Remote", "10.0.1.2")
+        ec.set (ping, "Interval", "1s")
+        ec.set (ping, "Verbose", True)
+        ec.set (ping, "StartTime", "1s")
+        ec.set (ping, "StopTime", "21s")
+        ec.register_connection(ping, nsnode1)
+
+        ec.deploy()
+
+        ec.wait_finished([ping])
+        
+        stdout = ec.trace(simu, "stdout")
+
+        print stdout
 
         expected = "20 packets transmitted, 20 received, 0% packet loss"
         self.assertTrue(stdout.find(expected) > -1)

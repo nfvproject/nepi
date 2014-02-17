@@ -17,7 +17,8 @@
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
-from nepi.execution.resource import clsinit_copy, ResourceState
+from nepi.execution.resource import clsinit_copy, ResourceState, \
+        reschedule_delay
 from nepi.resources.ns3.ns3base import NS3Base
 
 @clsinit_copy
@@ -54,6 +55,13 @@ class NS3BaseApplication(NS3Base):
             self.info("Stopping command '%s'" % command)
             self.simulation.invoke(self.uuid, "Stop")
             self.set_stopped()
+
+    def do_start(self):
+        if self.simulation.state < ResourceState.STARTED:
+            self.debug("---- RESCHEDULING START ----" )
+            self.ec.schedule(reschedule_delay, self.start)
+        else:
+            super(NS3BaseApplication, self).do_start()
 
     @property
     def state(self):
