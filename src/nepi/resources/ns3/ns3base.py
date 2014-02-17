@@ -23,7 +23,7 @@ from nepi.execution.resource import ResourceManager, clsinit_copy, \
 from nepi.execution.attribute import Flags
 from nepi.execution.trace import TraceAttr
 
-reschedule_delay = "2s"
+reschedule_delay = "1s"
 
 @clsinit_copy
 class NS3Base(ResourceManager):

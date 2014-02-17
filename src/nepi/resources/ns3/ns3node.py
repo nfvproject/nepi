@@ -51,6 +51,18 @@ class NS3BaseNode(NS3Base):
         return None
 
     @property
+    def devices(self):
+        from nepi.resources.ns3.ns3netdevice import NS3BaseNetDevice
+        devices = self.get_connected(NS3BaseNetDevice.get_rtype())
+
+        if not devices: 
+            msg = "Node not connected to devices"
+            self.error(msg)
+            raise RuntimeError, msg
+
+        return devices
+
+    @property
     def _rms_to_wait(self):
         rms = set()
         rms.add(self.simulation)
