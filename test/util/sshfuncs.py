@@ -215,7 +215,7 @@ class SSHfuncsTestCase(unittest.TestCase):
         os.remove(f1.name)
         shutil.rmtree(dirpath)
 
-    def test_rcopy_slist(self):
+    def test_rcopy_list(self):
         env = test_environment()
         user = getpass.getuser()
         host = "localhost"
@@ -229,16 +229,17 @@ class SSHfuncsTestCase(unittest.TestCase):
         f1.close()
         f1.name
 
-        source = "%s;%s" % (dirpath, f1.name)
+        # Copy a list of files
+        source = [dirpath, f1.name]
         destdir = tempfile.mkdtemp()
         dest = "%s@%s:%s" % (user, host, destdir)
-        rcopy(source, dest, port = env.port, agent = True, recursive = True)
+        ((out, err), proc) = rcopy(source, dest, port = env.port, agent = True, recursive = True)
 
         files = []
         def recls(files, dirname, names):
             files.extend(names)
         os.path.walk(destdir, recls, files)
-        
+       
         origfiles = map(lambda s: os.path.basename(s), [dirpath, f.name, f1.name])
 
         self.assertEquals(sorted(origfiles), sorted(files))
