@@ -207,7 +207,9 @@ def eintr_retry(func):
     return rv
 
 def rexec(command, host, user, 
-        port = None, 
+        port = None,
+        gwuser = None,
+        gw = None, 
         agent = True,
         sudo = False,
         identity = None,
@@ -225,7 +227,9 @@ def rexec(command, host, user,
     """
     
     tmp_known_hosts = None
-    hostip = gethostbyname(host)
+    if not gw:
+        hostip = gethostbyname(host)
+    else: hostip = None
 
     args = ['ssh', '-C',
             # Don't bother with localhost. Makes test easier
@@ -234,6 +238,7 @@ def rexec(command, host, user,
             '-o', 'ConnectionAttempts=3',
             '-o', 'ServerAliveInterval=30',
             '-o', 'TCPKeepAlive=yes',
+            '-o', 'Batchmode=yes',
             '-l', user, hostip or host]
 
     if persistent and openssh_has_persist():
@@ -246,6 +251,13 @@ def rexec(command, host, user,
         # Do not check for Host key. Unsafe.
         args.extend(['-o', 'StrictHostKeyChecking=no'])
 
+    if gw:
+        if gwuser:
+            proxycommand = 'ProxyCommand=ssh %s@%s -W %%h:%%p' % (gwuser, gw)
+        else:
+            proxycommand = 'ProxyCommand=ssh %%r@%s -W %%h:%%p' % gw
+        args.extend(['-o', proxycommand])
+
     if agent:
         args.append('-A')
 
@@ -253,6 +265,7 @@ def rexec(command, host, user,
         args.append('-p%d' % port)
 
     if identity:
+        identity = os.path.expanduser(identity)
         args.extend(('-i', identity))
 
     if tty:
@@ -288,7 +301,9 @@ def rexec(command, host, user,
             blocking = blocking)
 
 def rcopy(source, dest,
-        port = None, 
+        port = None,
+        gwuser = None,
+        gw = None,
         agent = True, 
         recursive = False,
         identity = None,
@@ -301,14 +316,16 @@ def rcopy(source, dest,
     Source and destination should have the user and host encoded
     as per scp specs.
     
-    Source can be a list of files to copy to a single destination,
-    in which case it is advised that the destination be a folder.
+    Source can be a list of files to copy to a single destination, 
+    (in which case it is advised that the destination be a folder),
+    a single file in a string or a semi-colon separated list of files
+    in a string.
     """
-    
+
     # Parse destination as <user>@<server>:<path>
-    if isinstance(dest, basestring) and ':' in dest:
+    if isinstance(dest, str) and ':' in dest:
         remspec, path = dest.split(':',1)
-    elif isinstance(source, basestring) and ':' in source:
+    elif isinstance(source, str) and ':' in source:
         remspec, path = source.split(':',1)
     else:
         raise ValueError, "Both endpoints cannot be local"
@@ -331,10 +348,18 @@ def rcopy(source, dest,
     if port:
         args.append('-P%d' % port)
 
+    if gw:
+        if gwuser:
+            proxycommand = 'ProxyCommand=ssh %s@%s -W %%h:%%p' % (gwuser, gw)
+        else:
+            proxycommand = 'ProxyCommand=ssh %%r@%s -W %%h:%%p' % gw
+        args.extend(['-o', proxycommand])
+
     if recursive:
         args.append('-r')
 
     if identity:
+        identity = os.path.expanduser(identity)
         args.extend(('-i', identity))
 
     if server_key:
@@ -345,7 +370,7 @@ def rcopy(source, dest,
     if not strict_host_checking:
         # Do not check for Host key. Unsafe.
         args.extend(['-o', 'StrictHostKeyChecking=no'])
-
+    
     if isinstance(source, list):
         args.extend(source)
     else:
@@ -374,6 +399,8 @@ def rspawn(command, pidfile,
         host = None, 
         port = None, 
         user = None, 
+        gwuser = None,
+        gw = None,
         agent = None, 
         identity = None, 
         server_key = None,
@@ -447,6 +474,8 @@ def rspawn(command, pidfile,
         host = host,
         port = port,
         user = user,
+        gwuser = gwuser,
+        gw = gw,
         agent = agent,
         identity = identity,
         server_key = server_key,
@@ -463,6 +492,8 @@ def rgetpid(pidfile,
         host = None, 
         port = None, 
         user = None, 
+        gwuser = None,
+        gw = None,
         agent = None, 
         identity = None,
         server_key = None):
@@ -489,6 +520,8 @@ def rgetpid(pidfile,
         host = host,
         port = port,
         user = user,
+        gwuser = gwuser,
+        gw = gw,
         agent = agent,
         identity = identity,
         server_key = server_key
@@ -509,6 +542,8 @@ def rstatus(pid, ppid,
         host = None, 
         port = None, 
         user = None, 
+        gwuser = None,
+        gw = None,
         agent = None, 
         identity = None,
         server_key = None):
@@ -533,6 +568,8 @@ def rstatus(pid, ppid,
         host = host,
         port = port,
         user = user,
+        gwuser = gwuser,
+        gw = gw,
         agent = agent,
         identity = identity,
         server_key = server_key
@@ -556,6 +593,8 @@ def rkill(pid, ppid,
         host = None, 
         port = None, 
         user = None, 
+        gwuser = None,
+        gw = None,
         agent = None, 
         sudo = False,
         identity = None, 
@@ -610,6 +649,8 @@ fi
         host = host,
         port = port,
         user = user,
+        gwuser = gwuser,
+        gw = gw,
         agent = agent,
         identity = identity,
         server_key = server_key
@@ -683,5 +724,4 @@ def _retry_rexec(args,
             retry -= 1
         
     return ((out, err), proc)
-
 

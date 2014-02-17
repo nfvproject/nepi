@@ -35,7 +35,7 @@ class LinuxApplicationTestCase(unittest.TestCase):
         self.fedora_user = "inria_nepi"
 
         self.ubuntu_host = "roseval.pl.sophia.inria.fr"
-        self.ubuntu_user = "alina"
+        self.ubuntu_user = "inria_nepi"
         
         self.target = "nepi5.pl.sophia.inria.fr"
 
@@ -238,11 +238,14 @@ main (void)
         ec.set(node, "cleanHome", True)
         ec.set(node, "cleanProcesses", True)
 
-        sources = "http://yans.pl.sophia.inria.fr/code/nef/archive/tip.tar.gz " \
-                " http://yans.pl.sophia.inria.fr/code/nef/raw-file/8ace577d4079/src/nef/images/menu/connect.png"
+        sources = "http://yans.pl.sophia.inria.fr/code/nef/archive/tip.tar.gz;" \
+                "http://yans.pl.sophia.inria.fr/code/nef/raw-file/8ace577d4079/src/nef/images/menu/connect.png"
 
         app = ec.register_resource("LinuxApplication")
         ec.set(app, "sources", sources)
+
+        command = "ls ${SRC}"
+        ec.set(app, "command", command)
 
         ec.register_connection(app, node)
 
@@ -259,6 +262,10 @@ main (void)
         out = ec.trace(app, "deploy_stdout")
         self.assertTrue(out.find("tip.tar.gz") > -1)
         self.assertTrue(out.find("connect.png") > -1)
+
+        stdout = ec.trace(app, "stdout")
+        self.assertTrue(stdout.find("tip.tar.gz") > -1)
+        self.assertTrue(stdout.find("connect.png") > -1)
 
         ec.shutdown()
 

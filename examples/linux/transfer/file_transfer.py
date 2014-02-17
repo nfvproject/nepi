@@ -70,7 +70,7 @@ server = add_node(ec, server_name, slicename)
 client = add_node(ec, client_name, slicename)
 
 # Add resource managers for the linux applications
-app_server =  add_app(ec, "cat ${SOURCES}/big_buck_bunny_240p_mpeg4_lq.ts | pv -fbt 2> \
+app_server =  add_app(ec, "cat ${SRC}/big_buck_bunny_240p_mpeg4_lq.ts | pv -fbt 2> \
      bw.txt | nc %s 1234" % client_name, server, video=video, depends=depends_server)
 
 # Note: is important to add the -d option in nc command to not attempt to read from the 

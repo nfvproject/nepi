@@ -531,7 +531,7 @@ class ResourceManager(Logger):
                 err = traceback.format_exc()
                 self.error(err)
 
-            self.set_released()
+                self.set_released()
 
     def fail(self):
         """ Sets the RM to state FAILED.
@@ -696,8 +696,8 @@ class ResourceManager(Logger):
         connected = []
         rclass = ResourceFactory.get_resource_type(rtype)
         for guid in self.connections:
-            rm = self.ec.get_resource(guid)
 
+            rm = self.ec.get_resource(guid)
             if not rtype or isinstance(rm, rclass):
                 connected.append(rm)
         return connected
@@ -966,7 +966,7 @@ class ResourceManager(Logger):
         self.set_ready()
 
     def do_release(self):
-        pass
+        self.set_released()
 
     def do_fail(self):
         self.set_failed()
@@ -975,7 +975,7 @@ class ResourceManager(Logger):
         """ Mark ResourceManager as STARTED """
         self.set_state(ResourceState.STARTED, "_start_time")
         self.debug("----- STARTED ---- ")
-        
+
     def set_stopped(self):
         """ Mark ResourceManager as STOPPED """
         self.set_state(ResourceState.STOPPED, "_stop_time")

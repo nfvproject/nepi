@@ -198,6 +198,10 @@ class PlanetlabNode(LinuxNode):
         self._slicenode = False
         self._hostname = False
 
+        if self.get("gateway") or self.get("gatewayUser"):
+            self.set("gateway", None)
+            self.set("gatewayUser", None)
+
     def _skip_provision(self):
         pl_user = self.get("pluser")
         pl_pass = self.get("plpassword")
@@ -233,10 +237,9 @@ class PlanetlabNode(LinuxNode):
         hostname = self._get_hostname()
         if hostname:
             # the user specified one particular node to be provisioned
-            # check with PLCAPI if it is alive
             self._hostname = True
-            node_id = self._query_if_alive(hostname=hostname)
-            node_id = node_id.pop()
+            node_id = self._get_nodes_id({'hostname':hostname})
+            node_id = node_id.pop()['node_id']
 
             # check that the node is not blacklisted or being provisioned
             # by other RM
@@ -263,12 +266,11 @@ class PlanetlabNode(LinuxNode):
             # the user specifies constraints based on attributes, zero, one or 
             # more nodes can match these constraints 
             nodes = self._filter_based_on_attributes()
-            nodes_alive = self._query_if_alive(nodes)
 
             # nodes that are already part of user's slice have the priority to
             # provisioned
-            nodes_inslice = self._check_if_in_slice(nodes_alive)
-            nodes_not_inslice = list(set(nodes_alive) - set(nodes_inslice))
+            nodes_inslice = self._check_if_in_slice(nodes)
+            nodes_not_inslice = list(set(nodes) - set(nodes_inslice))
             
             node_id = None
             if nodes_inslice:
@@ -341,20 +343,22 @@ class PlanetlabNode(LinuxNode):
                     self.warn(" Could not SSH login ")
                     self._blacklist_node(node)
                     #self._delete_node_from_slice(node)
-                #self.set('hostname', None)
                 self.do_discover()
                 continue
             
             # check /proc directory is mounted (ssh_ok = True)
+            # and file system is not read only
             else:
                 cmd = 'mount |grep proc'
-                ((out, err), proc) = self.execute(cmd)
-                if out.find("/proc type proc") < 0:
+                ((out1, err1), proc1) = self.execute(cmd)
+                cmd = 'touch /tmp/tmpfile; rm /tmp/tmpfile'
+                ((out2, err2), proc2) = self.execute(cmd)
+                if out1.find("/proc type proc") < 0 or \
+                    "Read-only file system".lower() in err2.lower():
                     with PlanetlabNode.lock:
-                        self.warn(" Could not find directory /proc ")
+                        self.warn(" Corrupted file system ")
                         self._blacklist_node(node)
                         #self._delete_node_from_slice(node)
-                    #self.set('hostname', None)
                     self.do_discover()
                     continue
             
@@ -413,13 +417,11 @@ class PlanetlabNode(LinuxNode):
                     nodes_id = self._filter_by_range_attr(attr_name, attr_value, filters, nodes_id)
 
         if not filters:
-            nodes = self.plapi.get_nodes()
+            nodes = self._get_nodes_id()
             for node in nodes:
                 nodes_id.append(node['node_id'])
-        
         return nodes_id
                     
-
     def _filter_by_fixed_attr(self, filters, nodes_id):
         """
         Query PLCAPI for nodes ids matching fixed attributes defined by the
@@ -503,45 +505,6 @@ class PlanetlabNode(LinuxNode):
 
         return nodes_id
         
-    def _query_if_alive(self, nodes_id=None, hostname=None):
-        """
-        Query PLCAPI for nodes that register activity recently, using filters 
-        related to the state of the node, e.g. last time it was contacted
-        """
-        if nodes_id is None and hostname is None:
-            msg = "Specify nodes_id or hostname"
-            raise RuntimeError, msg
-
-        if nodes_id is not None and hostname is not None:
-            msg = "Specify either nodes_id or hostname"
-            raise RuntimeError, msg
-
-        # define PL filters to check the node is alive
-        filters = dict()
-        filters['run_level'] = 'boot'
-        filters['boot_state'] = 'boot'
-        filters['node_type'] = 'regular' 
-        #filters['>last_contact'] =  int(time.time()) - 2*3600
-
-        # adding node_id or hostname to the filters to check for the particular
-        # node
-        if nodes_id:
-            filters['node_id'] = list(nodes_id)
-            alive_nodes_id = self._get_nodes_id(filters)
-        elif hostname:
-            filters['hostname'] = hostname
-            alive_nodes_id = self._get_nodes_id(filters)
-
-        if len(alive_nodes_id) == 0:
-            self.fail_node_not_alive(hostname)
-        else:
-            nodes_id = list()
-            for node_id in alive_nodes_id:
-                nid = node_id['node_id']
-                nodes_id.append(nid)
-
-            return nodes_id
-
     def _choose_random_node(self, nodes):
         """
         From the possible nodes for provision, choose randomly to decrese the
@@ -566,13 +529,12 @@ class PlanetlabNode(LinuxNode):
                         self._set_hostname_attr(node_id)
                         self.warn(" Node not responding PING ")
                         self._blacklist_node(node_id)
-                        #self.set('hostname', None)
                     else:
                         # discovered node for provision, added to provision list
                         self._put_node_in_provision(node_id)
                         return node_id
 
-    def _get_nodes_id(self, filters):
+    def _get_nodes_id(self, filters=None):
         return self.plapi.get_nodes(filters, fields=['node_id'])
 
     def _add_node_to_slice(self, node_id):
@@ -626,7 +588,8 @@ class PlanetlabNode(LinuxNode):
         ip = self._get_ip(node_id)
         if not ip: return ping_ok
 
-        command = "ping -c4 %s" % ip
+        command = ['ping', '-c4']
+        command.append(ip)
 
         (out, err) = lexec(command)
         if not out.find("2 received") or not out.find("3 received") or not \

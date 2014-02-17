@@ -283,7 +283,7 @@ class LinuxCCND(LinuxApplication):
 
     @property
     def _sources(self):
-        return "http://www.ccnx.org/releases/ccnx-0.7.2.tar.gz"
+        return "http://www.ccnx.org/releases/ccnx-0.8.1.tar.gz"
 
     @property
     def _build(self):

@@ -101,7 +101,7 @@ class LinuxApplication(ResourceManager):
                 "Space-separated list of packages required to run the application",
                 flags = Flags.Design)
         sources = Attribute("sources", 
-                "Space-separated list of regular files to be uploaded to ${SRC} "
+                "semi-colon separated list of regular files to be uploaded to ${SRC} "
                 "directory prior to building. Archives won't be expanded automatically. "
                 "Sources are globally available for all experiments unless "
                 "cleanHome is set to True (This will delete all sources). ",
@@ -187,7 +187,7 @@ class LinuxApplication(ResourceManager):
 
         # timestamp of last state check of the application
         self._last_state_check = tnow()
-
+        
     def log_message(self, msg):
         return " guid %d - host %s - %s " % (self.guid, 
                 self.node.get("hostname"), msg)
@@ -274,6 +274,18 @@ class LinuxApplication(ResourceManager):
         return out
 
     def do_provision(self):
+        # take a snapshot of the system if user is root
+        # to assure cleanProcess kill every nepi process
+        if self.node.get("username") == 'root':
+            import pickle
+            procs = dict()
+            ps_aux = "ps aux |awk '{print $2,$11}'"
+            (out, err), proc = self.node.execute(ps_aux)
+            for line in out.strip().split("\n"):
+                parts = line.strip().split(" ")
+                procs[parts[0]] = parts[1]
+            pickle.dump(procs, open("/tmp/save.proc", "wb"))
+            
         # create run dir for application
         self.node.mkdir(self.run_home)
    
@@ -369,7 +381,7 @@ class LinuxApplication(ResourceManager):
         if sources:
             self.info("Uploading sources ")
 
-            sources = sources.split(' ')
+            sources = map(str.strip, sources.split(";"))
 
             # Separate sources that should be downloaded from 
             # the web, from sources that should be uploaded from
