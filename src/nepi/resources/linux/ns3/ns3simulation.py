@@ -24,7 +24,8 @@ from nepi.execution.resource import ResourceManager, clsinit_copy, \
 from nepi.resources.linux.application import LinuxApplication
 from nepi.util.timefuncs import tnow, tdiffsec
 from nepi.resources.ns3.ns3simulation import NS3Simulation
-from nepi.resources.ns3.ns3wrapper import SIMULATOR_UUID, GLOBAL_VALUE_UUID
+from nepi.resources.ns3.ns3wrapper import SIMULATOR_UUID, GLOBAL_VALUE_UUID, \
+        IPV4_GLOBAL_ROUTING_HELPER_UUID
 from nepi.resources.linux.ns3.ns3client import LinuxNS3Client
 
 import os
@@ -88,6 +89,12 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
             default = "834", 
             flags = Flags.Design)
 
+        populate_routing_tables = Attribute("populateRoutingTables",
+            "Invokes  Ipv4GlobalRoutingHelper.PopulateRoutingTables() ",
+            default = False,
+            type = Types.Bool,
+            flags = Flags.Design)
+
         cls._register_attribute(impl_type)
         cls._register_attribute(sched_type)
         cls._register_attribute(check_sum)
@@ -96,6 +103,7 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         cls._register_attribute(build_mode)
         cls._register_attribute(ns3_version)
         cls._register_attribute(pybindgen_version)
+        cls._register_attribute(populate_routing_tables)
 
     def __init__(self, ec, guid):
         LinuxApplication.__init__(self, ec, guid)
@@ -112,13 +120,6 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
     @property
     def remote_socket(self):
         return os.path.join(self.run_home, self.socket_name)
-
-    @property
-    def local_socket(self):
-        if self.node.get('hostname') in ['localhost', '127.0.0.01']:
-            return self.remote_socket
-
-        return os.path.join("/", "tmp", self.socket_name)
 
     def trace(self, name, attr = TraceAttr.ALL, block = 512, offset = 0):
         self._client.flush() 
@@ -234,15 +235,6 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
 
             # Create client
             self._client = LinuxNS3Client(self)
-           
-            # Wait until local socket is created
-            for i in [1, 5, 15, 30, 60]:
-                if os.path.exists(self.local_socket):
-                    break
-                time.sleep(i)
-
-            if not os.path.exists(self.local_socket):
-                raise RuntimeError("Problem starting socat")
 
             self.configure()
             
@@ -255,6 +247,9 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         self.info("Starting")
 
         if self.state == ResourceState.READY:
+            if self.get("populateRoutingTables") == True:
+                self.invoke(IPV4_GLOBAL_ROUTING_HELPER_UUID, "PopulateRoutingTables")
+
             self._client.start() 
 
             self.set_started()

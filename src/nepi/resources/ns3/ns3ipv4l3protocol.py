@@ -28,6 +28,7 @@ class NS3BaseIpv4L3Protocol(NS3Base):
         super(NS3BaseIpv4L3Protocol, self).__init__(ec, guid)
         self.list_routing_uuid = None
         self.static_routing_uuid = None
+        self.global_routing_uuid = None
 
     @property
     def node(self):
@@ -55,7 +56,11 @@ class NS3BaseIpv4L3Protocol(NS3Base):
 
         self.static_routing_uuid = simulation.create("Ipv4StaticRouting")
         simulation.invoke(self.list_routing_uuid, "AddRoutingProtocol", 
-                self.static_routing_uuid, 1)
+                self.static_routing_uuid, 0)
+
+        self.global_routing_uuid = simulation.create("Ipv4GlobalRouting")
+        simulation.invoke(self.list_routing_uuid, "AddRoutingProtocol", 
+                self.global_routing_uuid, -10)
 
     def _connect_object(self):
         pass

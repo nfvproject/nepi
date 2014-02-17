@@ -20,7 +20,9 @@
 import base64
 import cPickle
 import errno
+import os
 import socket
+import time
 import weakref
 
 from optparse import OptionParser, SUPPRESS_HELP
@@ -34,24 +36,12 @@ class LinuxNS3Client(NS3Client):
         self._simulation = weakref.ref(simulation)
 
         self._socat_proc = None
-        self.connect_client()
 
     @property
     def simulation(self):
         return self._simulation()
 
-    def connect_client(self):
-        if self.simulation.node.get("hostname") in ['localhost', '127.0.0.1']:
-            return
-
-        (out, err), self._socat_proc = self.simulation.node.socat(
-                self.simulation.local_socket,
-                self.simulation.remote_socket) 
-
     def send_msg(self, msg_type, *args, **kwargs):
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.connect(self.simulation.local_socket)
-
         msg = [msg_type, args, kwargs]
 
         def encode(item):
@@ -59,10 +49,38 @@ class LinuxNS3Client(NS3Client):
             return base64.b64encode(item)
 
         encoded = "|".join(map(encode, msg))
-        sock.send("%s\n" % encoded)
-       
-        reply = sock.recv(1024)
-        return cPickle.loads(base64.b64decode(reply))
+
+        if self.simulation.node.get("hostname") in ['localhost', '127.0.0.1']:
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            sock.connect(self.simulation.remote_socket)
+            sock.send("%s\n" % encoded)
+            reply = sock.recv(1024)
+            sock.close()
+
+        else:
+            command = ( "python -c 'import socket;"
+                "sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM);"
+                "sock.connect(\"%(socket_addr)s\");"
+                "msg = \"%(encoded_message)s\\n\";"
+                "sock.send(msg);"
+                "reply = sock.recv(1024);"
+                "sock.close();"
+                "print reply'") % {
+                    "encoded_message": encoded,
+                    "socket_addr": self.simulation.remote_socket,
+                    }
+
+            (reply, err), proc = self.simulation.node.execute(command)
+
+            if (err and proc.poll()) or reply.strip() == "":
+                msg = " Couldn't connect to remote socket %s" % (
+                        self.simulation.remote_socket)
+                self.simulation.error(msg, reply, err)
+                raise RuntimeError(msg)
+                   
+        reply = cPickle.loads(base64.b64decode(reply))
+
+        return reply
 
     def create(self, *args, **kwargs):
         return self.send_msg(NS3WrapperMessage.CREATE, *args, **kwargs)
@@ -89,23 +107,10 @@ class LinuxNS3Client(NS3Client):
         return self.send_msg(NS3WrapperMessage.STOP, *args, **kwargs)
 
     def shutdown(self, *args, **kwargs):
-        ret = None
-
         try:
-            ret = self.send_msg(NS3WrapperMessage.SHUTDOWN, *args, **kwargs)
+            return self.send_msg(NS3WrapperMessage.SHUTDOWN, *args, **kwargs)
         except:
             pass
 
-        try:
-            if self._socat_proc:
-                self._socat_proc.kill()
-        except:
-            pass
-
-        try:
-            os.remove(self.simulation.local_socket)
-        except:
-            pass
-
-        return ret
+        return None
 
