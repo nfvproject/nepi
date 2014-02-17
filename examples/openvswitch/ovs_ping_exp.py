@@ -67,8 +67,9 @@ def add_tap(ec, ip4, prefix4, pointopoint, node):
     ec.register_connection(tap, node)
     return tap
 
-def add_tunnel(ec, port0, tap):
+def add_tunnel(ec, network, port0, tap):
     tunnel = ec.register_resource("OVSTunnel")
+    ec.set(tunnel, "network", network)
     ec.register_connection(port0, tunnel)
     ec.register_connection(tunnel, tap)
     return tunnel
@@ -86,6 +87,8 @@ switch1 = "planetlab2.virtues.fi"
 switch2 = "planetlab2.upc.es"
 host1 = "planetlab2.ionio.gr"
 host2 = "iraplab2.iralab.uni-karlsruhe.de"
+
+network = "192.168.3.0"
 
 slicename = "inria_nepi"
 
@@ -113,26 +116,61 @@ tap1 = add_tap(ec, "192.168.3.3", 24, "192.168.3.1", h1_node)
 tap2 = add_tap(ec, "192.168.3.4", 24, "192.168.3.2", h2_node)
 
 # Connect the nodes
-tunnel1 = add_tunnel(ec, port1, tap1)
-tunnel2 = add_tunnel(ec, port2, tap2)
-tunnel3 = add_tunnel(ec, port3, port4)
+tunnel1 = add_tunnel(ec, network, port1, tap1)
+tunnel2 = add_tunnel(ec, network, port2, tap2)
+tunnel3 = add_tunnel(ec, network, port3, port4)
 
 # Add ping commands
-app1 = add_app(ec, "ping -c3 192.168.3.3", s1_node)
-app2 = add_app(ec, "ping -c3 192.168.3.4", s2_node)
+app1 = add_app(ec, "ping -c5 192.168.3.2", s1_node)
+app2 = add_app(ec, "ping -c5 192.168.3.3", s1_node)
+app3 = add_app(ec, "ping -c5 192.168.3.4", s1_node)
+app4 = add_app(ec, "ping -c5 192.168.3.1", s2_node)
+app5 = add_app(ec, "ping -c5 192.168.3.3", s2_node)
+app6 = add_app(ec, "ping -c5 192.168.3.4", s2_node)
+app7 = add_app(ec, "ping -c5 192.168.3.1", h1_node)
+app8 = add_app(ec, "ping -c5 192.168.3.2", h1_node)
+app9 = add_app(ec, "ping -c5 192.168.3.4", h1_node)
+app10 = add_app(ec, "ping -c5 192.168.3.1", h2_node)
+app11 = add_app(ec, "ping -c5 192.168.3.2", h2_node)
+app12 = add_app(ec, "ping -c5 192.168.3.3", h2_node)
 
 ec.deploy()
 
-ec.wait_finished([app2])
+ec.wait_finished([app1, app2, app3, app4, app5, app6, app7, app8, app9, app10, app11, app12])
 
 # Retreive ping results and save
 # them in a file
 ping1 = ec.trace(app1, 'stdout')
 ping2 = ec.trace(app2, 'stdout')
-f = open("examples/openvswitch/ping_res.txt", 'w').close()
-f = open("examples/openvswitch/ping_res.txt", 'a')
+ping3 = ec.trace(app3, 'stdout')
+ping4 = ec.trace(app4, 'stdout')
+ping5 = ec.trace(app5, 'stdout')
+ping6 = ec.trace(app6, 'stdout')
+ping7 = ec.trace(app7, 'stdout')
+ping8 = ec.trace(app8, 'stdout')
+ping9 = ec.trace(app9, 'stdout')
+ping10 = ec.trace(app10, 'stdout')
+ping11 = ec.trace(app11, 'stdout')
+ping12 = ec.trace(app12, 'stdout')
+
+
+f = open("examples/openvswitch/ping_res.txt", 'w')
+
+if not ping12:
+  ec.shutdown()
+
 f.write(ping1)
 f.write(ping2)
+f.write(ping3)
+f.write(ping4)
+f.write(ping5)
+f.write(ping6)
+f.write(ping7)
+f.write(ping8)
+f.write(ping9)
+f.write(ping10)
+f.write(ping11)
+f.write(ping12)
 f.close()
 
 # Delete the overlay network

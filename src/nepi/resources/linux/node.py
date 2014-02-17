@@ -188,6 +188,12 @@ class LinuxNode(ResourceManager):
                 "releasing the resource",
                 flags = Flags.Design)
 
+        gateway_user = Attribute("gatewayUser", "Gateway account username",
+                flags = Flags.Design)
+
+        gateway = Attribute("gateway", "Hostname of the gateway machine",
+                flags = Flags.Design)
+
         cls._register_attribute(hostname)
         cls._register_attribute(username)
         cls._register_attribute(port)
@@ -198,13 +204,15 @@ class LinuxNode(ResourceManager):
         cls._register_attribute(clean_experiment)
         cls._register_attribute(clean_processes)
         cls._register_attribute(tear_down)
+        cls._register_attribute(gateway_user)
+        cls._register_attribute(gateway)
 
     def __init__(self, ec, guid):
         super(LinuxNode, self).__init__(ec, guid)
         self._os = None
         # home directory at Linux host
         self._home_dir = ""
-        
+
         # lock to prevent concurrent applications on the same node,
         # to execute commands at the same time. There are potential
         # concurrency issues when using SSH to a same host from 
@@ -391,10 +399,30 @@ class LinuxNode(ResourceManager):
 
     def clean_processes(self):
         self.info("Cleaning up processes")
-        
-        cmd = ("sudo -S killall tcpdump || /bin/true ; " +
-            "sudo -S kill $(ps aux | grep '[n]epi' | awk '{print $2}') || /bin/true ; " +
-            "sudo -S killall -u %s || /bin/true ; " % self.get("username"))
+ 
+        if self.get("username") != 'root':
+            cmd = ("sudo -S killall tcpdump || /bin/true ; " +
+                "sudo -S kill $(ps aux | grep '[n]epi' | awk '{print $2}') || /bin/true ; " +
+                "sudo -S killall -u %s || /bin/true ; " % self.get("username"))
+        else:
+            if self.state >= ResourceState.READY:
+                import pickle
+                pids = pickle.load(open("/tmp/save.proc", "rb"))
+                pids_temp = dict()
+                ps_aux = "ps aux |awk '{print $2,$11}'"
+                (out, err), proc = self.execute(ps_aux)
+                for line in out.strip().split("\n"):
+                    parts = line.strip().split(" ")
+                    pids_temp[parts[0]] = parts[1]
+                kill_pids = set(pids_temp.items()) - set(pids.items())
+                kill_pids = ' '.join(dict(kill_pids).keys())
+
+                cmd = ("killall tcpdump || /bin/true ; " +
+                    "kill $(ps aux | grep '[n]epi' | awk '{print $2}') || /bin/true ; " +
+                    "kill %s || /bin/true ; " % kill_pids)
+            else:
+                cmd = ("killall tcpdump || /bin/true ; " +
+                    "kill $(ps aux | grep '[n]epi' | awk '{print $2}') || /bin/true ; ")
 
         out = err = ""
         (out, err), proc = self.execute(cmd, retry = 1, with_lock = True)
@@ -455,6 +483,8 @@ class LinuxNode(ResourceManager):
                         host = self.get("hostname"),
                         user = self.get("username"),
                         port = self.get("port"),
+                        gwuser = self.get("gatewayUser"),
+                        gw = self.get("gateway"),
                         agent = True,
                         sudo = sudo,
                         identity = self.get("identity"),
@@ -474,6 +504,8 @@ class LinuxNode(ResourceManager):
                     host = self.get("hostname"),
                     user = self.get("username"),
                     port = self.get("port"),
+                    gwuser = self.get("gatewayUser"),
+                    gw = self.get("gateway"),
                     agent = True,
                     sudo = sudo,
                     identity = self.get("identity"),
@@ -524,6 +556,8 @@ class LinuxNode(ResourceManager):
                     host = self.get("hostname"),
                     user = self.get("username"),
                     port = self.get("port"),
+                    gwuser = self.get("gatewayUser"),
+                    gw = self.get("gateway"),
                     agent = True,
                     identity = self.get("identity"),
                     server_key = self.get("serverKey"),
@@ -542,6 +576,8 @@ class LinuxNode(ResourceManager):
                     host = self.get("hostname"),
                     user = self.get("username"),
                     port = self.get("port"),
+                    gwuser = self.get("gatewayUser"),
+                    gw = self.get("gateway"),
                     agent = True,
                     identity = self.get("identity"),
                     server_key = self.get("serverKey")
@@ -559,6 +595,8 @@ class LinuxNode(ResourceManager):
                         host = self.get("hostname"),
                         user = self.get("username"),
                         port = self.get("port"),
+                        gwuser = self.get("gatewayUser"),
+                        gw = self.get("gateway"),
                         agent = True,
                         identity = self.get("identity"),
                         server_key = self.get("serverKey")
@@ -581,6 +619,8 @@ class LinuxNode(ResourceManager):
                         host = self.get("hostname"),
                         user = self.get("username"),
                         port = self.get("port"),
+                        gwuser = self.get("gatewayUser"),
+                        gw = self.get("gateway"),
                         agent = True,
                         sudo = sudo,
                         identity = self.get("identity"),
@@ -595,24 +635,33 @@ class LinuxNode(ResourceManager):
                     recursive = True,
                     strict_host_checking = False)
         else:
-            (out, err), proc = sshfuncs.rcopy(
-                src, dst, 
-                port = self.get("port"),
-                identity = self.get("identity"),
-                server_key = self.get("serverKey"),
-                recursive = True,
-                strict_host_checking = False)
+            with self._node_lock:
+                (out, err), proc = sshfuncs.rcopy(
+                    src, dst, 
+                    port = self.get("port"),
+                    gwuser = self.get("gatewayUser"),
+                    gw = self.get("gateway"),
+                    identity = self.get("identity"),
+                    server_key = self.get("serverKey"),
+                    recursive = True,
+                    strict_host_checking = False)
 
         return (out, err), proc
 
     def upload(self, src, dst, text = False, overwrite = True):
         """ Copy content to destination
 
-           src  content to copy. Can be a local file, directory or a list of files
+        src  string with the content to copy. Can be:
+            - plain text
+            - a string with the path to a local file
+            - a string with a semi-colon separeted list of local files
+            - a string with a local directory
 
-           dst  destination path on the remote host (remote is always self.host)
+        dst  string with destination path on the remote host (remote is 
+            always self.host)
 
-           text src is text input, it must be stored into a temp file before uploading
+        text src is text input, it must be stored into a temp file before 
+        uploading
         """
         # If source is a string input 
         f = None
@@ -625,11 +674,14 @@ class LinuxNode(ResourceManager):
             src = f.name
 
         # If dst files should not be overwritten, check that the files do not
-        # exits already 
+        # exits already
+        if isinstance(src, str):
+            src = map(str.strip, src.split(";"))
+    
         if overwrite == False:
             src = self.filter_existing_files(src, dst)
             if not src:
-                return ("", ""), None 
+                return ("", ""), None
 
         if not self.localhost:
             # Build destination as <user>@<server>:<path>
@@ -985,8 +1037,9 @@ class LinuxNode(ResourceManager):
         """ Removes files that already exist in the Linux host from src list
         """
         # construct a dictionary with { dst: src }
-        dests = dict(map(lambda x: ( os.path.join(dst, os.path.basename(x) ),  x ), 
-            src.strip().split(" ") ) ) if src.strip().find(" ") != -1 else dict({dst: src})
+        dests = dict(map(
+            lambda s: (os.path.join(dst, os.path.basename(s)), s ), s)) \
+                    if len(src) > 1 else dict({dst: src[0]})
 
         command = []
         for d in dests.keys():
@@ -1001,7 +1054,7 @@ class LinuxNode(ResourceManager):
                 del dests[d]
 
         if not dests:
-            return ""
+            return []
 
-        return " ".join(dests.values())
+        return dests.values()
 

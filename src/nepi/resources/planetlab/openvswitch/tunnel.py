@@ -18,13 +18,16 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 #	      Alexandros Kouvakas <alexandros.kouvakas@gmail.com>
 
+
 from nepi.execution.attribute import Attribute, Flags, Types
-from nepi.execution.resource import ResourceManager, clsinit_copy, \
+from nepi.execution.resource import ResourceManager, ResourceFactory, clsinit_copy, \
         ResourceState
 from nepi.resources.linux.application import LinuxApplication
 from nepi.resources.planetlab.node import PlanetlabNode            
 from nepi.resources.planetlab.openvswitch.ovs import OVSWitch   
-from nepi.util.timefuncs import tnow, tdiffsec     
+from nepi.util.timefuncs import tnow, tdiffsec    
+from nepi.resources.planetlab.vroute import PlanetlabVroute
+from nepi.resources.planetlab.tap import PlanetlabTap
 
 import os
 import time
@@ -54,6 +57,9 @@ class OVSTunnel(LinuxApplication):
         """ Register the attributes of Connection RM 
 
         """
+        network = Attribute("network", "IPv4 Network Address",
+               flags = Flags.ExecReadOnly)
+
         cipher = Attribute("cipher",
                "Cipher to encript communication. "
                 "One of PLAIN, AES, Blowfish, DES, DES3. ",
@@ -80,6 +86,7 @@ class OVSTunnel(LinuxApplication):
                 type = Types.Integer, 
                 flags = Flags.Design)
 
+        cls._register_attribute(network)
         cls._register_attribute(cipher)
         cls._register_attribute(cipher_key)
         cls._register_attribute(txqueuelen)
@@ -99,6 +106,7 @@ class OVSTunnel(LinuxApplication):
         self._nodes = []
         self._pid = None
         self._ppid = None
+        self._vroute = None
 
 
     def log_message(self, msg):
@@ -110,7 +118,7 @@ class OVSTunnel(LinuxApplication):
             return self._nodes[0]
 
     def app_home(self, node):
-        return os.path.join(node.exp_home, self._home)
+        return os.path.join(self.node.exp_home, self._home)
 
     def run_home(self, node):
         return os.path.join(self.app_home(node), self.ec.run_id)
@@ -124,6 +132,7 @@ class OVSTunnel(LinuxApplication):
                 connected.append(rm)
         return connected
 
+    
     def mixed_endpoints(self):
         # Switch-Host connection
         connected = [1, 2]
@@ -151,7 +160,7 @@ class OVSTunnel(LinuxApplication):
 
     @property
     def endpoint1(self):
-        if self.check_endpoints():
+        if self.check_endpoints:
             port_endpoints = self.port_endpoints()
             if port_endpoints: return port_endpoints[0]
         else:
@@ -160,13 +169,14 @@ class OVSTunnel(LinuxApplication):
 
     @property
     def endpoint2(self):
-        if self.check_endpoints():
+        if self.check_endpoints:
             port_endpoints = self.port_endpoints()
             if port_endpoints: return port_endpoints[1]
         else:
             mixed_endpoints = self.mixed_endpoints()
             if mixed_endpoints: return mixed_endpoints[1]
-                
+
+    @property          
     def check_endpoints(self):
         """ Check if the links are between switches
             or switch-host. Return False for latter.
@@ -184,7 +194,7 @@ class OVSTunnel(LinuxApplication):
             :type port_info_tunl: list
         """
         self.port_info_tunl = []
-        if self.check_endpoints():
+        if self.check_endpoints:
             # Use for the link switch-->switch
             self.port_info_tunl.append(endpoint.port_info)
             host0, ip0, pname0, virt_ip0, pnumber0 = self.port_info_tunl[0]
@@ -300,16 +310,38 @@ class OVSTunnel(LinuxApplication):
         msg = "Connection on port %s configured" % local_port_name
         self.info(msg)
 
+    def wait_local_port(self):
+        """ Waits until the if_name file for the command is generated, 
+            and returns the if_name for the device """
+        local_port = None
+        delay = 1.0
+
+        for i in xrange(10):
+            (out, err), proc = self.node.check_output(self.run_home(self.node), 'local_port')
+
+            if out:
+                local_port = int(out)
+                break
+            else:
+                time.sleep(delay)
+                delay = delay * 1.5
+        else:
+            msg = "Couldn't retrieve local_port"
+            self.error(msg, out, err)
+            raise RuntimeError, msg
+
+        return local_port
+
     def sw_host_connect(self, endpoint, rem_endpoint):
         """Link switch--> host
         """
         # Retrieve remote port number from rem_endpoint
         local_port_name = endpoint.get('port_name')
         self._nodes = self.get_node(rem_endpoint)
-        time.sleep(2) # Without this, sometimes I get nothing in remote_port_num
-        remote_port_num = ''
-        (out, err), proc = self.node.check_output(self.run_home(self.node), 'local_port')
-        remote_port_num = int(out)
+
+     #   time.sleep(4) # Without this, sometimes I get nothing in remote_port_num
+        out = err= ''
+        remote_port_num = self.wait_local_port()
         remote_ip = socket.gethostbyname(self.node.get("hostname"))
         switch_connect_command = endpoint.switch_connect_command(
                 local_port_name, remote_ip, remote_port_num)
@@ -349,7 +381,7 @@ class OVSTunnel(LinuxApplication):
         self._nodes = self.get_node(self.endpoint2)
         self.node.mkdir(self.run_home(self.node))
 
-        if self.check_endpoints():
+        if self.check_endpoints:
             #Invoke connect script between switches
             self.switch_connect(self.endpoint1, self.endpoint2)
             self.switch_connect(self.endpoint2, self.endpoint1)
@@ -361,6 +393,34 @@ class OVSTunnel(LinuxApplication):
 
         super(OVSTunnel, self).do_provision()
 
+    @property
+    def tap(self):
+        rclass = ResourceFactory.get_resource_type(PlanetlabTap.get_rtype())
+        for guid in self.connections:
+            rm = self.ec.get_resource(guid)
+            if isinstance(rm, rclass):
+                return rm
+
+    @property
+    def ovswitch(self):
+        for guid in self.connections:
+            rm_port = self.ec.get_resource(guid)
+            if hasattr(rm_port, "create_port"):
+                rm_list = rm_port.get_connected(OVSWitch.get_rtype())
+                if rm_list:
+                    return rm_list[0]
+
+    def configure(self):
+        if not self.check_endpoints:
+            self._vroute = self.ec.register_resource("PlanetlabVroute")
+            self.ec.set(self._vroute, "action", "add")
+            self.ec.set(self._vroute, "network", self.get("network"))
+
+            self.ec.register_connection(self._vroute, self.tap.guid)
+            # schedule deploy
+            self.ec.deploy(guids=[self._vroute], group = self.deployment_group)
+
+
     def do_deploy(self):
         if (not self.endpoint1 or self.endpoint1.state < ResourceState.READY) or \
             (not self.endpoint2 or self.endpoint2.state < ResourceState.READY):
@@ -369,6 +429,7 @@ class OVSTunnel(LinuxApplication):
 
         self.do_discover()
         self.do_provision()
+        self.configure()
 
         super(OVSTunnel, self).do_deploy()
  
@@ -376,7 +437,7 @@ class OVSTunnel(LinuxApplication):
         """ Release the udp_tunnel on endpoint2.
             On endpoint1 means nothing special.        
         """
-        if not self.check_endpoints():
+        if not self.check_endpoints:
             # Kill the TAP devices
             # TODO: Make more generic Release method of PLTAP
             if self._pid and self._ppid:

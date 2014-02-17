@@ -23,8 +23,8 @@ from nepi.execution.ec import ExperimentController
 ec = ExperimentController(exp_id = "ping-exp")
         
 node = ec.register_resource("LinuxNode")
-ec.set(node, "hostname", host)
-ec.set(node, "username", username)
+ec.set(node, "hostname", "planetlab2.cs.aueb.gr")
+ec.set(node, "username", "inria_pres")
 ec.set(node, "cleanHome", True)
 ec.set(node, "cleanProcesses", True)
 

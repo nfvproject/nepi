@@ -184,7 +184,7 @@ class SSHfuncsTestCase(unittest.TestCase):
 
         self.assertEquals(outlocal, outremote)
 
-    def test_rcopy(self):
+    def test_rcopy_list(self):
         env = test_environment()
         user = getpass.getuser()
         host = "localhost"
@@ -199,6 +199,37 @@ class SSHfuncsTestCase(unittest.TestCase):
         f1.name
 
         source = [dirpath, f1.name]
+        destdir = tempfile.mkdtemp()
+        dest = "%s@%s:%s" % (user, host, destdir)
+        rcopy(source, dest, port = env.port, agent = True, recursive = True)
+
+        files = []
+        def recls(files, dirname, names):
+            files.extend(names)
+        os.path.walk(destdir, recls, files)
+        
+        origfiles = map(lambda s: os.path.basename(s), [dirpath, f.name, f1.name])
+
+        self.assertEquals(sorted(origfiles), sorted(files))
+
+        os.remove(f1.name)
+        shutil.rmtree(dirpath)
+
+    def test_rcopy_slist(self):
+        env = test_environment()
+        user = getpass.getuser()
+        host = "localhost"
+
+        # create some temp files and directories to copy
+        dirpath = tempfile.mkdtemp()
+        f = tempfile.NamedTemporaryFile(dir=dirpath, delete=False)
+        f.close()
+      
+        f1 = tempfile.NamedTemporaryFile(delete=False)
+        f1.close()
+        f1.name
+
+        source = "%s;%s" % (dirpath, f1.name)
         destdir = tempfile.mkdtemp()
         dest = "%s@%s:%s" % (user, host, destdir)
         rcopy(source, dest, port = env.port, agent = True, recursive = True)

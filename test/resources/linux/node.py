@@ -24,6 +24,7 @@ from nepi.util.sshfuncs import ProcStatus
 
 from test_utils import skipIfNotAlive, skipInteractive, create_node
 
+import shutil
 import os
 import time
 import tempfile
@@ -35,7 +36,7 @@ class LinuxNodeTestCase(unittest.TestCase):
         self.fedora_user = "inria_nepi"
 
         self.ubuntu_host = "roseval.pl.sophia.inria.fr"
-        self.ubuntu_user = "alina"
+        self.ubuntu_user = "inria_nepi"
         
         self.target = "nepi5.pl.sophia.inria.fr"
 
@@ -213,7 +214,6 @@ class LinuxNodeTestCase(unittest.TestCase):
 
         self.assertEquals(out.strip(), "")
 
-
     @skipIfNotAlive
     def t_xterm(self, host, user):
         node, ec = create_node(host, user)
@@ -286,6 +286,55 @@ main (void)
         
         self.assertEquals(out, "Hello, world!\n")
 
+    @skipIfNotAlive
+    def t_copy_files(self, host, user):
+        node, ec = create_node(host, user)
+
+        node.find_home()
+        app_home = os.path.join(node.exp_home, "my-app")
+        node.mkdir(app_home, clean = True)
+
+        # create some temp files and directories to copy
+        dirpath = tempfile.mkdtemp()
+        f = tempfile.NamedTemporaryFile(dir=dirpath, delete=False)
+        f.close()
+      
+        f1 = tempfile.NamedTemporaryFile(delete=False)
+        f1.close()
+        f1.name
+
+        source = "%s;%s" % (dirpath, f1.name)
+        destdir = "test"
+        node.mkdir(destdir, clean = True)
+        dest = "%s@%s:test" % (user, host)
+        node.copy(source, dest)
+
+        command = "ls %s" % destdir
+        
+        (out, err), proc = node.execute(command)
+
+        os.remove(f1.name)
+        shutil.rmtree(dirpath)
+
+        self.assertTrue(out.find(os.path.basename(dirpath)) > -1)
+        self.assertTrue(out.find(os.path.basename(f1.name)) > -1)
+
+        f2 = tempfile.NamedTemporaryFile(delete=False)
+        f2.close()
+        f2.name
+
+        node.mkdir(destdir, clean = True)
+        dest = "%s@%s:test" % (user, host)
+        node.copy(f2.name, dest)
+
+        command = "ls %s" % destdir
+        
+        (out, err), proc = node.execute(command)
+
+        os.remove(f2.name)
+        
+        self.assertTrue(out.find(os.path.basename(f2.name)) > -1)
+
     def test_execute_fedora(self):
         self.t_execute(self.fedora_host, self.fedora_user)
 
@@ -339,6 +388,11 @@ main (void)
         """ Interactive test. Should not run automatically """
         self.t_xterm(self.ubuntu_host, self.ubuntu_user)
 
+    def test_copy_files_fedora(self):
+        self.t_copy_files(self.fedora_host, self.fedora_user)
+
+    def test_copy_files_ubuntu(self):
+        self.t_copy_files(self.ubuntu_host, self.ubuntu_user)
 
 if __name__ == '__main__':
     unittest.main()

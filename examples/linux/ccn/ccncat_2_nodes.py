@@ -43,6 +43,7 @@ from nepi.resources.linux.node import OSType
 
 from optparse import OptionParser, SUPPRESS_HELP
 
+import getpass
 import os
 import time
 
@@ -151,7 +152,8 @@ def get_options():
     #       the host can be accessed through SSH without prompting
     #       for a password. The host must allow X forwarding using SSH.
     linux_host = 'roseval.pl.sophia.inria.fr'
-
+    linux_user = getpass.getuser()
+    
     usage = "usage: %prog -p <pl-host> -s <pl-slice> -l <linux-host> -u <linux-user> -m <movie> -e <exp-id> -i <ssh_key>"
 
     parser = OptionParser(usage=usage)
@@ -164,8 +166,8 @@ def get_options():
             help="Hostname of second Linux host (non PlanetLab)",
             default = linux_host, type="str")
     parser.add_option("-u", "--linux-user", dest="linux_user", 
-            help="User for extra Linux host (non PlanetLab)", default = linux_host,
-            type="str")
+            help="User for extra Linux host (non PlanetLab)", 
+            default = linux_user, type="str")
     parser.add_option("-m", "--movie", dest="movie", 
             help="Stream movie", type="str")
     parser.add_option("-e", "--exp-id", dest="exp_id", 
