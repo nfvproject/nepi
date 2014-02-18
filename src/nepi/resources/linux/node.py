@@ -234,8 +234,12 @@ class LinuxNode(ResourceManager):
         return home
 
     @property
+    def nepi_home(self):
+        return os.path.join(self.home_dir, ".nepi")
+
+    @property
     def usr_dir(self):
-        return os.path.join(self.home_dir, "nepi-usr")
+        return os.path.join(self.nepi_home, "nepi-usr")
 
     @property
     def lib_dir(self):
@@ -255,7 +259,7 @@ class LinuxNode(ResourceManager):
 
     @property
     def exp_dir(self):
-        return os.path.join(self.home_dir, "nepi-exp")
+        return os.path.join(self.nepi_home, "nepi-exp")
 
     @property
     def exp_home(self):
@@ -406,7 +410,6 @@ class LinuxNode(ResourceManager):
         
         if self.get("username") != 'root':
             cmd = ("sudo -S killall tcpdump || /bin/true ; " +
-                "sudo -S kill $(ps aux | grep '[n]epi' | awk '{print $2}') || /bin/true ; " +
                 "sudo -S killall -u %s || /bin/true ; " % self.get("username"))
         else:
             if self.state >= ResourceState.READY:
@@ -435,7 +438,7 @@ class LinuxNode(ResourceManager):
         """
         self.info("Cleaning up home")
         
-        cmd = "cd %s ; find . -maxdepth 1 \( -name 'nepi-usr' -o -name 'nepi-exp' \) -execdir rm -rf {} + " % (
+        cmd = "cd %s ; find . -maxdepth 1 -name \.nepi -execdir rm -rf {} + " % (
                 self.home_dir )
 
         return self.execute(cmd, with_lock = True)
@@ -1058,8 +1061,7 @@ class LinuxNode(ResourceManager):
         """ Removes files that already exist in the Linux host from src list
         """
         # construct a dictionary with { dst: src }
-        dests = dict(map(
-            lambda s: (os.path.join(dst, os.path.basename(s)), s ), s)) \
+        dests = dict(map(lambda s: (os.path.join(dst, os.path.basename(s)), s), src)) \
                     if len(src) > 1 else dict({dst: src[0]})
 
         command = []

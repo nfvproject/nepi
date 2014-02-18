@@ -63,14 +63,14 @@ class LinuxApplication(ResourceManager):
         The directory structure used by LinuxApplication RM at the Linux
         host is the following:
 
-        ${HOME}/nepi-usr --> Base directory for multi-experiment files
+        ${HOME}/.nepi/nepi-usr --> Base directory for multi-experiment files
                       |
         ${LIB}        |- /lib --> Base directory for libraries
         ${BIN}        |- /bin --> Base directory for binary files
         ${SRC}        |- /src --> Base directory for sources
         ${SHARE}      |- /share --> Base directory for other files
 
-        ${HOME}/nepi-exp --> Base directory for single-experiment files
+        ${HOME}/.nepi/nepi-exp --> Base directory for single-experiment files
                       |
         ${EXP_HOME}   |- /<exp-id>  --> Base directory for experiment exp-id
                           |
@@ -412,7 +412,7 @@ class LinuxApplication(ResourceManager):
             command = self.replace_paths(command)
        
             if sources:
-                sources = ' '.join(sources)
+                sources = ';'.join(sources)
                 self.node.upload(sources, src_dir, overwrite = False)
 
         return command
