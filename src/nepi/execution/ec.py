@@ -754,6 +754,11 @@ class ExperimentController(object):
                     rm = self.get_resource(guid)
                     self.schedule("0s", rm.start_with_conditions)
 
+                    if rm.conditions.get(ResourceAction.STOP):
+                        # Only if the RM has STOP conditions we
+                        # schedule a stop. Otherwise the RM will stop immediately
+                        self.schedule("0s", rm.stop_with_conditions)
+
         if wait_all_ready and new_group:
             # Schedule a function to check that all resources are
             # READY, and only then schedule the start.
@@ -772,10 +777,10 @@ class ExperimentController(object):
             if not wait_all_ready:
                 self.schedule("0s", rm.start_with_conditions)
 
-            if rm.conditions.get(ResourceAction.STOP):
-                # Only if the RM has STOP conditions we
-                # schedule a stop. Otherwise the RM will stop immediately
-                self.schedule("0s", rm.stop_with_conditions)
+                if rm.conditions.get(ResourceAction.STOP):
+                    # Only if the RM has STOP conditions we
+                    # schedule a stop. Otherwise the RM will stop immediately
+                    self.schedule("0s", rm.stop_with_conditions)
 
     def release(self, guids = None):
         """ Releases all ResourceManagers in the guids list.
