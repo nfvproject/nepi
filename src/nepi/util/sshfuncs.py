@@ -316,8 +316,7 @@ def rcopy(source, dest,
     
     Source can be a list of files to copy to a single destination, 
     (in which case it is advised that the destination be a folder),
-    a single file in a string or a semi-colon separated list of files
-    in a string.
+    or a single file in a string.
     """
 
     # Parse destination as <user>@<server>:<path>

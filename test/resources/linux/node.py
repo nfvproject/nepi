@@ -303,7 +303,7 @@ main (void)
         f1.close()
         f1.name
 
-        source = "%s;%s" % (dirpath, f1.name)
+        source = [dirpath, f1.name]
         destdir = "test"
         node.mkdir(destdir, clean = True)
         dest = "%s@%s:test" % (user, host)
