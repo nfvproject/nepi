@@ -46,7 +46,6 @@ def log(msg, level, out = None, err = None):
 
     logger.log(level, msg)
 
-
 if hasattr(os, "devnull"):
     DEV_NULL = os.devnull
 else:
@@ -304,7 +303,6 @@ def rcopy(source, dest,
         port = None,
         gwuser = None,
         gw = None,
-        agent = True, 
         recursive = False,
         identity = None,
         server_key = None,
@@ -377,11 +375,14 @@ def rcopy(source, dest,
         if openssh_has_persist():
             args.extend([
                 '-o', 'ControlMaster=auto',
-                '-o', 'ControlPath=%s' % (make_control_path(agent, False),)
+                '-o', 'ControlPath=%s' % (make_control_path(False, False),)
                 ])
         args.append(source)
 
-    args.append(dest)
+    if isinstance(dest, list):
+        args.extend(dest)
+    else:
+        args.append(dest)
 
     log_msg = " rcopy - host %s - command %s " % (host, " ".join(args))
     

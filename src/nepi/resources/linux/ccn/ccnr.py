@@ -247,8 +247,7 @@ class LinuxCCNR(LinuxApplication):
         self.node.run_and_wait(command, self.run_home,
                 shfile = shfile,
                 overwrite = False,
-                env = env,
-                raise_on_error = True)
+                env = env)
 
     def do_start(self):
         if self.state == ResourceState.READY:

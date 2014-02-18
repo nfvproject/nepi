@@ -62,6 +62,7 @@ class NS3BaseApplication(NS3Base):
             self.ec.schedule(reschedule_delay, self.start)
         else:
             super(NS3BaseApplication, self).do_start()
+            self._start_time = self.simulation.start_time
 
     @property
     def state(self):

@@ -376,6 +376,7 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
                 "     ( "
                 "       tar xf ${SRC}/%(pygccxml_version)s.tar.gz -C ${SRC} && "
                 "       cd ${SRC}/%(pygccxml_version)s && "
+                "       python setup.py build && "
                 "       sudo -S python setup.py install "
                 "     ) "
                 "   ) " 

@@ -274,7 +274,8 @@ class LinuxNode(ResourceManager):
         if self._os:
             return self._os
 
-        if (not self.get("hostname") or not self.get("username")):
+        if self.get("hostname") not in ["localhost", "127.0.0.1"] and \
+                not self.get("username"):
             msg = "Can't resolve OS, insufficient data "
             self.error(msg)
             raise RuntimeError, msg
@@ -400,6 +401,9 @@ class LinuxNode(ResourceManager):
     def clean_processes(self):
         self.info("Cleaning up processes")
  
+        if self.get("hostname") in ["localhost", "127.0.0.2"]:
+            return 
+        
         if self.get("username") != 'root':
             cmd = ("sudo -S killall tcpdump || /bin/true ; " +
                 "sudo -S kill $(ps aux | grep '[n]epi' | awk '{print $2}') || /bin/true ; " +
@@ -424,7 +428,6 @@ class LinuxNode(ResourceManager):
                 cmd = ("killall tcpdump || /bin/true ; " +
                     "kill $(ps aux | grep '[n]epi' | awk '{print $2}') || /bin/true ; ")
 
-        out = err = ""
         (out, err), proc = self.execute(cmd, retry = 1, with_lock = True)
 
     def clean_home(self):
@@ -534,14 +537,13 @@ class LinuxNode(ResourceManager):
         self.debug("Running command '%s'" % command)
         
         if self.localhost:
-            (out, err), proc = execfuncs.lspawn(command, pidfile, 
-                    stdout = stdout, 
-                    stderr = stderr, 
-                    stdin = stdin, 
+            (out, err), proc = execfuncs.lspawn(command, pidfile,
                     home = home, 
                     create_home = create_home, 
-                    sudo = sudo,
-                    user = user) 
+                    stdin = stdin or '/dev/null',
+                    stdout = stdout or '/dev/null',
+                    stderr = stderr or '/dev/null',
+                    sudo = sudo) 
         else:
             with self._node_lock:
                 (out, err), proc = sshfuncs.rspawn(
@@ -549,9 +551,9 @@ class LinuxNode(ResourceManager):
                     pidfile = pidfile,
                     home = home,
                     create_home = create_home,
-                    stdin = stdin if stdin is not None else '/dev/null',
-                    stdout = stdout if stdout else '/dev/null',
-                    stderr = stderr if stderr else '/dev/null',
+                    stdin = stdin or '/dev/null',
+                    stdout = stdout or '/dev/null',
+                    stderr = stderr or '/dev/null',
                     sudo = sudo,
                     host = self.get("hostname"),
                     user = self.get("username"),
@@ -631,9 +633,8 @@ class LinuxNode(ResourceManager):
 
     def copy(self, src, dst):
         if self.localhost:
-            (out, err), proc = execfuncs.lcopy(source, dest, 
-                    recursive = True,
-                    strict_host_checking = False)
+            (out, err), proc = execfuncs.lcopy(src, dst, 
+                    recursive = True)
         else:
             with self._node_lock:
                 (out, err), proc = sshfuncs.rcopy(
@@ -648,7 +649,8 @@ class LinuxNode(ResourceManager):
 
         return (out, err), proc
 
-    def upload(self, src, dst, text = False, overwrite = True):
+    def upload(self, src, dst, text = False, overwrite = True,
+            raise_on_error = True):
         """ Copy content to destination
 
         src  string with the content to copy. Can be:
@@ -687,19 +689,36 @@ class LinuxNode(ResourceManager):
             # Build destination as <user>@<server>:<path>
             dst = "%s@%s:%s" % (self.get("username"), self.get("hostname"), dst)
 
-        result = self.copy(src, dst)
+        ((out, err), proc) = self.copy(src, dst)
 
         # clean up temp file
         if f:
             os.remove(f.name)
 
-        return result
+        if err:
+            msg = " Failed to upload files - src: %s dst: %s" %  (";".join(src), dst) 
+            self.error(msg, out, err)
 
-    def download(self, src, dst):
+            if raise_on_error:
+                raise RuntimeError, msg
+
+        return ((out, err), proc)
+
+    def download(self, src, dst, raise_on_error = True):
         if not self.localhost:
             # Build destination as <user>@<server>:<path>
             src = "%s@%s:%s" % (self.get("username"), self.get("hostname"), src)
-        return self.copy(src, dst)
+
+        ((out, err), proc) = self.copy(src, dst)
+
+        if err:
+            msg = " Failed to download files - src: %s dst: %s" %  (";".join(src), dst) 
+            self.error(msg, out, err)
+
+            if raise_on_error:
+                raise RuntimeError, msg
+
+        return ((out, err), proc)
 
     def install_packages_command(self, packages):
         command = ""
@@ -714,7 +733,8 @@ class LinuxNode(ResourceManager):
 
         return command
 
-    def install_packages(self, packages, home, run_home = None):
+    def install_packages(self, packages, home, run_home = None,
+            raise_on_error = True):
         """ Install packages in the Linux host.
 
         'home' is the directory to upload the package installation script.
@@ -731,11 +751,12 @@ class LinuxNode(ResourceManager):
             stdout = "instpkg_stdout", 
             stderr = "instpkg_stderr",
             overwrite = False,
-            raise_on_error = True)
+            raise_on_error = raise_on_error)
 
         return (out, err), proc 
 
-    def remove_packages(self, packages, home, run_home = None):
+    def remove_packages(self, packages, home, run_home = None,
+            raise_on_error = True):
         """ Uninstall packages from the Linux host.
 
         'home' is the directory to upload the package un-installation script.
@@ -759,7 +780,7 @@ class LinuxNode(ResourceManager):
             stdout = "rmpkg_stdout", 
             stderr = "rmpkg_stderr",
             overwrite = False,
-            raise_on_error = True)
+            raise_on_error = raise_on_error)
          
         return (out, err), proc 
 
@@ -783,7 +804,7 @@ class LinuxNode(ResourceManager):
             stderr = "stderr", 
             sudo = False,
             tty = False,
-            raise_on_error = False):
+            raise_on_error = True):
         """
         Uploads the 'command' to a bash script in the host.
         Then runs the script detached in background in the host, and
