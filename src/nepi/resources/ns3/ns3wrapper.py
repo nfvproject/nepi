@@ -30,11 +30,10 @@ CONFIG_UUID = "singleton::Config"
 GLOBAL_VALUE_UUID = "singleton::GlobalValue"
 IPV4_GLOBAL_ROUTING_HELPER_UUID = "singleton::Ipv4GlobalRoutingHelper"
 
-def load_ns3_module():
+def load_ns3_libraries():
     import ctypes
     import re
 
-    bindings = os.environ.get("NS3BINDINGS")
     libdir = os.environ.get("NS3LIBRARIES")
 
     # Load the ns-3 modules shared libraries
@@ -62,9 +61,13 @@ def load_ns3_module():
             # to prevent infinit loop
             if initial_size == len(libs):
                 raise RuntimeError("Imposible to load shared libraries %s" % str(libs))
-            initial_size = list(libs)
+            initial_size = len(libs)
+
+def load_ns3_module():
+    load_ns3_libraries()
 
     # import the python bindings for the ns-3 modules
+    bindings = os.environ.get("NS3BINDINGS")
     if bindings:
         sys.path.append(bindings)
 
