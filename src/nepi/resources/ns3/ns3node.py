@@ -17,12 +17,23 @@
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
+from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.resource import clsinit_copy
 from nepi.resources.ns3.ns3base import NS3Base
 
 @clsinit_copy
 class NS3BaseNode(NS3Base):
     _rtype = "abstract::ns3::Node"
+
+    @classmethod
+    def _register_attributes(cls):
+        enable_dce = Attribute("enableDCE", 
+                "This node will run in DCE emulation mode ",
+                default = False,
+                type = Types.Bool,
+                flags = Flags.Design)
+
+        cls._register_attribute(enable_dce)
 
     @property
     def simulation(self):
@@ -82,6 +93,9 @@ class NS3BaseNode(NS3Base):
         uuid_packet_socket_factory = self.simulation.create("PacketSocketFactory")
         self.simulation.invoke(self.uuid, "AggregateObject", uuid_packet_socket_factory)
 
+        if self.get("enableDCE") == True:
+            self._add_dce()
+
     def _connect_object(self):
         ipv4 = self.ipv4
         if ipv4:
@@ -91,4 +105,32 @@ class NS3BaseNode(NS3Base):
         if mobility:
             self.simulation.invoke(self.uuid, "AggregateObject", mobility.uuid)
 
+    def _add_dce(self):
+        # TODO: All these component types should be configurable somewhere
+        """
+        manager_uuid = self.simulation.create("ns3::TaskManager")
+        m_schedulerFactory.SetTypeId ("ns3::RrTaskScheduler");
+        m_managerFactory.SetTypeId ("ns3::DceManager");
+        m_networkStackFactory.SetTypeId ("ns3::Ns3SocketFdFactory");
+        m_delayFactory.SetTypeId ("ns3::RandomProcessDelayModel");
+
+         Ptr<TaskManager> taskManager = m_taskManagerFactory.Create<TaskManager> ();
+         Ptr<TaskScheduler> scheduler = m_schedulerFactory.Create<TaskScheduler> ();
+         Ptr<LoaderFactory> loader = m_loaderFactory.Create<LoaderFactory> ();
+         Ptr<SocketFdFactory> networkStack = m_networkStackFactory.Create<SocketFdFactory> ();
+         Ptr<ProcessDelayModel> delay = m_delayFactory.Create<ProcessDelayModel> ();
+
+         taskManager->SetScheduler (scheduler);
+         taskManager->SetDelayModel (delay);
+         manager->SetAttribute ("FirstPid", UintegerValue (g_firstPid.GetInteger (0, 0xffff)));
+         Ptr<Node> node = *i;
+         node->AggregateObject (taskManager);
+         node->AggregateObject (loader);
+         node->AggregateObject (manager);
+         node->AggregateObject (networkStack);
+         node->AggregateObject (CreateObject<LocalSocketFdFactory> ());
+         manager->AggregateObject (CreateObject<DceNodeContext> ());
+         manager->SetVirtualPath (GetVirtualPath ());
+        """
+        pass
 

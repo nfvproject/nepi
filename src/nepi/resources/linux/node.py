@@ -353,14 +353,14 @@ class LinuxNode(ResourceManager):
         if self.get("cleanExperiment"):
             self.clean_experiment()
     
-        # Create shared directory structure
-        self.mkdir(self.lib_dir)
-        self.mkdir(self.bin_dir)
-        self.mkdir(self.src_dir)
-        self.mkdir(self.share_dir)
+        # Create shared directory structure and node home directory
+        paths = [self.lib_dir, 
+            self.bin_dir, 
+            self.src_dir, 
+            self.share_dir, 
+            self.node_home]
 
-        # Create experiment node home directory
-        self.mkdir(self.node_home)
+        self.mkdir(paths)
 
         super(LinuxNode, self).do_provision()
 
@@ -787,14 +787,31 @@ class LinuxNode(ResourceManager):
          
         return (out, err), proc 
 
-    def mkdir(self, path, clean = False):
+    def mkdir(self, paths, clean = False):
+        """ Paths is either a single remote directory path to create,
+        or a list of directories to create.
+        """
         if clean:
-            self.rmdir(path)
+            self.rmdir(paths)
 
-        return self.execute("mkdir -p %s" % path, with_lock = True)
+        if isinstance(paths, str):
+            paths = [paths]
 
-    def rmdir(self, path):
-        return self.execute("rm -rf %s" % path, with_lock = True)
+        cmd = " ; ".join(map(lambda path: "mkdir -p %s" % path, paths))
+
+        return self.execute(cmd, with_lock = True)
+
+    def rmdir(self, paths):
+        """ Paths is either a single remote directory path to delete,
+        or a list of directories to delete.
+        """
+
+        if isinstance(paths, str):
+            paths = [paths]
+
+        cmd = " ; ".join(map(lambda path: "rm -rf %s" % path, paths))
+
+        return self.execute(cmd, with_lock = True)
         
     def run_and_wait(self, command, home, 
             shfile = "cmd.sh",

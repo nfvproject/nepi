@@ -74,7 +74,7 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
 
         build_mode = Attribute("buildMode",
             "Mode used to build ns-3 with waf. One if: debug, release, oprimized ",
-            default = "release", 
+            default = "optimized", 
             allowed = ["debug", "release", "optimized"],
             type = Types.Enumerate,
             flags = Flags.Design)
@@ -82,6 +82,12 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         ns3_version = Attribute("ns3Version",
             "Version of ns-3 to install from nsam repo",
             default = "ns-3.19", 
+            flags = Flags.Design)
+
+        enable_dce = Attribute("enableDCE",
+            "Install DCE source code",
+            default = False, 
+            type = Types.Bool,
             flags = Flags.Design)
 
         pybindgen_version = Attribute("pybindgenVersion",
@@ -104,6 +110,7 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         cls._register_attribute(ns3_version)
         cls._register_attribute(pybindgen_version)
         cls._register_attribute(populate_routing_tables)
+        cls._register_attribute(enable_dce)
 
     def __init__(self, ec, guid):
         LinuxApplication.__init__(self, ec, guid)
@@ -111,7 +118,7 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
 
         self._client = None
         self._home = "ns3-simu-%s" % self.guid
-        self._socket_name = "ns3simu-%s" % os.urandom(8).encode('hex')
+        self._socket_name = "ns3-%s.sock" % os.urandom(4).encode('hex')
 
     @property
     def socket_name(self):
@@ -120,6 +127,11 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
     @property
     def remote_socket(self):
         return os.path.join(self.run_home, self.socket_name)
+
+    @property
+    def ns3_build_home(self):
+        return os.path.join(self.node.bin_dir, "ns-3", self.get("ns3Version"), 
+                self.get("buildMode"), "build")
 
     def trace(self, name, attr = TraceAttr.ALL, block = 512, offset = 0):
         self._client.flush() 
@@ -195,7 +207,7 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
             sched_type = self.get("schedulerType")
             stype = self.create("StringValue", sched_type)
             self.invoke(GLOBAL_VALUE_UUID, "Bind", "SchedulerType", btrue)
-       
+
     def do_deploy(self):
         if not self.node or self.node.state < ResourceState.READY:
             self.debug("---- RESCHEDULING DEPLOY ---- node state %s " % self.node.state )
@@ -282,9 +294,11 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
     @property
     def _start_command(self):
         command = [] 
-        command.append("PYTHONPATH=$PYTHONPATH:${SRC}/ns3wrapper/")
 
-        command.append("python ${SRC}/ns3wrapper/ns3server.py -S %s" % self.remote_socket )
+        command.append("PYTHONPATH=$PYTHONPATH:${SRC}/ns3wrapper/")
+        
+        command.append("python ${SRC}/ns3wrapper/ns3server.py -S %s" % \
+                os.path.basename(self.remote_socket) )
 
         ns_log = self.get("nsLog")
         if ns_log:
@@ -318,50 +332,70 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         # on the remote sources directory. Else we clone ns-3 from the official repo.
         source = self.get("sources")
         if not source:
-            copy_ns3_cmd = "hg clone %(ns3_repo)s/%(ns3_version)s ${SRC}/ns-3/%(ns3_version)s" \
-                    % ({
+            clone_ns3_cmd = "hg clone %(ns3_repo)s/%(ns3_version)s ${SRC}/ns-3/%(ns3_version)s" \
+                    % {
                         'ns3_version': self.get("ns3Version"),
                         'ns3_repo':  self.ns3_repo,       
-                       })
+                      }
         else:
             if source.find(".tar.gz") > -1:
-                copy_ns3_cmd = ( 
+                clone_ns3_cmd = ( 
                             "tar xzf ${SRC}/ns-3/%(basename)s " 
                             " --strip-components=1 -C ${SRC}/ns-3/%(ns3_version)s "
-                            ) % ({
+                            ) % {
                                 'basename': os.path.basename(source),
                                 'ns3_version': self.get("ns3Version"),
-                                })
+                                }
             elif source.find(".tar") > -1:
-                copy_ns3_cmd = ( 
+                clone_ns3_cmd = ( 
                             "tar xf ${SRC}/ns-3/%(basename)s " 
                             " --strip-components=1 -C ${SRC}/ns-3/%(ns3_version)s "
-                            ) % ({
+                            ) % {
                                 'basename': os.path.basename(source),
                                 'ns3_version': self.get("ns3Version"),
-                                })
+                                }
             elif source.find(".zip") > -1:
                 basename = os.path.basename(source)
                 bare_basename = basename.replace(".zip", "") \
                         .replace(".tar", "") \
                         .replace(".tar.gz", "")
 
-                copy_ns3_cmd = ( 
+                clone_ns3_cmd = ( 
                             "unzip ${SRC}/ns-3/%(basename)s && "
                             "mv ${SRC}/ns-3/%(bare_basename)s ${SRC}/ns-3/%(ns3_version)s "
-                            ) % ({
+                            ) % {
                                 'bare_basename': basename_name,
                                 'basename': basename,
                                 'ns3_version': self.get("ns3Version"),
-                                })
+                                }
+
+        clone_dce_cmd = " echo 'DCE will not be built' "
+        if self.get("enableDCE"):
+            clone_dce_cmd = (
+                        # DCE installation
+                        # Test if dce is alredy installed
+                        " ( "
+                        "  ( "
+                        "    ( test -d ${SRC}/dce/ns-3-dce ) "
+                        "   && echo 'dce binaries found, nothing to do'"
+                        "  ) "
+                        " ) "
+                        "  || " 
+                        # Get dce source code
+                        " ( "
+                        "   mkdir -p ${SRC}/dce && "
+                        "   hg clone http://code.nsnam.org/ns-3-dce ${SRC}/dce/ns-3-dce"
+                        " ) "
+                    )
 
         return (
-                # Test if ns-3 is alredy installed
+                # NS3 installation
+                "( "
                 " ( "
-                " (( "
-                "    ( test -d ${SRC}/ns-3/%(ns3_version)s ) || "
-                "    ( test -d ${NS3BINDINGS:='None'} && test -d ${NS3LIBRARIES:='None'}) "
-                "  ) && echo 'binaries found, nothing to do' )"
+                # Test if ns-3 is alredy installed
+                "  ((( test -d ${SRC}/ns-3/%(ns3_version)s ) || "
+                "    ( test -d ${NS3BINDINGS:='None'} && test -d ${NS3LIBRARIES:='None'})) "
+                "  && echo 'ns-3 binaries found, nothing to do' )"
                 " ) "
                 "  || " 
                 # If not, install ns-3 and its dependencies
@@ -401,51 +435,88 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
                 # Get ns-3 source code
                 "  ( "
                 "     mkdir -p ${SRC}/ns-3/%(ns3_version)s && "
-                "     %(copy_ns3_cmd)s "
+                "     %(clone_ns3_cmd)s "
                 "  ) "
                 " ) "
-             ) % ({ 
+                ") "
+                " && "
+                "( "
+                "   %(clone_dce_cmd)s "
+                ") "
+             ) % { 
                     'ns3_version': self.get("ns3Version"),
                     'pybindgen_version': self.get("pybindgenVersion"),
                     'pygccxml_version': self.pygccxml_version,
-                    'copy_ns3_cmd': copy_ns3_cmd,
-                 })
+                    'clone_ns3_cmd': clone_ns3_cmd,
+                    'clone_dce_cmd': clone_dce_cmd,
+                 }
 
     @property
     def _install(self):
+        install_dce_cmd = " echo 'DCE will not be installed' "
+        if self.get("enableDCE"):
+            install_dce_cmd = (
+                        " ( "
+                        "   ((test -d %(ns3_build_home)s/bin_dce ) && "
+                        "    echo 'dce binaries found, nothing to do' )"
+                        " ) "
+                        " ||" 
+                        " (   "
+                         # If not, copy ns-3 build to bin
+                        "  cd ${SRC}/dce/ns-3-dce && "
+                        "  ./waf configure --enable-opt --with-pybindgen=${SRC}/pybindgen/%(pybindgen_version)s "
+                        "  --prefix=%(ns3_build_home)s --with-ns3=%(ns3_build_home)s && "
+                        "  ./waf build && "
+                        "  ./waf install "
+                        " )"
+                ) % { 
+                    'ns3_version': self.get("ns3Version"),
+                    'pybindgen_version': self.get("pybindgenVersion"),
+                    'ns3_build_home': self.ns3_build_home,
+                    'build_mode': self.get("buildMode"),
+                    }
+
         return (
-                 # Test if ns-3 is alredy cloned
+                 # Test if ns-3 is alredy installed
+                "("
                 " ( "
-                "  ( ( (test -d ${BIN}/ns-3/%(ns3_version)s/%(build_mode)s/build ) || "
+                "  ( ( (test -d %(ns3_build_home)s/lib ) || "
                 "    (test -d ${NS3BINDINGS:='None'} && test -d ${NS3LIBRARIES:='None'}) ) && "
                 "    echo 'binaries found, nothing to do' )"
                 " ) "
                 " ||" 
                 " (   "
                  # If not, copy ns-3 build to bin
+                "  mkdir -p %(ns3_build_home)s && "
                 "  cd ${SRC}/ns-3/%(ns3_version)s && "
-                "  ./waf configure -d %(build_mode)s --with-pybindgen=${SRC}/pybindgen/%(pybindgen_version)s && "
-                "  ./waf && "
-                "  mkdir -p ${BIN}/ns-3/%(ns3_version)s/%(build_mode)s && "
-                "  mv ${SRC}/ns-3/%(ns3_version)s/build ${BIN}/ns-3/%(ns3_version)s/%(build_mode)s/build "
+                "  ./waf configure -d %(build_mode)s --with-pybindgen=${SRC}/pybindgen/%(pybindgen_version)s "
+                "  --prefix=%(ns3_build_home)s --includedir=%(ns3_build_home)s && "
+                "  ./waf build && "
+                "  ./waf install && "
+                "  mv %(ns3_build_home)s/lib/python* %(ns3_build_home)s/lib/python "
                 " )"
-             ) % ({ 
+                ") "
+                " && "
+                "( "
+                "   %(install_dce_cmd)s "
+                ") "
+              ) % { 
                     'ns3_version': self.get("ns3Version"),
                     'pybindgen_version': self.get("pybindgenVersion"),
                     'build_mode': self.get("buildMode"),
-                 })
+                    'ns3_build_home': self.ns3_build_home,
+                    'install_dce_cmd': install_dce_cmd
+                 }
 
     @property
     def _environment(self):
         env = []
-        env.append("NS3BINDINGS=${NS3BINDINGS:=${BIN}/ns-3/%(ns3_version)s/%(build_mode)s/build/bindings/python/}" % ({ 
-                    'ns3_version': self.get("ns3Version"),
-                    'build_mode': self.get("buildMode")
-                 }))
-        env.append("NS3LIBRARIES=${NS3LIBRARIES:=${BIN}/ns-3/%(ns3_version)s/%(build_mode)s/build/}" % ({ 
-                    'ns3_version': self.get("ns3Version"),
-                    'build_mode': self.get("buildMode")
-                 }))
+        env.append("PYTHONPATH=$PYTHONPATH:${NS3BINDINGS:=%(ns3_build_home)s/lib/python/site-packages}" % { 
+                    'ns3_build_home': self.ns3_build_home
+                 })
+        env.append("LD_LIBRARY_PATH=${NS3LIBRARIES:=%(ns3_build_home)s/lib/}" % { 
+                    'ns3_build_home': self.ns3_build_home
+                 })
 
         return " ".join(env) 
 
