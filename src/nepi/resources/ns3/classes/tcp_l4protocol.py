@@ -20,24 +20,44 @@ from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import Trace, TraceAttr
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
         ResourceState, reschedule_delay
-from nepi.resources.ns3.ns3channel import NS3BaseChannel 
+from nepi.resources.ns3.ns3base import NS3Base
 
 @clsinit_copy
-class NS3YansWifiChannel(NS3BaseChannel):
-    _rtype = "ns3::YansWifiChannel"
+class NS3TcpL4Protocol(NS3Base):
+    _rtype = "ns3::TcpL4Protocol"
 
     @classmethod
     def _register_attributes(cls):
         
-        attr_id = Attribute("Id",
-            "The id (unique integer) of this Channel.",
+        attr_rttestimatortype = Attribute("RttEstimatorType",
+            "Type of RttEstimator objects.",
+            type = Types.String,
+            default = "ns3::RttMeanDeviation",  
+            allowed = None,
+            range = None,    
+            flags = Flags.Reserved | Flags.Construct)
+
+        cls._register_attribute(attr_rttestimatortype)
+
+        attr_sockettype = Attribute("SocketType",
+            "Socket type of TCP objects.",
+            type = Types.String,
+            default = "ns3::TcpNewReno",  
+            allowed = None,
+            range = None,    
+            flags = Flags.Reserved | Flags.Construct)
+
+        cls._register_attribute(attr_sockettype)
+
+        attr_protocolnumber = Attribute("ProtocolNumber",
+            "The Ip protocol number.",
             type = Types.Integer,
             default = "0",  
             allowed = None,
             range = None,    
-            flags = Flags.Reserved | Flags.NoWrite)
+            flags = Flags.Reserved | Flags.Construct)
 
-        cls._register_attribute(attr_id)
+        cls._register_attribute(attr_protocolnumber)
 
 
 
@@ -46,5 +66,5 @@ class NS3YansWifiChannel(NS3BaseChannel):
         pass
 
     def __init__(self, ec, guid):
-        super(NS3YansWifiChannel, self).__init__(ec, guid)
-        self._home = "ns3-yans-wifi-channel-%s" % self.guid
+        super(NS3TcpL4Protocol, self).__init__(ec, guid)
+        self._home = "ns3-tcp-l4protocol-%s" % self.guid

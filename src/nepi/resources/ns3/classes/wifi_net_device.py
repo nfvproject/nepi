@@ -20,10 +20,10 @@ from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import Trace, TraceAttr
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
         ResourceState, reschedule_delay
-from nepi.resources.ns3.ns3wifinetdevice import NS3BaseWifiNetDevice 
+from nepi.resources.ns3.ns3netdevice import NS3BaseNetDevice 
 
 @clsinit_copy
-class NS3WifiNetDevice(NS3BaseWifiNetDevice):
+class NS3WifiNetDevice(NS3BaseNetDevice):
     _rtype = "ns3::WifiNetDevice"
 
     @classmethod

@@ -119,6 +119,8 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         self._client = None
         self._home = "ns3-simu-%s" % self.guid
         self._socket_name = "ns3-%s.sock" % os.urandom(4).encode('hex')
+        self._dce_helper_uuid = None
+        self._dce_application_helper_uuid = None
 
     @property
     def socket_name(self):
@@ -127,6 +129,14 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
     @property
     def remote_socket(self):
         return os.path.join(self.run_home, self.socket_name)
+
+    @property
+    def dce_helper_uuid(self):
+        return self._dce_helper_uuid
+
+    @property
+    def dce_application_helper_uuid(self):
+        return self._dce_application_helper_uuid
 
     @property
     def ns3_build_home(self):
@@ -207,6 +217,10 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
             sched_type = self.get("schedulerType")
             stype = self.create("StringValue", sched_type)
             self.invoke(GLOBAL_VALUE_UUID, "Bind", "SchedulerType", btrue)
+        
+        if self.get("enableDCE"):
+            self._dce_helper_uuid = self.create("DceManagerHelper")
+            self._dce_application_helper_uuid = self.create("DceApplicationHelper")
 
     def do_deploy(self):
         if not self.node or self.node.state < ResourceState.READY:
@@ -302,7 +316,7 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
 
         ns_log = self.get("nsLog")
         if ns_log:
-            command.append("-L %s" % ns_log)
+            command.append("-L '%s'" % ns_log)
 
         if self.get("verbose"):
             command.append("-v")
@@ -464,16 +478,18 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
                         " (   "
                          # If not, copy ns-3 build to bin
                         "  cd ${SRC}/dce/ns-3-dce && "
-                        "  ./waf configure --enable-opt --with-pybindgen=${SRC}/pybindgen/%(pybindgen_version)s "
+                        "  ./waf configure %(enable_opt)s --with-pybindgen=${SRC}/pybindgen/%(pybindgen_version)s "
                         "  --prefix=%(ns3_build_home)s --with-ns3=%(ns3_build_home)s && "
                         "  ./waf build && "
-                        "  ./waf install "
+                        "  ./waf install && "
+                        "  mv %(ns3_build_home)s/lib/python*/site-packages/ns/dce.so %(ns3_build_home)s/lib/python/site-packages/ns/ "
                         " )"
                 ) % { 
                     'ns3_version': self.get("ns3Version"),
                     'pybindgen_version': self.get("pybindgenVersion"),
                     'ns3_build_home': self.ns3_build_home,
                     'build_mode': self.get("buildMode"),
+                    'enable_opt': "--enable-opt" if  self.get("buildMode") == "optimized" else ""
                     }
 
         return (
@@ -517,6 +533,8 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         env.append("LD_LIBRARY_PATH=${NS3LIBRARIES:=%(ns3_build_home)s/lib/}" % { 
                     'ns3_build_home': self.ns3_build_home
                  })
+        env.append("DCE_PATH=$PATH:$NS3LIBRARIES/../bin_dce")
+        env.append("DCE_ROOT=$PATH:$NS3LIBRARIES/..")
 
         return " ".join(env) 
 
