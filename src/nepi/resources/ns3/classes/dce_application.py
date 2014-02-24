@@ -20,31 +20,46 @@ from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import Trace, TraceAttr
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
         ResourceState, reschedule_delay
-from nepi.resources.ns3.ns3channel import NS3BaseChannel 
+from nepi.resources.ns3.ns3dceapplication import NS3BaseDceApplication 
 
 @clsinit_copy
-class NS3YansWifiChannel(NS3BaseChannel):
-    _rtype = "ns3::YansWifiChannel"
+class NS3DceApplication(NS3BaseDceApplication):
+    _rtype = "ns3::DceApplication"
 
     @classmethod
     def _register_attributes(cls):
         
-        attr_id = Attribute("Id",
-            "The id (unique integer) of this Channel.",
-            type = Types.Integer,
-            default = "0",  
+        attr_starttime = Attribute("StartTime",
+            "Time at which the application will start",
+            type = Types.String,
+            default = "+0.0ns",  
             allowed = None,
             range = None,    
-            flags = Flags.Reserved | Flags.NoWrite)
+            flags = Flags.Reserved | Flags.Construct)
 
-        cls._register_attribute(attr_id)
+        cls._register_attribute(attr_starttime)
+
+        attr_stoptime = Attribute("StopTime",
+            "Time at which the application will stop",
+            type = Types.String,
+            default = "+0.0ns",  
+            allowed = None,
+            range = None,    
+            flags = Flags.Reserved | Flags.Construct)
+
+        cls._register_attribute(attr_stoptime)
 
 
 
     @classmethod
     def _register_traces(cls):
-        pass
+        
+        processstarted = Trace("ProcessStarted", "notify when the dce is started")
+
+        cls._register_trace(processstarted)
+
+
 
     def __init__(self, ec, guid):
-        super(NS3YansWifiChannel, self).__init__(ec, guid)
-        self._home = "ns3-yans-wifi-channel-%s" % self.guid
+        super(NS3DceApplication, self).__init__(ec, guid)
+        self._home = "ns3-dce-application-%s" % self.guid

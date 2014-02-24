@@ -23,8 +23,9 @@ from nepi.resources.ns3.ns3wrapper import load_ns3_module
 import os
 import re
 
-base_types = ["ns3::Node",
+adapted_types = ["ns3::Node",
         "ns3::Application", 
+        #"ns3::DceApplication", 
         "ns3::NetDevice",
         "ns3::Channel",
         "ns3::Queue",
@@ -42,34 +43,34 @@ base_types = ["ns3::Node",
         "ns3::ErrorModel",
         "ns3::ErrorRateModel"]
 
-def discard(ns3, tid):
-    rtype = tid.GetName()
-    type_id = ns3.TypeId()
-
-    for type_name in base_types:
-        tid_base = type_id.LookupByName(type_name)
-        if type_name == rtype or tid.IsChildOf(tid_base):
-            return False
-
-    return True
+base_types = ["ns3::IpL4Protocol"]
 
 def select_base_class(ns3, tid): 
-    base_class_import = "from nepi.resources.ns3.ns3base import NS3Base"
-    base_class = "NS3Base"
+    base_class_import = None
+    base_class = None
    
     rtype = tid.GetName()
 
     type_id = ns3.TypeId()
 
-    for type_name in base_types:
+    for type_name in adapted_types:
         tid_base = type_id.LookupByName(type_name)
         if type_name == rtype or tid.IsChildOf(tid_base):
             base_class = "NS3Base" + type_name.replace("ns3::", "")
             base_module = "ns3" + type_name.replace("ns3::", "").lower()
             base_class_import = "from nepi.resources.ns3.%s import %s " % (
                     base_module, base_class)
+            return (base_class_import, base_class)
 
-    return (base_class_import, base_class)
+    base_class_import = "from nepi.resources.ns3.ns3base import NS3Base"
+    base_class = "NS3Base"
+
+    for type_name in base_types:
+        tid_base = type_id.LookupByName(type_name)
+        if type_name == rtype or tid.IsChildOf(tid_base):
+            return (base_class_import, base_class)
+
+    return (None, None)
 
 def create_ns3_rms():
     ns3 = load_ns3_module()
@@ -83,7 +84,8 @@ def create_ns3_rms():
     for i in xrange(tid_count):
         tid = type_id.GetRegistered(i)
         
-        if discard(ns3, tid):
+        (base_class_import, base_class) = select_base_class(ns3, tid)
+        if not base_class:
             continue
         
         if tid.MustHideFromDocumentation() or \
@@ -101,8 +103,6 @@ def create_ns3_rms():
 
         attributes = "\n" + attributes if attributes else "pass"
         traces = "\n" + traces if traces else "pass"
-
-        (base_class_import, base_class) = select_base_class(ns3, tid)
 
         category = tid.GetGroupName()
 

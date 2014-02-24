@@ -20,24 +20,24 @@ from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import Trace, TraceAttr
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
         ResourceState, reschedule_delay
-from nepi.resources.ns3.ns3channel import NS3BaseChannel 
+from nepi.resources.ns3.ns3base import NS3Base
 
 @clsinit_copy
-class NS3YansWifiChannel(NS3BaseChannel):
-    _rtype = "ns3::YansWifiChannel"
+class NS3UdpL4Protocol(NS3Base):
+    _rtype = "ns3::UdpL4Protocol"
 
     @classmethod
     def _register_attributes(cls):
         
-        attr_id = Attribute("Id",
-            "The id (unique integer) of this Channel.",
+        attr_protocolnumber = Attribute("ProtocolNumber",
+            "The Ip protocol number.",
             type = Types.Integer,
             default = "0",  
             allowed = None,
             range = None,    
-            flags = Flags.Reserved | Flags.NoWrite)
+            flags = Flags.Reserved | Flags.Construct)
 
-        cls._register_attribute(attr_id)
+        cls._register_attribute(attr_protocolnumber)
 
 
 
@@ -46,5 +46,5 @@ class NS3YansWifiChannel(NS3BaseChannel):
         pass
 
     def __init__(self, ec, guid):
-        super(NS3YansWifiChannel, self).__init__(ec, guid)
-        self._home = "ns3-yans-wifi-channel-%s" % self.guid
+        super(NS3UdpL4Protocol, self).__init__(ec, guid)
+        self._home = "ns3-udp-l4protocol-%s" % self.guid

@@ -49,6 +49,9 @@ def add_ns3_node(ec, simu):
     icmp = ec.register_resource("ns3::Icmpv4L4Protocol")
     ec.register_connection(node, icmp)
 
+    udp = ec.register_resource("ns3::UdpL4Protocol")
+    ec.register_connection(node, udp)
+
     return node
 
 def add_point2point_device(ec, node, address = None,  prefix = None):
@@ -763,16 +766,6 @@ class LinuxNS3ClientTest(unittest.TestCase):
         ec.shutdown()
 
     def test_dce(self):
-        """ 
-        network topology:
-                                n4
-                                |
-           n1 -- p2p -- n2 -- csma -- n5 -- p2p -- n6
-           |                    | 
-           ping n6              n3
-           
-
-        """
         ec = ExperimentController(exp_id = "test-ns3-dce")
         
         node = ec.register_resource("LinuxNode")
@@ -785,39 +778,52 @@ class LinuxNS3ClientTest(unittest.TestCase):
         simu = ec.register_resource("LinuxNS3Simulation")
         ec.set(simu, "verbose", True)
         ec.set(simu, "enableDCE", True)
+        ec.set(simu, "buildMode", "debug")
+        ec.set(simu, "nsLog", "DceApplication")
         ec.register_connection(simu, node)
 
         nsnode1 = add_ns3_node(ec, simu)
+        ec.set(nsnode1, "enableDCE", True)
         p2p1 = add_point2point_device(ec, nsnode1, "10.0.0.1", "30")
+        ec.set(p2p1, "DataRate", "5Mbps")
 
         nsnode2 = add_ns3_node(ec, simu)
+        ec.set(nsnode2, "enableDCE", True)
         p2p2 = add_point2point_device(ec, nsnode2, "10.0.0.2", "30")
+        ec.set(p2p2, "DataRate", "5Mbps")
 
         # Create channel
         chan = ec.register_resource("ns3::PointToPointChannel")
-        ec.set(chan, "Delay", "0s")
+        ec.set(chan, "Delay", "2ms")
+
         ec.register_connection(chan, p2p1)
         ec.register_connection(chan, p2p2)
 
-        ### create pinger
-        ping = ec.register_resource("ns3::V4Ping")
-        ec.set (ping, "Remote", "10.0.0.2")
-        ec.set (ping, "Interval", "1s")
-        ec.set (ping, "Verbose", True)
-        ec.set (ping, "StartTime", "1s")
-        ec.set (ping, "StopTime", "21s")
-        ec.register_connection(ping, nsnode1)
+        ### create applications
+        udp_perf = ec.register_resource("ns3::DceApplication")
+        ec.set (udp_perf, "binary", "udp-perf")
+        ec.set (udp_perf, "stackSize", 1<<20)
+        ec.set (udp_perf, "arguments", "--duration=10;--nodes=2")
+        ec.set (udp_perf, "StartTime", "1s")
+        ec.set (udp_perf, "StopTime", "20s")
+        ec.register_connection(udp_perf, nsnode1)
+
+        udp_perf_client = ec.register_resource("ns3::DceApplication")
+        ec.set (udp_perf_client, "binary", "udp-perf")
+        ec.set (udp_perf_client, "stackSize", 1<<20)
+        ec.set (udp_perf_client, "arguments", "--client;--nodes=2;--host=10.0.0.1;--duration=10")
+        ec.set (udp_perf_client, "StartTime", "2s")
+        ec.set (udp_perf_client, "StopTime", "20s")
+        ec.register_connection(udp_perf_client, nsnode2)
 
         ec.deploy()
 
-        ec.wait_finished([ping])
+        ec.wait_finished([udp_perf_client])
         
-        stdout = ec.trace(simu, "stdout")
+        stderr = ec.trace(simu, "stderr")
 
-        print stdout
-
-        expected = "20 packets transmitted, 20 received, 0% packet loss"
-        self.assertTrue(stdout.find(expected) > -1)
+        expected = "DceApplication:StartApplication"
+        self.assertTrue(stderr.find(expected) > -1)
 
         ec.shutdown()
 

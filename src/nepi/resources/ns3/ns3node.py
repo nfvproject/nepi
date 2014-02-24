@@ -106,31 +106,8 @@ class NS3BaseNode(NS3Base):
             self.simulation.invoke(self.uuid, "AggregateObject", mobility.uuid)
 
     def _add_dce(self):
-        # TODO: All these component types should be configurable somewhere
-        """
-        manager_uuid = self.simulation.create("ns3::TaskManager")
-        m_schedulerFactory.SetTypeId ("ns3::RrTaskScheduler");
-        m_managerFactory.SetTypeId ("ns3::DceManager");
-        m_networkStackFactory.SetTypeId ("ns3::Ns3SocketFdFactory");
-        m_delayFactory.SetTypeId ("ns3::RandomProcessDelayModel");
-
-         Ptr<TaskManager> taskManager = m_taskManagerFactory.Create<TaskManager> ();
-         Ptr<TaskScheduler> scheduler = m_schedulerFactory.Create<TaskScheduler> ();
-         Ptr<LoaderFactory> loader = m_loaderFactory.Create<LoaderFactory> ();
-         Ptr<SocketFdFactory> networkStack = m_networkStackFactory.Create<SocketFdFactory> ();
-         Ptr<ProcessDelayModel> delay = m_delayFactory.Create<ProcessDelayModel> ();
-
-         taskManager->SetScheduler (scheduler);
-         taskManager->SetDelayModel (delay);
-         manager->SetAttribute ("FirstPid", UintegerValue (g_firstPid.GetInteger (0, 0xffff)));
-         Ptr<Node> node = *i;
-         node->AggregateObject (taskManager);
-         node->AggregateObject (loader);
-         node->AggregateObject (manager);
-         node->AggregateObject (networkStack);
-         node->AggregateObject (CreateObject<LocalSocketFdFactory> ());
-         manager->AggregateObject (CreateObject<DceNodeContext> ());
-         manager->SetVirtualPath (GetVirtualPath ());
-        """
-        pass
+        container_uuid = self.simulation.create("NodeContainer")
+        self.simulation.invoke(container_uuid, "Add", self.uuid)
+        self.simulation.invoke(self.simulation.dce_helper_uuid, "Install", 
+                container_uuid)
 
