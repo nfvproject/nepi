@@ -56,13 +56,16 @@ def tdiff(date1, date2):
     """
     return date1 - date2
 
+def _get_total_seconds(td): 
+    return (td.microseconds + (td.seconds + td.days * 24 * 3600) * 1e6) / 1e6
+
 def tdiffsec(date1, date2):
     """ Returns the date difference ( date1 - date2 ) in seconds,
     where date1 and date 2 are datetime objects 
     
     """
     diff = tdiff(date1, date2)
-    return diff.total_seconds()
+    return _get_total_seconds(diff)
 
 def stabsformat(sdate, dbase = None):
     """ Constructs a datetime object from a string date.

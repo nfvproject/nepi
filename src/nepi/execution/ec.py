@@ -956,11 +956,10 @@ class ExperimentController(object):
             :type task: Task
 
         """
-        # Invoke callback
-        task.status = TaskStatus.DONE
-
         try:
+            # Invoke callback
             task.result = task.callback()
+            task.status = TaskStatus.DONE
         except:
             import traceback
             err = traceback.format_exc()
