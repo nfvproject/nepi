@@ -169,6 +169,15 @@ class PlanetlabNode(LinuxNode):
                                     "year"],
                         flags = Flags.Filter)
 
+#        plblacklist = Attribute("blacklist", "Take into account the file plblacklist \
+#                        in the user's home directory under .nepi directory. This file \
+#                        contains a list of PL nodes to blacklist, and at the end \
+#                        of the experiment execution the new blacklisted nodes are added.",
+#                    type = Types.Bool,
+#                    default = True,
+#                    flags = Flags.ReadOnly)
+#
+
         cls._register_attribute(ip)
         cls._register_attribute(pl_url)
         cls._register_attribute(pl_ptn)
@@ -588,12 +597,11 @@ class PlanetlabNode(LinuxNode):
         ip = self._get_ip(node_id)
         if not ip: return ping_ok
 
-        command = ['ping', '-c4']
-        command.append(ip)
+        command = "ping -c4 %s" % ip
 
         (out, err) = lexec(command)
-        if not out.find("2 received") or not out.find("3 received") or not \
-            out.find("4 received") < 0:
+        if not str(out).find("2 received") or not str(out).find("3 received") or not \
+            str(out).find("4 received") < 0:
             ping_ok = True
         
         return ping_ok 
