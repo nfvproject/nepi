@@ -378,6 +378,7 @@ class PlanetlabNode(LinuxNode):
                     # set IP attribute
                     ip = self._get_ip(node)
                     self.set("ip", ip)
+                    self.info(" Node provisioned ")            
             
         super(PlanetlabNode, self).do_provision()
 
