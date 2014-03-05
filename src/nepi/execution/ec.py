@@ -607,7 +607,7 @@ class ExperimentController(object):
 
         """
         rm = self.get_resource(guid)
-        return rm.set(name, value)
+        rm.set(name, value)
 
     def state(self, guid, hr = False):
         """ Returns the state of a resource

@@ -454,8 +454,12 @@ class LinuxApplication(ResourceManager):
             self.info("Uploading stdin")
             
             # upload stdin file to ${SHARE_DIR} directory
-            basename = os.path.basename(stdin)
-            dst = os.path.join(self.node.share_dir, basename)
+            if os.path.isfile(stdin):
+                basename = os.path.basename(stdin)
+                dst = os.path.join(self.node.share_dir, basename)
+            else:
+                dst = os.path.join(self.app_home, "stdin")
+
             self.node.upload(stdin, dst, overwrite = False, text = True)
 
             # create "stdin" symlink on ${APP_HOME} directory
