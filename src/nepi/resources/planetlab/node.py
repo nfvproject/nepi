@@ -411,7 +411,7 @@ class PlanetlabNode(LinuxNode):
         for attr_name, attr_obj in self._attrs.iteritems():
             attr_value = self.get(attr_name)
             
-            if attr_value is not None and attr_obj.flags == 8 and \
+            if attr_value is not None and attr_obj.has_flag(Flags.Filter) and \
                 attr_name != 'timeframe':
         
                 attr_tag = attr_to_tags[attr_name]
