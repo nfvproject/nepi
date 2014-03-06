@@ -283,8 +283,8 @@ def rexec(command, host, user,
         command = "sudo " + command
 
     args.append(command)
-    
-    log_msg = " rexec - host %s - command %s " % (host, " ".join(args))
+   
+    log_msg = " rexec - host %s - command %s " % (str(host), " ".join(map(str, args))) 
 
     stdout = stderr = stdin = subprocess.PIPE
     if forward_x11:
@@ -383,7 +383,7 @@ def rcopy(source, dest,
     else:
         args.append(dest)
 
-    log_msg = " rcopy - host %s - command %s " % (host, " ".join(args))
+    log_msg = " rcopy - host %s - command %s " % (str(host), " ".join(map(str, args)))
     
     return _retry_rexec(args, log_msg, env = None, retry = retry, 
             tmp_known_hosts = tmp_known_hosts,
