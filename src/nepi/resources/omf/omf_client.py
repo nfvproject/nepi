@@ -19,7 +19,7 @@
 #         Julien Tribino <julien.tribino@inria.fr>
 
 from nepi.util.logger import Logger
-
+from nepi.resources.omf.omf6_parser import OMF6Parser
 
 try:
     import sleekxmpp
@@ -71,6 +71,9 @@ class OMFClient(sleekxmpp.ClientXMPP, Logger):
         self._ready = False
         self._registered = False
         self._server = None
+        self._parser = None
+
+
 
         self.register_plugin('xep_0077') # In-band registration
         self.register_plugin('xep_0030')
@@ -80,7 +83,16 @@ class OMFClient(sleekxmpp.ClientXMPP, Logger):
         self.add_event_handler("session_start", self.start)
         self.add_event_handler("register", self.register)
         self.add_event_handler("pubsub_publish", self.handle_omf_message)
+
+        #Init the parser
+        self._init_parser()
         
+    def _init_parser(self):
+        """ Init the parser depending on the OMF Version
+
+        """
+        self._parser = OMF6Parser()
+
     @property
     def ready(self):
         """ Check if the client is ready
@@ -190,8 +202,9 @@ class OMFClient(sleekxmpp.ClientXMPP, Logger):
         try:
             self['xep_0060'].create_node(self._server, node, config = config)
         except:
-            error = traceback.format_exc()
-            msg = ' Could not create topic: %s\ntraceback:\n%s' % (node, error)
+            #error = traceback.format_exc()
+            #msg = ' Could not create topic: %s\ntraceback:\n%s' % (node, error)
+            msg = 'Could not create the topic : '+node+' . Maybe the topic already exists'
             self.error(msg)
 
     def delete(self, node):
@@ -321,44 +334,6 @@ class OMFClient(sleekxmpp.ClientXMPP, Logger):
                     % (self.boundjid.bare, node, error)
             self.error(msg)
 
-    def _check_for_tag(self, root, namespaces, tag):
-        """  Check if an element markup is in the ElementTree
-
-        :param root: Root of the tree
-        :type root: ElementTree Element
-        :param namespaces: Namespaces of the element
-        :type namespaces: str
-        :param tag: Tag that will search in the tree
-        :type tag: str
-
-        """
-        for element in root.iter(namespaces+tag):
-            if element.text:
-                return element
-            else : 
-                return None    
-
-    def _check_output(self, root, namespaces):
-        """ Check the significative element in the answer and display it
-
-        :param root: Root of the tree
-        :type root: ElementTree Element
-        :param namespaces: Namespaces of the tree
-        :type namespaces: str
-
-        """
-        fields = ["TARGET", "REASON", "PATH", "APPID", "VALUE"]
-        response = ""
-        for elt in fields:
-            msg = self._check_for_tag(root, namespaces, elt)
-            if msg is not None:
-                response = response + " " + msg.text + " :"
-        deb = self._check_for_tag(root, namespaces, "MESSAGE")
-        if deb is not None:
-            msg = response + " " + deb.text
-            self.debug(msg)
-        else :
-            self.info(response)
 
     def handle_omf_message(self, iq):
         """ Handle published/received message 
@@ -367,9 +342,5 @@ class OMFClient(sleekxmpp.ClientXMPP, Logger):
         :type iq: Iq Stanza
 
         """
-        namespaces = "{http://jabber.org/protocol/pubsub}"
-        for i in iq['pubsub_event']['items']:
-            root = ET.fromstring(str(i))
-            self._check_output(root, namespaces)
-
+        self._parser.handle(iq)
 
