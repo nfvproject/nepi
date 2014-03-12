@@ -163,4 +163,3 @@ class XMLParser(object):
 
         return box
 
-
