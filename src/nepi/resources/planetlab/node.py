@@ -562,10 +562,10 @@ class PlanetlabNode(LinuxNode):
 
     def _get_hostname(self):
         hostname = self.get("hostname")
-        ip = self.get("ip")
         if hostname:
             return hostname
-        elif ip:
+        ip = self.get("ip")
+        if ip:
             hostname = socket.gethostbyaddr(ip)[0]
             self.set('hostname', hostname)
             return hostname
@@ -601,10 +601,10 @@ class PlanetlabNode(LinuxNode):
         command = "ping -c4 %s" % ip
 
         (out, err) = lexec(command)
-        if not str(out).find("2 received") or not str(out).find("3 received") or not \
+        if not str(out).find("2 received") < 0 or not str(out).find("3 received") < 0 or not \
             str(out).find("4 received") < 0:
             ping_ok = True
-        
+       
         return ping_ok 
 
     def _blacklist_node(self, node):
@@ -627,9 +627,10 @@ class PlanetlabNode(LinuxNode):
         """
         Query PLCAPI for the IP of a node with certain node id
         """
-        hostname = self.plapi.get_nodes(node_id, ['hostname'])[0]
+        hostname = self.get("hostname") or \
+            self.plapi.get_nodes(node_id, ['hostname'])[0]['hostname']
         try:
-            ip = sshfuncs.gethostbyname(hostname['hostname'])
+            ip = sshfuncs.gethostbyname(hostname)
         except:
             # Fail while trying to find the IP
             return None
