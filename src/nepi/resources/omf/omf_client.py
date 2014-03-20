@@ -27,14 +27,14 @@ try:
         pass
 except ImportError:
     msg = ("SleekXMPP is not installed. Without this library "
-          " you will be not able to use OMF Resources "
-          " if you want to install SleekXmpp : \n"
+          "you will be not able to use OMF Resources "
+          "if you want to install SleekXmpp: \n"
           " git clone -b develop git://github.com/fritzy/SleekXMPP.git \n"
           " cd SleekXMPP \n"
           " sudo python setup.py install\n")
 
     logger = Logger("BaseOMFClient")
-    logger.debug(msg)
+    logger.warning(msg)
 
     class BaseOMFClient(object):
         pass
