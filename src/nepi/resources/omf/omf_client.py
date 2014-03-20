@@ -34,7 +34,7 @@ except ImportError:
           " sudo python setup.py install\n")
 
     logger = Logger("BaseOMFClient")
-    logger.warning(msg)
+    logger.debug(msg)
 
     class BaseOMFClient(object):
         pass
