@@ -38,8 +38,10 @@ def lexec(command,
 
     if sudo:
         command = "sudo %s" % command
-    elif user:
-        command = "su %s ; %s " % (user, command)
+    
+    # XXX: Doing 'su user' blocks waiting for a password on stdin
+    #elif user:
+    #    command = "su %s ; %s " % (user, command)
 
     proc = subprocess.Popen(command,
                 shell = True, 
