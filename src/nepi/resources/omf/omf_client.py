@@ -20,19 +20,22 @@
 
 from nepi.util.logger import Logger
 
-
 try:
     import sleekxmpp
-    from sleekxmpp.exceptions import IqError, IqTimeout
+    from sleekxmpp.exceptions2 import IqError, IqTimeout
     class BaseOMFClient(sleekxmpp.ClientXMPP):
         pass
 except ImportError:
-    print "SleekXMPP is not installed. Without this library, \n" + \
-          " You will be not able to use OMF Resources \n"+ \
-          " If you want to install SleekXmpp : \n"+ \
-          " git clone -b develop git://github.com/fritzy/SleekXMPP.git \n"+ \
-          " cd SleekXMPP \n"+ \
-           "sudo python setup.py install\n"
+    msg = ("SleekXMPP is not installed. Without this library "
+          " you will be not able to use OMF Resources "
+          " if you want to install SleekXmpp : \n"
+          " git clone -b develop git://github.com/fritzy/SleekXMPP.git \n"
+          " cd SleekXMPP \n"
+          " sudo python setup.py install\n")
+
+    logger = Logger("BaseOMFClient")
+    logger.debug(msg)
+
     class BaseOMFClient(object):
         pass
 
