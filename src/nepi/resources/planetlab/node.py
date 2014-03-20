@@ -349,7 +349,7 @@ class PlanetlabNode(LinuxNode):
                 # the node is blacklisted, deleted from the slice, and a new
                 # node to provision is discovered
                 with PlanetlabNode.lock:
-                    self.warn(" Could not SSH login ")
+                    self.warning(" Could not SSH login ")
                     self._blacklist_node(node)
                     #self._delete_node_from_slice(node)
                 self.do_discover()
@@ -365,7 +365,7 @@ class PlanetlabNode(LinuxNode):
                 if out1.find("/proc type proc") < 0 or \
                     "Read-only file system".lower() in err2.lower():
                     with PlanetlabNode.lock:
-                        self.warn(" Corrupted file system ")
+                        self.warning(" Corrupted file system ")
                         self._blacklist_node(node)
                         #self._delete_node_from_slice(node)
                     self.do_discover()
@@ -537,7 +537,7 @@ class PlanetlabNode(LinuxNode):
                     ping_ok = self._do_ping(node_id)
                     if not ping_ok:
                         self._set_hostname_attr(node_id)
-                        self.warn(" Node not responding PING ")
+                        self.warning(" Node not responding PING ")
                         self._blacklist_node(node_id)
                     else:
                         # discovered node for provision, added to provision list
@@ -556,7 +556,7 @@ class PlanetlabNode(LinuxNode):
             self.plapi.add_slice_nodes(slicename, slice_nodes)
 
     def _delete_node_from_slice(self, node):
-        self.warn(" Deleting node from slice ")
+        self.warning(" Deleting node from slice ")
         slicename = self.get("username")
         self.plapi.delete_slice_node(slicename, [node])
 
@@ -611,7 +611,7 @@ class PlanetlabNode(LinuxNode):
         """
         Add node mal functioning node to blacklist
         """
-        self.warn(" Blacklisting malfunctioning node ")
+        self.warning(" Blacklisting malfunctioning node ")
         self.plapi.blacklist_host(node)
         if not self._hostname:
             self.set('hostname', None)
