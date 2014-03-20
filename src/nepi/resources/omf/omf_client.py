@@ -22,7 +22,7 @@ from nepi.util.logger import Logger
 
 try:
     import sleekxmpp
-    from sleekxmpp.exceptions2 import IqError, IqTimeout
+    from sleekxmpp.exceptions import IqError, IqTimeout
     class BaseOMFClient(sleekxmpp.ClientXMPP):
         pass
 except ImportError:
@@ -43,7 +43,7 @@ import traceback
 import xml.etree.ElementTree as ET
 
 # inherit from BaseXmpp and XMLstream classes
-class OMFClient(sleekxmpp.ClientXMPP, Logger): 
+class OMFClient(BaseOMFClient, Logger): 
     """
     .. class:: Class Args :
       
