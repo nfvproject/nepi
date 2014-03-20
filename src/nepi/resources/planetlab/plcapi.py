@@ -192,6 +192,7 @@ class PLCAPI(object):
             return self.api
         
     def test(self):
+        # TODO: Use nepi utils Logger instead of warning!!
         import warnings
         
         # validate XMLRPC server checking supported API calls
