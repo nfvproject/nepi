@@ -136,6 +136,10 @@ class LinuxCCND(LinuxApplication):
     def path(self):
         return "PATH=$PATH:${BIN}/%s/" % self.version 
 
+    @property
+    def environment(self):
+        return self._environment()
+
     def do_deploy(self):
         if not self.node or self.node.state < ResourceState.READY:
             self.debug("---- RESCHEDULING DEPLOY ---- node state %s " % self.node.state )

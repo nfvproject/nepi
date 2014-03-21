@@ -681,7 +681,7 @@ class LinuxNode(ResourceManager):
         # If dst files should not be overwritten, check that the files do not
         # exits already
         if isinstance(src, str):
-            src = map(str.strip, src.split(";"))
+            src = map(os.path.expanduser, map(str.strip, src.split(";")))
     
         if overwrite == False:
             src = self.filter_existing_files(src, dst)
