@@ -11,11 +11,7 @@ SUBBUILDDIR = $(shell python -c 'import distutils.util, sys; \
 PYTHON25 := $(shell python -c 'import sys; v = sys.version_info; \
     print (1 if v[0] <= 2 and v[1] <= 5 else 0)')
 
-ifeq ($(PYTHON25),0)
-BUILDDIR := $(BUILDDIR)/$(SUBBUILDDIR)
-else
 BUILDDIR := $(BUILDDIR)/lib
-endif
 
 PYPATH = $(BUILDDIR):$(TESTLIB):$(PYTHONPATH)
 COVERAGE = $(or $(shell which coverage), $(shell which python-coverage), \

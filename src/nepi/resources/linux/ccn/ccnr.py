@@ -296,6 +296,7 @@ class LinuxCCNR(LinuxApplication):
             })
 
         env = self.ccnd.path
+        #env = self.ccnd.path + self.ccnd.environment
         env += " ".join(map(lambda k: "%s=%s" % (envs.get(k), self.get(k)) \
             if self.get(k) else "", envs.keys()))
        

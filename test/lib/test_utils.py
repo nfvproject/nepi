@@ -108,3 +108,17 @@ def skipIfNotPythonVersion(func):
 
     return wrapped
 
+def skipIfNotSfaCredentials(func):
+    name = func.__name__
+    def wrapped(*args, **kwargs):
+        sfa_user = os.environ.get("SFA_USER")
+        sfa_pk = os.environ.get("SFA_PK")
+        
+        if not (sfa_user and os.path.exists(os.path.expanduser(sfa_pk))):
+            print "*** WARNING: Skipping test %s: SFA path to private key doesn't exist\n" % name
+            return
+
+        return func(*args, **kwargs)
+
+    return wrapped
+
