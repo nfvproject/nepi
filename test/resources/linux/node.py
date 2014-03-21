@@ -298,7 +298,7 @@ main (void)
         dirpath = tempfile.mkdtemp()
         f = tempfile.NamedTemporaryFile(dir=dirpath, delete=False)
         f.close()
-     
+      
         f1 = tempfile.NamedTemporaryFile(delete=False)
         f1.close()
         f1.name
@@ -310,8 +310,7 @@ main (void)
         node.copy(source, dest)
 
         command = "ls %s" % destdir
-       
-        import pdb;pdb.set_trace() 
+        
         (out, err), proc = node.execute(command)
 
         os.remove(f1.name)
