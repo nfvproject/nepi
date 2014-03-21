@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 #
 #    NEPI, a framework to manage network experiments
 #    Copyright (C) 2014 INRIA
@@ -32,9 +31,8 @@ from nepi.execution.ec import ExperimentController
 
 import os
 
-#ssh_key = ####### <<< ASSING the absolute path to the private SSH key to login into the remote host >>>
-#ssh_user = ####### <<< ASSING the SSH username >>>
-ssh_user = "icnuser"
+ssh_key = ####### <<< ASSING the absolute path to the private SSH key to login into the remote host >>>
+ssh_user = ####### <<< ASSING the SSH username >>>
 
 ## Create the experiment controller
 ec = ExperimentController(exp_id = "demo_CCN")
@@ -42,32 +40,28 @@ ec = ExperimentController(exp_id = "demo_CCN")
 ## Register node 1
 node1 = ec.register_resource("LinuxNode")
 # Set the hostname of the first node to use for the experiment
-#hostname1 = "peeramidion.irisa.fr" ##### <<< ASSIGN the hostname of a host you have SSSH access to >>>
-hostname1 = "133.69.33.148"
+hostname1 = "peeramidion.irisa.fr" ##### <<< ASSIGN the hostname of a host you have SSSH access to >>>
 ec.set(node1, "hostname", hostname1)
 # username should be your SSH user 
 ec.set(node1, "username", ssh_user)
 # Absolute path to the SSH private key
-#ec.set(node1, "identity", ssh_key)
+ec.set(node1, "identity", ssh_key)
 # Clean all files, results, etc, from previous experiments wit the same exp_id
-#ec.set(node1, "cleanExperiment", True)
-ec.set(node1, "cleanHome", True)
+ec.set(node1, "cleanExperiment", True)
 # Kill all running processes in the node before running the experiment
 ec.set(node1, "cleanProcesses", True)
 
 ## Register node 2 
 node2 = ec.register_resource("LinuxNode")
 # Set the hostname of the first node to use for the experiment
-#hostname2 = "planetlab2.upc.es" ##### <<< ASSIGN the hostname of a host you have SSSH access to >>>
-hostname2 = "133.69.33.149"
+hostname2 = "planetlab2.upc.es" ##### <<< ASSIGN the hostname of a host you have SSSH access to >>>
 ec.set(node2, "hostname", hostname2)
 # username should be your SSH user 
 ec.set(node2, "username", ssh_user)
 # Absolute path to the SSH private key
-#ec.set(node2, "identity", ssh_key)
+ec.set(node2, "identity", ssh_key)
 # Clean all files, results, etc, from previous experiments wit the same exp_id
-#ec.set(node2, "cleanExperiment", True)
-ec.set(node2, "cleanHome", True)
+ec.set(node2, "cleanExperiment", True)
 # Kill all running processes in the node before running the experiment
 ec.set(node2, "cleanProcesses", True)
 
@@ -75,14 +69,12 @@ ec.set(node2, "cleanProcesses", True)
 ccnd1 = ec.register_resource("LinuxCCND")
 # Set ccnd log level to 7
 ec.set(ccnd1, "debug", 7)
-ec.set(ccnd1, "port", 9597)
 ec.register_connection(ccnd1, node1)
 
 ## Register a CCN daemon in node 2
 ccnd2 = ec.register_resource("LinuxCCND")
 # Set ccnd log level to 7
 ec.set(ccnd2, "debug", 7)
-ec.set(ccnd2, "port", 9597)
 ec.register_connection(ccnd2, node2)
 
 ## Register a repository in node 1
@@ -105,14 +97,12 @@ ec.register_connection(co, ccnr1)
 
 # Register a FIB entry from node 1 to node 2
 entry1 = ec.register_resource("LinuxFIBEntry")
-ec.set(entry1, "host", "10.0.32.2")
-ec.set(entry1, "port", 9597)
+ec.set(entry1, "host", hostname2)
 ec.register_connection(entry1, ccnd1)
 
 # Register a FIB entry from node 2 to node 1
 entry2 = ec.register_resource("LinuxFIBEntry")
-ec.set(entry2, "host", "10.0.0.2")
-ec.set(entry2, "port", 9597)
+ec.set(entry2, "host", hostname1)
 ec.register_connection(entry2, ccnd2)
 
 ## Retrieve the file stored in node 1 from node 2
