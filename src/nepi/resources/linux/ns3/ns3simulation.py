@@ -341,6 +341,11 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         return "pygccxml-1.0.0"
 
     @property
+    def dce_repo(self):
+        #return "http://code.nsnam.org/ns-3-dce"
+        return "http://code.nsnam.org/epmancini/ns-3-dce"
+
+    @property
     def _build(self):
         # If the user defined local sources for ns-3, we uncompress the sources
         # on the remote sources directory. Else we clone ns-3 from the official repo.
@@ -398,9 +403,12 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
                         # Get dce source code
                         " ( "
                         "   mkdir -p ${SRC}/dce && "
-                        "   hg clone http://code.nsnam.org/ns-3-dce ${SRC}/dce/ns-3-dce"
+                        "   hg clone %(dce_repo)s ${SRC}/dce/ns-3-dce"
                         " ) "
-                    )
+                     ) % {
+                            'dce_repo': self.dce_repo
+                         }
+
 
         return (
                 # NS3 installation
