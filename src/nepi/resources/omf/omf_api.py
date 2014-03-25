@@ -236,6 +236,7 @@ class OMFAPI(Logger):
         :type value: str
 
         """
+        
         payload = self._message.configure_function(hostname, value, attribute)
         xmpp_node =  self._host_session_id(hostname)
         self._client.publish(payload, xmpp_node)
