@@ -146,7 +146,8 @@ class LinuxNS3ClientTest(unittest.TestCase):
         #self.fedora_host = "nepi2.pl.sophia.inria.fr"
         self.fedora_host = "planetlabpc1.upf.edu"
         #self.fedora_host = "peeramide.irisa.fr"
-        self.fedora_user = "inria_nepi"
+        #self.fedora_user = "inria_nepi"
+        self.fedora_user = "inria_alina"
         self.fedora_identity = "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'])
 
     def test_local_p2p_ping(self):
@@ -689,7 +690,7 @@ class LinuxNS3ClientTest(unittest.TestCase):
            
 
         """
-        ec = ExperimentController(exp_id = "test-ns3-dce")
+        ec = ExperimentController(exp_id = "test-ns3-routing")
         
         node = ec.register_resource("LinuxNode")
         ec.set(node, "hostname", self.fedora_host)
@@ -821,6 +822,10 @@ class LinuxNS3ClientTest(unittest.TestCase):
         ec.wait_finished([udp_perf_client])
         
         stderr = ec.trace(simu, "stderr")
+        print " CMDLINE", ec.trace(udp_perf, "cmdline")
+        print " STATUS ", ec.trace(udp_perf, "status")
+        print " OUT ", ec.trace(udp_perf, "stdout")
+        print " ERROR ", ec.trace(udp_perf, "stderr")
 
         expected = "DceApplication:StartApplication"
         self.assertTrue(stderr.find(expected) > -1)

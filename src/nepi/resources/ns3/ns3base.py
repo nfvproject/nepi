@@ -55,7 +55,7 @@ class NS3Base(ResourceManager):
     def trace(self, name, attr = TraceAttr.ALL, block = 512, offset = 0):
         filename = self._trace_filename.get(name)
         if not filename:
-            self.error("Can resolve trace %s. Did you enabled it?" % name)
+            self.error("Can not resolve trace %s. Did you enabled it?" % name)
             return ""
 
         return self.simulation.trace(filename, attr, block, offset)

@@ -59,11 +59,15 @@ class NS3BaseDceApplication(NS3BaseApplication):
             raise RuntimeError("DceApplication not connected to DCE enabled node")
 
         return nodes[0]
+    
+    def _instantiate_object(self):
+        pass
 
     def _connect_object(self):
         node = self.node
         if node.uuid not in self.connected:
             self._connected.add(node.uuid)
+
             self.simulation.invoke(self.simulation.dce_application_helper_uuid, 
                     "ResetArguments") 
 
@@ -81,9 +85,16 @@ class NS3BaseDceApplication(NS3BaseApplication):
             apps_uuid = self.simulation.invoke(self.simulation.dce_application_helper_uuid, 
                     "InstallInNode", self.node.uuid)
 
-            #start_time = self.get("StartTime") 
-            #time_uuid = self.simulation.create("Time", start_time)
-            #self.simulation.invoke(apps_uuid, "Start", time_uuid) 
+            app_uuid = self.simulation.invoke(apps_uuid, "Get", 0)
+
+            if self.has_changed("StartTime"):
+                self.simulation.ns3_set(app_uuid, "StartTime", self.get("StartTime"))
+
+            if self.has_changed("StopTime"):
+                self.simulation.ns3_set(app_uuid, "StopTime", self.get("StopTime"))
+
+            self._uuid = self.simulation.invoke(self.simulation.dce_application_helper_uuid, 
+                    "GetDCEApplication", app_uuid)
 
     def do_stop(self):
         if self.state == ResourceState.STARTED:
@@ -97,6 +108,16 @@ class NS3BaseDceApplication(NS3BaseApplication):
             self.debug("---- RESCHEDULING START ----" )
             self.ec.schedule(reschedule_delay, self.start)
         else:
+            self._configure_traces()
             super(NS3BaseApplication, self).do_start()
             self._start_time = self.simulation.start_time
+
+    def _configure_traces(self):
+        pid = self.simulation.invoke(self.uuid, "GetPid")
+        node_id = self.simulation.invoke(self.node.uuid, "GetId")
+        self._trace_filename["stdout"] = "files-%s/var/log/%s/stdout" % (node_id, pid)
+        self._trace_filename["stderr"] = "files-%s/var/log/%s/stderr" % (node_id, pid)
+        self._trace_filename["status"] = "files-%s/var/log/%s/status" % (node_id, pid)
+        self._trace_filename["cmdline"] = "files-%s/var/log/%s/cmdline" % (node_id, pid)
+
 
