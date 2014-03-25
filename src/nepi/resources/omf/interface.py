@@ -180,16 +180,20 @@ class OMFWifiInterface(OMFResource):
             raise RuntimeError, msg
 
         # Just for information
-        self.debug(" " + self.get_rtype() + " ( Guid : " + str(self._guid) +") : " + \
+        self.info(" " + self.get_rtype() + " ( Guid : " + str(self._guid) +") : " + \
             self.get('mode') + " : " + self.get('type') + " : " + \
-            self.get('essid') + " : " + self.get('ip'))
+            self.get('essid') + " : " + self.get('ip') + " : " + str(self.state))
     
         # Check if the node is already deployed
         if self.state < ResourceState.PROVISIONED:
             if self._conf == False:
                 self._conf = self.configure_iface()
+        res = False
         if self._conf == True:
-            self.configure_ip()
+            res = self.configure_ip()
+            
+        if not (res or self._conf):
+            return
 
         super(OMFWifiInterface, self).do_deploy()
 
