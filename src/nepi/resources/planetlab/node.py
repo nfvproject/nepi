@@ -318,12 +318,13 @@ class PlanetlabNode(LinuxNode):
         provision_ok = False
         ssh_ok = False
         proc_ok = False
-        timeout = 1800
+        timeout = 3600
 
         while not provision_ok:
             node = self._node_to_provision
             if not self._slicenode:
                 self._add_node_to_slice(node)
+                self.info( " Node added to slice ")
             
                 # check ssh connection
                 t = 0 
@@ -332,10 +333,12 @@ class PlanetlabNode(LinuxNode):
                     cmd = 'echo \'GOOD NODE\''
                     ((out, err), proc) = self.execute(cmd)
                     if out.find("GOOD NODE") < 0:
+                        self.info(" No SSH login, sleeping for 60 seconds ")
                         t = t + 60
                         time.sleep(60)
                         continue
                     else:
+                        self.info(" SSH login OK ")
                         ssh_ok = True
                         continue
             else:
