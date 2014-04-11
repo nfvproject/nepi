@@ -108,6 +108,7 @@ class NS3BaseNode(NS3Base):
     def _add_dce(self):
         container_uuid = self.simulation.create("NodeContainer")
         self.simulation.invoke(container_uuid, "Add", self.uuid)
-        self.simulation.invoke(self.simulation.dce_helper_uuid, "Install", 
-                container_uuid)
+        with self.simulation.dce_manager_lock:
+            self.simulation.invoke(self.simulation.dce_manager_helper_uuid, 
+                    "Install", container_uuid)
 

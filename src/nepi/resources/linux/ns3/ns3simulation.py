@@ -30,6 +30,7 @@ from nepi.resources.linux.ns3.ns3client import LinuxNS3Client
 
 import os
 import time
+import threading
 
 @clsinit_copy
 class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
@@ -81,7 +82,8 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
 
         ns3_version = Attribute("ns3Version",
             "Version of ns-3 to install from nsam repo",
-            default = "ns-3.19", 
+            #default = "ns-3.19", 
+            default = "ns-3-dev", 
             flags = Flags.Design)
 
         enable_dce = Attribute("enableDCE",
@@ -92,7 +94,7 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
 
         pybindgen_version = Attribute("pybindgenVersion",
             "Version of pybindgen to install from bazar repo",
-            default = "834", 
+            default = "868", 
             flags = Flags.Design)
 
         populate_routing_tables = Attribute("populateRoutingTables",
@@ -119,8 +121,13 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         self._client = None
         self._home = "ns3-simu-%s" % self.guid
         self._socket_name = "ns3-%s.sock" % os.urandom(4).encode('hex')
-        self._dce_helper_uuid = None
+        self._dce_manager_helper_uuid = None
         self._dce_application_helper_uuid = None
+        
+        # Lock used to synchronize usage of DceManagerHelper 
+        self.dce_manager_lock = threading.Lock()
+        # Lock used to synchronize usage of DceApplicationHelper
+        self.dce_application_lock = threading.Lock()
 
     @property
     def socket_name(self):
@@ -131,8 +138,8 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         return os.path.join(self.run_home, self.socket_name)
 
     @property
-    def dce_helper_uuid(self):
-        return self._dce_helper_uuid
+    def dce_manager_helper_uuid(self):
+        return self._dce_manager_helper_uuid
 
     @property
     def dce_application_helper_uuid(self):
@@ -219,7 +226,7 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
             self.invoke(GLOBAL_VALUE_UUID, "Bind", "SchedulerType", btrue)
         
         if self.get("enableDCE"):
-            self._dce_helper_uuid = self.create("DceManagerHelper")
+            self._dce_manager_helper_uuid = self.create("DceManagerHelper")
             self._dce_application_helper_uuid = self.create("DceApplicationHelper")
 
     def do_deploy(self):
@@ -490,7 +497,7 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
                         "  --prefix=%(ns3_build_home)s --with-ns3=%(ns3_build_home)s && "
                         "  ./waf build && "
                         "  ./waf install && "
-                        "  mv %(ns3_build_home)s/lib/python*/site-packages/ns/dce.so %(ns3_build_home)s/lib/python/site-packages/ns/ "
+                        "  mv %(ns3_build_home)s/lib*/python*/site-packages/ns/dce.so %(ns3_build_home)s/lib/python/site-packages/ns/ "
                         " )"
                 ) % { 
                     'ns3_version': self.get("ns3Version"),
@@ -514,10 +521,10 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
                 "  mkdir -p %(ns3_build_home)s && "
                 "  cd ${SRC}/ns-3/%(ns3_version)s && "
                 "  ./waf configure -d %(build_mode)s --with-pybindgen=${SRC}/pybindgen/%(pybindgen_version)s "
-                "  --prefix=%(ns3_build_home)s --includedir=%(ns3_build_home)s && "
+                "  --prefix=%(ns3_build_home)s && "
                 "  ./waf build && "
                 "  ./waf install && "
-                "  mv %(ns3_build_home)s/lib/python* %(ns3_build_home)s/lib/python "
+                "  mv %(ns3_build_home)s/lib*/python* %(ns3_build_home)s/lib/python "
                 " )"
                 ") "
                 " && "

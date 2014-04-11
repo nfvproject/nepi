@@ -68,33 +68,33 @@ class NS3BaseDceApplication(NS3BaseApplication):
         if node.uuid not in self.connected:
             self._connected.add(node.uuid)
 
-            self.simulation.invoke(self.simulation.dce_application_helper_uuid, 
-                    "ResetArguments") 
-
-            self.simulation.invoke(self.simulation.dce_application_helper_uuid, 
-                    "SetBinary", self.get("binary")) 
-
-            self.simulation.invoke(self.simulation.dce_application_helper_uuid, 
-                    "SetStackSize", self.get("stackSize")) 
-
-            arguments = self.get("arguments") or ""
-            for arg in map(str.strip, arguments.split(";")):
+            # Preventing concurrent access to the DceApplicationHelper
+            # from different DceApplication RMs
+            with self.simulation.dce_application_lock:
                 self.simulation.invoke(self.simulation.dce_application_helper_uuid, 
-                    "AddArgument", arg) 
+                        "ResetArguments") 
 
-            apps_uuid = self.simulation.invoke(self.simulation.dce_application_helper_uuid, 
-                    "InstallInNode", self.node.uuid)
+                self.simulation.invoke(self.simulation.dce_application_helper_uuid, 
+                        "SetBinary", self.get("binary")) 
 
-            app_uuid = self.simulation.invoke(apps_uuid, "Get", 0)
+                self.simulation.invoke(self.simulation.dce_application_helper_uuid, 
+                        "SetStackSize", self.get("stackSize")) 
+
+                arguments = self.get("arguments") or ""
+                for arg in map(str.strip, arguments.split(";")):
+                    self.simulation.invoke(self.simulation.dce_application_helper_uuid, 
+                        "AddArgument", arg) 
+
+                apps_uuid = self.simulation.invoke(self.simulation.dce_application_helper_uuid, 
+                        "InstallInNode", self.node.uuid)
+
+            self._uuid = self.simulation.invoke(apps_uuid, "Get", 0)
 
             if self.has_changed("StartTime"):
-                self.simulation.ns3_set(app_uuid, "StartTime", self.get("StartTime"))
+                self.simulation.ns3_set(self.uuid, "StartTime", self.get("StartTime"))
 
             if self.has_changed("StopTime"):
-                self.simulation.ns3_set(app_uuid, "StopTime", self.get("StopTime"))
-
-            self._uuid = self.simulation.invoke(self.simulation.dce_application_helper_uuid, 
-                    "GetDCEApplication", app_uuid)
+                self.simulation.ns3_set(self.uuid, "StopTime", self.get("StopTime"))
 
     def do_stop(self):
         if self.state == ResourceState.STARTED:
@@ -113,7 +113,11 @@ class NS3BaseDceApplication(NS3BaseApplication):
             self._start_time = self.simulation.start_time
 
     def _configure_traces(self):
-        pid = self.simulation.invoke(self.uuid, "GetPid")
+        # Preventing concurrent access to the DceApplicationHelper
+        # from different DceApplication RMs
+        with self.simulation.dce_application_lock:
+            pid = self.simulation.invoke(self.simulation.dce_application_helper_uuid, 
+                    "GetPid", self._uuid)
         node_id = self.simulation.invoke(self.node.uuid, "GetId")
         self._trace_filename["stdout"] = "files-%s/var/log/%s/stdout" % (node_id, pid)
         self._trace_filename["stderr"] = "files-%s/var/log/%s/stderr" % (node_id, pid)
