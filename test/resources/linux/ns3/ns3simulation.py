@@ -143,11 +143,11 @@ def add_wifi_channel(ec):
 
 class LinuxNS3ClientTest(unittest.TestCase):
     def setUp(self):
-        #self.fedora_host = "nepi2.pl.sophia.inria.fr"
-        self.fedora_host = "planetlabpc1.upf.edu"
-        #self.fedora_host = "peeramide.irisa.fr"
-        #self.fedora_user = "inria_nepi"
-        self.fedora_user = "inria_alina"
+        #elf.fedora_host = "nepi2.pl.sophia.inria.fr"
+        #self.fedora_host = "planetlabpc1.upf.edu"
+        self.fedora_host = "peeramide.irisa.fr"
+        self.fedora_user = "inria_nepi"
+        #self.fedora_user = "inria_alina"
         self.fedora_identity = "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'])
 
     def test_local_p2p_ping(self):
@@ -820,15 +820,22 @@ class LinuxNS3ClientTest(unittest.TestCase):
         ec.deploy()
 
         ec.wait_finished([udp_perf_client])
-        
-        stderr = ec.trace(simu, "stderr")
-        print " CMDLINE", ec.trace(udp_perf, "cmdline")
-        print " STATUS ", ec.trace(udp_perf, "status")
-        print " OUT ", ec.trace(udp_perf, "stdout")
-        print " ERROR ", ec.trace(udp_perf, "stderr")
 
+        expected = "udp-perf --duration=10 --nodes=2"
+        cmdline = ec.trace(udp_perf, "cmdline")
+        self.assertTrue(cmdline.find(expected) > -1, cmdline)
+
+        expected = "Start Time: NS3 Time:          1s ("
+        status = ec.trace(udp_perf, "status")
+        self.assertTrue(status.find(expected) > -1, status)
+
+        expected = "received=1500 bytes, 1 reads (@1500 bytes) 1500"
+        stdout = ec.trace(udp_perf, "stdout")
+        self.assertTrue(stdout.find(expected) > -1, stdout)
+
+        stderr = ec.trace(simu, "stderr")
         expected = "DceApplication:StartApplication"
-        self.assertTrue(stderr.find(expected) > -1)
+        self.assertTrue(stderr.find(expected) > -1, stderr)
 
         ec.shutdown()
 

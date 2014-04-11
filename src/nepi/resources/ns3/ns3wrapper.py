@@ -231,8 +231,9 @@ class NS3Wrapper(object):
 
         result = method(*realargs, **realkwargs)
 
-        if result is None or \
-                isinstance(result, bool):
+        # If the result is not an object, no need to 
+        # keep a reference. Directly return value.
+        if result is None or type(result) in [bool, float, long, str, int]:
             return result
       
         newuuid = self.make_uuid()
