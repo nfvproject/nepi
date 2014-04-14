@@ -96,11 +96,19 @@ class MessageHandler():
             if rtype == "application" :
                 properties = self._id_element(payload,"props","xmlns:application",
                       "http://schema.mytestbed.net/omf/6.0/protocol/application")
+            elif rtype == "wlan" :
+                properties = self._id_element(payload,"props","xmlns:wlan",
+                      "http://schema.mytestbed.net/omf/6.0/protocol/wlan")
             else:
                 properties = self._attr_element(payload,"props","")
 
             for prop in props.keys():
-                self._attr_element(properties,prop,props[prop],type_key="type", type_value = "string")
+                if isinstance(props[prop],str):
+                    self._attr_element(properties,prop,props[prop],type_key="type", type_value = "string")
+                elif isinstance(props[prop],dict):
+                    key = self._attr_element(properties,prop,"",type_key="type", type_value = "hash")
+                    for comp in props[prop].keys():
+                        self._attr_element(key,comp,props[prop][comp],type_key="type", type_value = "string")
 
         if guards :
             guardians = self._attr_element(payload,"guard","")
@@ -120,7 +128,7 @@ class MessageHandler():
             properties = self._attr_element(payload,"props","")
             for prop in props.keys():
                 self._attr_element(properties,prop,props[prop],type_key="type", type_value = "symbol")
-
+           
         if guards :
             guardians = self._attr_element(payload,"guard","")
             for guard in guards.keys():
@@ -167,7 +175,7 @@ class MessageHandler():
         self._attr_element(payload,"src",src)
         self._attr_element(payload,"ts",timestamp)
         if res_id :
-            self._attr_element(payload,"res_id",timestamp)
+            self._attr_element(payload,"res_id",res_id)
  
         if props :
             properties = self._id_element(payload,"props","xmlns:frcp",

@@ -34,18 +34,21 @@ class OMF6Resource(ResourceManager):
     @classmethod
     def _register_attributes(cls):
 
-        xmppHost = Attribute("xmppHost", "Xmpp Server",
+        xmppHost = Attribute("xmppServer", "Xmpp Server",
             flags = Flags.Credential)
         xmppUser = Attribute("xmppUser", "Xmpp User")
         xmppPort = Attribute("xmppPort", "Xmpp Port",
             flags = Flags.Credential)
         xmppPassword = Attribute("xmppPassword", "Xmpp Password",
                 flags = Flags.Credential)
+        version = Attribute("xmppPassword", "Xmpp Password",
+                flags = Flags.Credential)
 
         cls._register_attribute(xmppHost)
         cls._register_attribute(xmppUser)
         cls._register_attribute(xmppPort)
         cls._register_attribute(xmppPassword)
+        cls._register_attribute(version)
 
     def __init__(self, ec, guid):
         super(OMF6Resource, self).__init__(ec, guid)

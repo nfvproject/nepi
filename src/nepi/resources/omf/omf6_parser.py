@@ -50,8 +50,16 @@ class OMF6Parser(Logger):
 
         """
         super(OMF6Parser, self).__init__("OMF6API")
+        self.mailbox={}
 
-        
+        self.init_mailbox()
+
+    def init_mailbox(self):
+        self.mailbox['create'] = []
+        self.mailbox['configure'] = []
+        self.mailbox['request'] = []
+        self.mailbox['release'] = []
+        self.mailbox['inform'] = []
   
     def _check_for_tag(self, root, namespaces, tag):
         """  Check if an element markup is in the ElementTree
@@ -125,7 +133,9 @@ class OMF6Parser(Logger):
 
 
     def _inform_creation_ok(self, root, namespaces):
+        #ET.dump(root)
         uid = self._check_for_tag(root, namespaces, "uid")
+        cid = self._check_for_tag(root, namespaces, "cid")
         member = self._check_for_membership(root, namespaces)
         binary_path = self._check_for_tag(root, namespaces, "binary_path")
         msg = "CREATION OK -- "
@@ -135,12 +145,17 @@ class OMF6Parser(Logger):
             msg = msg + "' is listening to the topics : '"+ uid
         if member :
             msg = msg + "' and '"+ member +"'"
-        self.info(msg)
+        if cid:
+            self.info(msg)
+            self.mailbox['create'].append([cid, uid ])
 
     def _inform_creation_failed(self, root, namespaces):
         reason = self._check_for_tag(root, namespaces, "reason")
+        cid = self._check_for_tag(root, namespaces, "cid")
         msg = "CREATION FAILED - The reason : "+reason
-        self.error(msg)
+        if cid:
+            self.error(msg)
+            self.mailbox['create'].append([cid, uid ])
 
     def _inform_status(self, root, namespaces):
         props = self._check_for_props(root, namespaces)
@@ -155,11 +170,15 @@ class OMF6Parser(Logger):
         self.info(msg)
 
     def _inform_released(self, root, namespaces):
+        #ET.dump(root)
         parent_id = self._check_for_tag(root, namespaces, "src")
         child_id = self._check_for_tag(root, namespaces, "res_id")
-        msg = "RELEASED - The resource : '"+res_id+ \
-              "' has been released by : '"+ src
-        self.info(msg)
+        cid = self._check_for_tag(root, namespaces, "cid")
+        if cid :
+            msg = "RELEASED - The resource : '"+child_id+ \
+              "' has been released by : '"+ parent_id
+            self.info(msg)
+            self.mailbox['release'].append(cid)
 
     def _inform_error(self, root, namespaces):
         reason = self._check_for_tag(root, namespaces, "reason")
@@ -191,6 +210,21 @@ class OMF6Parser(Logger):
                 self.info(msg)
                 return
         
+
+    def check_mailbox(self, itype, attr):
+        if itype == "create":
+            for res in self.mailbox[itype]:
+                binary, uid = res
+                if binary == attr:
+                    self.mailbox[itype].remove(res)
+                    return uid
+        elif itype == "release":
+            for res in self.mailbox[itype]:
+                if attr == res:
+                    self.mailbox[itype].remove(res)
+                    return res
+           
+               
 
     def handle(self, iq):
         namespaces = "{http://schema.mytestbed.net/omf/6.0/protocol}"

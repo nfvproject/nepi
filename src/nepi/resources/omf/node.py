@@ -22,7 +22,7 @@ from nepi.execution.resource import ResourceManager, clsinit_copy, \
         ResourceState, reschedule_delay
 from nepi.execution.attribute import Attribute, Flags 
 from nepi.resources.omf.omf_resource import ResourceGateway, OMFResource
-from nepi.resources.omf.omf_api import OMFAPIFactory
+from nepi.resources.omf.omf_api_factory import OMFAPIFactory
 
 import time
 
@@ -83,12 +83,11 @@ class OMFNode(OMFResource):
             msg = "Connection between %s %s and %s %s accepted" % (
                     self.get_rtype(), self._guid, rm.get_rtype(), guid)
             self.debug(msg)
-
             return True
 
         msg = "Connection between %s %s and %s %s refused" % (
                 self.get_rtype(), self._guid, rm.get_rtype(), guid)
-        self.debug(msg)
+        self.error(msg)
 
         return False
 
@@ -98,23 +97,35 @@ class OMFNode(OMFResource):
             It becomes DEPLOYED after sending messages to enroll the node
 
         """ 
-        if not (self.get('xmppSlice') and self.get('xmppHost')
-              and self.get('xmppPort') and self.get('xmppPassword')):
-            msg = "Credentials are not initialzed. XMPP Connections impossible"
+        if not self.get('xmppServer'):
+            msg = "XmppServer is not initialzed. XMPP Connections impossible"
             self.error(msg)
             raise RuntimeError, msg
 
+        if not self.get('version'):
+            msg = "Version of OMF is not indicated"
+            self.error(msg)
+            raise RuntimeError, msg
+
+        if not (self.get('xmppUser') or self.get('xmppPort') 
+                   or self.get('xmppPassword')):
+            msg = "Credentials are not all initialzed. Default values will be used"
+            self.warn(msg)
+
         if not self._omf_api :
-            self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
-                self.get('xmppHost'), self.get('xmppPort'), 
-                self.get('xmppPassword'), exp_id = self.exp_id)
+            self._omf_api = OMFAPIFactory.get_api(self.get('version'), 
+              self.get('xmppServer'), self.get('xmppUser'), self.get('xmppPort'),
+               self.get('xmppPassword'), exp_id = self.exp_id)
 
         if not self.get('hostname') :
             msg = "Hostname's value is not initialized"
             self.error(msg)
             raise RuntimeError, msg
 
-        self._omf_api.enroll_host(self.get('hostname'))
+        if self.get('version') == "5":
+            self._omf_api.enroll_host(self.get('hostname'))
+        else:
+            self._omf_api.enroll_topic(self.get('hostname'))
 
         super(OMFNode, self).do_deploy()
 
@@ -122,12 +133,23 @@ class OMFNode(OMFResource):
         """ Clean the RM at the end of the experiment
 
         """
-        if self._omf_api:
-            self._omf_api.release(self.get('hostname'))
+        from nepi.resources.omf.application import OMFApplication
+        rm_list = self.get_connected(OMFApplication.get_rtype())
+        if rm_list:
+            for rm in rm_list:
+                if rm.state < ResourceState.RELEASED:
+                    self.ec.schedule(reschedule_delay, self.release)
+                    return 
 
-            OMFAPIFactory.release_api(self.get('xmppSlice'), 
-                self.get('xmppHost'), self.get('xmppPort'), 
-                self.get('xmppPassword'), exp_id = self.exp_id)
+        if self._omf_api:
+            if self.get('version') == "5":
+                self._omf_api.release(self.get('hostname'))
+            else:
+                self._omf_api.unenroll_topic(self.get('hostname'))
+
+            OMFAPIFactory.release_api(self.get('version'), 
+              self.get('xmppServer'), self.get('xmppUser'), self.get('xmppPort'),
+               self.get('xmppPassword'), exp_id = self.exp_id)
 
         super(OMFNode, self).do_release()
 

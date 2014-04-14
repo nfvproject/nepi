@@ -18,12 +18,14 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 #         Julien Tribino <julien.tribino@inria.fr>
 
+import os
+
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
         ResourceState, reschedule_delay
 from nepi.execution.attribute import Attribute, Flags 
 from nepi.resources.omf.omf_resource import ResourceGateway, OMFResource
 from nepi.resources.omf.node import OMFNode
-from nepi.resources.omf.omf_api import OMFAPIFactory
+from nepi.resources.omf.omf_api_factory import OMFAPIFactory
 
 from nepi.util import sshfuncs
 
@@ -46,10 +48,11 @@ class OMFApplication(OMFResource):
         """ Register the attributes of an OMF application
 
         """
-        appid = Attribute("appid", "Name of the application")
-        path = Attribute("path", "Path of the application")
-        args = Attribute("args", "Argument of the application")
+        command = Attribute("command", "Command to execute")
         env = Attribute("env", "Environnement variable of the application")
+
+        # For OMF 5:
+        appid = Attribute("appid", "Name of the application")
         stdin = Attribute("stdin", "Input of the application", default = "")
         sources = Attribute("sources", "Sources of the application", 
                      flags = Flags.ExecReadOnly)
@@ -57,9 +60,9 @@ class OMFApplication(OMFResource):
                      flags = Flags.ExecReadOnly)
         sshkey = Attribute("sshKey", "key to use for ssh", 
                      flags = Flags.ExecReadOnly)
+
         cls._register_attribute(appid)
-        cls._register_attribute(path)
-        cls._register_attribute(args)
+        cls._register_attribute(command)
         cls._register_attribute(env)
         cls._register_attribute(stdin)
         cls._register_attribute(sources)
@@ -78,16 +81,26 @@ class OMFApplication(OMFResource):
         """
         super(OMFApplication, self).__init__(ec, guid)
 
+        self.set('command', "")
         self.set('appid', "")
-        self.set('path', "")
-        self.set('args', "")
+        self.path= ""
+        self.args = ""
         self.set('env', "")
 
         self._node = None
 
         self._omf_api = None
+        self._topic_app = None
+        self.create_id = None
+        self.release_id = None
 
         self.add_set_hook()
+
+    def _init_command(self):
+        comm = self.get('command').split(' ')
+        self.path= comm[0]
+        if len(comm)>1:
+            self.args = ' '.join(comm[1:])
 
     @property
     def exp_id(self):
@@ -153,30 +166,69 @@ class OMFApplication(OMFResource):
         It becomes DEPLOYED after getting the xmpp client.
 
         """
+        if not self.node or self.node.state < ResourceState.READY:
+            self.debug("---- RESCHEDULING DEPLOY ---- node state %s "
+                       % self.node.state )
+            self.ec.schedule(reschedule_delay, self.deploy)
+            return
 
-        self.set('xmppSlice',self.node.get('xmppSlice'))
-        self.set('xmppHost',self.node.get('xmppHost'))
+        self._init_command()
+
+        self.set('xmppUser',self.node.get('xmppUser'))
+        self.set('xmppServer',self.node.get('xmppServer'))
         self.set('xmppPort',self.node.get('xmppPort'))
         self.set('xmppPassword',self.node.get('xmppPassword'))
+        self.set('version',self.node.get('version'))
 
-        if not (self.get('xmppSlice') and self.get('xmppHost')
-              and self.get('xmppPort') and self.get('xmppPassword')):
-            msg = "Credentials are not initialzed. XMPP Connections impossible"
+        if not self.get('xmppServer'):
+            msg = "XmppServer is not initialzed. XMPP Connections impossible"
             self.error(msg)
             raise RuntimeError, msg
 
-        if not self._omf_api :
-            self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
-                self.get('xmppHost'), self.get('xmppPort'), 
-                self.get('xmppPassword'), exp_id = self.exp_id)
+        if not (self.get('xmppUser') or self.get('xmppPort') 
+                   or self.get('xmppPassword')):
+            msg = "Credentials are not all initialzed. Default values will be used"
+            self.warn(msg)
 
-        if self.get('sources'):
-            gateway = ResourceGateway.AMtoGateway[self.get('xmppHost')]
-            user = self.get('sshUser') or self.get('xmppSlice')
-            dst = user + "@"+ gateway + ":"
-            (out, err), proc = sshfuncs.rcopy(self.get('sources'), dst)
+        if not self._omf_api :
+            self._omf_api = OMFAPIFactory.get_api(self.get('version'), 
+              self.get('xmppServer'), self.get('xmppUser'), self.get('xmppPort'),
+               self.get('xmppPassword'), exp_id = self.exp_id)
+
+        if self.get('version') == "5":
+            if self.get('sources'):
+                gateway = ResourceGateway.AMtoGateway[self.get('xmppServer')]
+                user = self.get('sshUser') or self.get('xmppUser')
+                dst = user + "@"+ gateway + ":"
+                (out, err), proc = sshfuncs.rcopy(self.get('sources'), dst)
+        else :
+            # For OMF 6 :
+            if not self.create_id:
+                props = {}
+                if self.get('command'):
+                    props['application:binary_path'] = self.get('command')
+                    props['application:hrn'] = self.get('command')
+                    props['application:membership'] = self._topic_app
+                props['application:type'] = "application"
+    
+                self.create_id = os.urandom(16).encode('hex')
+                self._omf_api.frcp_create( self.create_id, self.node.get('hostname'), "application", props = props)
+    
+            uid = self.check_deploy(self.create_id)
+            if not uid:
+                self.ec.schedule(reschedule_delay, self.deploy)
+                return
+        
+            self._topic_app = uid
+            self._omf_api.enroll_topic(self._topic_app)
 
         super(OMFApplication, self).do_deploy()
+
+    def check_deploy(self, cid):
+        uid = self._omf_api.check_mailbox("create", cid)
+        if uid : 
+            return uid
+        return False
 
     def do_start(self):
         """ Start the RM. It means : Send Xmpp Message Using OMF protocol 
@@ -184,24 +236,34 @@ class OMFApplication(OMFResource):
          It becomes STARTED before the messages are sent (for coordination)
 
         """
-        if not (self.get('appid') and self.get('path')) :
-            msg = "Application's information are not initialized"
+        if not self.get('command') :
+            msg = "Application's Command is not initialized"
             self.error(msg)
             raise RuntimeError, msg
 
-        if not self.get('args'):
-            self.set('args', " ")
         if not self.get('env'):
             self.set('env', " ")
 
-        # Some information to check the information in parameter
-        msg = " " + self.get_rtype() + " ( Guid : " + str(self._guid) +") : " + \
-            self.get('appid') + " : " + self.get('path') + " : " + \
-            self.get('args') + " : " + self.get('env')
-        self.info(msg)
+        if self.get('version') == "5":
+            # Some information to check the command for OMF5
+            msg = " " + self.get_rtype() + " ( Guid : " + str(self._guid) +") : " + \
+                self.get('appid') + " : " + self.path + " : " + \
+                self.args + " : " + self.get('env')
+            self.debug(msg)
 
-        self._omf_api.execute(self.node.get('hostname'),self.get('appid'), \
-            self.get('args'), self.get('path'), self.get('env'))
+            self._omf_api.execute(self.node.get('hostname'),self.get('appid'), \
+                self.get('args'), self.get('path'), self.get('env'))
+        else:
+            #For OMF 6
+            props = {}
+            props['state'] = "running"
+    
+            guards = {}
+            guards['type'] = "application"
+            guards['name'] = self.get('command')
+
+            self._omf_api.frcp_configure(self._topic_app, props = props, guards = guards )
+
 
         super(OMFApplication, self).do_start()
 
@@ -211,18 +273,34 @@ class OMFApplication(OMFResource):
         State is set to STOPPED after the message is sent.
 
         """
-
-        self._omf_api.exit(self.node.get('hostname'),self.get('appid'))
+        if self.get('version') == 5:
+            self._omf_api.exit(self.node.get('hostname'),self.get('appid'))
         super(OMFApplication, self).do_stop()
+
+    def check_release(self, cid):
+        res = self._omf_api.check_mailbox("release", cid)
+        if res : 
+            return res
+        return False
 
     def do_release(self):
         """ Clean the RM at the end of the experiment and release the API.
 
         """
+        if self.get('version') == "6":
+            if not self.release_id:
+                self.release_id = os.urandom(16).encode('hex')
+                self._omf_api.frcp_release( self.release_id, self.node.get('hostname'),self._topic_app, res_id=self._topic_app)
+    
+            cid = self.check_release(self.release_id)
+            if not cid:
+                self.ec.schedule(reschedule_delay, self.release)
+                return
+
         if self._omf_api:
-            OMFAPIFactory.release_api(self.get('xmppSlice'), 
-                self.get('xmppHost'), self.get('xmppPort'), 
-                self.get('xmppPassword'), exp_id = self.exp_id)
+            OMFAPIFactory.release_api(self.get('version'), 
+              self.get('xmppServer'), self.get('xmppUser'), self.get('xmppPort'),
+               self.get('xmppPassword'), exp_id = self.exp_id)
 
         super(OMFApplication, self).do_release()
 

@@ -23,7 +23,7 @@ from nepi.execution.resource import ResourceManager, clsinit_copy, \
 from nepi.execution.attribute import Attribute, Flags 
 
 from nepi.resources.omf.omf_resource import ResourceGateway, OMFResource
-from nepi.resources.omf.omf_api import OMFAPIFactory
+from nepi.resources.omf.omf_api_factory import OMFAPIFactory
 
 
 @clsinit_copy
@@ -41,6 +41,22 @@ class OMFChannel(OMFResource):
     """
     _rtype = "OMFChannel"
     _authorized_connections = ["OMFWifiInterface", "OMFNode"]
+
+    ChannelToFreq = dict({
+             "1" : "2412",
+             "2" : "2417",
+             "3" : "2422",
+             "4" : "2427",
+             "5" : "2432",
+             "6" : "2437",
+             "7" : "2442",
+             "8" : "2447",
+             "9" : "2452",
+             "10" : "2457",
+             "11" : "2462",
+             "12" : "2467",
+             "13" : "2472",
+    })
 
     @classmethod
     def _register_attributes(cls):
@@ -61,6 +77,7 @@ class OMFChannel(OMFResource):
         super(OMFChannel, self).__init__(ec, guid)
 
         self._nodes_guid = list()
+        self.frequency = None
 
         self._omf_api = None
 
@@ -78,17 +95,14 @@ class OMFChannel(OMFResource):
 
         """
         rm = self.ec.get_resource(guid)
-        
         if rm.get_rtype() in self._authorized_connections:
             msg = "Connection between %s %s and %s %s accepted" % (
                     self.get_rtype(), self._guid, rm.get_rtype(), guid)
             self.debug(msg)
             return True
-
         msg = "Connection between %s %s and %s %s refused" % (
                 self.get_rtype(), self._guid, rm.get_rtype(), guid)
         self.debug(msg)
-        
         return False
 
     def _get_target(self, conn_set):
@@ -115,17 +129,30 @@ class OMFChannel(OMFResource):
                     res.append(couple)
         return res
 
+    def get_frequency(self, channel):
+        return OMFChannel.ChannelToFreq[channel]
+
     def do_deploy(self):
         """ Deploy the RM. It means : Get the xmpp client and send messages 
         using OMF 5.4 protocol to configure the channel.
         It becomes DEPLOYED after sending messages to configure the channel
 
-        """
-        if not (self.get('xmppSlice') and self.get('xmppHost')
-              and self.get('xmppPort') and self.get('xmppPassword')):
-            msg = "Credentials are not initialzed. XMPP Connections impossible"
+        """   
+        if self.get('version') == "6":
+            self.frequency = self.get_frequency(self.get('channel'))
+            super(OMFChannel, self).do_deploy()
+            return
+
+
+        if not self.get('xmppServer'):
+            msg = "XmppServer is not initialzed. XMPP Connections impossible"
             self.error(msg)
             raise RuntimeError, msg
+
+        if not (self.get('xmppUser') or self.get('xmppPort') 
+                   or self.get('xmppPassword')):
+            msg = "Credentials are not all initialzed. Default values will be used"
+            self.warn(msg)
 
         if not self._omf_api :
             self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
@@ -139,6 +166,8 @@ class OMFChannel(OMFResource):
 
         self._nodes_guid = self._get_target(self._connections)
 
+
+
         if self._nodes_guid == "reschedule" :
             self.ec.schedule("2s", self.deploy)
         else:
@@ -147,16 +176,16 @@ class OMFChannel(OMFResource):
                 attrname = "net/%s/%s" % (couple[1], 'channel')
                 self._omf_api.configure(couple[0], attrname, attrval)
 
-            super(OMFChannel, self).do_deploy()
+        super(OMFChannel, self).do_deploy()
 
     def do_release(self):
         """ Clean the RM at the end of the experiment and release the API
 
         """
         if self._omf_api :
-            OMFAPIFactory.release_api(self.get('xmppSlice'), 
-                self.get('xmppHost'), self.get('xmppPort'), 
-                self.get('xmppPassword'), exp_id = self.exp_id)
+            OMFAPIFactory.release_api(self.get('version'), 
+              self.get('xmppServer'), self.get('xmppUser'), self.get('xmppPort'),
+               self.get('xmppPassword'), exp_id = self.exp_id)
 
         super(OMFChannel, self).do_release()
 

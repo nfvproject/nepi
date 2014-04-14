@@ -18,6 +18,7 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 #         Julien Tribino <julien.tribino@inria.fr>
 
+import os, time
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
         ResourceState, reschedule_delay
 from nepi.execution.attribute import Attribute, Flags 
@@ -25,7 +26,7 @@ from nepi.execution.attribute import Attribute, Flags
 from nepi.resources.omf.node import OMFNode
 from nepi.resources.omf.omf_resource import ResourceGateway, OMFResource
 from nepi.resources.omf.channel import OMFChannel
-from nepi.resources.omf.omf_api import OMFAPIFactory
+from nepi.resources.omf.omf_api_factory import OMFAPIFactory
 
 @clsinit_copy
 class OMFWifiInterface(OMFResource):
@@ -49,13 +50,17 @@ class OMFWifiInterface(OMFResource):
 
         """
         alias = Attribute("alias","Alias of the interface", default = "w0")
+        type = Attribute("type","Choose between : a, b, g, n")
+        name = Attribute("name","Alias of the interface", default = "wlan0")
         mode = Attribute("mode","Mode of the interface")
-        type = Attribute("type","Type of the interface")
+        hw_mode = Attribute("hw_mode","Choose between : a, b, g, n")
         essid = Attribute("essid","Essid of the interface")
         ip = Attribute("ip","IP of the interface")
         cls._register_attribute(alias)
-        cls._register_attribute(mode)
         cls._register_attribute(type)
+        cls._register_attribute(name)
+        cls._register_attribute(mode)
+        cls._register_attribute(hw_mode)
         cls._register_attribute(essid)
         cls._register_attribute(ip)
 
@@ -73,8 +78,14 @@ class OMFWifiInterface(OMFResource):
 
         self._conf = False
 
-        self._omf_api = None
         self._alias = self.get('alias')
+
+        self.create_id = None
+        self.release_id = None
+        self._topic_iface = None
+        self._omf_api = None
+        self._type = ""
+
 
     def valid_connection(self, guid):
         """ Check if the connection with the guid in parameter is possible. 
@@ -90,13 +101,11 @@ class OMFWifiInterface(OMFResource):
             msg = "Connection between %s %s and %s %s accepted" % \
                 (self.get_rtype(), self._guid, rm.get_rtype(), guid)
             self.debug(msg)
-
             return True
 
         msg = "Connection between %s %s and %s %s refused" % \
              (self.get_rtype(), self._guid, rm.get_rtype(), guid)
         self.debug(msg)
-
         return False
 
     @property
@@ -144,63 +153,136 @@ class OMFWifiInterface(OMFResource):
         attrname = "net/%s/%s" % (self._alias, "ip")
         self._omf_api.configure(self.node.get('hostname'), attrname, 
                     attrval)
-
         return True
 
-    def do_deploy(self):
-        """ Deploy the RM. It means : Get the xmpp client and send messages 
-        using OMF 5.4 protocol to configure the interface.
-        It becomes DEPLOYED after sending messages to configure the interface
-        """
-        self.set('xmppSlice',self.node.get('xmppSlice'))
-        self.set('xmppHost',self.node.get('xmppHost'))
-        self.set('xmppPort',self.node.get('xmppPort'))
-        self.set('xmppPassword',self.node.get('xmppPassword'))
 
-        if not (self.get('xmppSlice') and self.get('xmppHost')
-              and self.get('xmppPort') and self.get('xmppPassword')):
-            msg = "Credentials are not initialzed. XMPP Connections impossible"
-            self.error(msg)
-            raise RuntimeError, msg
-
-        if not self._omf_api :
-            self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
-                self.get('xmppHost'), self.get('xmppPort'), 
-                self.get('xmppPassword'), exp_id = self.exp_id)
-
-        if not (self.get('mode') and self.get('type') and self.get('essid') \
-                and self.get('ip')):
-            msg = "Interface's variable are not initialized"
-            self.error(msg)
-            raise RuntimeError, msg
-
-        if not self.node.get('hostname') :
-            msg = "The channel is connected with an undefined node"
-            self.error(msg)
-            raise RuntimeError, msg
-
+    def configure_on_omf5(self):
         # Just for information
-        self.debug(" " + self.get_rtype() + " ( Guid : " + str(self._guid) +") : " + \
-            self.get('mode') + " : " + self.get('type') + " : " + \
-            self.get('essid') + " : " + self.get('ip'))
-    
-        # Check if the node is already deployed
+#        self.debug(" " + self.get_rtype() + " ( Guid : " + str(self._guid) +") : " + \
+#            self.get('mode') + " : " + self.get('type') + " : " + \
+#            self.get('essid') + " : " + self.get('ip'))
         if self.state < ResourceState.PROVISIONED:
             if self._conf == False:
                 self._conf = self.configure_iface()
         if self._conf == True:
             self.configure_ip()
 
+
+
+    def do_deploy(self):
+        """ Deploy the RM. It means : Get the xmpp client and send messages 
+        using OMF 5.4 protocol to configure the interface.
+        It becomes DEPLOYED after sending messages to configure the interface
+        """
+        if not self.node or self.node.state < ResourceState.READY:
+            self.debug("---- RESCHEDULING DEPLOY ---- node state %s "
+                       % self.node.state )
+            self.ec.schedule(reschedule_delay, self.deploy)
+            return
+
+        if not self.channel or self.channel.state < ResourceState.READY:
+            self.debug("---- RESCHEDULING DEPLOY ---- channel state %s "
+                       % self.channel.state )
+            self.ec.schedule(reschedule_delay, self.deploy)
+            return
+
+        self.set('xmppUser',self.node.get('xmppUser'))
+        self.set('xmppServer',self.node.get('xmppServer'))
+        self.set('xmppPort',self.node.get('xmppPort'))
+        self.set('xmppPassword',self.node.get('xmppPassword'))
+        self.set('version',self.node.get('version'))
+
+        if not self.get('xmppServer'):
+            msg = "XmppServer is not initialzed. XMPP Connections impossible"
+            self.error(msg)
+            raise RuntimeError, msg
+
+        if not (self.get('xmppUser') or self.get('xmppPort') 
+                   or self.get('xmppPassword')):
+            msg = "Credentials are not all initialzed. Default values will be used"
+            self.warn(msg)
+
+        if not self._omf_api :
+            self._omf_api = OMFAPIFactory.get_api(self.get('version'), 
+              self.get('xmppServer'), self.get('xmppUser'), self.get('xmppPort'),
+               self.get('xmppPassword'), exp_id = self.exp_id)
+
+        if not (self.get('name') and self.get('mode') and self.get('essid') \
+                 and self.get('hw_mode') and self.get('ip')):
+            msg = "Interface's variable are not initialized"
+            self.error(msg)
+            raise RuntimeError, msg
+
+        self.set('type',self.get('hw_mode'))
+
+        if self.get('version') == "5":
+            self.configure_on_omf5()
+        else :
+            self.configure_on_omf6()
+
         super(OMFWifiInterface, self).do_deploy()
+
+    def configure_on_omf6(self):
+        if not self.create_id :
+            props = {}
+            props['wlan:if_name'] = self.get('name')
+            props['wlan:mode'] = {
+                "mode": self.get('mode'),
+                "hw_mode" :  self.get('hw_mode'),
+                "channel" : self.channel.get('channel'),
+                "essid" : self.get('essid'),
+                "ip_addr" : self.get('ip'),
+                "frequency" : self.channel.frequency,
+                "phy" : "%0%"
+               }
+            props['wlan:hrn'] = self.get('name')
+            props['wlan:type'] = "wlan"
+    
+            self.create_id = os.urandom(16).encode('hex')
+            self._omf_api.frcp_create( self.create_id, self.node.get('hostname'), "wlan", props = props)
+    
+        self.check_deploy(self.create_id)
+        self._omf_api.enroll_topic(self._topic_iface)
+    
+    def check_deploy(self, cid):
+        delay = 1.0
+        for i in xrange(10):
+            uid = self._omf_api.check_mailbox("create", cid)
+            if uid:
+                self._topic_iface = uid
+                break
+            else:
+                time.sleep(delay)
+                delay = delay * 1.5
+        else:
+            msg = "Couldn't retrieve the confirmation of the creation"
+            self.error(msg)
+            raise RuntimeError, msg
+
+    def check_release(self, cid):
+        res = self._omf_api.check_mailbox("release", cid)
+        if res : 
+            return res
+        return False
 
     def do_release(self):
         """ Clean the RM at the end of the experiment and release the API
 
         """
+        if self.get('version') == "6":
+            if not self.release_id:
+                self.release_id = os.urandom(16).encode('hex')
+                self._omf_api.frcp_release( self.release_id, self.node.get('hostname'),self._topic_iface, res_id=self._topic_iface)
+    
+            cid = self.check_release(self.release_id)
+            if not cid:
+                self.ec.schedule(reschedule_delay, self.release)
+                return
+
         if self._omf_api:
-            OMFAPIFactory.release_api(self.get('xmppSlice'), 
-                self.get('xmppHost'), self.get('xmppPort'), 
-                self.get('xmppPassword'), exp_id = self.exp_id)
+            OMFAPIFactory.release_api(self.get('version'), 
+              self.get('xmppServer'), self.get('xmppUser'), self.get('xmppPort'),
+               self.get('xmppPassword'), exp_id = self.exp_id)
 
         super(OMFWifiInterface, self).do_release()
 

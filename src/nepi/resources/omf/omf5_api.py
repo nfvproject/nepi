@@ -21,15 +21,13 @@
 import ssl
 import sys
 import time
-import hashlib
-import threading
 
 from nepi.util.logger import Logger
 
 from nepi.resources.omf.omf_client import OMFClient
 from nepi.resources.omf.messages_5_4 import MessageHandler
 
-class OMFAPI(Logger):
+class OMF5API(Logger):
     """
     .. class:: Class Args :
       
@@ -312,104 +310,4 @@ class OMFAPI(Logger):
         self._client.disconnect(wait=True)
         msg = " Disconnected from XMPP Server"
         self.debug(msg)
-
-
-class OMFAPIFactory(object):
-    """ 
-    .. note::
-
-        It allows the different RM to use the same xmpp client if they use 
-        the same credentials.  For the moment, it is focused on XMPP.
-
-    """
-    # use lock to avoid concurrent access to the Api list at the same times by 2 
-    # different threads
-    lock = threading.Lock()
-    _apis = dict()
-
-    @classmethod 
-    def get_api(cls, slice, host, port, password, exp_id = None):
-        """ Get an OMF Api
-
-        :param slice: Xmpp Slice Name
-        :type slice: str
-        :param host: Xmpp Server Adress
-        :type host: str
-        :param port: Xmpp Port (Default : 5222)
-        :type port: str
-        :param password: Xmpp Password
-        :type password: str
-
-        """
-        if slice and host and port and password:
-            key = cls._make_key(slice, host, port, password, exp_id)
-            cls.lock.acquire()
-            if key in cls._apis:
-                #print "Api Counter : " + str(cls._apis[key]['cnt'])
-                cls._apis[key]['cnt'] += 1
-                cls.lock.release()
-                return cls._apis[key]['api']
-            else :
-                omf_api = cls.create_api(slice, host, port, password, exp_id)
-                cls.lock.release()
-                return omf_api
-        return None
-
-    @classmethod 
-    def create_api(cls, slice, host, port, password, exp_id):
-        """ Create an OMF API if this one doesn't exist yet with this credentials
-
-        :param slice: Xmpp Slice Name
-        :type slice: str
-        :param host: Xmpp Server Adress
-        :type host: str
-        :param port: Xmpp Port (Default : 5222)
-        :type port: str
-        :param password: Xmpp Password
-        :type password: str
-
-        """
-        omf_api = OMFAPI(slice, host, port, password, exp_id = exp_id)
-        key = cls._make_key(slice, host, port, password, exp_id)
-        cls._apis[key] = {}
-        cls._apis[key]['api'] = omf_api
-        cls._apis[key]['cnt'] = 1
-        return omf_api
-
-    @classmethod 
-    def release_api(cls, slice, host, port, password, exp_id = None):
-        """ Release an OMF API with this credentials
-
-        :param slice: Xmpp Slice Name
-        :type slice: str
-        :param host: Xmpp Server Adress
-        :type host: str
-        :param port: Xmpp Port (Default : 5222)
-        :type port: str
-        :param password: Xmpp Password
-        :type password: str
-
-        """
-        if slice and host and port and password:
-            key = cls._make_key(slice, host, port, password, exp_id)
-            if key in cls._apis:
-                cls._apis[key]['cnt'] -= 1
-                #print "Api Counter : " + str(cls._apis[key]['cnt'])
-                if cls._apis[key]['cnt'] == 0:
-                    omf_api = cls._apis[key]['api']
-                    omf_api.disconnect()
-
-
-    @classmethod 
-    def _make_key(cls, *args):
-        """ Hash the credentials in order to create a key
-
-        :param args: list of arguments used to create the hash (user, host, port, ...)
-        :type args: list of args
-
-        """
-        skey = "".join(map(str, args))
-        return hashlib.md5(skey).hexdigest()
-
-
 
