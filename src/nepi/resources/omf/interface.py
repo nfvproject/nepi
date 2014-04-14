@@ -181,8 +181,8 @@ class OMFWifiInterface(OMFResource):
 
         # Just for information
         self.info(" " + self.get_rtype() + " ( Guid : " + str(self._guid) +") : " + \
-            self.get('mode') + " : " + self.get('type') + " : " + \
-            self.get('essid') + " : " + self.get('ip') + " : " + str(self.state))
+                self.get('mode') + " : " + self.get('type') + " : " + \
+                self.get('essid') + " : " + self.get('ip') + " : " + str(self.state))
     
         # Check if the node is already deployed
         if self.state < ResourceState.PROVISIONED:
@@ -192,7 +192,7 @@ class OMFWifiInterface(OMFResource):
         if self._conf == True:
             res = self.configure_ip()
             
-        if not (res or self._conf):
+        if not (res and self._conf):
             return
 
         super(OMFWifiInterface, self).do_deploy()
