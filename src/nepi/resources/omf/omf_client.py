@@ -73,8 +73,6 @@ class OMFClient(sleekxmpp.ClientXMPP, Logger):
         self._server = None
         self._parser = None
 
-
-
         self.register_plugin('xep_0077') # In-band registration
         self.register_plugin('xep_0030')
         self.register_plugin('xep_0059')
@@ -222,8 +220,9 @@ class OMFClient(sleekxmpp.ClientXMPP, Logger):
             msg = ' Deleted node: %s' % node
             self.info(msg)
         except:
-            error = traceback.format_exc()
-            msg = ' Could not delete topic: %s\ntraceback:\n%s' % (node, error)
+            #error = traceback.format_exc()
+            #msg = ' Could not delete topic: %s\ntraceback:\n%s' % (node, error)
+            msg = 'Could not delete the topic : '+node+' . Maybe It is not the owner of the topic'
             self.error(msg)
     
     def publish(self, data, node):
@@ -333,6 +332,9 @@ class OMFClient(sleekxmpp.ClientXMPP, Logger):
             msg = ' Could not unsubscribe %s from topic %s\ntraceback:\n%s' \
                     % (self.boundjid.bare, node, error)
             self.error(msg)
+
+    def check_mailbox(self, itype, attr):
+        return self._parser.check_mailbox(itype, attr)
 
 
     def handle_omf_message(self, iq):

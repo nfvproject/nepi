@@ -34,7 +34,6 @@ class ResourceGateway:
         "wilabt" : "ops.wilab2.ilabt.iminds.be",
         "nitos" : "nitlab.inf.uth.gr",
         "nicta" : "??.??.??",
-
     })
 
     AMtoGateway = dict({
@@ -54,19 +53,22 @@ class OMFResource(ResourceManager):
     @classmethod
     def _register_attributes(cls):
 
-        xmppSlice = Attribute("xmppSlice","Name of the slice", 
+        xmppServer = Attribute("xmppServer", "Xmpp Server",
             flags = Flags.Credential)
-        xmppHost = Attribute("xmppHost", "Xmpp Server",
+        xmppUser = Attribute("xmppUser","Name of the Xmpp User/Slice", 
             flags = Flags.Credential)
         xmppPort = Attribute("xmppPort", "Xmpp Port",
             flags = Flags.Credential)
         xmppPassword = Attribute("xmppPassword", "Xmpp Password",
                 flags = Flags.Credential)
+        version = Attribute("version", "Version of OMF : Either 5 or 6",
+                default = "6", )
 
-        cls._register_attribute(xmppSlice)
-        cls._register_attribute(xmppHost)
+        cls._register_attribute(xmppUser)
+        cls._register_attribute(xmppServer)
         cls._register_attribute(xmppPort)
         cls._register_attribute(xmppPassword)
+        cls._register_attribute(version)
 
     def __init__(self, ec, guid):
         super(OMFResource, self).__init__(ec, guid)
