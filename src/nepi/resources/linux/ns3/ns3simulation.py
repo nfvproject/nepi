@@ -187,6 +187,11 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         src_dir = os.path.join(self.node.src_dir, "ns-3")
 
         super(LinuxNS3Simulation, self).upload_sources(src_dir = src_dir)
+    
+    def upload_extra_sources(self, sources = None, src_dir = None):
+        return super(LinuxNS3Simulation, self).upload_sources(
+                sources = sources, 
+                src_dir = src_dir)
 
     def upload_start_command(self):
         command = self.get("command")
@@ -545,13 +550,37 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         env.append("PYTHONPATH=$PYTHONPATH:${NS3BINDINGS:=%(ns3_build_home)s/lib/python/site-packages}" % { 
                     'ns3_build_home': self.ns3_build_home
                  })
-        env.append("LD_LIBRARY_PATH=${NS3LIBRARIES:=%(ns3_build_home)s/lib/}" % { 
+        # If NS3LIBRARIES is defined and not empty, assign its value, 
+        # if not assign ns3_build_home/lib/ to NS3LIBRARIES and LD_LIBARY_PATH
+        env.append("LD_LIBRARY_PATH=${NS3LIBRARIES:=%(ns3_build_home)s/lib}" % { 
                     'ns3_build_home': self.ns3_build_home
                  })
-        env.append("DCE_PATH=$PATH:$NS3LIBRARIES/../bin_dce")
-        env.append("DCE_ROOT=$PATH:$NS3LIBRARIES/..")
+        env.append("DCE_PATH=$NS3LIBRARIES/../bin_dce")
+        env.append("DCE_ROOT=$NS3LIBRARIES/..")
 
         return " ".join(env) 
+
+    def replace_paths(self, command):
+        """
+        Replace all special path tags with shell-escaped actual paths.
+        """
+        return ( command
+            .replace("${USR}", self.node.usr_dir)
+            .replace("${LIB}", self.node.lib_dir)
+            .replace("${BIN}", self.node.bin_dir)
+            .replace("${SRC}", self.node.src_dir)
+            .replace("${SHARE}", self.node.share_dir)
+            .replace("${EXP}", self.node.exp_dir)
+            .replace("${EXP_HOME}", self.node.exp_home)
+            .replace("${APP_HOME}", self.app_home)
+            .replace("${RUN_HOME}", self.run_home)
+            .replace("${NODE_HOME}", self.node.node_home)
+            .replace("${HOME}", self.node.home_dir)
+            # If NS3LIBRARIES is defined and not empty, use that value, 
+            # if not use ns3_build_home/lib/
+            .replace("${BIN_DCE}", "${NS3LIBRARIES-%s/lib/}../bin_dce" % \
+                    self.ns3_build_home)
+            )
 
     def valid_connection(self, guid):
         # TODO: Validate!
