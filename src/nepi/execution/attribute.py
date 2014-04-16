@@ -52,6 +52,8 @@ class Flags:
     # transparent to the user)
     Reserved  = 1 << 6 # 64
 
+    # Attribute global is set to all resources of rtype
+    Global  = 1 << 7 # 128
 
 class Attribute(object):
     """

@@ -196,6 +196,16 @@ class ExperimentController(object):
         # EC state
         self._state = ECState.RUNNING
 
+        # Blacklist file for PL nodes
+        nepi_home = os.path.join(os.path.expanduser("~"), ".nepi")
+        plblacklist_file = os.path.join(nepi_home, "plblacklist.txt")
+        if not os.path.exists(plblacklist_file):
+            if os.path.isdir(nepi_home):
+                open(plblacklist_file, 'w').close()
+            else:
+                os.makedirs(nepi_home)
+                open(plblacklist_file, 'w').close()
+                    
         # The runner is a pool of threads used to parallelize 
         # execution of tasks
         nthreads = int(os.environ.get("NEPI_NTHREADS", "50"))
@@ -608,6 +618,38 @@ class ExperimentController(object):
         """
         rm = self.get_resource(guid)
         rm.set(name, value)
+
+    def get_global(self, rtype, name):
+        """ Returns the value of the global attribute with name 'name' on the
+        RMs of rtype 'rtype'.
+
+            :param guid: Guid of the RM
+            :type guid: int
+
+            :param name: Name of the attribute 
+            :type name: str
+
+            :return: The value of the attribute with name 'name'
+
+        """
+        rclass = ResourceFactory.get_resource_type(rtype)
+        return rclass.get_global(name)
+
+    def set_global(self, rtype, name, value):
+        """ Modifies the value of the global attribute with name 'name' on the 
+        RMs of with rtype 'rtype'.
+
+            :param guid: Guid of the RM
+            :type guid: int
+
+            :param name: Name of the attribute
+            :type name: str
+
+            :param value: Value of the attribute
+
+        """
+        rclass = ResourceFactory.get_resource_type(rtype)
+        return rclass.set_global(name, value)
 
     def state(self, guid, hr = False):
         """ Returns the state of a resource
