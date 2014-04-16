@@ -275,7 +275,8 @@ class LinuxApplication(ResourceManager):
 
     def do_provision(self):
         # take a snapshot of the system if user is root
-        # to assure cleanProcess kill every nepi process
+        # to ensure that cleanProcess will not kill
+        # pre-existent processes
         if self.node.get("username") == 'root':
             import pickle
             procs = dict()
@@ -356,22 +357,23 @@ class LinuxApplication(ResourceManager):
                     env = env,
                     overwrite = overwrite)
 
-    def execute_deploy_command(self, command):
+    def execute_deploy_command(self, command, prefix="deploy"):
         if command:
             # Upload the command to a bash script and run it
             # in background ( but wait until the command has
             # finished to continue )
-            shfile = os.path.join(self.app_home, "deploy.sh")
+            shfile = os.path.join(self.app_home, "%s.sh" % prefix)
             self.node.run_and_wait(command, self.run_home,
                     shfile = shfile, 
                     overwrite = False,
-                    pidfile = "deploy_pidfile", 
-                    ecodefile = "deploy_exitcode", 
-                    stdout = "deploy_stdout", 
-                    stderr = "deploy_stderr")
+                    pidfile = "%s_pidfile" % prefix, 
+                    ecodefile = "%s_exitcode" % prefix, 
+                    stdout = "%s_stdout" % prefix, 
+                    stderr = "%s_stderr" % prefix)
 
-    def upload_sources(self, src_dir = None):
-        sources = self.get("sources")
+    def upload_sources(self, sources = None, src_dir = None):
+        if not sources:
+            sources = self.get("sources")
    
         command = ""
 
@@ -417,29 +419,33 @@ class LinuxApplication(ResourceManager):
 
         return command
 
-    def upload_files(self):
-        files = self.get("files")
+    def upload_files(self, files = None):
+        if not files:
+            files = self.get("files")
 
         if files:
             self.info("Uploading files %s " % files)
             self.node.upload(files, self.node.share_dir, overwrite = False)
 
-    def upload_libraries(self):
-        libs = self.get("libs")
+    def upload_libraries(self, libs = None):
+        if not libs:
+            libs = self.get("libs")
 
         if libs:
             self.info("Uploading libraries %s " % libaries)
             self.node.upload(libs, self.node.lib_dir, overwrite = False)
 
-    def upload_binaries(self):
-        bins = self.get("bins")
+    def upload_binaries(self, bins = None):
+        if not bins:
+            bins = self.get("bins")
 
         if bins:
             self.info("Uploading binaries %s " % binaries)
             self.node.upload(bins, self.node.bin_dir, overwrite = False)
 
-    def upload_code(self):
-        code = self.get("code")
+    def upload_code(self, code = None):
+        if not code:
+            code = self.get("code")
 
         if code:
             self.info("Uploading code")
@@ -447,8 +453,10 @@ class LinuxApplication(ResourceManager):
             dst = os.path.join(self.app_home, "code")
             self.node.upload(code, dst, overwrite = False, text = True)
 
-    def upload_stdin(self):
-        stdin = self.get("stdin")
+    def upload_stdin(self, stdin = None):
+        if not stdin:
+           stdin = self.get("stdin")
+
         if stdin:
             # create dir for sources
             self.info("Uploading stdin")
@@ -469,14 +477,17 @@ class LinuxApplication(ResourceManager):
 
             return command
 
-    def install_dependencies(self):
-        depends = self.get("depends")
+    def install_dependencies(self, depends = None):
+        if not depends:
+            depends = self.get("depends")
+
         if depends:
             self.info("Installing dependencies %s" % depends)
             return self.node.install_packages_command(depends)
 
-    def build(self):
-        build = self.get("build")
+    def build(self, build = None):
+        if not build:
+            build = self.get("build")
 
         if build:
             self.info("Building sources ")
@@ -484,8 +495,9 @@ class LinuxApplication(ResourceManager):
             # replace application specific paths in the command
             return self.replace_paths(build)
 
-    def install(self):
-        install = self.get("install")
+    def install(self, install = None):
+        if not install:
+            install = self.get("install")
 
         if install:
             self.info("Installing sources ")

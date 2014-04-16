@@ -18,17 +18,6 @@
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
-
-#
-# Network topology
-#
-#       n0    n1   n2   n3
-#       |     |    |    |
-#       -----------------
-#
-#  node n0 sends IGMP traffic to node n3
-
-
 from nepi.execution.ec import ExperimentController 
 from nepi.execution.trace import TraceAttr
 
@@ -141,7 +130,7 @@ def add_wifi_channel(ec):
 
     return channel
 
-class LinuxNS3ClientTest(unittest.TestCase):
+class LinuxNS3SimulationTest(unittest.TestCase):
     def setUp(self):
         #elf.fedora_host = "nepi2.pl.sophia.inria.fr"
         #self.fedora_host = "planetlabpc1.upf.edu"
