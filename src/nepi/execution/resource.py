@@ -186,7 +186,6 @@ class ResourceManager(Logger):
         attributes.
 
         """
-        
         critical = Attribute("critical", 
                 "Defines whether the resource is critical. "
                 "A failure on a critical resource will interrupt "
@@ -288,6 +287,32 @@ class ResourceManager(Logger):
 
         """
         return cls._backend
+
+    @classmethod
+    def get_global(cls, name):
+        """ Returns the value of a global attribute
+            Global attribute meaning an attribute for 
+            all the resources from a rtype
+
+        :param name: Name of the attribute
+        :type name: str
+        :rtype: str
+        """
+        global_attr = cls._attributes[name]
+        return global_attr.value
+
+    @classmethod
+    def set_global(cls, name, value):
+        """ Set value for a global attribute
+
+        :param name: Name of the attribute
+        :type name: str
+        :param name: Value of the attribute
+        :type name: str
+        """
+        global_attr = cls._attributes[name]
+        global_attr.value = value
+        return value
 
     def __init__(self, ec, guid):
         super(ResourceManager, self).__init__(self.get_rtype())
@@ -564,6 +589,9 @@ class ResourceManager(Logger):
         :rtype: str
         """
         attr = self._attrs[name]
+        if attr.has_flag(Flags.Global):
+            self.warning( "Attribute %s is global. Use get_global instead." % name)
+            
         return attr.value
 
     def has_changed(self, name):

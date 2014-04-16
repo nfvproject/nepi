@@ -27,10 +27,12 @@ from nepi.util.execfuncs import lexec
 from nepi.util import sshfuncs
 
 from random import randint
+import re
 import time
 import socket
 import threading
 import datetime
+import weakref
 
 @clsinit_copy
 class PlanetlabNode(LinuxNode):
@@ -93,14 +95,6 @@ class PlanetlabNode(LinuxNode):
                                         "centos",
                                         "other"],
                             flags = Flags.Filter)
-
-        #site = Attribute("site", "Constrain the PlanetLab site this node \
-        #        should reside on.",
-        #        type = Types.Enumerate,
-        #        allowed = ["PLE",
-        #                    "PLC",
-        #                    "PLJ"],
-        #        flags = Flags.Filter)
 
         min_reliability = Attribute("minReliability", "Constrain reliability \
                             while picking PlanetLab nodes. Specifies a lower \
@@ -169,21 +163,20 @@ class PlanetlabNode(LinuxNode):
                                     "year"],
                         flags = Flags.Filter)
 
-#        plblacklist = Attribute("blacklist", "Take into account the file plblacklist \
-#                        in the user's home directory under .nepi directory. This file \
-#                        contains a list of PL nodes to blacklist, and at the end \
-#                        of the experiment execution the new blacklisted nodes are added.",
-#                    type = Types.Bool,
-#                    default = True,
-#                    flags = Flags.ReadOnly)
-#
+        plblacklist = Attribute("persist_blacklist", "Take into account the file plblacklist \
+                        in the user's home directory under .nepi directory. This file \
+                        contains a list of PL nodes to blacklist, and at the end \
+                        of the experiment execution the new blacklisted nodes are added.",
+                    type = Types.Bool,
+                    default = False,
+                    flags = Flags.Global)
+
 
         cls._register_attribute(ip)
         cls._register_attribute(pl_url)
         cls._register_attribute(pl_ptn)
         cls._register_attribute(pl_user)
         cls._register_attribute(pl_password)
-        #cls._register_attribute(site)
         cls._register_attribute(city)
         cls._register_attribute(country)
         cls._register_attribute(region)
@@ -198,10 +191,12 @@ class PlanetlabNode(LinuxNode):
         cls._register_attribute(min_cpu)
         cls._register_attribute(max_cpu)
         cls._register_attribute(timeframe)
+        cls._register_attribute(plblacklist)
 
     def __init__(self, ec, guid):
         super(PlanetlabNode, self).__init__(ec, guid)
 
+        self._ecobj = weakref.ref(ec)
         self._plapi = None
         self._node_to_provision = None
         self._slicenode = False
@@ -225,14 +220,15 @@ class PlanetlabNode(LinuxNode):
             pl_pass = self.get("plpassword")
             pl_url = self.get("plcApiUrl")
             pl_ptn = self.get("plcApiPattern")
-
-            self._plapi =  PLCAPIFactory.get_api(pl_user, pl_pass, pl_url,
-                pl_ptn)
+            _plapi = PLCAPIFactory.get_api(pl_user, pl_pass, pl_url,
+                pl_ptn, self._ecobj())
             
-            if not self._plapi:
+            if not _plapi:
                 self.fail_plapi()
+        
+            self._plapi = weakref.ref(_plapi)
 
-        return self._plapi
+        return self._plapi()
 
     def do_discover(self):
         """
@@ -318,14 +314,21 @@ class PlanetlabNode(LinuxNode):
         provision_ok = False
         ssh_ok = False
         proc_ok = False
-        timeout = 3600
+        timeout = 1800
 
         while not provision_ok:
             node = self._node_to_provision
             if not self._slicenode:
                 self._add_node_to_slice(node)
-                self.info( " Node added to slice ")
-            
+                if self._check_if_in_slice([node]):
+                    self.debug( "Node added to slice" )
+                else:
+                    self.warning(" Could not add to slice ")
+                    with PlanetlabNode.lock:
+                        self._blacklist_node(node)
+                    self.do_discover()
+                    continue
+
                 # check ssh connection
                 t = 0 
                 while t < timeout and not ssh_ok:
@@ -333,12 +336,12 @@ class PlanetlabNode(LinuxNode):
                     cmd = 'echo \'GOOD NODE\''
                     ((out, err), proc) = self.execute(cmd)
                     if out.find("GOOD NODE") < 0:
-                        self.info(" No SSH login, sleeping for 60 seconds ")
+                        self.debug( "No SSH connection, waiting 60s" )
                         t = t + 60
                         time.sleep(60)
                         continue
                     else:
-                        self.info(" SSH login OK ")
+                        self.debug( "SSH OK" )
                         ssh_ok = True
                         continue
             else:
@@ -385,6 +388,12 @@ class PlanetlabNode(LinuxNode):
             
         super(PlanetlabNode, self).do_provision()
 
+    def do_release(self):
+        super(PlanetlabNode, self).do_release()
+        if self.state == ResourceState.RELEASED:
+            self.debug(" Releasing PLC API ")
+            self.plapi.release()
+
     def _filter_based_on_attributes(self):
         """
         Retrive the list of nodes ids that match user's constraints 
@@ -397,7 +406,6 @@ class PlanetlabNode(LinuxNode):
             'region' : 'region',
             'architecture' : 'arch',
             'operatingSystem' : 'fcdistro',
-            #'site' : 'pldistro',
             'minReliability' : 'reliability%s' % timeframe,
             'maxReliability' : 'reliability%s' % timeframe,
             'minBandwidth' : 'bw%s' % timeframe,
@@ -555,6 +563,7 @@ class PlanetlabNode(LinuxNode):
         slicename = self.get("username")
         with PlanetlabNode.lock:
             slice_nodes = self.plapi.get_slice_nodes(slicename)
+            self.debug(" Previous slice nodes %s " % slice_nodes)
             slice_nodes.append(node_id)
             self.plapi.add_slice_nodes(slicename, slice_nodes)
 
@@ -599,14 +608,13 @@ class PlanetlabNode(LinuxNode):
         """
         ping_ok = False
         ip = self._get_ip(node_id)
-        if not ip: return ping_ok
+        if ip:
+            command = "ping -c4 %s" % ip
+            (out, err) = lexec(command)
 
-        command = "ping -c4 %s" % ip
-
-        (out, err) = lexec(command)
-        if not str(out).find("2 received") < 0 or not str(out).find("3 received") < 0 or not \
-            str(out).find("4 received") < 0:
-            ping_ok = True
+            m = re.search("(\d+)% packet loss", str(out))
+            if m and int(m.groups()[0]) < 50:
+                ping_ok = True
        
         return ping_ok 
 
