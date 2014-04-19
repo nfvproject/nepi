@@ -21,6 +21,8 @@ from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.resource import clsinit_copy, ResourceState, reschedule_delay
 from nepi.resources.ns3.ns3application import NS3BaseApplication
 
+import os
+
 @clsinit_copy
 class NS3BaseDceApplication(NS3BaseApplication):
     _rtype = "abstract::ns3::DceApplication"
@@ -41,9 +43,15 @@ class NS3BaseDceApplication(NS3BaseApplication):
                 "Semi-colon separated list of arguments for the application",
                 flags = Flags.Design)
 
+        environment = Attribute("environment", 
+                "Semi-colon separated list of 'key=value' pairs to set as "
+                "DCE environment variables.",
+                flags = Flags.Design)
+
         cls._register_attribute(binary)
         cls._register_attribute(stack_size)
         cls._register_attribute(arguments)
+        cls._register_attribute(environment)
 
     @property
     def node(self):
@@ -71,21 +79,56 @@ class NS3BaseDceApplication(NS3BaseApplication):
             # Preventing concurrent access to the DceApplicationHelper
             # from different DceApplication RMs
             with self.simulation.dce_application_lock:
-                self.simulation.invoke(self.simulation.dce_application_helper_uuid, 
+                self.simulation.invoke(
+                        self.simulation.dce_application_helper_uuid, 
                         "ResetArguments") 
 
-                self.simulation.invoke(self.simulation.dce_application_helper_uuid, 
+                self.simulation.invoke(
+                        self.simulation.dce_application_helper_uuid, 
+                        "ResetEnvironment") 
+
+                self.simulation.invoke(
+                        self.simulation.dce_application_helper_uuid, 
                         "SetBinary", self.get("binary")) 
 
-                self.simulation.invoke(self.simulation.dce_application_helper_uuid, 
+                self.simulation.invoke(
+                        self.simulation.dce_application_helper_uuid, 
                         "SetStackSize", self.get("stackSize")) 
 
                 arguments = self.get("arguments") or ""
                 for arg in map(str.strip, arguments.split(";")):
-                    self.simulation.invoke(self.simulation.dce_application_helper_uuid, 
-                        "AddArgument", arg) 
+                    self.simulation.invoke(
+                            self.simulation.dce_application_helper_uuid, 
+                        "AddArgument", arg)
 
-                apps_uuid = self.simulation.invoke(self.simulation.dce_application_helper_uuid, 
+                environment = self.get("environment") or ""
+                for env in map(str.strip, environment.split(";")):
+                    key, val = env.split("=")
+                    self.simulation.invoke(
+                            self.simulation.dce_application_helper_uuid, 
+                        "AddEnvironment", key, val)
+
+                if self.has_attribute("files"):
+                    files = self.get("files") or ""
+                    for files in map(str.strip, files.split(";")):
+                        remotepath, dcepath = env.split("=")
+                        localpath = "${SHARE}/" + os.path.basename(remotepath)
+                        self.simulation.invoke(
+                                self.simulation.dce_application_helper_uuid, 
+                            "AddFile", localpath, dcepath)
+
+                if self.has_attribute("stdinFile"):
+                    stdinfile = self.get("stdinFile")
+                    if stdinfile:
+                        if stdinfile != "":
+                            stdinfile = "${SHARE}/" + os.path.basename(stdinfile)
+        
+                        self.simulation.invoke(
+                                self.simulation.dce_application_helper_uuid, 
+                                "SetStdinFile", stdinfile)
+
+                apps_uuid = self.simulation.invoke(
+                        self.simulation.dce_application_helper_uuid, 
                         "InstallInNode", self.node.uuid)
 
             self._uuid = self.simulation.invoke(apps_uuid, "Get", 0)
