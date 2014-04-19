@@ -132,11 +132,8 @@ def add_wifi_channel(ec):
 
 class LinuxNS3SimulationTest(unittest.TestCase):
     def setUp(self):
-        #elf.fedora_host = "nepi2.pl.sophia.inria.fr"
-        #self.fedora_host = "planetlabpc1.upf.edu"
-        self.fedora_host = "peeramide.irisa.fr"
+        self.fedora_host = "nepi2.pl.sophia.inria.fr"
         self.fedora_user = "inria_nepi"
-        #self.fedora_user = "inria_alina"
         self.fedora_identity = "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'])
 
     def test_local_p2p_ping(self):

@@ -696,6 +696,41 @@ class ExperimentController(object):
         rm = self.get_resource(guid)
         return rm.start()
 
+    def get_start_time(self, guid):
+        """ Returns the start time of the RM as a timestamp """
+        rm = self.get_resource(guid)
+        return rm.start_time
+
+    def get_stop_time(self, guid):
+        """ Returns the stop time of the RM as a timestamp """
+        rm = self.get_resource(guid)
+        return rm.stop_time
+
+    def get_discover_time(self, guid):
+        """ Returns the discover time of the RM as a timestamp """
+        rm = self.get_resource(guid)
+        return rm.discover_time
+
+    def get_provision_time(self, guid):
+        """ Returns the provision time of the RM as a timestamp """
+        rm = self.get_resource(guid)
+        return rm.provision_time
+
+    def get_ready_time(self, guid):
+        """ Returns the deployment time of the RM as a timestamp """
+        rm = self.get_resource(guid)
+        return rm.ready_time
+
+    def get_release_time(self, guid):
+        """ Returns the release time of the RM as a timestamp """
+        rm = self.get_resource(guid)
+        return rm.release_time
+
+    def get_failed_time(self, guid):
+        """ Returns the time failure occured for the RM as a timestamp """
+        rm = self.get_resource(guid)
+        return rm.failed_time
+
     def set_with_conditions(self, name, value, guids1, guids2, state,
             time = None):
         """ Modifies the value of attribute with name 'name' on all RMs 

@@ -133,15 +133,13 @@ def add_wifi_channel(ec):
 
 class LinuxNS3DceApplicationTest(unittest.TestCase):
     def setUp(self):
-        #elf.fedora_host = "nepi2.pl.sophia.inria.fr"
-        #self.fedora_host = "planetlabpc1.upf.edu"
-        self.fedora_host = "peeramide.irisa.fr"
+        #self.fedora_host = "nepi2.pl.sophia.inria.fr"
+        self.fedora_host = "planetlabpc1.upf.edu"
         self.fedora_user = "inria_nepi"
-        #self.fedora_user = "inria_alina"
         self.fedora_identity = "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'])
 
-    def test_dce_application(self):
-        ec = ExperimentController(exp_id = "test-linux-ns3-dce")
+    def test_dce_ping(self):
+        ec = ExperimentController(exp_id = "test-dce-ping")
         
         node = ec.register_resource("LinuxNode")
         ec.set(node, "hostname", self.fedora_host)
@@ -176,14 +174,12 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
 
         ### create applications
         ping = ec.register_resource("ns3::LinuxDceApplication")
-        """
         ec.set (ping, "sources", "http://www.skbuff.net/iputils/iputils-s20101006.tar.bz2")
         ec.set (ping, "build", "tar xvjf ${SRC}/iputils-s20101006.tar.bz2 && "
                 "cd iputils-s20101006/ && "
                 "sed -i 's/CFLAGS=/CFLAGS+=/g' Makefile && "
                 "make CFLAGS=-fPIC LDFLAGS=-pie ping && "
                 "cp ping ${BIN_DCE} ")
-        """
         ec.set (ping, "binary", "ping")
         ec.set (ping, "stackSize", 1<<20)
         ec.set (ping, "arguments", "-c 10;-s 1000;10.0.0.2")
@@ -212,6 +208,162 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
         self.assertTrue(stderr.find(expected) > -1, stderr)
 
         ec.shutdown()
+
+    def test_dce_ccn(self):
+        ec = ExperimentController(exp_id = "test-dce-ccn")
+        
+        node = ec.register_resource("LinuxNode")
+        ec.set(node, "hostname", self.fedora_host)
+        ec.set(node, "username", self.fedora_user)
+        ec.set(node, "identity", self.fedora_identity)
+        ec.set(node, "cleanProcesses", True)
+        #ec.set(node, "cleanHome", True)
+
+        simu = ec.register_resource("LinuxNS3Simulation")
+        ec.set(simu, "verbose", True)
+        ec.set(simu, "enableDCE", True)
+        ec.set(simu, "buildMode", "debug")
+        ec.set(simu, "nsLog", "DceApplication")
+        ec.register_connection(simu, node)
+
+        nsnode1 = add_ns3_node(ec, simu)
+        ec.set(nsnode1, "enableDCE", True)
+        p2p1 = add_point2point_device(ec, nsnode1, "10.0.0.1", "30")
+        ec.set(p2p1, "DataRate", "5Mbps")
+
+        nsnode2 = add_ns3_node(ec, simu)
+        ec.set(nsnode2, "enableDCE", True)
+        p2p2 = add_point2point_device(ec, nsnode2, "10.0.0.2", "30")
+        ec.set(p2p2, "DataRate", "5Mbps")
+
+        # Create channel
+        chan = ec.register_resource("ns3::PointToPointChannel")
+        ec.set(chan, "Delay", "2ms")
+
+        ec.register_connection(chan, p2p1)
+        ec.register_connection(chan, p2p2)
+
+        ### create applications
+        ccnd1 = ec.register_resource("ns3::LinuxDceApplication")
+        ec.set(ccnd1, "depends", "libpcap0.8-dev openjdk-6-jdk ant1.8 autoconf "
+            "libssl-dev libexpat-dev libpcap-dev libecryptfs0 libxml2-utils auto"
+            "make gawk gcc g++ git-core pkg-config libpcre3-dev openjdk-6-jre-lib")
+        ec.set (ccnd1, "sources", "http://www.ccnx.org/releases/ccnx-0.7.2.tar.gz")
+        ec.set (ccnd1, "build", "tar xvjf ${SRC}/iputils-s20101006.tar.bz2 && "
+                "tar zxf ${SRC}/ccnx-0.7.2.tar.gz && "
+                "cd ccnx-0.7.2 && "
+                " INSTALL_BASE=${BIN_DCE} ./configure && "
+                " make MORE_LDLIBS=-pie && "
+                " make install ")
+        ec.set (ccnd1, "binary", "ccndstart")
+        ec.set (ccnd1, "stackSize", 1<<20)
+        ec.set (ccnd1, "StartTime", "1s")
+        ec.set (ccnd1, "StopTime", "20s")
+        ec.register_connection(ccnd1, nsnode1)
+
+        ccnkill1 = ec.register_resource("ns3::LinuxDceApplication")
+        ec.set (ccnkill1, "binary", "ccnsmoketest")
+        ec.set (ccnkill1, "arguments", "kill")
+        ec.set (ccnkill1, "stdinFile", "")
+        ec.set (ccnkill1, "stackSize", 1<<20)
+        ec.set (ccnkill1, "StartTime", "110s")
+        ec.set (ccnkill1, "StopTime", "120s")
+        ec.register_connection(ccnkill1, nsnode1)
+
+        repofile = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            "repoFile1")
+
+        ccnr = ec.register_resource("ns3::LinuxDceApplication")
+        ec.set (ccnr, "binary", "ccnr")
+        ec.set (ccnr, "environment", "CCNR_DIRECTORY=/REPO/")
+        ec.set (ccnr, "files", "%s=/REPO/repoFile1" % repofile) 
+        ec.set (ccnr, "stackSize", 1<<20)
+        ec.set (ccnr, "StartTime", "2s")
+        ec.set (ccnr, "StopTime", "120s")
+        ec.register_connection(ccnr, nsnode1)
+
+        ccndc1 = ec.register_resource("ns3::LinuxDceApplication")
+        ec.set (ccndc1, "binary", "ccndc")
+        ec.set (ccndc1, "arguments", "-v;add;ccnx:/;udp;10.0.0.2")
+        ec.set (ccndc1, "stackSize", 1<<20)
+        ec.set (ccndc1, "StartTime", "2s")
+        ec.set (ccndc1, "StopTime", "120s")
+        ec.register_connection(ccndc1, nsnode1)
+
+        ccnd2 = ec.register_resource("ns3::LinuxDceApplication")
+        ec.set (ccnd2, "binary", "ccndstart")
+        ec.set (ccnd2, "stackSize", 1<<20)
+        ec.set (ccnd2, "StartTime", "1s")
+        ec.set (ccnd2, "StopTime", "120s")
+        ec.register_connection(ccnd2, nsnode2)
+
+        ccndc2 = ec.register_resource("ns3::LinuxDceApplication")
+        ec.set (ccndc2, "binary", "ccndc")
+        ec.set (ccndc2, "arguments", "-v;add;ccnx:/;udp;10.0.0.1")
+        ec.set (ccndc2, "stackSize", 1<<20)
+        ec.set (ccndc2, "StartTime", "2s")
+        ec.set (ccndc2, "StopTime", "120s")
+        ec.register_connection(ccndc2, nsnode2)
+
+        ccnpeek = ec.register_resource("ns3::LinuxDceApplication")
+        ec.set (ccnpeek, "binary", "ccnpeek")
+        ec.set (ccnpeek, "arguments", "ccnx:/test/bunny.ts")
+        ec.set (ccnpeek, "stdinFile", "")
+        ec.set (ccnpeek, "stackSize", 1<<20)
+        ec.set (ccnpeek, "StartTime", "4s")
+        ec.set (ccnpeek, "StopTime", "120s")
+        ec.register_connection(ccnpeek, nsnode2)
+
+        ccncat = ec.register_resource("ns3::LinuxDceApplication")
+        ec.set (ccncat, "binary", "ccncat")
+        ec.set (ccncat, "arguments", "ccnx:/test/bunny.ts")
+        ec.set (ccncat, "stdinFile", "")
+        ec.set (ccncat, "stackSize", 1<<20)
+        ec.set (ccncat, "StartTime", "4s")
+        ec.set (ccncat, "StopTime", "120s")
+        ec.register_connection(ccncat, nsnode2)
+
+        ccnkill2 = ec.register_resource("ns3::LinuxDceApplication")
+        ec.set (ccnkill2, "binary", "ccnsmoketest")
+        ec.set (ccnkill2, "arguments", "kill")
+        ec.set (ccnkill2, "stdinFile", "")
+        ec.set (ccnkill2, "stackSize", 1<<20)
+        ec.set (ccnkill2, "StartTime", "110s")
+        ec.set (ccnkill2, "StopTime", "120s")
+        ec.register_connection(ccnkill2, nsnode2)
+
+        ec.deploy()
+
+        ec.wait_finished([ping])
+
+        print ec.trace(ccncat, "cmdline")
+        """
+        expected = "ping -c 10 -s 1000 10.0.0.2"
+        cmdline = ec.trace(ping, "cmdline")
+        self.assertTrue(cmdline.find(expected) > -1, cmdline)
+        """
+
+        print ec.trace(cccat, "status")
+        """
+        expected = "Start Time: NS3 Time:          1s ("
+        status = ec.trace(ping, "status")
+        self.assertTrue(status.find(expected) > -1, status)
+        """
+
+        print len(ec.trace(ccncat, "stdout"))
+        """
+        expected = "10 packets transmitted, 10 received, 0% packet loss, time 9002ms"
+        stdout = ec.trace(ping, "stdout")
+        self.assertTrue(stdout.find(expected) > -1, stdout)
+        """
+
+        stderr = ec.trace(simu, "stderr")
+        expected = "DceApplication:StartApplication"
+        self.assertTrue(stderr.find(expected) > -1, stderr)
+
+        ec.shutdown()
+
 
 
 if __name__ == '__main__':

@@ -107,19 +107,19 @@ class LinuxApplication(ResourceManager):
                 "cleanHome is set to True (This will delete all sources). ",
                 flags = Flags.Design)
         files = Attribute("files", 
-                "Space-separated list of regular miscellaneous files to be uploaded "
+                "semi-colon separated list of regular miscellaneous files to be uploaded "
                 "to ${SHARE} directory. "
                 "Files are globally available for all experiments unless "
                 "cleanHome is set to True (This will delete all files). ",
                 flags = Flags.Design)
         libs = Attribute("libs", 
-                "Space-separated list of libraries (e.g. .so files) to be uploaded "
+                "semi-colon separated list of libraries (e.g. .so files) to be uploaded "
                 "to ${LIB} directory. "
                 "Libraries are globally available for all experiments unless "
                 "cleanHome is set to True (This will delete all files). ",
                 flags = Flags.Design)
         bins = Attribute("bins", 
-                "Space-separated list of binary files to be uploaded "
+                "semi-colon separated list of binary files to be uploaded "
                 "to ${BIN} directory. "
                 "Binaries are globally available for all experiments unless "
                 "cleanHome is set to True (This will delete all files). ",

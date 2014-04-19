@@ -614,6 +614,14 @@ class ResourceManager(Logger):
         attr = self._attrs[name]
         return attr.has_flag(flag)
 
+    def has_attribute(self, name):
+        """ Returns true if the RM has an attribute with name
+
+        :param name: name of the attribute
+        :type name: string
+        """
+        return name in self._attrs
+
     def enable_trace(self, name):
         """ Explicitly enable trace generation
 
