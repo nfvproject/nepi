@@ -637,11 +637,15 @@ class LinuxApplication(ResourceManager):
     def do_release(self):
         self.info("Releasing resource")
 
+        self.do_stop()
+        
         tear_down = self.get("tearDown")
         if tear_down:
             self.node.execute(tear_down)
 
-        self.do_stop()
+        hard_release = self.get("hardRelease")
+        if hard_release:
+            self.node.rmdir(self.app_home)
 
         super(LinuxApplication, self).do_release()
         
