@@ -875,12 +875,6 @@ class ExperimentController(object):
         if not guids:
             guids = self.resources
 
-        # Remove all pending tasks from the scheduler queue
-        for tid in list(self._scheduler.pending):
-            self._scheduler.remove(tid)
-
-        self._runner.empty()
-
         for guid in guids:
             rm = self.get_resource(guid)
             self.schedule("0s", rm.release)
@@ -898,6 +892,13 @@ class ExperimentController(object):
         # If there was a major failure we can't exit gracefully
         if self._state == ECState.FAILED:
             raise RuntimeError("EC failure. Can not exit gracefully")
+
+        # Remove all pending tasks from the scheduler queue
+        for tid in list(self._scheduler.pending):
+            self._scheduler.remove(tid)
+
+        # Remove pending tasks from the workers queue
+        self._runner.empty()
 
         self.release()
 
