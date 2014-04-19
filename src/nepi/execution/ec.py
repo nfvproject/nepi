@@ -869,6 +869,9 @@ class ExperimentController(object):
             :type guids: list
 
         """
+        if isinstance(guids, int):
+            guids = [guids]
+
         if not guids:
             guids = self.resources
 
@@ -883,6 +886,10 @@ class ExperimentController(object):
             self.schedule("0s", rm.release)
 
         self.wait_released(guids)
+
+        for guid in guids:
+            if self.get(guid, "hardRelease"):
+                del self._resources[guid]
         
     def shutdown(self):
         """ Releases all resources and stops the ExperimentController

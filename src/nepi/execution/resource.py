@@ -193,8 +193,17 @@ class ResourceManager(Logger):
                 type = Types.Bool,
                 default = True,
                 flags = Flags.Design)
+        hard_release = Attribute("hardRelease", 
+                "Forces removal of all result files and directories associated "
+                "to the RM upon resource release. After release the RM will "
+                "be removed from the EC and the results will not longer be "
+                "accessible",
+                type = Types.Bool,
+                default = False,
+                flags = Flags.Design)
 
         cls._register_attribute(critical)
+        cls._register_attribute(hard_release)
         
     @classmethod
     def _register_traces(cls):
