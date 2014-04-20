@@ -701,7 +701,8 @@ class LinuxNode(ResourceManager):
         if err:
             msg = " Failed to upload files - src: %s dst: %s" %  (";".join(src), dst) 
             self.error(msg, out, err)
-
+            
+            msg = "%s out: %s err: %s" % (msg, out, err)
             if raise_on_error:
                 raise RuntimeError, msg
 
