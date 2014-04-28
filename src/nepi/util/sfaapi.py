@@ -38,15 +38,8 @@ class SFAAPI(object):
     """
     API for quering the SFA service.
     """
-    def __init__(self, sfi_user, sfi_auth, sfi_registry, sfi_sm, private_key,
+    def __init__(self, sfi_user, sfi_auth, sfi_registry, sfi_sm, private_key, ec,
         timeout):
-
-        self.sfi_user = sfi_user
-        self.sfi_auth = sfi_auth
-        self.sfi_registry = sfi_registry
-        self.sfi_sm = sfi_sm
-        self.private_key = private_key
-        self.timeout = timeout
 
         self._blacklist = set()
         self._reserved = set()
@@ -55,7 +48,30 @@ class SFAAPI(object):
         self._log = Logger("SFA API")
         self.api = Sfi()
         self.rspec_proc = SfaRSpecProcessing()
-        self.lock = threading.Lock()
+        self.lock_slice = threading.Lock()
+        self.lock_blist = threading.Lock()
+        self.lock_resv = threading.Lock()
+
+        self.api.options.timeout = timeout
+        self.api.options.raw = None
+        self.api.options.user = sfi_user
+        self.api.options.auth = sfi_auth
+        self.api.options.registry = sfi_registry
+        self.api.options.sm = sfi_sm
+        self.api.options.user_private_key = private_key
+
+        # Load blacklist from file
+        if ec.get_global('PlanetlabNode', 'persist_blacklist'):
+            self._set_blacklist()
+
+    def _set_blacklist(self):
+        nepi_home = os.path.join(os.path.expanduser("~"), ".nepi")
+        plblacklist_file = os.path.join(nepi_home, "plblacklist.txt")
+        with open(plblacklist_file, 'r') as f:
+            hosts_tobl = f.read().splitlines()
+            if hosts_tobl:
+                for host in hosts_tobl:
+                    self._blacklist.add(host)
 
     def _sfi_exec_method(self, command, slicename=None, rspec=None, urn=None):
         """
@@ -78,17 +94,12 @@ class SFAAPI(object):
 
         else: raise TypeError("Sfi method not supported")
 
-        self.api.options.timeout = self.timeout
-        self.api.options.raw = None
-        self.api.options.user = self.sfi_user
-        self.api.options.auth = self.sfi_auth
-        self.api.options.registry = self.sfi_registry
-        self.api.options.sm = self.sfi_sm
-        self.api.options.user_private_key = self.private_key
-
         self.api.command = command
         self.api.command_parser = self.api.create_parser_command(self.api.command)
         (command_options, command_args) = self.api.command_parser.parse_args(args_list)
+        #print "1 %s" % command_options.info
+        #command_options.info = ""
+        #print "2 %s" % command_options.info
         self.api.command_options = command_options
         self.api.read_config()
         self.api.bootstrap()
@@ -133,10 +144,10 @@ class SFAAPI(object):
         Get resources and info from slice.
         """
         try:
-            with self.lock:
+            with self.lock_slice:
                 rspec_slice = self._sfi_exec_method('describe', slicename)
         except:
-            raise RuntimeError("Fail to allocate resource for slice %s" % slicename)
+            raise RuntimeError("Fail to describe resource for slice %s" % slicename)
 
         result = self.rspec_proc.parse_sfa_rspec(rspec_slice)
         return result
@@ -154,7 +165,7 @@ class SFAAPI(object):
 
         slice_resources = self.get_slice_resources(slicename)['resource']
 
-        with self.lock:
+        with self.lock_slice:
             if slice_resources:
                 slice_resources_hrn = self.get_resources_hrn(slice_resources)
                 for s_hrn_key, s_hrn_value in slice_resources_hrn.iteritems():
@@ -207,20 +218,28 @@ class SFAAPI(object):
         return resources_urn
 
     def blacklist_resource(self, resource_hrn):
-        self._blacklist.add(resource_hrn)
+        with self.lock_blist:
+            self._blacklist.add(resource_hrn)
+        with self.lock_resv:
+            if resource_hrn in self._reserved:
+                self._reserved.remove(resource_hrn)
 
-    def blacklisted(self):
-        return self._blacklist
-
-    def unblacklist_resource(self, resource_hrn):
-        del self._blacklist[resource_hrn]
+    def blacklisted(self, resource_hrn):
+        with self.lock_blist:
+            if resource_hrn in self._blacklist:
+                return True
+        return False
 
     def reserve_resource(self, resource_hrn):
         self._reserved.add(resource_hrn)
 
-    def reserved(self):
-        return self._reserved
-
+    def reserved(self, resource_hrn):
+        with self.lock_resv:
+            if resource_hrn in self._reserved:
+                return True
+            else:
+                self.reserve_resource(resource_hrn)
+                return False
 
 class SFAAPIFactory(object):
     """
@@ -234,7 +253,7 @@ class SFAAPIFactory(object):
 
    
     @classmethod
-    def get_api(cls, sfi_user, sfi_auth, sfi_registry, sfi_sm, private_key,
+    def get_api(cls, sfi_user, sfi_auth, sfi_registry, sfi_sm, private_key, ec,
             timeout = None):
 
         if sfi_user and sfi_sm:
@@ -244,7 +263,7 @@ class SFAAPIFactory(object):
 
                 if not api:
                     api = SFAAPI(sfi_user, sfi_auth, sfi_registry, sfi_sm, private_key,
-                        timeout)
+                        ec, timeout)
                     cls._apis[key] = api
 
                 return api

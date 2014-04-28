@@ -26,6 +26,8 @@ from nepi.util.execfuncs import lexec
 from nepi.util import sshfuncs
 
 from random import randint
+import re
+import weakref
 import time
 import socket
 import threading
@@ -37,8 +39,6 @@ class PlanetlabSfaNode(LinuxNode):
     _help = "Controls a PlanetLab host accessible using a SSH key " \
             "and provisioned using SFA"
     _backend = "planetlab"
-
-    lock = threading.Lock()
 
     @classmethod
     def _register_attributes(cls):
@@ -145,14 +145,13 @@ class PlanetlabSfaNode(LinuxNode):
                                     "year"],
                         flags = Flags.Filter)
 
-#        plblacklist = Attribute("blacklist", "Take into account the file plblacklist \
-#                        in the user's home directory under .nepi directory. This file \
-#                        contains a list of PL nodes to blacklist, and at the end \
-#                        of the experiment execution the new blacklisted nodes are added.",
-#                    type = Types.Bool,
-#                    default = True,
-#                    flags = Flags.ReadOnly)
-#
+        plblacklist = Attribute("persist_blacklist", "Take into account the file plblacklist \
+                        in the user's home directory under .nepi directory. This file \
+                        contains a list of PL nodes to blacklist, and at the end \
+                        of the experiment execution the new blacklisted nodes are added.",
+                    type = Types.Bool,
+                    default = False,
+                    flags = Flags.Global)
 
         cls._register_attribute(sfa_user)
         cls._register_attribute(sfa_private_key)
@@ -170,10 +169,12 @@ class PlanetlabSfaNode(LinuxNode):
         cls._register_attribute(min_cpu)
         cls._register_attribute(max_cpu)
         cls._register_attribute(timeframe)
+        cls._register_attribute(plblacklist)
 
     def __init__(self, ec, guid):
         super(PlanetlabSfaNode, self).__init__(ec, guid)
-
+        
+        self._ecobj = weakref.ref(ec)
         self._sfaapi = None
         self._node_to_provision = None
         self._slicenode = False
@@ -198,13 +199,15 @@ class PlanetlabSfaNode(LinuxNode):
             sfa_registry = "http://sfa3.planet-lab.eu:12345/"
             sfa_private_key = self.get("sfaPrivateKey")
 
-            self._sfaapi = SFAAPIFactory.get_api(sfa_user, sfa_auth, 
-                sfa_registry, sfa_sm, sfa_private_key)
-            
-            if not self._sfaapi:
-                self.fail_sfaapi()
+            _sfaapi = SFAAPIFactory.get_api(sfa_user, sfa_auth, 
+                sfa_registry, sfa_sm, sfa_private_key, self._ecobj())
 
-        return self._sfaapi
+            if not _sfaapi:
+                self.fail_sfaapi()
+    
+            self._sfaapi = weakref.ref(_sfaapi)
+
+        return self._sfaapi()
 
     def do_discover(self):
         """
@@ -222,16 +225,12 @@ class PlanetlabSfaNode(LinuxNode):
             # the user specified one particular node to be provisioned
             self._hostname = True
             host_hrn = nodes[hostname]
-            print host_hrn
 
             # check that the node is not blacklisted or being provisioned
             # by other RM
-            with PlanetlabSfaNode.lock:
-                plist = self.sfaapi.reserved()
-                blist = self.sfaapi.blacklisted()
-                if host_hrn not in blist and host_hrn not in plist:
-                
-                    # check that is really alive, by performing ping
+            if not self._blacklisted(host_hrn):
+                if not self._reserved(host_hrn):
+                    # Node in reservation
                     ping_ok = self._do_ping(hostname)
                     if not ping_ok:
                         self._blacklist_node(host_hrn)
@@ -239,46 +238,53 @@ class PlanetlabSfaNode(LinuxNode):
                     else:
                         if self._check_if_in_slice([host_hrn]):
                             self._slicenode = True
-                        self._put_node_in_provision(host_hrn)
                         self._node_to_provision = host_hrn
-                else:
-                    self.fail_node_not_available(hostname)
-            super(PlanetlabSfaNode, self).do_discover()
+                        super(PlanetlabSfaNode, self).do_discover()
         
-        else:
-            # the user specifies constraints based on attributes, zero, one or 
-            # more nodes can match these constraints 
-            nodes = self._filter_based_on_attributes()
+#        else:
+#            # the user specifies constraints based on attributes, zero, one or 
+#            # more nodes can match these constraints 
+#            nodes = self._filter_based_on_attributes()
+#
+#            # nodes that are already part of user's slice have the priority to
+#            # provisioned
+#            nodes_inslice = self._check_if_in_slice(nodes)
+#            nodes_not_inslice = list(set(nodes) - set(nodes_inslice))
+#            
+#            node_id = None
+#            if nodes_inslice:
+#                node_id = self._choose_random_node(nodes_inslice)
+#                self._slicenode = True                
+#                
+#            if not node_id:
+#                # Either there were no matching nodes in the user's slice, or
+#                # the nodes in the slice  were blacklisted or being provisioned
+#                # by other RM. Note nodes_not_inslice is never empty
+#                node_id = self._choose_random_node(nodes_not_inslice)
+#                self._slicenode = False
+#
+#            if node_id:
+#                self._node_to_provision = node_id
+#                try:
+#                    self._set_hostname_attr(node_id)
+#                    self.info(" Selected node to provision ")
+#                    super(PlanetlabSfaNode, self).do_discover()
+#                except:
+#                    with PlanetlabSfaNode.lock:
+#                        self._blacklist_node(node_id)
+#                    self.do_discover()
+#            else:
+#               self.fail_not_enough_nodes() 
+#    
+    def _blacklisted(self, host_hrn):
+        if self.sfaapi.blacklisted(host_hrn):
+           self.fail_node_not_available(hostname)
+        return False
 
-            # nodes that are already part of user's slice have the priority to
-            # provisioned
-            nodes_inslice = self._check_if_in_slice(nodes)
-            nodes_not_inslice = list(set(nodes) - set(nodes_inslice))
-            
-            node_id = None
-            if nodes_inslice:
-                node_id = self._choose_random_node(nodes_inslice)
-                self._slicenode = True                
-                
-            if not node_id:
-                # Either there were no matching nodes in the user's slice, or
-                # the nodes in the slice  were blacklisted or being provisioned
-                # by other RM. Note nodes_not_inslice is never empty
-                node_id = self._choose_random_node(nodes_not_inslice)
-                self._slicenode = False
-
-            if node_id:
-                self._node_to_provision = node_id
-                try:
-                    self._set_hostname_attr(node_id)
-                    self.info(" Selected node to provision ")
-                    super(PlanetlabSfaNode, self).do_discover()
-                except:
-                    with PlanetlabSfaNode.lock:
-                        self._blacklist_node(node_id)
-                    self.do_discover()
-            else:
-               self.fail_not_enough_nodes() 
+    def _reserved(self, host_hrn):
+        if self.sfaapi.reserved(host_hrn):
+            self.fail_node_not_available(hostname)
+        return False
             
     def do_provision(self):
         """
@@ -306,10 +312,12 @@ class PlanetlabSfaNode(LinuxNode):
                     cmd = 'echo \'GOOD NODE\''
                     ((out, err), proc) = self.execute(cmd)
                     if out.find("GOOD NODE") < 0:
+                        self.debug( "No SSH connection, waiting 60s" )
                         t = t + 60
                         time.sleep(60)
                         continue
                     else:
+                        self.debug( "SSH OK" )
                         ssh_ok = True
                         continue
             else:
@@ -322,10 +330,8 @@ class PlanetlabSfaNode(LinuxNode):
                 # the timeout was reach without establishing ssh connection
                 # the node is blacklisted, deleted from the slice, and a new
                 # node to provision is discovered
-                with PlanetlabSfaNode.lock:
-                    self.warn(" Could not SSH login ")
-                    self._blacklist_node(node)
-                    #self._delete_node_from_slice(node)
+                self.warn(" Could not SSH login ")
+                self._blacklist_node(node)
                 self.do_discover()
                 continue
             
@@ -338,10 +344,8 @@ class PlanetlabSfaNode(LinuxNode):
                 ((out2, err2), proc2) = self.execute(cmd)
                 if out1.find("/proc type proc") < 0 or \
                     "Read-only file system".lower() in err2.lower():
-                    with PlanetlabNode.lock:
-                        self.warn(" Corrupted file system ")
-                        self._blacklist_node(node)
-                        #self._delete_node_from_slice(node)
+                    self.warn(" Corrupted file system ")
+                    self._blacklist_node(node)
                     self.do_discover()
                     continue
             
@@ -353,183 +357,183 @@ class PlanetlabSfaNode(LinuxNode):
             
         super(PlanetlabSfaNode, self).do_provision()
 
-    def _filter_based_on_attributes(self):
-        """
-        Retrive the list of nodes hrn that match user's constraints 
-        """
-        # Map user's defined attributes with tagnames of PlanetLab
-        timeframe = self.get("timeframe")[0]
-        attr_to_tags = {
-            'city' : 'city',
-            'country' : 'country',
-            'region' : 'region',
-            'architecture' : 'arch',
-            'operatingSystem' : 'fcdistro',
-            'minReliability' : 'reliability%s' % timeframe,
-            'maxReliability' : 'reliability%s' % timeframe,
-            'minBandwidth' : 'bw%s' % timeframe,
-            'maxBandwidth' : 'bw%s' % timeframe,
-            'minLoad' : 'load%s' % timeframe,
-            'maxLoad' : 'load%s' % timeframe,
-            'minCpu' : 'cpu%s' % timeframe,
-            'maxCpu' : 'cpu%s' % timeframe,
-        }
-        
-        nodes_hrn = []
-        filters = {}
-
-        for attr_name, attr_obj in self._attrs.iteritems():
-            attr_value = self.get(attr_name)
-            
-            if attr_value is not None and attr_obj.has_flag(Flags.Filter) and \
-                attr_name != 'timeframe':
-        
-                attr_tag = attr_to_tags[attr_name]
-                filters['tagname'] = attr_tag
-
-                # filter nodes by fixed constraints e.g. operating system
-                if not 'min' in attr_name and not 'max' in attr_name:
-                    filters['value'] = attr_value
-                    nodes_hrn = self._filter_by_fixed_attr(filters, nodes_hrn)
-
-                # filter nodes by range constraints e.g. max bandwidth
-                elif ('min' or 'max') in attr_name:
-                    nodes_hrn = self._filter_by_range_attr(attr_name, attr_value, filters, nodes_hrn)
-
-        if not filters:
-            nodes = self.sfaapi.get_resources_hrn()
-            for node in nodes:
-                nodes_hrn.append(node[node.key()])
-        return nodes_hrn
-                    
-    def _filter_by_fixed_attr(self, filters, nodes_hrn):
-        """
-        Query SFA API for nodes matching fixed attributes defined by the
-        user
-        """
-        pass
-#        node_tags = self.sfaapi.get_resources_tags(filters)
-#        if node_tags is not None:
+#    def _filter_based_on_attributes(self):
+#        """
+#        Retrive the list of nodes hrn that match user's constraints 
+#        """
+#        # Map user's defined attributes with tagnames of PlanetLab
+#        timeframe = self.get("timeframe")[0]
+#        attr_to_tags = {
+#            'city' : 'city',
+#            'country' : 'country',
+#            'region' : 'region',
+#            'architecture' : 'arch',
+#            'operatingSystem' : 'fcdistro',
+#            'minReliability' : 'reliability%s' % timeframe,
+#            'maxReliability' : 'reliability%s' % timeframe,
+#            'minBandwidth' : 'bw%s' % timeframe,
+#            'maxBandwidth' : 'bw%s' % timeframe,
+#            'minLoad' : 'load%s' % timeframe,
+#            'maxLoad' : 'load%s' % timeframe,
+#            'minCpu' : 'cpu%s' % timeframe,
+#            'maxCpu' : 'cpu%s' % timeframe,
+#        }
+#        
+#        nodes_hrn = []
+#        filters = {}
 #
-#            if len(nodes_id) == 0:
-#                # first attribute being matched
-#                for node_tag in node_tags:
-#                    nodes_id.append(node_tag['node_id'])
-#            else:
-#                # remove the nodes ids that don't match the new attribute
-#                # that is being match
-#
-#                nodes_id_tmp = []
-#                for node_tag in node_tags:
-#                    if node_tag['node_id'] in nodes_id:
-#                        nodes_id_tmp.append(node_tag['node_id'])
-#
-#                if len(nodes_id_tmp):
-#                    nodes_id = set(nodes_id) & set(nodes_id_tmp)
-#                else:
-#                    # no node from before match the new constraint
-#                    self.fail_discovery()
-#        else:
-#            # no nodes match the filter applied
-#            self.fail_discovery()
-#
-#        return nodes_id
-
-    def _filter_by_range_attr(self, attr_name, attr_value, filters, nodes_id):
-        """
-        Query PLCAPI for nodes ids matching attributes defined in a certain
-        range, by the user
-        """
-        pass
-#        node_tags = self.plapi.get_node_tags(filters)
-#        if node_tags:
+#        for attr_name, attr_obj in self._attrs.iteritems():
+#            attr_value = self.get(attr_name)
 #            
-#            if len(nodes_id) == 0:
-#                # first attribute being matched
-#                for node_tag in node_tags:
-# 
-#                   # check that matches the min or max restriction
-#                    if 'min' in attr_name and node_tag['value'] != 'n/a' and \
-#                        float(node_tag['value']) > attr_value:
-#                        nodes_id.append(node_tag['node_id'])
+#            if attr_value is not None and attr_obj.has_flag(Flags.Filter) and \
+#                attr_name != 'timeframe':
+#        
+#                attr_tag = attr_to_tags[attr_name]
+#                filters['tagname'] = attr_tag
 #
-#                    elif 'max' in attr_name and node_tag['value'] != 'n/a' and \
-#                        float(node_tag['value']) < attr_value:
-#                        nodes_id.append(node_tag['node_id'])
-#            else:
+#                # filter nodes by fixed constraints e.g. operating system
+#                if not 'min' in attr_name and not 'max' in attr_name:
+#                    filters['value'] = attr_value
+#                    nodes_hrn = self._filter_by_fixed_attr(filters, nodes_hrn)
 #
-#                # remove the nodes ids that don't match the new attribute
-#                # that is being match
-#                nodes_id_tmp = []
-#                for node_tag in node_tags:
+#                # filter nodes by range constraints e.g. max bandwidth
+#                elif ('min' or 'max') in attr_name:
+#                    nodes_hrn = self._filter_by_range_attr(attr_name, attr_value, filters, nodes_hrn)
 #
-#                    # check that matches the min or max restriction and was a
-#                    # matching previous filters
-#                    if 'min' in attr_name and node_tag['value'] != 'n/a' and \
-#                        float(node_tag['value']) > attr_value and \
-#                        node_tag['node_id'] in nodes_id:
-#                        nodes_id_tmp.append(node_tag['node_id'])
+#        if not filters:
+#            nodes = self.sfaapi.get_resources_hrn()
+#            for node in nodes:
+#                nodes_hrn.append(node[node.key()])
+#        return nodes_hrn
+#                    
+#    def _filter_by_fixed_attr(self, filters, nodes_hrn):
+#        """
+#        Query SFA API for nodes matching fixed attributes defined by the
+#        user
+#        """
+#        pass
+##        node_tags = self.sfaapi.get_resources_tags(filters)
+##        if node_tags is not None:
+##
+##            if len(nodes_id) == 0:
+##                # first attribute being matched
+##                for node_tag in node_tags:
+##                    nodes_id.append(node_tag['node_id'])
+##            else:
+##                # remove the nodes ids that don't match the new attribute
+##                # that is being match
+##
+##                nodes_id_tmp = []
+##                for node_tag in node_tags:
+##                    if node_tag['node_id'] in nodes_id:
+##                        nodes_id_tmp.append(node_tag['node_id'])
+##
+##                if len(nodes_id_tmp):
+##                    nodes_id = set(nodes_id) & set(nodes_id_tmp)
+##                else:
+##                    # no node from before match the new constraint
+##                    self.fail_discovery()
+##        else:
+##            # no nodes match the filter applied
+##            self.fail_discovery()
+##
+##        return nodes_id
 #
-#                    elif 'max' in attr_name and node_tag['value'] != 'n/a' and \
-#                        float(node_tag['value']) < attr_value and \
-#                        node_tag['node_id'] in nodes_id:
-#                        nodes_id_tmp.append(node_tag['node_id'])
+#    def _filter_by_range_attr(self, attr_name, attr_value, filters, nodes_id):
+#        """
+#        Query PLCAPI for nodes ids matching attributes defined in a certain
+#        range, by the user
+#        """
+#        pass
+##        node_tags = self.plapi.get_node_tags(filters)
+##        if node_tags:
+##            
+##            if len(nodes_id) == 0:
+##                # first attribute being matched
+##                for node_tag in node_tags:
+## 
+##                   # check that matches the min or max restriction
+##                    if 'min' in attr_name and node_tag['value'] != 'n/a' and \
+##                        float(node_tag['value']) > attr_value:
+##                        nodes_id.append(node_tag['node_id'])
+##
+##                    elif 'max' in attr_name and node_tag['value'] != 'n/a' and \
+##                        float(node_tag['value']) < attr_value:
+##                        nodes_id.append(node_tag['node_id'])
+##            else:
+##
+##                # remove the nodes ids that don't match the new attribute
+##                # that is being match
+##                nodes_id_tmp = []
+##                for node_tag in node_tags:
+##
+##                    # check that matches the min or max restriction and was a
+##                    # matching previous filters
+##                    if 'min' in attr_name and node_tag['value'] != 'n/a' and \
+##                        float(node_tag['value']) > attr_value and \
+##                        node_tag['node_id'] in nodes_id:
+##                        nodes_id_tmp.append(node_tag['node_id'])
+##
+##                    elif 'max' in attr_name and node_tag['value'] != 'n/a' and \
+##                        float(node_tag['value']) < attr_value and \
+##                        node_tag['node_id'] in nodes_id:
+##                        nodes_id_tmp.append(node_tag['node_id'])
+##
+##                if len(nodes_id_tmp):
+##                    nodes_id = set(nodes_id) & set(nodes_id_tmp)
+##                else:
+##                    # no node from before match the new constraint
+##                    self.fail_discovery()
+##
+##        else: #TODO CHECK
+##            # no nodes match the filter applied
+##            self.fail_discovery()
+##
+##        return nodes_id
+#        
+#    def _choose_random_node(self, nodes):
+#        """
+#        From the possible nodes for provision, choose randomly to decrese the
+#        probability of different RMs choosing the same node for provision
+#        """
+#        size = len(nodes)
+#        while size:
+#            size = size - 1
+#            index = randint(0, size)
+#            node_id = nodes[index]
+#            nodes[index] = nodes[size]
 #
-#                if len(nodes_id_tmp):
-#                    nodes_id = set(nodes_id) & set(nodes_id_tmp)
-#                else:
-#                    # no node from before match the new constraint
-#                    self.fail_discovery()
+#            # check the node is not blacklisted or being provision by other RM
+#            # and perform ping to check that is really alive
+#            with PlanetlabNode.lock:
 #
-#        else: #TODO CHECK
-#            # no nodes match the filter applied
-#            self.fail_discovery()
+#                blist = self.plapi.blacklisted()
+#                plist = self.plapi.reserved()
+#                if node_id not in blist and node_id not in plist:
+#                    ping_ok = self._do_ping(node_id)
+#                    if not ping_ok:
+#                        self._set_hostname_attr(node_id)
+#                        self.warn(" Node not responding PING ")
+#                        self._blacklist_node(node_id)
+#                    else:
+#                        # discovered node for provision, added to provision list
+#                        self._put_node_in_provision(node_id)
+#                        return node_id
 #
-#        return nodes_id
-        
-    def _choose_random_node(self, nodes):
-        """
-        From the possible nodes for provision, choose randomly to decrese the
-        probability of different RMs choosing the same node for provision
-        """
-        size = len(nodes)
-        while size:
-            size = size - 1
-            index = randint(0, size)
-            node_id = nodes[index]
-            nodes[index] = nodes[size]
-
-            # check the node is not blacklisted or being provision by other RM
-            # and perform ping to check that is really alive
-            with PlanetlabNode.lock:
-
-                blist = self.plapi.blacklisted()
-                plist = self.plapi.reserved()
-                if node_id not in blist and node_id not in plist:
-                    ping_ok = self._do_ping(node_id)
-                    if not ping_ok:
-                        self._set_hostname_attr(node_id)
-                        self.warn(" Node not responding PING ")
-                        self._blacklist_node(node_id)
-                    else:
-                        # discovered node for provision, added to provision list
-                        self._put_node_in_provision(node_id)
-                        return node_id
-
-    def _get_nodes_id(self, filters=None):
-        return self.plapi.get_nodes(filters, fields=['node_id'])
-
+#    def _get_nodes_id(self, filters=None):
+#        return self.plapi.get_nodes(filters, fields=['node_id'])
+#
     def _add_node_to_slice(self, host_hrn):
         self.info(" Adding node to slice ")
         slicename = self.get("username").replace('_', '.')
         slicename = 'ple.' + slicename
         self.sfaapi.add_resource_to_slice(slicename, host_hrn)
 
-    def _delete_node_from_slice(self, node):
-        self.warn(" Deleting node from slice ")
-        slicename = self.get("username")
-        self.plapi.delete_slice_node(slicename, [node])
-
+#    def _delete_node_from_slice(self, node):
+#        self.warn(" Deleting node from slice ")
+#        slicename = self.get("username")
+#        self.plapi.delete_slice_node(slicename, [node])
+#
     def _get_hostname(self):
         hostname = self.get("hostname")
         if hostname:
@@ -539,11 +543,13 @@ class PlanetlabSfaNode(LinuxNode):
 
     def _set_hostname_attr(self, node):
         """
-        Query PLCAPI for the hostname of a certain node id and sets the
+        Query SFAAPI for the hostname of a certain host hrn and sets the
         attribute hostname, it will over write the previous value
         """
-        hostname = self.plapi.get_nodes(node, ['hostname'])
-        self.set("hostname", hostname[0]['hostname'])
+        hosts_hrn = self.sfaapi.get_resources_hrn()
+        for hostname, hrn  in hosts_hrn.iteritems():
+            if hrn == node:
+                self.set("hostname", hostname)
 
     def _check_if_in_slice(self, hosts_hrn):
         """
@@ -554,7 +560,7 @@ class PlanetlabSfaNode(LinuxNode):
         slicename = 'ple.' + slicename
         slice_nodes = self.sfaapi.get_slice_resources(slicename)['resource']
         slice_nodes_hrn = self.sfaapi.get_resources_hrn(slice_nodes)
-        nodes_inslice = list(set(hosts_hrn) & set(slice_nodes_hrn))
+        nodes_inslice = list(set(hosts_hrn) & set(slice_nodes_hrn.values()))
         return nodes_inslice
 
     def _do_ping(self, hostname):
@@ -563,36 +569,35 @@ class PlanetlabSfaNode(LinuxNode):
         """
         ping_ok = False
         ip = self._get_ip(hostname)
-        if not ip: return ping_ok
+        if ip:
+            command = "ping -c4 %s" % ip
+            (out, err) = lexec(command)
 
-        command = "ping -c4 %s" % ip
+            m = re.search("(\d+)% packet loss", str(out))
+            if m and int(m.groups()[0]) < 50:
+                ping_ok = True
 
-        (out, err) = lexec(command)
-        if not str(out).find("2 received") < 0 or not str(out).find("3 received") < 0 or not \
-            str(out).find("4 received") < 0:
-            ping_ok = True
-       
-        return ping_ok 
+        return ping_ok
 
     def _blacklist_node(self, host_hrn):
         """
         Add node mal functioning node to blacklist
         """
-        self.warn(" Blacklisting malfunctioning node ")
+        self.warning(" Blacklisting malfunctioning node ")
         self.sfaapi.blacklist_resource(host_hrn)
         if not self._hostname:
             self.set('hostname', None)
 
-    def _put_node_in_provision(self, host_hrn):
+    def _reserve(self, host_hrn):
         """
         Add node to the list of nodes being provisioned, in order for other RMs
-        to not try to provision the same one again
+        to not try to provision the same one again.
         """
         self.sfaapi.reserve_resource(host_hrn)
 
     def _get_ip(self, hostname):
         """
-        Query PLCAPI for the IP of a node with certain node id
+        Query cache for the IP of a node with certain hostname
         """
         try:
             ip = sshfuncs.gethostbyname(hostname)
@@ -600,11 +605,6 @@ class PlanetlabSfaNode(LinuxNode):
             # Fail while trying to find the IP
             return None
         return ip
-
-    def _get_nodes_hrn(self):
-        nodes = self.sfaapi.get_resouces_hrn()
-
-        
 
     def fail_discovery(self):
         msg = "Discovery failed. No candidates found for node"
@@ -623,9 +623,9 @@ class PlanetlabSfaNode(LinuxNode):
         msg = "Not enough nodes available for provisioning"
         raise RuntimeError, msg
 
-    def fail_plapi(self):
-        msg = "Failing while trying to instanciate the PLC API.\nSet the" + \
-            " attributes pluser and plpassword."
+    def fail_sfaapi(self):
+        msg = "Failing while trying to instanciate the SFA API.\nSet the" + \
+            " attributes sfauser and sfaPrivateKey."
         raise RuntimeError, msg
 
     def valid_connection(self, guid):
