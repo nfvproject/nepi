@@ -23,7 +23,7 @@ from nepi.execution.resource import ResourceManager, clsinit_copy, \
         ResourceState, reschedule_delay
 from nepi.execution.attribute import Attribute, Flags 
 
-from nepi.resources.omf.node import OMFNode
+from nepi.resources.omf.node import OMFNode, confirmation_counter
 from nepi.resources.omf.omf_resource import ResourceGateway, OMFResource
 from nepi.resources.omf.channel import OMFChannel
 from nepi.resources.omf.omf_api_factory import OMFAPIFactory
@@ -81,7 +81,9 @@ class OMFWifiInterface(OMFResource):
         self._alias = self.get('alias')
 
         self.create_id = None
+        self._create_cnt = 0
         self.release_id = None
+        self._release_cnt = 0
         self._topic_iface = None
         self._omf_api = None
         self._type = ""
@@ -164,10 +166,16 @@ class OMFWifiInterface(OMFResource):
         if self.state < ResourceState.PROVISIONED:
             if self._conf == False:
                 self._conf = self.configure_iface()
+                res = self._conf
         if self._conf == True:
-            self.configure_ip()
+            res = self.configure_ip()
+        return res
 
-
+    def check_deploy(self, cid):
+        uid = self._omf_api.check_mailbox("create", cid)
+        if uid : 
+            return uid
+        return False
 
     def do_deploy(self):
         """ Deploy the RM. It means : Get the xmpp client and send messages 
@@ -216,11 +224,12 @@ class OMFWifiInterface(OMFResource):
         self.set('type',self.get('hw_mode'))
 
         if self.get('version') == "5":
-            self.configure_on_omf5()
+            res = self.configure_on_omf5()
         else :
-            self.configure_on_omf6()
+            res = self.configure_on_omf6()
 
-        super(OMFWifiInterface, self).do_deploy()
+        if res:
+            super(OMFWifiInterface, self).do_deploy()
 
     def configure_on_omf6(self):
         if not self.create_id :
@@ -241,23 +250,20 @@ class OMFWifiInterface(OMFResource):
             self.create_id = os.urandom(16).encode('hex')
             self._omf_api.frcp_create( self.create_id, self.node.get('hostname'), "wlan", props = props)
     
-        self.check_deploy(self.create_id)
-        self._omf_api.enroll_topic(self._topic_iface)
-    
-    def check_deploy(self, cid):
-        delay = 1.0
-        for i in xrange(10):
-            uid = self._omf_api.check_mailbox("create", cid)
-            if uid:
-                self._topic_iface = uid
-                break
-            else:
-                time.sleep(delay)
-                delay = delay * 1.5
-        else:
+        if self._create_cnt > confirmation_counter:
             msg = "Couldn't retrieve the confirmation of the creation"
             self.error(msg)
             raise RuntimeError, msg
+
+        uid = self.check_deploy(self.create_id)
+        if not uid:
+            self._create_cnt +=1
+            self.ec.schedule(reschedule_delay, self.deploy)
+            return False
+
+        self._topic_iface = uid
+        self._omf_api.enroll_topic(self._topic_iface)
+        return True
 
     def check_release(self, cid):
         res = self._omf_api.check_mailbox("release", cid)
@@ -274,10 +280,15 @@ class OMFWifiInterface(OMFResource):
                 self.release_id = os.urandom(16).encode('hex')
                 self._omf_api.frcp_release( self.release_id, self.node.get('hostname'),self._topic_iface, res_id=self._topic_iface)
     
-            cid = self.check_release(self.release_id)
-            if not cid:
-                self.ec.schedule(reschedule_delay, self.release)
-                return
+            if self._release_cnt < confirmation_counter:
+                cid = self.check_release(self.release_id)
+                if not cid:
+                    self._release_cnt +=1
+                    self.ec.schedule(reschedule_delay, self.release)
+                    return
+            else:
+                msg = "Couldn't retrieve the confirmation of the release"
+                self.error(msg)
 
         if self._omf_api:
             OMFAPIFactory.release_api(self.get('version'), 

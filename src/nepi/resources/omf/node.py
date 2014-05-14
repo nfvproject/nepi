@@ -26,6 +26,8 @@ from nepi.resources.omf.omf_api_factory import OMFAPIFactory
 
 import time
 
+confirmation_counter = 600
+
 @clsinit_copy
 class OMFNode(OMFResource):
     """
@@ -135,6 +137,14 @@ class OMFNode(OMFResource):
         """
         from nepi.resources.omf.application import OMFApplication
         rm_list = self.get_connected(OMFApplication.get_rtype())
+        if rm_list:
+            for rm in rm_list:
+                if rm.state < ResourceState.RELEASED:
+                    self.ec.schedule(reschedule_delay, self.release)
+                    return 
+
+        from nepi.resources.omf.interface import OMFWifiInterface
+        rm_list = self.get_connected(OMFWifiInterface.get_rtype())
         if rm_list:
             for rm in rm_list:
                 if rm.state < ResourceState.RELEASED:
