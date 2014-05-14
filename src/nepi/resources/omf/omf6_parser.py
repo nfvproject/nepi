@@ -56,10 +56,8 @@ class OMF6Parser(Logger):
 
     def init_mailbox(self):
         self.mailbox['create'] = []
-        self.mailbox['configure'] = []
-        self.mailbox['request'] = []
+        self.mailbox['started'] = []
         self.mailbox['release'] = []
-        self.mailbox['inform'] = []
   
     def _check_for_tag(self, root, namespaces, tag):
         """  Check if an element markup is in the ElementTree
@@ -159,11 +157,15 @@ class OMF6Parser(Logger):
 
     def _inform_status(self, root, namespaces):
         props = self._check_for_props(root, namespaces)
+        uid = self._check_for_tag(root, namespaces, "uid")
         msg = "STATUS -- "
         for elt in props.keys():
             ns, tag = elt.split('}')
             if tag == "it":
                 msg = msg + "membership : " + props[elt]+" -- "
+            elif tag == "event":
+                self.mailbox['started'].append(uid)
+                msg = msg + "event : " + props[elt]+" -- "
             else:
                 msg = msg + tag +" : " + props[elt]+" -- "
         msg = msg + " STATUS "
@@ -218,12 +220,11 @@ class OMF6Parser(Logger):
                 if binary == attr:
                     self.mailbox[itype].remove(res)
                     return uid
-        elif itype == "release":
+        else :
             for res in self.mailbox[itype]:
                 if attr == res:
                     self.mailbox[itype].remove(res)
                     return res
-           
                
 
     def handle(self, iq):

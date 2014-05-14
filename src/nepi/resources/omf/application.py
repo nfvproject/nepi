@@ -24,7 +24,7 @@ from nepi.execution.resource import ResourceManager, clsinit_copy, \
         ResourceState, reschedule_delay
 from nepi.execution.attribute import Attribute, Flags 
 from nepi.resources.omf.omf_resource import ResourceGateway, OMFResource
-from nepi.resources.omf.node import OMFNode
+from nepi.resources.omf.node import OMFNode, confirmation_counter
 from nepi.resources.omf.omf_api_factory import OMFAPIFactory
 
 from nepi.util import sshfuncs
@@ -92,7 +92,10 @@ class OMFApplication(OMFResource):
         self._omf_api = None
         self._topic_app = None
         self.create_id = None
+        self._create_cnt = 0
+        self._start_cnt = 0
         self.release_id = None
+        self._release_cnt = 0
 
         self.add_set_hook()
 
@@ -213,12 +216,18 @@ class OMFApplication(OMFResource):
     
                 self.create_id = os.urandom(16).encode('hex')
                 self._omf_api.frcp_create( self.create_id, self.node.get('hostname'), "application", props = props)
-    
+   
+            if self._create_cnt > confirmation_counter:
+                msg = "Couldn't retrieve the confirmation of the creation"
+                self.error(msg)
+                raise RuntimeError, msg
+
             uid = self.check_deploy(self.create_id)
             if not uid:
+                self._create_cnt +=1
                 self.ec.schedule(reschedule_delay, self.deploy)
                 return
-        
+
             self._topic_app = uid
             self._omf_api.enroll_topic(self._topic_app)
 
@@ -255,17 +264,34 @@ class OMFApplication(OMFResource):
                 self.get('args'), self.get('path'), self.get('env'))
         else:
             #For OMF 6
-            props = {}
-            props['state'] = "running"
+            if self._start_cnt == 0:
+                props = {}
+                props['state'] = "running"
     
-            guards = {}
-            guards['type'] = "application"
-            guards['name'] = self.get('command')
+                guards = {}
+                guards['type'] = "application"
+                guards['name'] = self.get('command')
 
-            self._omf_api.frcp_configure(self._topic_app, props = props, guards = guards )
+                self._omf_api.frcp_configure(self._topic_app, props = props, guards = guards )
 
+            if self._start_cnt > confirmation_counter:
+                msg = "Couldn't retrieve the confirmation that the application started"
+                self.error(msg)
+                raise RuntimeError, msg
+
+            res = self.check_start(self._topic_app)
+            if not res:
+                self._start_cnt +=1
+                self.ec.schedule(reschedule_delay, self.start)
+                return
 
         super(OMFApplication, self).do_start()
+
+    def check_start(self, uid):
+        res = self._omf_api.check_mailbox("started", uid)
+        if res : 
+            return True
+        return False
 
     def do_stop(self):
         """ Stop the RM. It means : Send Xmpp Message Using OMF protocol to 
@@ -292,10 +318,15 @@ class OMFApplication(OMFResource):
                 self.release_id = os.urandom(16).encode('hex')
                 self._omf_api.frcp_release( self.release_id, self.node.get('hostname'),self._topic_app, res_id=self._topic_app)
     
-            cid = self.check_release(self.release_id)
-            if not cid:
-                self.ec.schedule(reschedule_delay, self.release)
-                return
+            if self._release_cnt < confirmation_counter:
+                cid = self.check_release(self.release_id)
+                if not cid:
+                    self._release_cnt +=1
+                    self.ec.schedule(reschedule_delay, self.release)
+                    return
+            else:
+                msg = "Couldn't retrieve the confirmation of the release"
+                self.error(msg)
 
         if self._omf_api:
             OMFAPIFactory.release_api(self.get('version'), 
