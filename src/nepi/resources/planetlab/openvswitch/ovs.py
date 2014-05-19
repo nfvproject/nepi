@@ -29,8 +29,18 @@ import os
 reschedule_delay = "0.5s"
 
 @clsinit_copy                    
-class OVSWitch(LinuxApplication):
-    _rtype = "OVSWitch"
+class OVSSwitch(LinuxApplication):
+    """
+    .. class:: Class Args :
+      
+        :param ec: The Experiment controller
+        :type ec: ExperimentController
+        :param guid: guid of the RM
+        :type guid: int
+
+    """
+
+    _rtype = "OVSSwitch"
     _help = "Runs an OpenVSwitch on a PlanetLab host"
     _backend = "planetlab"
 
@@ -38,7 +48,7 @@ class OVSWitch(LinuxApplication):
 
     @classmethod
     def _register_attributes(cls):
-        """ Register the attributes of OVSWitch RM 
+        """ Register the attributes of OVSSwitch RM 
 
         """
         bridge_name = Attribute("bridge_name", "Name of the switch/bridge",
@@ -63,17 +73,20 @@ class OVSWitch(LinuxApplication):
         :type guid: int
     
         """
-        super(OVSWitch, self).__init__(ec, guid)
-        self._pid = None
-        self._ppid = None
-        self._home = "ovswitch-%s" % self.guid
+        super(OVSSwitch, self).__init__(ec, guid)
+        self._home = "ovsswitch-%s" % self.guid
         self._checks = "ovsChecks-%s" % self.guid
 
     @property
     def node(self):
+        """ Node wthat run the switch
+        """
         node = self.get_connected(PlanetlabNode.get_rtype())
         if node: return node[0]
         return None
+
+    def log_message(self, msg):
+        return " guid %d - OVSSwitch - %s " % (self.guid, msg)
 
     @property
     def ovs_home(self):
@@ -83,66 +96,60 @@ class OVSWitch(LinuxApplication):
     def ovs_checks(self):
         return os.path.join(self.ovs_home, self._checks)
 
-    @property
-    def pid(self):
-        return self._pid
-
-    @property
-    def ppid(self):
-        return self._ppid
-
-#    def valid_connection(self, guid):
-#        """ Check if the connection with the guid in parameter is possible. Only meaningful connections are allowed.
-
-#        :param guid: Guid of the current RM
-#        :type guid: int
-#        :rtype:  Boolean
-
-#        """
-#        rm = self.ec.get_resource(guid)
-#        if rm.get_rtype() in self._authorized_connections:
-#            msg = "Connection between %s %s and %s %s accepted" % \
-#                (self.get_rtype(), self._guid, rm.get_rtype(), guid)
-#            self.debug(msg)
-#            return True
-#        msg = "Connection between %s %s and %s %s refused" % \
-#             (self.get_rtype(), self._guid, rm.get_rtype(), guid)
-#        self.debug(msg)
-#        return False
-
     def valid_connection(self, guid):
-        # TODO: Validate!
-        return True
+        """ Check if the connection with the guid in parameter is possible. Only meaningful connections are allowed.
+
+        :param guid: Guid of the current RM
+        :type guid: int
+        :rtype:  Boolean
+
+        """
+        rm = self.ec.get_resource(guid)
+        if rm.get_rtype() in self._authorized_connections:
+            msg = "Connection between %s %s and %s %s accepted" % \
+                (self.get_rtype(), self._guid, rm.get_rtype(), guid)
+            self.debug(msg)
+            return True
+        msg = "Connection between %s %s and %s %s refused" % \
+             (self.get_rtype(), self._guid, rm.get_rtype(), guid)
+        self.debug(msg)
+        return False
 
     def do_provision(self):
+        """ Create the different OVS folder.
+        """
+
         # create home dir for ovs
         self.node.mkdir(self.ovs_home)
         # create dir for ovs checks
         self.node.mkdir(self.ovs_checks)
         
-        super(OVSWitch, self).do_provision()
+        super(OVSSwitch, self).do_provision()
 				
     def do_deploy(self):
-        """ Wait until node is associated and deployed
+        """ Deploy the OVS Switch : Turn on the server, create the bridges
+            and assign the controller
         """
+
         if not self.node or self.node.state < ResourceState.READY:
             self.ec.schedule(reschedule_delay, self.deploy)
             return
 
         self.do_discover()
         self.do_provision()
+
         self.check_sliver_ovs()
         self.servers_on()
         self.create_bridge()
         self.assign_controller()
         self.ovs_status()
             
-        super(OVSWitch, self).do_deploy()
+        super(OVSSwitch, self).do_deploy()
 
     def check_sliver_ovs(self):  
-        """ Check if sliver-ovs exists. If it does not exist, we interrupt
-        the execution immediately. 
+        """ Check if sliver-ovs exists. If it does not exist, the execution is stopped
         """
+
         cmd = "compgen -c | grep sliver-ovs"			
         out = err = ""
 
@@ -165,8 +172,7 @@ class OVSWitch(LinuxApplication):
         self.debug(msg)
 
     def servers_on(self):
-        """ Start the openvswitch servers and also checking 
-            if they started successfully 
+        """ Start the openvswitch servers and check it
         """
 
         # Start the server
@@ -205,18 +211,12 @@ class OVSWitch(LinuxApplication):
         
         self.info("Server OVS Started Correctly")  
 
-#   def del_old_br(self):
-#        # TODO: Delete old bridges that might exist maybe by adding atribute
-#        """ With ovs-vsctl list-br
-#        """
-#        pass
-
     def create_bridge(self):
-        """ Create the bridge/switch and we check if we have any 
-            error during the SSH connection         
+        """ Create the bridge/switch and check error during SSH connection
         """
+        # TODO: Check if previous bridge exist and delete them. Use ovs-vsctl list-br
         # TODO: Add check for virtual_ip belonging to vsys_tag
-        #self.del_old_br()
+
 	
         if not (self.get("bridge_name") and self.get("virtual_ip_pref")):
             msg = "No assignment in one or both attributes"
@@ -269,8 +269,9 @@ class OVSWitch(LinuxApplication):
         self.info("Controller assigned to the bridge %s" % self.get("bridge_name"))
 	    
     def ovs_status(self):
-        """ Print the status of the bridge					
+        """ Print the status of the bridge				
         """
+
         cmd = "sliver-ovs show | tail -n +2"
         out = err = ""
         (out, err), proc = self.node.run_and_wait(cmd, self.ovs_home,
@@ -284,11 +285,12 @@ class OVSWitch(LinuxApplication):
             self.error(msg)
             raise RuntimeError, msg
         
-        self.info(out)
+        self.debug(out)
 
     def do_release(self):
-        """ Delete the bridge and close the servers.  
-        It need to wait for the others RM (OVSPort and OVSTunnel)
+        """ Delete the bridge and close the server.  
+
+          .. note : It need to wait for the others RM (OVSPort and OVSTunnel)
         to be released before releasing itself
 
         """
@@ -315,5 +317,5 @@ class OVSWitch(LinuxApplication):
             self.error(msg, out, err)
             raise RuntimeError, msg
 
-        super(OVSWitch, self).do_release()
+        super(OVSSwitch, self).do_release()
 

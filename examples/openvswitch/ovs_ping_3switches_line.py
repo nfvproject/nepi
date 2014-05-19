@@ -46,7 +46,7 @@ def add_node(ec, host, user, pl_user, pl_password):
     return node
 
 def add_ovs(ec, bridge_name, virtual_ip_pref, controller_ip, controller_port, node):
-    ovs = ec.register_resource("OVSWitch")
+    ovs = ec.register_resource("OVSSwitch")
     ec.set(ovs, "bridge_name", bridge_name)
     ec.set(ovs, "virtual_ip_pref", virtual_ip_pref)
     ec.set(ovs, "controller_ip", controller_ip)
