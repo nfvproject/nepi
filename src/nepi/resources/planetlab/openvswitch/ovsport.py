@@ -21,7 +21,7 @@
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
         ResourceState
-from nepi.resources.planetlab.openvswitch.ovs import OVSWitch        
+from nepi.resources.planetlab.openvswitch.ovs import OVSSwitch        
 from nepi.resources.planetlab.node import PlanetlabNode        
 from nepi.resources.linux.application import LinuxApplication
 
@@ -43,7 +43,7 @@ class OVSPort(LinuxApplication):
     _help = "Runs an OpenVSwitch on a PlanetLab host"
     _backend = "planetlab"
 
-    _authorized_connections = ["OVSWitch", "Tunnel"]      
+    _authorized_connections = ["OVSSwitch", "OVSTunnel"]      
 
     @classmethod
     def _register_attributes(cls):
@@ -67,9 +67,14 @@ class OVSPort(LinuxApplication):
         self._port_number = None
         self.port_info = []	     
 
+    def log_message(self, msg):
+        return " guid %d - OVSPort - %s " % (self.guid, msg)
+
     @property
     def node(self):
-        rm_list = self.get_connected(OVSWitch.get_rtype())
+        """ Node that run the switch and the ports
+        """
+        rm_list = self.get_connected(OVSSwitch.get_rtype())
         if rm_list:
             for elt in rm_list:
                 node = elt.get_connected(PlanetlabNode.get_rtype())
@@ -77,9 +82,11 @@ class OVSPort(LinuxApplication):
         return node[0]
 
     @property
-    def ovswitch(self):
-        ovswitch = self.get_connected(OVSWitch.get_rtype())
-        if ovswitch: return ovswitch[0]
+    def ovsswitch(self):
+        """ Switch where the port is created
+        """
+        ovsswitch = self.get_connected(OVSSwitch.get_rtype())
+        if ovsswitch: return ovsswitch[0]
         return None
         
     @property
@@ -87,33 +94,21 @@ class OVSPort(LinuxApplication):
         return self._port_number
 
     def valid_connection(self, guid):
-        # TODO: Validate!
-        return True
+        """ Check if the connection is available.
 
-#    def valid_connection(self, guid):
-#        """ Check if the connection is available.
+        :param guid: Guid of the current RM
+        :type guid: int
+        :rtype:  Boolean
 
-#        :param guid: Guid of the current RM
-#        :type guid: int
-#        :rtype:  Boolean
-
-#        """
-#        rm = self.ec.get_resource(guid)
-#        if rm.get_rtype() in self._authorized_connections:
-#            msg = "Connection between %s %s and %s %s accepted" % (self.get_rtype(), self._guid, rm.get_rtype(), guid)
-#            self.debug(msg)
-#            return True
-#        msg = "Connection between %s %s and %s %s refused" % (self.get_rtype(), self._guid, rm.get_rtype(), guid)
-#        self.debug(msg)
-
-    def get_ip(self):
-        """ Return the ip of the node. This data is necessary to
-        create the tunnel.
         """
+        rm = self.ec.get_resource(guid)
+        if rm.get_rtype() in self._authorized_connections:
+            msg = "Connection between %s %s and %s %s accepted" % (self.get_rtype(), self._guid, rm.get_rtype(), guid)
+            self.debug(msg)
+            return True
+        msg = "Connection between %s %s and %s %s refused" % (self.get_rtype(), self._guid, rm.get_rtype(), guid)
+        self.debug(msg)
 
-        import socket
-        return socket.gethostbyname(self.node.get('hostname'))
-    
     def create_port(self):
         """ Create the desired port
         """
@@ -125,20 +120,20 @@ class OVSPort(LinuxApplication):
             self.error(msg)
             raise AttributeError, msg
 
-        if not self.ovswitch:
+        if not self.ovsswitch:
             msg = "The OVSwitch RM is not running"
             self.error(msg)
             raise AttributeError, msg
 
-        cmd = "sliver-ovs create-port %s %s" % (self.ovswitch.get('bridge_name'),
+        cmd = "sliver-ovs create-port %s %s" % (self.ovsswitch.get('bridge_name'),
                                                 self.get('port_name'))   
-        self.node.run(cmd, self.ovswitch.ovs_checks, 
+        self.node.run(cmd, self.ovsswitch.ovs_checks, 
                 stderr = "stdout-%s" % self.get('port_name'), 
                 stdout = "stderr-%s" % self.get('port_name'),
                 sudo = True)
 
         self.info("Created the port %s on switch %s" % (self.get('port_name'),
-                                             self.ovswitch.get('bridge_name')))     
+                                             self.ovsswitch.get('bridge_name')))     
 	    
     def get_local_end(self):
         """ Get the local_endpoint of the port
@@ -150,7 +145,7 @@ class OVSPort(LinuxApplication):
         command = "sliver-ovs get-local-endpoint %s" % self.get('port_name')
         out = err = ""
         (out, err), proc = self.node.run_and_wait(command, 
-                self.ovswitch.ovs_checks,
+                self.ovsswitch.ovs_checks,
                 shfile = "port_number-%s.sh" % self.get('port_name'),
                 pidfile = "port_number_pidfile-%s" % self.get('port_name'),
                 ecodefile = "port_number_exitcode-%s" % self.get('port_name'), 
@@ -169,19 +164,29 @@ class OVSPort(LinuxApplication):
         self.info("The number of the %s is %s" % (self.get('port_name'), 
            self.port_number))
    
-    def set_port_info(self, ip):
+    def set_port_info(self):
+        """ Set all the information about the port inside a list
+        """
+
         info = []
         info.append(self.node.get('hostname'))
+
+        #Return the ip of the node
+        import socket
+        ip = socket.gethostbyname(self.node.get('hostname'))
         info.append(ip)
+
         info.append(self.get('port_name'))
-        info.append(self.ovswitch.get('virtual_ip_pref'))
+        info.append(self.ovsswitch.get('virtual_ip_pref'))
         info.append(self.port_number)
         return info
 
     def switch_connect_command(self, local_port_name, 
             remote_ip, remote_port_num):
-        """ Script for switch links
+        """ Script to create the connection from a switch to a 
+             remote endpoint
         """
+
         command = ["sliver-ovs"]
         command.append("set-remote-endpoint ")
         command.append("%s " % local_port_name)
@@ -192,22 +197,25 @@ class OVSPort(LinuxApplication):
         return command
         
     def do_deploy(self):
-        """ Wait until ovswitch is started
+        """ Deploy the OVS port after the OVS Switch
         """
 
-        if not self.ovswitch or self.ovswitch.state < ResourceState.READY:       
-            self.debug("---- RESCHEDULING DEPLOY ---- OVSwitch state %s " % self.ovswitch.state )  
+        if not self.ovsswitch or self.ovsswitch.state < ResourceState.READY:       
+            self.debug("---- RESCHEDULING DEPLOY ---- OVSwitch state %s " % self.ovsswitch.state )  
             self.ec.schedule(reschedule_delay, self.deploy)
             return
 
         self.do_discover()
         self.do_provision()
-        ip = self.get_ip()
+
         self.create_port()
         self.get_local_end()
-        self.ovswitch.ovs_status()
 
-        self.port_info = self.set_port_info(ip)
+        #Check the status of the OVS Switch
+        self.ovsswitch.ovs_status()
+
+        # Save all the information inside a list
+        self.port_info = self.set_port_info()
 
         super(OVSPort, self).do_deploy()
 
@@ -224,7 +232,7 @@ class OVSPort(LinuxApplication):
             return 
             
         cmd = "sliver-ovs del_port %s" % self.get('port_name')
-        (out, err), proc = self.node.run(cmd, self.ovswitch.ovs_checks,
+        (out, err), proc = self.node.run(cmd, self.ovsswitch.ovs_checks,
                 sudo = True)
 
         msg = "Deleting the port %s" % self.get('port_name')

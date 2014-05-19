@@ -24,7 +24,7 @@ from nepi.execution.resource import ResourceManager, ResourceFactory, clsinit_co
         ResourceState
 from nepi.resources.linux.application import LinuxApplication
 from nepi.resources.planetlab.node import PlanetlabNode            
-from nepi.resources.planetlab.openvswitch.ovs import OVSWitch   
+from nepi.resources.planetlab.openvswitch.ovs import OVSSwitch   
 from nepi.util.timefuncs import tnow, tdiffsec    
 from nepi.resources.planetlab.vroute import PlanetlabVroute
 from nepi.resources.planetlab.tap import PlanetlabTap
@@ -54,7 +54,7 @@ class OVSTunnel(LinuxApplication):
 
     @classmethod
     def _register_attributes(cls):
-        """ Register the attributes of Connection RM 
+        """ Register the attributes of OVSTunnel RM 
 
         """
         network = Attribute("network", "IPv4 Network Address",
@@ -120,7 +120,7 @@ class OVSTunnel(LinuxApplication):
 
     @property
     def tap(self):
-        ''' Return the Tap RM if it exists '''
+        """ Return the Tap RM if it exists """
         rclass = ResourceFactory.get_resource_type(PlanetlabTap.get_rtype())
         for guid in self.connections:
             rm = self.ec.get_resource(guid)
@@ -128,29 +128,29 @@ class OVSTunnel(LinuxApplication):
                 return rm
 
     @property
-    def ovswitch(self):
-        ''' Return the 1st switch '''
+    def ovsswitch(self):
+        """ Return the 1st switch """
         for guid in self.connections:
             rm_port = self.ec.get_resource(guid)
             if hasattr(rm_port, "create_port"):
-                rm_list = rm_port.get_connected(OVSWitch.get_rtype())
+                rm_list = rm_port.get_connected(OVSSwitch.get_rtype())
                 if rm_list:
                     return rm_list[0]
 
     @property         
     def check_switch_host_link(self):
-        ''' Check if the links are between switches
-            or switch-host. Return False for latter.
-        '''
+        """ Check if the links are between switches
+            or switch-host. Return False for the latter.
+        """
         if self.tap :
             return True
         return False
 
 
     def endpoints(self):
-        ''' Return the list with the two connected elements.
+        """ Return the list with the two connected elements.
         Either Switch-Switch or Switch-Host
-        '''
+        """
         connected = [1, 1]
         position = 0
         for guid in self.connections:
@@ -162,32 +162,12 @@ class OVSTunnel(LinuxApplication):
                 connected[1] = rm
         return connected
 
-#    def port_endpoints(self):
-#        # Switch-Switch connection
-#        connected = []
-#        for guid in self.connections:
-#            rm = self.ec.get_resource(guid)
-#            if hasattr(rm, "create_port"):
-#                connected.append(rm)
-#        return connected
-
-#    
-#    def mixed_endpoints(self):
-#        # Switch-Host connection
-#        connected = [1, 2]
-#        for guid in self.connections:
-#            rm = self.ec.get_resource(guid)
-#            if hasattr(rm, "create_port"):
-#                connected[0] = rm
-#            elif hasattr(rm, "udp_connect_command"):
-#                connected[1] = rm
-#        return connected
-
     def get_node(self, endpoint):
-        # Get connected to the nodes
+        """ Get the nodes of the endpoint
+        """
         rm = []
         if hasattr(endpoint, "create_port"):
-            rm_list = endpoint.get_connected(OVSWitch.get_rtype())
+            rm_list = endpoint.get_connected(OVSSwitch.get_rtype())
             if rm_list:
                 rm = rm_list[0].get_connected(PlanetlabNode.get_rtype())
         else:
@@ -198,26 +178,20 @@ class OVSTunnel(LinuxApplication):
 
     @property
     def endpoint1(self):
-            endpoint = self.endpoints()
-            return endpoint[0]
+        """ Return the first endpoint : Always a Switch
+        """
+        endpoint = self.endpoints()
+        return endpoint[0]
 
     @property
     def endpoint2(self):
-            endpoint = self.endpoints()
-            return endpoint[1]
-
-#    @property          
-#    def check_endpoints(self):
-#        """ Check if the links are between switches
-#            or switch-host. Return False for latter.
-#        """
-#        port_endpoints = self.port_endpoints()
-#        if len(port_endpoints) == 2:
-#            return True
-#        return False
+        """ Return the second endpoint : Either a Switch or a TAP
+        """
+        endpoint = self.endpoints()
+        return endpoint[1]
 
     def get_port_info(self, endpoint1, endpoint2):
-        # Need to change it. Not good to have method that return different type of things !!!!!
+        #TODO : Need to change it. Really bad to have method that return different type of things !!!!!
         """ Retrieve the port_info list for each port
 	
         """
@@ -230,111 +204,17 @@ class OVSTunnel(LinuxApplication):
 
         return pname0, ip1, pnumber1
     
-    def host_to_switch_connect(self, tap_endpoint, sw_endpoint):     
-        # Collect info from rem_endpoint
-        remote_ip = socket.gethostbyname(self.node_endpoint1.get("hostname"))
-
-        # Collect info from endpoint
-        local_port_file = os.path.join(self.run_home(self.node_endpoint2), "local_port")
-        rem_port_file = os.path.join(self.run_home(self.node_endpoint2), "remote_port")
-        ret_file = os.path.join(self.run_home(self.node_endpoint2), "ret_file")
-        cipher = self.get("cipher")
-        cipher_key = self.get("cipherKey")
-        bwlimit = self.get("bwLimit")
-        txqueuelen = self.get("txQueueLen")
-
-        rem_port = str(self.get_port_info( sw_endpoint,tap_endpoint))
-
-        # Upload the remote port in a file
-        self.node_endpoint2.upload(rem_port, rem_port_file,
-                text = True,
-                overwrite = False)
-       
-        udp_connect_command = tap_endpoint.udp_connect_command(
-                remote_ip, local_port_file, rem_port_file,
-                ret_file, cipher, cipher_key, bwlimit, txqueuelen) 
-
-        # upload command to host_connect.sh script
-        shfile = os.path.join(self.app_home(self.node_endpoint2), "host_connect.sh")
-        self.node_endpoint2.upload(udp_connect_command, shfile,
-                text = True,
-                overwrite = False)
-
-        # invoke connect script
-        cmd = "bash %s" % shfile
-        (out, err), proc = self.node_endpoint2.run(cmd, self.run_home(self.node_endpoint2),
-                sudo  = True,
-                stdout = "udp_stdout",
-                stderr = "udp_stderr")
-
-        # check if execution errors
-        if proc.poll():
-            msg = "Failed to connect endpoints"
-            self.error(msg, out, err)
-            raise RuntimeError, msg
-
-        msg = "Connection on host %s configured" % self.node_endpoint2.get("hostname")
-        self.debug(msg)
-         
-        # Wait for pid file to be generated
-        pid, ppid = self.node_endpoint2.wait_pid(self.run_home(self.node_endpoint2))
-        
-        # If the process is not running, check for error information
-        # on the remote machine
-        if not pid or not ppid:
-            (out, err), proc = self.node_endpoint2.check_errors(self.run_home(self.node_endpoint2))
-            # Out is what was written in the stderr file
-            if err:
-                msg = " Failed to start command '%s' " % command
-                self.error(msg, out, err)
-                raise RuntimeError, msg
-                
-        return (pid, ppid)
-
-    def switch_to_switch_connect(self, endpoint, rem_endpoint):
-        """ Get switch connect command
-        """
-        # Get and configure switch connection command
-
-        local_port_name, remote_ip, remote_port_num = self.get_port_info(endpoint, rem_endpoint)
-
-
-        switch_connect_command = endpoint.switch_connect_command(
-                local_port_name, remote_ip, remote_port_num)
-        node_endpoint = self.get_node(endpoint)        
-
-        # Upload command to the file sw_connect.sh
-        shfile = os.path.join(self.app_home(node_endpoint), "sw_connect.sh")
-        node_endpoint.upload(switch_connect_command,
-                shfile,
-                text = True,
-                overwrite = False)
-
-        #invoke connect script
-        cmd = "bash %s" % shfile
-        (out, err), proc = node_endpoint.run(cmd, self.run_home(node_endpoint),
-                sudo  = True,
-                stdout = "sw_stdout",
-                stderr = "sw_stderr")
-        
-        # check if execution errors occured
-        if proc.poll():
-            msg = "Failed to connect endpoints"
-            self.error(msg, out, err)
-            raise RuntimeError, msg
-
-        # For debugging
-        msg = "Connection on port %s configured" % local_port_name
-        self.info(msg)
-
-    def wait_local_port(self):
+    def wait_local_port(self, node_endpoint):
         """ Waits until the if_name file for the command is generated, 
             and returns the if_name for the device """
+
         local_port = None
         delay = 1.0
 
+        #TODO : Need to change it with reschedule to avoid the problem 
+        #        of the order of connection
         for i in xrange(10):
-            (out, err), proc = self.node_endpoint2.check_output(self.run_home(self.node_endpoint2), 'local_port')
+            (out, err), proc = node_endpoint.check_output(self.run_home(node_endpoint), 'local_port')
             if out:
                 local_port = int(out)
                 break
@@ -348,28 +228,86 @@ class OVSTunnel(LinuxApplication):
 
         return local_port
 
-    def switch_to_host_connect(self, sw_endpoint, host_endpoint):
-        """Link switch--> host
+    def connection(self, local_endpoint, rm_endpoint):
+        """ Create the connect command for each case : 
+              - Host - Switch,  
+              - Switch - Switch,  
+              - Switch - Host
         """
-        # Retrieve remote port number from sw_endpoint
-        local_port_name = sw_endpoint.get('port_name')
+        local_node = self.get_node(local_endpoint)
+        local_node.mkdir(self.run_home(local_node))
 
-        out = err= ''
-        remote_port_num = self.wait_local_port()
-        remote_ip = socket.gethostbyname(self.node_endpoint2.get("hostname"))
-        switch_connect_command = sw_endpoint.switch_connect_command(
-                local_port_name, remote_ip, remote_port_num)
+        rm_node = self.get_node(rm_endpoint)
+        rm_node.mkdir(self.run_home(rm_node))
 
-        # Upload command to the file sw_connect.sh
-        shfile = os.path.join(self.app_home(self.node_endpoint1), "sw_connect.sh")
-        self.node_endpoint1.upload(switch_connect_command,
+        # Host to switch
+        if self.check_switch_host_link and local_endpoint == self.endpoint2 :
+        # Collect info from rem_endpoint
+            remote_ip = socket.gethostbyname(rm_node.get("hostname"))
+
+        # Collect info from endpoint
+            local_port_file = os.path.join(self.run_home(local_node), "local_port")
+            rem_port_file = os.path.join(self.run_home(local_node), "remote_port")
+            ret_file = os.path.join(self.run_home(local_node), "ret_file")
+            cipher = self.get("cipher")
+            cipher_key = self.get("cipherKey")
+            bwlimit = self.get("bwLimit")
+            txqueuelen = self.get("txQueueLen")
+
+            rem_port = str(self.get_port_info(rm_endpoint,local_endpoint))
+   
+        # Upload the remote port in a file
+            local_node.upload(rem_port, rem_port_file,
+                 text = True,
+                 overwrite = False)
+       
+            connect_command = local_endpoint.udp_connect_command(
+                 remote_ip, local_port_file, rem_port_file,
+                 ret_file, cipher, cipher_key, bwlimit, txqueuelen) 
+
+            self.connection_command(connect_command, local_node, rm_node)
+
+        # Wait for pid file to be generated
+            self._pid, self._ppid = local_node.wait_pid(self.run_home(local_node))
+
+            if not self._pid or not self._ppid:
+                (out, err), proc = local_node.check_errors(self.run_home(local_node))
+                # Out is what was written in the stderr file
+                if err:
+                    msg = " Failed to start connection of the OVS Tunnel "
+                    self.error(msg, out, err)
+                    raise RuntimeError, msg
+            return
+
+        # Switch to Host
+        if self.check_switch_host_link and local_endpoint == self.endpoint1:
+            local_port_name = local_endpoint.get('port_name')
+            remote_port_num = self.wait_local_port(rm_node)
+            remote_ip = socket.gethostbyname(rm_node.get("hostname"))
+  
+        # Switch to Switch
+        if not self.check_switch_host_link :
+            local_port_name, remote_ip, remote_port_num = self.get_port_info(local_endpoint, rm_endpoint)
+
+        connect_command = local_endpoint.switch_connect_command(
+                    local_port_name, remote_ip, remote_port_num)
+
+        self.connection_command(connect_command, local_node, rm_node)       
+
+    def connection_command(self, command, node_endpoint, rm_node_endpoint):
+        """ Execute the connection command on the node and check if the processus is
+            correctly running on the node.
+        """
+        shfile = os.path.join(self.app_home(node_endpoint), "sw_connect.sh")
+        node_endpoint.upload(command,
                 shfile,
                 text = True,
                 overwrite = False)
 
         # Invoke connect script
+        out = err= ''       
         cmd = "bash %s" % shfile
-        (out, err), proc = self.node_endpoint1.run(cmd, self.run_home(self.node_endpoint1),
+        (out, err), proc = node_endpoint.run(cmd, self.run_home(node_endpoint),
                 sudo  = True,
                 stdout = "sw_stdout",
                 stderr = "sw_stderr")
@@ -382,44 +320,37 @@ class OVSTunnel(LinuxApplication):
             raise RuntimeError, msg
 
         # For debugging
-        msg = "Connection on port %s configured" % local_port_name
-        self.debug(msg)                                                   
+        msg = "Connection on port configured"
+        self.debug(msg)
 
     def do_provision(self):
         """ Provision the tunnel
-
-           ..note : Endpoint 1 is always a OVSPort. 
-                    Endpoint 2 can be either a OVSPort or a Tap
-                     
         """
-        self.node_endpoint1 = self.get_node(self.endpoint1)
-        self.node_endpoint1.mkdir(self.run_home(self.node_endpoint1))
+        
+        #TODO : The order of the connection is important for now ! 
+        # Need to change the code of wait local port
+        self.connection(self.endpoint2, self.endpoint1)
+        self.connection(self.endpoint1, self.endpoint2)
 
-        self.node_endpoint2 = self.get_node(self.endpoint2)
-        self.node_endpoint2.mkdir(self.run_home(self.node_endpoint2))
+    def configure_route(self):
+        """ Configure the route for the tap device
 
-        if not self.check_switch_host_link:
-            # Invoke connect script between switches
-            self.switch_to_switch_connect(self.endpoint1, self.endpoint2)
-            self.switch_to_switch_connect(self.endpoint2, self.endpoint1)
-        else: 
-            # Invoke connect script between switch & host
-            (self._pid, self._ppid) = self.host_to_switch_connect(self.endpoint2, self.endpoint1)
-            self.switch_to_host_connect(self.endpoint1, self.endpoint2)
+            .. note : In case of a conection between a switch and a host, a route
+                      was missing on the node with the Tap Device. This method create
+                      the missing route. 
+        """
 
-        #super(OVSTunnel, self).do_provision()
-
-    def configure(self):
         if  self.check_switch_host_link:
             self._vroute = self.ec.register_resource("PlanetlabVroute")
             self.ec.set(self._vroute, "action", "add")
             self.ec.set(self._vroute, "network", self.get("network"))
 
             self.ec.register_connection(self._vroute, self.tap.guid)
-            # schedule deploy
             self.ec.deploy(guids=[self._vroute], group = self.deployment_group)
 
     def do_deploy(self):
+        """ Deploy the tunnel after the endpoint get ready
+        """
         if (not self.endpoint1 or self.endpoint1.state < ResourceState.READY) or \
             (not self.endpoint2 or self.endpoint2.state < ResourceState.READY):
             self.ec.schedule(reschedule_delay, self.deploy)
@@ -427,20 +358,23 @@ class OVSTunnel(LinuxApplication):
 
         self.do_discover()
         self.do_provision()
-        self.configure()
+        self.configure_route()
 
+        # Cannot call the deploy of the linux application 
+        #         because of a log error.
+        # Need to investigate if it is right that the tunnel 
+        #    inherits from the linux application
+        #  super(OVSTunnel, self).do_deploy()
         self.set_ready()
-        #super(OVSTunnel, self).do_deploy()
  
     def do_release(self):
-        """ Release the udp_tunnel on endpoint2.
-            On endpoint1 means nothing special.        
+        """ Release the tunnel by releasing the Tap Device if exists
         """
-        if not self.check_switch_host_link:
-            # Kill the TAP devices
+        if self.check_switch_host_link:
             # TODO: Make more generic Release method of PLTAP
+            tap_node = self.get_node(self.endpoint2)
             if self._pid and self._ppid:
-                (out, err), proc = self.node_enpoint2.kill(self._pid,
+                (out, err), proc = tap_node.kill(self._pid,
                         self._ppid, sudo = True)
 
                 if err or proc.poll():
