@@ -30,8 +30,9 @@ import re
 import tempfile
 import time
 
-# TODO: UP, MTU attributes!
-
+# TODO: 
+#     - check UP, MTU attributes!
+#     - clean up code and test!
 
 @clsinit_copy
 class LinuxInterface(ResourceManager):
@@ -42,33 +43,33 @@ class LinuxInterface(ResourceManager):
     @classmethod
     def _register_attributes(cls):
         ip4 = Attribute("ip4", "IPv4 Address",
-              flags = Flags.ExecReadOnly)
+              flags = Flags.Design)
 
         ip6 = Attribute("ip6", "IPv6 Address",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         mac = Attribute("mac", "MAC Address",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         mask4 = Attribute("mask4", "IPv4 network mask",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         mask6 = Attribute("mask6", "IPv6 network mask",
                 type = Types.Integer,
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         mtu = Attribute("mtu", "Maximum transmition unit for device",
                 type = Types.Integer)
 
         devname = Attribute("deviceName", 
                 "Name of the network interface (e.g. eth0, wlan0, etc)",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         up = Attribute("up", "Link up", type = Types.Bool)
 
         tear_down = Attribute("tearDown", "Bash script to be executed before " + \
                 "releasing the resource",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         cls._register_attribute(ip4)
         cls._register_attribute(ip6)
@@ -266,6 +267,7 @@ class LinuxInterface(ResourceManager):
         attr = self._attrs["up"]
         attr._value = up
         attr = self._attrs["mtu"]
+        attr._value = mtu 
 
     def add_set_hooks(self):
         attrup = self._attrs["up"]
@@ -275,7 +277,7 @@ class LinuxInterface(ResourceManager):
         attrmtu.set_hook = self.set_hook_mtu
 
     def set_hook_up(self, oldval, newval):
-        if oldval == newval:
+        if self.state == ResourceState.NEW or oldval == newval:
             return oldval
 
         # configure interface up
@@ -294,7 +296,7 @@ class LinuxInterface(ResourceManager):
         return newval
 
     def set_hook_mtu(self, oldval, newval):
-        if oldval == newval:
+        if self.state == ResourceState.NEW or oldval == newval:
             return oldval
 
         cmd = "ifconfig %s mtu %d" % (self.get("deviceName"), newval)

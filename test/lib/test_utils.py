@@ -20,6 +20,7 @@
 from nepi.resources.linux.node import LinuxNode
 
 import os
+import sys
 
 class DummyEC(object):
     @property
@@ -90,6 +91,31 @@ def skipIfNotPLCredentials(func):
         pl_pass = os.environ.get("PL_PASS")
         if not (pl_user and pl_pass):
             print "*** WARNING: Skipping test %s: Planetlab user, password and slicename not defined\n" % name
+            return
+
+        return func(*args, **kwargs)
+
+    return wrapped
+
+def skipIfNotPythonVersion(func):
+    name = func.__name__
+    def wrapped(*args, **kwargs):
+        if sys.version_info < 2.7:
+            print "*** WARNING: Skipping test %s: total_seconds() method doesn't exist\n" % name
+            return
+
+        return func(*args, **kwargs)
+
+    return wrapped
+
+def skipIfNotSfaCredentials(func):
+    name = func.__name__
+    def wrapped(*args, **kwargs):
+        sfa_user = os.environ.get("SFA_USER")
+        sfa_pk = os.environ.get("SFA_PK")
+        
+        if not (sfa_user and os.path.exists(os.path.expanduser(sfa_pk))):
+            print "*** WARNING: Skipping test %s: SFA path to private key doesn't exist\n" % name
             return
 
         return func(*args, **kwargs)

@@ -51,7 +51,7 @@ class OVSPort(LinuxApplication):
 
         """
         port_name = Attribute("port_name", "Name of the port",
-            flags = Flags.ExecReadOnly)			
+            flags = Flags.Design)			
 
         cls._register_attribute(port_name)
 

@@ -59,7 +59,6 @@ class LinuxCCNApplication(LinuxApplication):
             self.do_discover()
             self.do_provision()
 
-            self.debug("----- READY ---- ")
             self.set_ready()
 
     @property

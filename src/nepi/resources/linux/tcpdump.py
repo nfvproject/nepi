@@ -35,25 +35,25 @@ class LinuxTcpdump(LinuxApplication):
             "Prints each packet (minus its link level header) in ASCII.",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         b = Attribute("b",
             "Sets tcpdump -b option. "
             "Prints the AS number in BGP packets in ASDOT notation. ",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         B = Attribute("B",
             "Sets tcpdump -B option. "
             "Sets the operaing system capture buffer size in untils of "
             "KiB (1024 bytes).",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         c = Attribute("c",
             "Sets tcpdump -c option. "
             "Exists after receiving count packets.",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         C = Attribute("C",
             "Sets tcpdump -C option. "
@@ -63,7 +63,7 @@ class LinuxTcpdump(LinuxApplication):
             "Savefiles after the first savefile will have the name specified "
             "with the -w with a number after it, starting at 1 and continuing "
             "upward. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         d = Attribute("d",
             "Sets tcpdump -d option. "
@@ -71,14 +71,14 @@ class LinuxTcpdump(LinuxApplication):
             "to standard output and stop.",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         dd = Attribute("dd",
             "Sets tcpdump -dd option. "
             "Dump packet-matching code as a C program fragment. ",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         ddd = Attribute("ddd",
             "Sets tcpdump -ddd option. "
@@ -86,7 +86,7 @@ class LinuxTcpdump(LinuxApplication):
             "(preceded with a count).",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         D = Attribute("D",
             "Sets tcpdump -D option. "
@@ -94,19 +94,19 @@ class LinuxTcpdump(LinuxApplication):
             "and on which tcpdump can capture packets. ",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         e = Attribute("e",
             "Sets tcpdump -e option. "
             "Print the link-level header on each dump line.",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         F =  Attribute("F",
             "Sets tcpdump -F option. "
             "Use file as input for the filter expression.",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         G =  Attribute("G",
             "Sets tcpdump -G option. "
@@ -114,14 +114,14 @@ class LinuxTcpdump(LinuxApplication):
             "option every rotate_seconds seconds. ",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         i =  Attribute("i",
             "Sets tcpdump -i option. "
             "Listen on interface.  If unspecified, tcpdump searches the "
             "system interface list for the lowest  numbered, configured "
             "up interface (excluding loopback). ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         I =  Attribute("I",
             "Sets tcpdump -I option. "
@@ -130,7 +130,7 @@ class LinuxTcpdump(LinuxApplication):
             "operating systems. ",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         j = Attribute("j",
             "Sets tcpdump -j option. "
@@ -138,21 +138,21 @@ class LinuxTcpdump(LinuxApplication):
             "The names to use for the time stamp types are given in "
             "pcap-tstamp-type(7); not all the types listed there will "
             "necessarily be valid for any given interface.",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         K = Attribute("K",
             "Sets tcpdump -K option. "
             "Don't attempt to verify IP, TCP, or UDP checksums. ",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         l = Attribute("l",
             "Sets tcpdump -l option. "
             "Make stdout line buffered. ",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         U = Attribute("U",
             "Sets tcpdump -U option. "
@@ -161,7 +161,7 @@ class LinuxTcpdump(LinuxApplication):
             "at the end of each packet. ",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         n = Attribute("n",
             "Sets tcpdump -n option. "
@@ -169,7 +169,7 @@ class LinuxTcpdump(LinuxApplication):
             "etc.) to names.",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         N = Attribute("N",
             "Sets tcpdump -N option. "
@@ -178,20 +178,20 @@ class LinuxTcpdump(LinuxApplication):
             "instead of ``nic.ddn.mil''.",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         S = Attribute("S",
             "Sets tcpdump -S option. "
             "Print absolute, rather than relative, TCP sequence numbers.",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         s = Attribute("s",
             "Sets tcpdump -s option. "
             "Snarf  snaplen bytes of data from each packet rather than "
             "the default of 65535 bytes. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         T = Attribute("T",
             "Sets tcpdump -T option. "
@@ -203,21 +203,21 @@ class LinuxTcpdump(LinuxApplication):
              "protocol), snmp (Simple Network Management Protocol), tftp "
              "(Trivial  File Transfer Protocol), vat (Visual Audio Tool), "
              "and wb (distributed White Board).",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         t = Attribute("t",
             "Sets tcpdump -t option. "
             "Don't print a timestamp on each dump line.",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         tt = Attribute("tt",
             "Sets tcpdump -tt option. "
             "Print an unformatted timestamp on each dump line. ",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         ttt = Attribute("ttt",
             "Sets tcpdump -ttt option. "
@@ -225,7 +225,7 @@ class LinuxTcpdump(LinuxApplication):
             "and previous line on each dump line.",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         tttt = Attribute("tttt",
             "Sets tcpdump -tttt option. "
@@ -233,7 +233,7 @@ class LinuxTcpdump(LinuxApplication):
             "each dump line. ",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         ttttt = Attribute("ttttt",
             "Sets tcpdump -ttttt option. "
@@ -241,7 +241,7 @@ class LinuxTcpdump(LinuxApplication):
             "first line on each dump line.",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         v = Attribute("v",
             "Sets tcpdump -v option. "
@@ -249,21 +249,21 @@ class LinuxTcpdump(LinuxApplication):
             "verbose output. ",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         vv = Attribute("vv",
             "Sets tcpdump -vv option. "
             "Even  more  verbose  output. ",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         vvv = Attribute("vvv",
             "Sets tcpdump -vv option. "
             "Even  more  verbose  output. ",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         w = Attribute("w",
             "Sets tcpdump -w option. "
@@ -271,11 +271,11 @@ class LinuxTcpdump(LinuxApplication):
             "and printing them out.",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         expression = Attribute("expression",
             "selects  which packets will be dumped.",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         cls._register_attribute(A)
         cls._register_attribute(b)

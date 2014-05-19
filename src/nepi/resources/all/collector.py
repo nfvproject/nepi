@@ -48,14 +48,14 @@ class Collector(ResourceManager):
     @classmethod
     def _register_attributes(cls):
         trace_name = Attribute("traceName", "Name of the trace to be collected", 
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
         store_dir = Attribute("storeDir", "Path to local directory to store trace results", 
                 default = tempfile.gettempdir(),
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
         sub_dir = Attribute("subDir", "Sub directory to collect traces into", 
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
         rename = Attribute("rename", "Name to give to the collected trace file", 
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         cls._register_attribute(trace_name)
         cls._register_attribute(store_dir)

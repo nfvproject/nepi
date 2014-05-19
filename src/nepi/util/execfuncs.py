@@ -17,14 +17,15 @@
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
-from nepi.util.sshfuncs import ProcStatus, STDOUT
+from nepi.util.sshfuncs import ProcStatus, STDOUT, log, shell_escape
 
+import logging
+import shlex
 import subprocess
 
 def lexec(command, 
         user = None, 
         sudo = False,
-        stdin = None,
         env = None):
     """
     Executes a local command, returns ((stdout,stderr),process)
@@ -37,38 +38,62 @@ def lexec(command,
 
     if sudo:
         command = "sudo %s" % command
-    elif user:
-        command = "su %s ; %s " % (user, command)
+    
+    # XXX: Doing 'su user' blocks waiting for a password on stdin
+    #elif user:
+    #    command = "su %s ; %s " % (user, command)
 
+    proc = subprocess.Popen(command,
+                shell = True, 
+                stdout = subprocess.PIPE, 
+                stderr = subprocess.PIPE)
 
-    p = subprocess.Popen(command, 
-            stdout = subprocess.PIPE, 
-            stderr = subprocess.PIPE,
-            stdin  = stdin)
+    out = err = ""
+    log_msg = "lexec - command %s " % command
 
-    out, err = p.communicate()
-    return (out, err)
+    try:
+        out, err = proc.communicate()
+        log(log_msg, logging.DEBUG, out, err)
+    except:
+        log(log_msg, logging.ERROR, out, err)
+        raise
+
+    return ((out, err), proc)
 
 def lcopy(source, dest, recursive = False):
     """
     Copies from/to localy.
     """
     
-    if TRACE:
-        print "scp", source, dest
-    
-    command = ["cp"]
+    args = ["cp"]
     if recursive:
-        command.append("-R")
-    
-    command.append(src)
-    command.append(dst)
-    
-    p = subprocess.Popen(command, 
+        args.append("-r")
+  
+    if isinstance(source, list):
+        args.extend(source)
+    else:
+        args.append(source)
+
+    if isinstance(dest, list):
+        args.extend(dest)
+    else:
+        args.append(dest)
+
+    proc = subprocess.Popen(args, 
         stdout=subprocess.PIPE, 
         stderr=subprocess.PIPE)
 
-    out, err = p.communicate()
+    out = err = ""
+    command = " ".join(args)
+    log_msg = " lcopy - command %s " % command
+
+    try:
+        out, err = proc.communicate()
+        log(log_msg, logging.DEBUG, out, err)
+    except:
+        log(log_msg, logging.ERROR, out, err)
+        raise
+
     return ((out, err), proc)
    
 def lspawn(command, pidfile, 
@@ -120,7 +145,7 @@ def lspawn(command, pidfile,
         'stdin' : stdin,
     }
     
-    cmd = "%(create)s%(gohome)s rm -f %(pidfile)s ; %(sudo)s nohup bash -c %(command)s " % {
+    cmd = "%(create)s%(gohome)s rm -f %(pidfile)s ; %(sudo)s bash -c %(command)s " % {
             'command' : shell_escape(daemon_command),
             'sudo' : 'sudo -S' if sudo else '',
             'pidfile' : shell_escape(pidfile),
@@ -128,12 +153,12 @@ def lspawn(command, pidfile,
             'create' : 'mkdir -p %s ; ' % (shell_escape(home),) if create_home else '',
         }
 
-    (out,err),proc = lexec(cmd)
+    (out,err), proc = lexec(cmd)
     
     if proc.wait():
         raise RuntimeError, "Failed to set up application on host %s: %s %s" % (host, out,err,)
 
-    return (out,err),proc
+    return ((out,err), proc)
 
 def lgetpid(pidfile):
     """
@@ -148,7 +173,7 @@ def lgetpid(pidfile):
         or None if the pidfile isn't valid yet (maybe the process is still starting).
     """
 
-    (out,err),proc = lexec("cat %s" % pidfile )
+    (out,err), proc = lexec("cat %s" % pidfile )
         
     if proc.wait():
         return None
@@ -172,7 +197,7 @@ def lstatus(pid, ppid):
         One of NOT_STARTED, RUNNING, FINISHED
     """
 
-    (out,err),proc = lexec(
+    (out,err), proc = lexec(
         # Check only by pid. pid+ppid does not always work (especially with sudo) 
         " (( ps --pid %(pid)d -o pid | grep -c %(pid)d && echo 'wait')  || echo 'done' ) | tail -n 1" % {
             'ppid' : ppid,
@@ -187,8 +212,8 @@ def lstatus(pid, ppid):
         status = (out.strip() == 'wait')
     else:
         return ProcStatus.NOT_STARTED
+
     return ProcStatus.RUNNING if status else ProcStatus.FINISHED
- 
 
 def lkill(pid, ppid, sudo = False):
     """

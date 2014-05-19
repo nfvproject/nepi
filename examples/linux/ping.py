@@ -22,9 +22,12 @@ from nepi.execution.ec import ExperimentController
 
 ec = ExperimentController(exp_id = "ping-exp")
         
+hostname = ## Add a string with the target hostname
+username = ## Add a string with the username to SSH hostname
+
 node = ec.register_resource("LinuxNode")
-ec.set(node, "hostname", "planetlab2.cs.aueb.gr")
-ec.set(node, "username", "inria_pres")
+ec.set(node, "hostname", hostname)
+ec.set(node, "username", username)
 ec.set(node, "cleanHome", True)
 ec.set(node, "cleanProcesses", True)
 
@@ -37,6 +40,5 @@ ec.deploy()
 ec.wait_finished(app)
 
 print ec.trace(app, "stdout")
-
 
 ec.shutdown()
