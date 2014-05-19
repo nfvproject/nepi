@@ -40,10 +40,10 @@ class PlanetlabVroute(LinuxApplication):
     def _register_attributes(cls):
         action = Attribute("action", "Either add or del",
               allowed = ["add", "del"],
-              flags = Flags.ExecReadOnly)
+              flags = Flags.Design)
 
         network = Attribute("network", "IPv4 Network Address",
-              flags = Flags.ExecReadOnly)
+              flags = Flags.Design)
 
         cls._register_attribute(action)
         cls._register_attribute(network)

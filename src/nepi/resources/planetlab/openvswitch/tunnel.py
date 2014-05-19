@@ -58,7 +58,7 @@ class OVSTunnel(LinuxApplication):
 
         """
         network = Attribute("network", "IPv4 Network Address",
-               flags = Flags.ExecReadOnly)
+               flags = Flags.Design)
 
         cipher = Attribute("cipher",
                "Cipher to encript communication. "
@@ -66,25 +66,25 @@ class OVSTunnel(LinuxApplication):
                 default = None,
                 allowed = ["PLAIN", "AES", "Blowfish", "DES", "DES3"],
                 type = Types.Enumerate, 
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         cipher_key = Attribute("cipherKey",
                 "Specify a symmetric encryption key with which to protect "
                 "packets across the tunnel. python-crypto must be installed "
                 "on the system." ,
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         txqueuelen = Attribute("txQueueLen",
                 "Specifies the interface's transmission queue length. "
                 "Defaults to 1000. ", 
                 type = Types.Integer, 
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         bwlimit = Attribute("bwLimit",
                 "Specifies the interface's emulated bandwidth in bytes "
                 "per second.",
                 type = Types.Integer, 
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         cls._register_attribute(network)
         cls._register_attribute(cipher)

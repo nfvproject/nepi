@@ -20,6 +20,7 @@
 import functools
 import hashlib
 import socket
+import os
 import time
 import threading
 import xmlrpclib
@@ -135,16 +136,15 @@ class PLCAPI(object):
      
     _required_methods = set()
 
-    def __init__(self, username = None, password = None, session_key = None, 
-            proxy = None,
-            hostname = "www.planet-lab.eu",
-            urlpattern = "https://%(hostname)s:443/PLCAPI/",
+    def __init__(self, username, password, hostname, urlpattern, ec, proxy, session_key = None, 
             local_peer = "PLE"):
 
         self._blacklist = set()
         self._reserved = set()
         self._nodes_cache = None
         self._already_cached = False
+        self._ecobj = ec
+        self.count = 1 
 
         if session_key is not None:
             self.auth = dict(AuthMethod='session', session=session_key)
@@ -175,7 +175,11 @@ class PLCAPI(object):
             self._proxy_transport = lambda : None
         
         self.threadlocal = threading.local()
-    
+
+        # Load blacklist from file
+        if self._ecobj.get_global('PlanetlabNode', 'persist_blacklist'):
+            self._set_blacklist()
+
     @property
     def api(self):
         # Cannot reuse same proxy in all threads, py2.7 is not threadsafe
@@ -192,6 +196,7 @@ class PLCAPI(object):
             return self.api
         
     def test(self):
+        # TODO: Use nepi utils Logger instead of warning!!
         import warnings
         
         # validate XMLRPC server checking supported API calls
@@ -212,6 +217,16 @@ class PLCAPI(object):
             warnings.warn(str(e))
         
         return True
+
+    def _set_blacklist(self):
+        nepi_home = os.path.join(os.path.expanduser("~"), ".nepi")
+        plblacklist_file = os.path.join(nepi_home, "plblacklist.txt")
+        with open(plblacklist_file, 'r') as f:
+            hosts_tobl = f.read().splitlines()
+            if hosts_tobl:
+                nodes_id = self.get_nodes(hosts_tobl, ['node_id'])
+                for node_id in nodes_id:
+                    self._blacklist.add(node_id['node_id'])
     
     @property
     def network_types(self):
@@ -428,8 +443,8 @@ class PLCAPI(object):
     def get_slice_nodes(self, slicename):
         return self.get_slices(slicename, ['node_ids'])[0]['node_ids']
 
-    def add_slice_nodes(self, slicename, nodes = None):
-        self.update_slice(slicename, nodes = nodes)
+    def add_slice_nodes(self, slicename, nodes):
+        self.update_slice(slicename, nodes=nodes)
 
     def get_node_info(self, node_id):
         self.start_multicall()
@@ -458,24 +473,39 @@ class PLCAPI(object):
         else:
             return None
 
-    def blacklist_host(self, hostname):
-        self._blacklist.add(hostname)
+    def blacklist_host(self, node_id):
+        self._blacklist.add(node_id)
 
     def blacklisted(self):
-        return self._blacklist
+        return self._blacklist 
 
-    def unblacklist_host(self, hostname):
-        del self._blacklist[hostname]
+    def unblacklist_host(self, node_id):
+        del self._blacklist[node_id]
 
-    def reserve_host(self, hostname):
-        self._reserved.add(hostname)
+    def reserve_host(self, node_id):
+        self._reserved.add(node_id)
 
     def reserved(self):
         return self._reserved
 
-    def unreserve_host(self, hostname):
-        del self._reserved[hostname]
+    def unreserve_host(self, node_id):
+        del self._reserved[node_id]
 
+    def release(self):
+        self.count -= 1
+        if self._ecobj.get_global('PlanetlabNode', 'persist_blacklist') and self.count == 0:
+            if self._blacklist:
+                to_blacklist = list()
+                hostnames = self.get_nodes(list(self._blacklist), ['hostname'])
+                for hostname in hostnames:
+                    to_blacklist.append(hostname['hostname'])
+
+                nepi_home = os.path.join(os.path.expanduser("~"), ".nepi")
+                plblacklist_file = os.path.join(nepi_home, "plblacklist.txt")
+
+                with open(plblacklist_file, 'w') as f:
+                    for host in to_blacklist:
+                        f.write("%s\n" % host)
 
 class PLCAPIFactory(object):
     """ 
@@ -491,8 +521,7 @@ class PLCAPIFactory(object):
 
     @classmethod 
     def get_api(cls, pl_user, pl_pass, pl_host,
-            pl_ptn = "https://%(hostname)s:443/PLCAPI/",
-            proxy = None):
+            pl_ptn, ec, proxy = None):
         """ Get existing PLCAPI instance
 
         :param pl_user: Planelab user name (used for web login)
@@ -511,14 +540,15 @@ class PLCAPIFactory(object):
             with cls._lock:
                 api = cls._apis.get(key)
                 if not api:
-                    api = cls.create_api(pl_user, pl_pass, pl_host, pl_ptn, proxy)
+                    api = cls.create_api(pl_user, pl_pass, pl_host, pl_ptn, ec, proxy)
+                else:
+                    api.count += 1
                 return api
         return None
 
     @classmethod 
     def create_api(cls, pl_user, pl_pass, pl_host,
-            pl_ptn = "https://%(hostname)s:443/PLCAPI/",
-            proxy = None):
+            pl_ptn, ec, proxy = None):
         """ Create an PLCAPI instance
 
         :param pl_user: Planelab user name (used for web login)
@@ -532,13 +562,8 @@ class PLCAPIFactory(object):
         :param proxy: Proxy service url
         :type pl_ptn: str
         """
-        api = PLCAPI(
-            username = pl_user,
-            password = pl_pass,
-            hostname = pl_host,
-            urlpattern = pl_ptn,
-            proxy = proxy
-        )
+        api = PLCAPI(username = pl_user, password = pl_pass, hostname = pl_host,
+            urlpattern = pl_ptn, ec = ec, proxy = proxy)
         key = cls._make_key(pl_user, pl_host)
         cls._apis[key] = api
         return api
@@ -553,4 +578,5 @@ class PLCAPIFactory(object):
         """
         skey = "".join(map(str, args))
         return hashlib.md5(skey).hexdigest()
+
 

@@ -149,50 +149,50 @@ class LinuxNode(ResourceManager):
     @classmethod
     def _register_attributes(cls):
         hostname = Attribute("hostname", "Hostname of the machine",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         username = Attribute("username", "Local account username", 
                 flags = Flags.Credential)
 
-        port = Attribute("port", "SSH port", flags = Flags.ExecReadOnly)
+        port = Attribute("port", "SSH port", flags = Flags.Design)
         
         home = Attribute("home",
                 "Experiment home directory to store all experiment related files",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
         
         identity = Attribute("identity", "SSH identity file",
                 flags = Flags.Credential)
         
         server_key = Attribute("serverKey", "Server public key", 
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
         
         clean_home = Attribute("cleanHome", "Remove all nepi files and directories "
                 " from node home folder before starting experiment", 
                 type = Types.Bool,
                 default = False,
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         clean_experiment = Attribute("cleanExperiment", "Remove all files and directories " 
                 " from a previous same experiment, before the new experiment starts", 
                 type = Types.Bool,
                 default = False,
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
         
         clean_processes = Attribute("cleanProcesses", 
                 "Kill all running processes before starting experiment",
                 type = Types.Bool,
                 default = False,
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
         
         tear_down = Attribute("tearDown", "Bash script to be executed before " + \
                 "releasing the resource",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         gateway_user = Attribute("gatewayUser", "Gateway account username",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         gateway = Attribute("gateway", "Hostname of the gateway machine",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         cls._register_attribute(hostname)
         cls._register_attribute(username)
@@ -234,8 +234,12 @@ class LinuxNode(ResourceManager):
         return home
 
     @property
+    def nepi_home(self):
+        return os.path.join(self.home_dir, ".nepi")
+
+    @property
     def usr_dir(self):
-        return os.path.join(self.home_dir, "nepi-usr")
+        return os.path.join(self.nepi_home, "nepi-usr")
 
     @property
     def lib_dir(self):
@@ -255,7 +259,7 @@ class LinuxNode(ResourceManager):
 
     @property
     def exp_dir(self):
-        return os.path.join(self.home_dir, "nepi-exp")
+        return os.path.join(self.nepi_home, "nepi-exp")
 
     @property
     def exp_home(self):
@@ -274,7 +278,8 @@ class LinuxNode(ResourceManager):
         if self._os:
             return self._os
 
-        if (not self.get("hostname") or not self.get("username")):
+        if self.get("hostname") not in ["localhost", "127.0.0.1"] and \
+                not self.get("username"):
             msg = "Can't resolve OS, insufficient data "
             self.error(msg)
             raise RuntimeError, msg
@@ -348,14 +353,14 @@ class LinuxNode(ResourceManager):
         if self.get("cleanExperiment"):
             self.clean_experiment()
     
-        # Create shared directory structure
-        self.mkdir(self.lib_dir)
-        self.mkdir(self.bin_dir)
-        self.mkdir(self.src_dir)
-        self.mkdir(self.share_dir)
+        # Create shared directory structure and node home directory
+        paths = [self.lib_dir, 
+            self.bin_dir, 
+            self.src_dir, 
+            self.share_dir, 
+            self.node_home]
 
-        # Create experiment node home directory
-        self.mkdir(self.node_home)
+        self.mkdir(paths)
 
         super(LinuxNode, self).do_provision()
 
@@ -400,9 +405,11 @@ class LinuxNode(ResourceManager):
     def clean_processes(self):
         self.info("Cleaning up processes")
  
+        if self.get("hostname") in ["localhost", "127.0.0.2"]:
+            return 
+        
         if self.get("username") != 'root':
             cmd = ("sudo -S killall tcpdump || /bin/true ; " +
-                "sudo -S kill $(ps aux | grep '[n]epi' | awk '{print $2}') || /bin/true ; " +
                 "sudo -S killall -u %s || /bin/true ; " % self.get("username"))
         else:
             if self.state >= ResourceState.READY:
@@ -424,7 +431,6 @@ class LinuxNode(ResourceManager):
                 cmd = ("killall tcpdump || /bin/true ; " +
                     "kill $(ps aux | grep '[n]epi' | awk '{print $2}') || /bin/true ; ")
 
-        out = err = ""
         (out, err), proc = self.execute(cmd, retry = 1, with_lock = True)
 
     def clean_home(self):
@@ -432,7 +438,7 @@ class LinuxNode(ResourceManager):
         """
         self.info("Cleaning up home")
         
-        cmd = "cd %s ; find . -maxdepth 1 \( -name 'nepi-usr' -o -name 'nepi-exp' \) -execdir rm -rf {} + " % (
+        cmd = "cd %s ; find . -maxdepth 1 -name \.nepi -execdir rm -rf {} + " % (
                 self.home_dir )
 
         return self.execute(cmd, with_lock = True)
@@ -452,13 +458,10 @@ class LinuxNode(ResourceManager):
 
     def execute(self, command,
             sudo = False,
-            stdin = None, 
             env = None,
             tty = False,
             forward_x11 = False,
-            timeout = None,
             retry = 3,
-            err_on_timeout = True,
             connect_timeout = 30,
             strict_host_checking = False,
             persistent = True,
@@ -473,10 +476,13 @@ class LinuxNode(ResourceManager):
             (out, err), proc = execfuncs.lexec(command, 
                     user = self.get("username"), # still problem with localhost
                     sudo = sudo,
-                    stdin = stdin,
                     env = env)
         else:
             if with_lock:
+                # If the execute command is blocking, we don't want to keep
+                # the node lock. This lock is used to avoid race conditions
+                # when creating the ControlMaster sockets. A more elegant
+                # solution is needed.
                 with self._node_lock:
                     (out, err), proc = sshfuncs.rexec(
                         command, 
@@ -487,15 +493,12 @@ class LinuxNode(ResourceManager):
                         gw = self.get("gateway"),
                         agent = True,
                         sudo = sudo,
-                        stdin = stdin,
                         identity = self.get("identity"),
                         server_key = self.get("serverKey"),
                         env = env,
                         tty = tty,
                         forward_x11 = forward_x11,
-                        timeout = timeout,
                         retry = retry,
-                        err_on_timeout = err_on_timeout,
                         connect_timeout = connect_timeout,
                         persistent = persistent,
                         blocking = blocking, 
@@ -511,15 +514,12 @@ class LinuxNode(ResourceManager):
                     gw = self.get("gateway"),
                     agent = True,
                     sudo = sudo,
-                    stdin = stdin,
                     identity = self.get("identity"),
                     server_key = self.get("serverKey"),
                     env = env,
                     tty = tty,
                     forward_x11 = forward_x11,
-                    timeout = timeout,
                     retry = retry,
-                    err_on_timeout = err_on_timeout,
                     connect_timeout = connect_timeout,
                     persistent = persistent,
                     blocking = blocking, 
@@ -540,14 +540,13 @@ class LinuxNode(ResourceManager):
         self.debug("Running command '%s'" % command)
         
         if self.localhost:
-            (out, err), proc = execfuncs.lspawn(command, pidfile, 
-                    stdout = stdout, 
-                    stderr = stderr, 
-                    stdin = stdin, 
+            (out, err), proc = execfuncs.lspawn(command, pidfile,
                     home = home, 
                     create_home = create_home, 
-                    sudo = sudo,
-                    user = user) 
+                    stdin = stdin or '/dev/null',
+                    stdout = stdout or '/dev/null',
+                    stderr = stderr or '/dev/null',
+                    sudo = sudo) 
         else:
             with self._node_lock:
                 (out, err), proc = sshfuncs.rspawn(
@@ -555,9 +554,9 @@ class LinuxNode(ResourceManager):
                     pidfile = pidfile,
                     home = home,
                     create_home = create_home,
-                    stdin = stdin if stdin is not None else '/dev/null',
-                    stdout = stdout if stdout else '/dev/null',
-                    stderr = stderr if stderr else '/dev/null',
+                    stdin = stdin or '/dev/null',
+                    stdout = stdout or '/dev/null',
+                    stderr = stderr or '/dev/null',
                     sudo = sudo,
                     host = self.get("hostname"),
                     user = self.get("username"),
@@ -637,9 +636,8 @@ class LinuxNode(ResourceManager):
 
     def copy(self, src, dst):
         if self.localhost:
-            (out, err), proc = execfuncs.lcopy(source, dest, 
-                    recursive = True,
-                    strict_host_checking = False)
+            (out, err), proc = execfuncs.lcopy(src, dst, 
+                    recursive = True)
         else:
             with self._node_lock:
                 (out, err), proc = sshfuncs.rcopy(
@@ -654,14 +652,21 @@ class LinuxNode(ResourceManager):
 
         return (out, err), proc
 
-    def upload(self, src, dst, text = False, overwrite = True):
+    def upload(self, src, dst, text = False, overwrite = True,
+            raise_on_error = True):
         """ Copy content to destination
 
-           src  content to copy. Can be a local file, directory or a list of files
+        src  string with the content to copy. Can be:
+            - plain text
+            - a string with the path to a local file
+            - a string with a semi-colon separeted list of local files
+            - a string with a local directory
 
-           dst  destination path on the remote host (remote is always self.host)
+        dst  string with destination path on the remote host (remote is 
+            always self.host)
 
-           text src is text input, it must be stored into a temp file before uploading
+        text src is text input, it must be stored into a temp file before 
+        uploading
         """
         # If source is a string input 
         f = None
@@ -674,29 +679,50 @@ class LinuxNode(ResourceManager):
             src = f.name
 
         # If dst files should not be overwritten, check that the files do not
-        # exits already 
+        # exits already
+        if isinstance(src, str):
+            src = map(str.strip, src.split(";"))
+    
         if overwrite == False:
             src = self.filter_existing_files(src, dst)
             if not src:
-                return ("", ""), None 
+                return ("", ""), None
 
         if not self.localhost:
             # Build destination as <user>@<server>:<path>
             dst = "%s@%s:%s" % (self.get("username"), self.get("hostname"), dst)
 
-        result = self.copy(src, dst)
+        ((out, err), proc) = self.copy(src, dst)
 
         # clean up temp file
         if f:
             os.remove(f.name)
 
-        return result
+        if err:
+            msg = " Failed to upload files - src: %s dst: %s" %  (";".join(src), dst) 
+            self.error(msg, out, err)
+            
+            msg = "%s out: %s err: %s" % (msg, out, err)
+            if raise_on_error:
+                raise RuntimeError, msg
 
-    def download(self, src, dst):
+        return ((out, err), proc)
+
+    def download(self, src, dst, raise_on_error = True):
         if not self.localhost:
             # Build destination as <user>@<server>:<path>
             src = "%s@%s:%s" % (self.get("username"), self.get("hostname"), src)
-        return self.copy(src, dst)
+
+        ((out, err), proc) = self.copy(src, dst)
+
+        if err:
+            msg = " Failed to download files - src: %s dst: %s" %  (";".join(src), dst) 
+            self.error(msg, out, err)
+
+            if raise_on_error:
+                raise RuntimeError, msg
+
+        return ((out, err), proc)
 
     def install_packages_command(self, packages):
         command = ""
@@ -711,7 +737,8 @@ class LinuxNode(ResourceManager):
 
         return command
 
-    def install_packages(self, packages, home, run_home = None):
+    def install_packages(self, packages, home, run_home = None,
+            raise_on_error = True):
         """ Install packages in the Linux host.
 
         'home' is the directory to upload the package installation script.
@@ -728,11 +755,12 @@ class LinuxNode(ResourceManager):
             stdout = "instpkg_stdout", 
             stderr = "instpkg_stderr",
             overwrite = False,
-            raise_on_error = True)
+            raise_on_error = raise_on_error)
 
         return (out, err), proc 
 
-    def remove_packages(self, packages, home, run_home = None):
+    def remove_packages(self, packages, home, run_home = None,
+            raise_on_error = True):
         """ Uninstall packages from the Linux host.
 
         'home' is the directory to upload the package un-installation script.
@@ -756,18 +784,35 @@ class LinuxNode(ResourceManager):
             stdout = "rmpkg_stdout", 
             stderr = "rmpkg_stderr",
             overwrite = False,
-            raise_on_error = True)
+            raise_on_error = raise_on_error)
          
         return (out, err), proc 
 
-    def mkdir(self, path, clean = False):
+    def mkdir(self, paths, clean = False):
+        """ Paths is either a single remote directory path to create,
+        or a list of directories to create.
+        """
         if clean:
-            self.rmdir(path)
+            self.rmdir(paths)
 
-        return self.execute("mkdir -p %s" % path, with_lock = True)
+        if isinstance(paths, str):
+            paths = [paths]
 
-    def rmdir(self, path):
-        return self.execute("rm -rf %s" % path, with_lock = True)
+        cmd = " ; ".join(map(lambda path: "mkdir -p %s" % path, paths))
+
+        return self.execute(cmd, with_lock = True)
+
+    def rmdir(self, paths):
+        """ Paths is either a single remote directory path to delete,
+        or a list of directories to delete.
+        """
+
+        if isinstance(paths, str):
+            paths = [paths]
+
+        cmd = " ; ".join(map(lambda path: "rm -rf %s" % path, paths))
+
+        return self.execute(cmd, with_lock = True)
         
     def run_and_wait(self, command, home, 
             shfile = "cmd.sh",
@@ -780,7 +825,7 @@ class LinuxNode(ResourceManager):
             stderr = "stderr", 
             sudo = False,
             tty = False,
-            raise_on_error = False):
+            raise_on_error = True):
         """
         Uploads the 'command' to a bash script in the host.
         Then runs the script detached in background in the host, and
@@ -1034,8 +1079,8 @@ class LinuxNode(ResourceManager):
         """ Removes files that already exist in the Linux host from src list
         """
         # construct a dictionary with { dst: src }
-        dests = dict(map(lambda x: ( os.path.join(dst, os.path.basename(x) ),  x ), 
-            src.strip().split(" ") ) ) if src.strip().find(" ") != -1 else dict({dst: src})
+        dests = dict(map(lambda s: (os.path.join(dst, os.path.basename(s)), s), src)) \
+                    if len(src) > 1 else dict({dst: src[0]})
 
         command = []
         for d in dests.keys():
@@ -1050,7 +1095,7 @@ class LinuxNode(ResourceManager):
                 del dests[d]
 
         if not dests:
-            return ""
+            return []
 
-        return " ".join(dests.values())
+        return dests.values()
 

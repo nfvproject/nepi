@@ -18,7 +18,7 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 from nepi.execution.attribute import Attribute, Flags, Types
-from nepi.execution.resource import clsinit_copy, failtrap 
+from nepi.execution.resource import clsinit_copy 
 from nepi.resources.linux.application import LinuxApplication
 from nepi.util.timefuncs import tnow
 
@@ -35,13 +35,13 @@ class LinuxTraceroute(LinuxApplication):
             "Run traceroute in a while loop",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         print_timestamp = Attribute("printTimestamp",
             "Print timestamp before running traceroute",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         use_ip = Attribute("useIP",
             "Use the IP address instead of the host domain name. "
@@ -49,11 +49,11 @@ class LinuxTraceroute(LinuxApplication):
             "frequently",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         target = Attribute("target",
             "Traceroute target host (host that will be pinged)",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         cls._register_attribute(countinuous)
         cls._register_attribute(print_timestamp)
@@ -64,15 +64,14 @@ class LinuxTraceroute(LinuxApplication):
         super(LinuxTraceroute, self).__init__(ec, guid)
         self._home = "traceroute-%s" % self.guid
 
-    @failtrap
-    def deploy(self):
+    def do_deploy(self):
         if not self.get("command"):
             self.set("command", self._start_command)
 
         if not self.get("depends"):
             self.set("depends", "traceroute")
 
-        super(LinuxTraceroute, self).deploy()
+        super(LinuxTraceroute, self).do_deploy()
 
     @property
     def _start_command(self):

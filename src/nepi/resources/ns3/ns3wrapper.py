@@ -21,143 +21,277 @@ import logging
 import os
 import sys
 import threading
+import time
 import uuid
 
+SINGLETON = "singleton::"
+SIMULATOR_UUID = "singleton::Simulator"
+CONFIG_UUID = "singleton::Config"
+GLOBAL_VALUE_UUID = "singleton::GlobalValue"
+IPV4_GLOBAL_ROUTING_HELPER_UUID = "singleton::Ipv4GlobalRoutingHelper"
+
+def load_ns3_libraries():
+    import ctypes
+    import re
+
+    libdir = os.environ.get("NS3LIBRARIES")
+
+    # Load the ns-3 modules shared libraries
+    if libdir:
+        files = os.listdir(libdir)
+        regex = re.compile("(.*\.so)$")
+        libs = [m.group(1) for filename in files for m in [regex.search(filename)] if m]
+
+        initial_size = len(libs)
+        # Try to load the libraries in the right order by trial and error.
+        # Loop until all libraries are loaded.
+        while len(libs) > 0:
+            for lib in libs:
+                libfile = os.path.join(libdir, lib)
+                try:
+                    ctypes.CDLL(libfile, ctypes.RTLD_GLOBAL)
+                    libs.remove(lib)
+                except:
+                    #import traceback
+                    #err = traceback.format_exc()
+                    #print err
+                    pass
+
+            # if did not load any libraries in the last iteration break
+            # to prevent infinit loop
+            if initial_size == len(libs):
+                raise RuntimeError("Imposible to load shared libraries %s" % str(libs))
+            initial_size = len(libs)
+
+def load_ns3_module():
+    load_ns3_libraries()
+
+    # import the python bindings for the ns-3 modules
+    bindings = os.environ.get("NS3BINDINGS")
+    if bindings:
+        sys.path.append(bindings)
+
+    import pkgutil
+    import imp
+    import ns
+
+    # create a Python module to add all ns3 classes
+    ns3mod = imp.new_module("ns3")
+    sys.modules["ns3"] = ns3mod
+
+    for importer, modname, ispkg in pkgutil.iter_modules(ns.__path__):
+        if modname in [ "visualizer" ]:
+            continue
+
+        fullmodname = "ns.%s" % modname
+        module = __import__(fullmodname, globals(), locals(), ['*'])
+
+        for sattr in dir(module):
+            if sattr.startswith("_"):
+                continue
+
+            attr = getattr(module, sattr)
+
+            # netanim.Config and lte.Config singleton overrides ns3::Config
+            if sattr == "Config" and modname in ['netanim', 'lte']:
+                sattr = "%s.%s" % (modname, sattr)
+
+            setattr(ns3mod, sattr, attr)
+
+    return ns3mod
+
 class NS3Wrapper(object):
-    def __init__(self, homedir = None):
+    def __init__(self, loglevel = logging.INFO):
         super(NS3Wrapper, self).__init__()
-        self._ns3 = None
-        self._uuid = self.make_uuid()
-        self._homedir = homedir or os.path.join("/tmp", self._uuid)
+        # Thread used to run the simulation
         self._simulation_thread = None
         self._condition = None
 
+        # True if Simulator::Run was invoked
         self._started = False
-        self._stopped = False
 
-        # holds reference to all ns-3 objects in the simulation
-        self._resources = dict()
-
-        # create home dir (where all simulation related files will end up)
-        home = os.path.normpath(self.homedir)
-        if not os.path.exists(home):
-            os.makedirs(home, 0755)
+        # holds reference to all C++ objects and variables in the simulation
+        self._objects = dict()
 
         # Logging
-        loglevel = os.environ.get("NS3LOGLEVEL", "debug")
-        self._logger = logging.getLogger("ns3wrapper.%s" % self.uuid)
-        self._logger.setLevel(getattr(logging, loglevel.upper()))
-        hdlr = logging.FileHandler(os.path.join(self.homedir, "ns3wrapper.log"))
-        formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-        hdlr.setFormatter(formatter)
-        self._logger.addHandler(hdlr) 
+        self._logger = logging.getLogger("ns3wrapper")
+        self._logger.setLevel(loglevel)
 
-        # Load ns-3 shared libraries and import modules
-        self._load_ns3_module()
-        
+        ## NOTE that the reason to create a handler to the ns3 module,
+        # that is re-loaded each time a ns-3 wrapper is instantiated,
+        # is that else each unit test for the ns3wrapper class would need
+        # a separate file. Several ns3wrappers would be created in the 
+        # same unit test (single process), leading to inchorences in the 
+        # state of ns-3 global objects
+        #
+        # Handler to ns3 classes
+        self._ns3 = None
+
+        # Collection of allowed ns3 classes
+        self._allowed_types = None
+
     @property
     def ns3(self):
+        if not self._ns3:
+            # load ns-3 libraries and bindings
+            self._ns3 = load_ns3_module()
+
         return self._ns3
 
     @property
-    def homedir(self):
-        return self._homedir
+    def allowed_types(self):
+        if not self._allowed_types:
+            self._allowed_types = set()
+            type_id = self.ns3.TypeId()
+            
+            tid_count = type_id.GetRegisteredN()
+            base = type_id.LookupByName("ns3::Object")
 
-    @property
-    def uuid(self):
-        return self._uuid
+            for i in xrange(tid_count):
+                tid = type_id.GetRegistered(i)
+                
+                if tid.MustHideFromDocumentation() or \
+                        not tid.HasConstructor() or \
+                        not tid.IsChildOf(base): 
+                    continue
+
+                type_name = tid.GetName()
+                self._allowed_types.add(type_name)
+        
+        return self._allowed_types
 
     @property
     def logger(self):
         return self._logger
 
+    @property
+    def is_running(self):
+        return self._started and self.ns3.Simulator.IsFinished()
+
     def make_uuid(self):
         return "uuid%s" % uuid.uuid4()
 
-    def singleton(self, clazzname):
-        uuid = "uuid%s"%clazzname
+    def get_object(self, uuid):
+        return self._objects.get(uuid)
 
-        if not uuid in self._resources:
-            if not hasattr(self.ns3, clazzname):
-                msg = "Type %s not supported" % (typeid) 
-                self.logger.error(msg)
+    def factory(self, type_name, **kwargs):
+        if type_name not in self.allowed_types:
+            msg = "Type %s not supported" % (type_name) 
+            self.logger.error(msg)
+ 
+        factory = self.ns3.ObjectFactory()
+        factory.SetTypeId(type_name)
 
-            clazz = getattr(self.ns3, clazzname)
-            typeid = "ns3::%s" % clazzname
-            self._resources[uuid] = (clazz, typeid)
+        for name, value in kwargs.iteritems():
+            ns3_value = self._attr_from_string_to_ns3_value(type_name, name, value)
+            factory.Set(name, ns3_value)
+
+        obj = factory.Create()
+
+        uuid = self.make_uuid()
+        self._objects[uuid] = obj
 
         return uuid
-
-    def get_trace(self, trace, offset = None, nbytes = None ):
-        pass
-
-    def is_running(self):
-        return self._started and not self._stopped
-
-    def get_resource(self, uuid):
-        (resource, typeid) =  self._resources.get(uuid)
-        return resource
-    
-    def get_typeid(self, uuid):
-        (resource, typeid) =  self._resources.get(uuid)
-        return typeid
 
     def create(self, clazzname, *args):
         if not hasattr(self.ns3, clazzname):
             msg = "Type %s not supported" % (clazzname) 
             self.logger.error(msg)
-
+     
         clazz = getattr(self.ns3, clazzname)
-        #typeid = clazz.GetInstanceTypeId().GetName()
-        typeid = "ns3::%s" % clazzname
-
-        realargs = [self.get_resource(arg) if \
-                str(arg).startswith("uuid") else arg for arg in args]
-      
-        resource = clazz(*realargs)
+ 
+        # arguments starting with 'uuid' identify ns-3 C++
+        # objects and must be replaced by the actual object
+        realargs = self.replace_args(args)
+       
+        obj = clazz(*realargs)
         
         uuid = self.make_uuid()
-        self._resources[uuid] = (resource, typeid)
+        self._objects[uuid] = obj
+
         return uuid
 
+    def invoke(self, uuid, operation, *args, **kwargs):
+        if operation == "isAppRunning":
+            return self._is_app_running(uuid)
+        if operation == "addStaticRoute":
+            return self._add_static_route(uuid, *args)
+
+        if uuid.startswith(SINGLETON):
+            obj = self._singleton(uuid)
+        else:
+            obj = self.get_object(uuid)
+        
+        method = getattr(obj, operation)
+
+        # arguments starting with 'uuid' identify ns-3 C++
+        # objects and must be replaced by the actual object
+        realargs = self.replace_args(args)
+        realkwargs = self.replace_kwargs(kwargs)
+
+        result = method(*realargs, **realkwargs)
+
+        # If the result is not an object, no need to 
+        # keep a reference. Directly return value.
+        if result is None or type(result) in [bool, float, long, str, int]:
+            return result
+      
+        newuuid = self.make_uuid()
+        self._objects[newuuid] = result
+
+        return newuuid
+
+    def _set_attr(self, obj, name, ns3_value):
+        obj.SetAttribute(name, ns3_value)
+
     def set(self, uuid, name, value):
-        resource = self.get_resource(uuid)
+        obj = self.get_object(uuid)
+        type_name = obj.GetInstanceTypeId().GetName()
+        ns3_value = self._attr_from_string_to_ns3_value(type_name, name, value)
 
-        if hasattr(resource, name):
-            setattr(resource, name, value)
-        else:
-            self._set_ns3_attr(uuid, name, value)
+        # If the Simulation thread is not running,
+        # then there will be no thread-safety problems
+        # in changing the value of an attribute directly.
+        # However, if the simulation is running we need
+        # to set the value by scheduling an event, else
+        # we risk to corrupt the state of the
+        # simulation.
+        
+        event_executed = [False]
 
-    def get(self, name, uuid = None):
-        resource = self.get_resource(uuid)
+        if self.is_running:
+            # schedule the event in the Simulator
+            self._schedule_event(self._condition, event_executed, 
+                    self._set_attr, obj, name, ns3_value)
 
-        value = None
-        if hasattr(resource, name):
-            value = getattr(resource, name)
-        else:
-            value = self._get_ns3_attr(uuid, name)
+        if not event_executed[0]:
+            self._set_attr(obj, name, ns3_value)
 
         return value
 
-    def invoke(self, uuid, operation, *args):
-        resource = self.get_resource(uuid)
-        typeid = self.get_typeid(uuid)
-        method = getattr(resource, operation)
+    def _get_attr(self, obj, name, ns3_value):
+        obj.GetAttribute(name, ns3_value)
 
-        realargs = [self.get_resource(arg) if \
-                str(arg).startswith("uuid") else arg for arg in args]
+    def get(self, uuid, name):
+        obj = self.get_object(uuid)
+        type_name = obj.GetInstanceTypeId().GetName()
+        ns3_value = self._create_attr_ns3_value(type_name, name)
 
-        result = method(*realargs)
+        event_executed = [False]
 
-        if not result:
-            return None
-        
-        uuid = self.make_uuid()
-        self._resources[uuid] = (result, typeid)
+        if self.is_running:
+            # schedule the event in the Simulator
+            self._schedule_event(self._condition, event_executed,
+                    self._get_attr, obj, name, ns3_value)
 
-        return uuid
+        if not event_executed[0]:
+            self._get_attr(obj, name, ns3_value)
+
+        return self._attr_from_ns3_value_to_string(type_name, name, ns3_value)
 
     def start(self):
+        # Launch the simulator thread and Start the
+        # simulator in that thread
         self._condition = threading.Condition()
         self._simulator_thread = threading.Thread(
                 target = self._simulator_run,
@@ -167,51 +301,46 @@ class NS3Wrapper(object):
         self._started = True
 
     def stop(self, time = None):
-        if not self.ns3:
-            return
-
         if time is None:
             self.ns3.Simulator.Stop()
         else:
             self.ns3.Simulator.Stop(self.ns3.Time(time))
-        self._stopped = True
 
     def shutdown(self):
-        if self.ns3:
-            if not self.ns3.Simulator.IsFinished():
-                self.stop()
-            
-            # TODO!!!! SHOULD WAIT UNTIL THE THREAD FINISHES
-            if self._simulator_thread:
-                self._simulator_thread.join()
-            
-            self.ns3.Simulator.Destroy()
+        while not self.ns3.Simulator.IsFinished():
+            #self.logger.debug("Waiting for simulation to finish")
+            time.sleep(0.5)
         
-        self._resources.clear()
+        if self._simulator_thread:
+            self._simulator_thread.join()
+       
+        self.ns3.Simulator.Destroy()
         
-        self._ns3 = None
+        # Remove all references to ns-3 objects
+        self._objects.clear()
+        
         sys.stdout.flush()
         sys.stderr.flush()
 
     def _simulator_run(self, condition):
         # Run simulation
         self.ns3.Simulator.Run()
-        # Signal condition on simulation end to notify waiting threads
+        # Signal condition to indicate simulation ended and
+        # notify waiting threads
         condition.acquire()
         condition.notifyAll()
         condition.release()
 
-    def _schedule_event(self, condition, func, *args):
+    def _schedule_event(self, condition, event_executed, func, *args):
         """ Schedules event on running simulation, and wait until
             event is executed"""
 
-        def execute_event(contextId, condition, has_event_occurred, func, *args):
+        def execute_event(contextId, condition, event_executed, func, *args):
             try:
                 func(*args)
+                event_executed[0] = True
             finally:
-                # flag event occured
-                has_event_occurred[0] = True
-                # notify condition indicating attribute was set
+                # notify condition indicating event was executed
                 condition.acquire()
                 condition.notifyAll()
                 condition.release()
@@ -221,71 +350,37 @@ class NS3Wrapper(object):
 
         # delay 0 means that the event is expected to execute inmediately
         delay = self.ns3.Seconds(0)
+    
+        # Mark event as not executed
+        event_executed[0] = False
 
-        # flag to indicate that the event occured
-        # because bool is an inmutable object in python, in order to create a
-        # bool flag, a list is used as wrapper
-        has_event_occurred = [False]
         condition.acquire()
         try:
+            self.ns3.Simulator.ScheduleWithContext(contextId, delay, execute_event, 
+                    condition, event_executed, func, *args)
             if not self.ns3.Simulator.IsFinished():
-                self.ns3.Simulator.ScheduleWithContext(contextId, delay, execute_event,
-                     condition, has_event_occurred, func, *args)
-                while not has_event_occurred[0] and not self.ns3.Simulator.IsFinished():
-                    condition.wait()
+                condition.wait()
         finally:
             condition.release()
 
-    def _set_ns3_attr(self, uuid, name, value):
-        resource = self.get_resource(uuid)
-        ns3_value = self._to_ns3_value(uuid, name, value)
-
-        def set_attr(resource, name, ns3_value):
-            resource.SetAttribute(name, ns3_value)
-
-        if self._is_running:
-            # schedule the event in the Simulator
-            self._schedule_event(self._condition, set_attr, resource,
-                    name, ns3_value)
-        else:
-            set_attr(resource, name, ns3_value)
-
-    def _get_ns3_attr(self, uuid, name):
-        resource = self.get_resource(uuid)
-        ns3_value = self._create_ns3_value(uuid, name)
-
-        def get_attr(resource, name, ns3_value):
-            resource.GetAttribute(name, ns3_value)
-
-        if self._is_running:
-            # schedule the event in the Simulator
-            self._schedule_event(self._condition, get_attr, resource,
-                    name, ns3_value)
-        else:
-            get_attr(resource, name, ns3_value)
-
-        return self._from_ns3_value(uuid, name, ns3_value)
-
-    def _create_ns3_value(self, uuid, name):
-        typeid = get_typeid(uuid)
+    def _create_attr_ns3_value(self, type_name, name):
         TypeId = self.ns3.TypeId()
-        tid = TypeId.LookupByName(typeid)
+        tid = TypeId.LookupByName(type_name)
         info = TypeId.AttributeInformation()
         if not tid.LookupAttributeByName(name, info):
-            msg = "TypeId %s has no attribute %s" % (typeid, name) 
+            msg = "TypeId %s has no attribute %s" % (type_name, name) 
             self.logger.error(msg)
 
         checker = info.checker
         ns3_value = checker.Create() 
         return ns3_value
 
-    def _from_ns3_value(self, uuid, name, ns3_value):
-        typeid = get_typeid(uuid)
+    def _attr_from_ns3_value_to_string(self, type_name, name, ns3_value):
         TypeId = self.ns3.TypeId()
-        tid = TypeId.LookupByName(typeid)
+        tid = TypeId.LookupByName(type_name)
         info = TypeId.AttributeInformation()
         if not tid.LookupAttributeByName(name, info):
-            msg = "TypeId %s has no attribute %s" % (typeid, name) 
+            msg = "TypeId %s has no attribute %s" % (type_name, name) 
             self.logger.error(msg)
 
         checker = info.checker
@@ -301,13 +396,12 @@ class NS3Wrapper(object):
 
         return value
 
-    def _to_ns3_value(self, uuid, name, value):
-        typeid = get_typeid(uuid)
+    def _attr_from_string_to_ns3_value(self, type_name, name, value):
         TypeId = self.ns3.TypeId()
-        typeid = TypeId.LookupByName(typeid)
+        tid = TypeId.LookupByName(type_name)
         info = TypeId.AttributeInformation()
         if not tid.LookupAttributeByName(name, info):
-            msg = "TypeId %s has no attribute %s" % (typeid, name) 
+            msg = "TypeId %s has no attribute %s" % (type_name, name) 
             self.logger.error(msg)
 
         str_value = str(value)
@@ -319,62 +413,105 @@ class NS3Wrapper(object):
         ns3_value.DeserializeFromString(str_value, checker)
         return ns3_value
 
-    def _load_ns3_module(self):
-        if self.ns3:
-            return 
+    # singletons are identified as "ns3::ClassName"
+    def _singleton(self, ident):
+        if not ident.startswith(SINGLETON):
+            return None
 
-        import ctypes
-        import imp
-        import re
-        import pkgutil
+        clazzname = ident[ident.find("::")+2:]
+        if not hasattr(self.ns3, clazzname):
+            msg = "Type %s not supported" % (clazzname)
+            self.logger.error(msg)
 
-        bindings = os.environ.get("NS3BINDINGS")
-        libdir = os.environ.get("NS3LIBRARIES")
+        return getattr(self.ns3, clazzname)
 
-        # Load the ns-3 modules shared libraries
-        if libdir:
-            files = os.listdir(libdir)
-            regex = re.compile("(.*\.so)$")
-            libs = [m.group(1) for filename in files for m in [regex.search(filename)] if m]
+    # replace uuids and singleton references for the real objects
+    def replace_args(self, args):
+        realargs = [self.get_object(arg) if \
+                str(arg).startswith("uuid") else arg for arg in args]
+ 
+        realargs = [self._singleton(arg) if \
+                str(arg).startswith(SINGLETON) else arg for arg in realargs]
 
-            libscp = list(libs)
-            while len(libs) > 0:
-                for lib in libs:
-                    libfile = os.path.join(libdir, lib)
-                    try:
-                        ctypes.CDLL(libfile, ctypes.RTLD_GLOBAL)
-                        libs.remove(lib)
-                    except:
-                        pass
+        return realargs
 
-                # if did not load any libraries in the last iteration break
-                # to prevent infinit loop
-                if len(libscp) == len(libs):
-                    raise RuntimeError("Imposible to load shared libraries %s" % str(libs))
-                libscp = list(libs)
+    # replace uuids and singleton references for the real objects
+    def replace_kwargs(self, kwargs):
+        realkwargs = dict([(k, self.get_object(v) \
+                if str(v).startswith("uuid") else v) \
+                for k,v in kwargs.iteritems()])
+ 
+        realkwargs = dict([(k, self._singleton(v) \
+                if str(v).startswith(SINGLETON) else v )\
+                for k, v in realkwargs.iteritems()])
 
-        # import the python bindings for the ns-3 modules
-        if bindings:
-            sys.path.append(bindings)
+        return realkwargs
 
-        # create a module to add all ns3 classes
-        ns3mod = imp.new_module("ns3")
-        sys.modules["ns3"] = ns3mod
+    def _is_app_running(self, uuid): 
+        now = self.ns3.Simulator.Now()
+        if now.IsZero():
+            return False
 
-        # retrieve all ns3 classes and add them to the ns3 module
-        import ns
-        for importer, modname, ispkg in pkgutil.iter_modules(ns.__path__):
-            fullmodname = "ns.%s" % modname
-            module = __import__(fullmodname, globals(), locals(), ['*'])
+        app = self.get_object(uuid)
+        stop_time_value = self.ns3.TimeValue()
+        app.GetAttribute("StopTime", stop_time_value)
+        stop_time = stop_time_value.Get()
 
-            # netanim.Config singleton overrides ns3::Config
-            if modname in ['netanim']:
-                continue
+        start_time_value = self.ns3.TimeValue()
+        app.GetAttribute("StartTime", start_time_value)
+        start_time = start_time_value.Get()
+        
+        if now.Compare(start_time) >= 0 and now.Compare(stop_time) < 0:
+            return True
 
-            for sattr in dir(module):
-                if not sattr.startswith("_"):
-                    attr = getattr(module, sattr)
-                    setattr(ns3mod, sattr, attr)
+        return False
 
-        self._ns3 = ns3mod
+    def _add_static_route(self, ipv4_uuid, network, prefix, nexthop):
+        ipv4 = self.get_object(ipv4_uuid)
+
+        list_routing = ipv4.GetRoutingProtocol()
+        (static_routing, priority) = list_routing.GetRoutingProtocol(0)
+
+        ifindex = self._find_ifindex(ipv4, nexthop)
+        if ifindex == -1:
+            return False
+        
+        nexthop = self.ns3.Ipv4Address(nexthop)
+
+        if network in ["0.0.0.0", "0", None]:
+            # Default route: 0.0.0.0/0
+            static_routing.SetDefaultRoute(nexthop, ifindex)
+        else:
+            mask = self.ns3.Ipv4Mask("/%s" % prefix) 
+            network = self.ns3.Ipv4Address(network)
+
+            if prefix == 32:
+                # Host route: x.y.z.w/32
+                static_routing.AddHostRouteTo(network, nexthop, ifindex)
+            else:
+                # Network route: x.y.z.w/n
+                static_routing.AddNetworkRouteTo(network, mask, nexthop, 
+                        ifindex) 
+        return True
+
+    def _find_ifindex(self, ipv4, nexthop):
+        ifindex = -1
+
+        nexthop = self.ns3.Ipv4Address(nexthop)
+
+        # For all the interfaces registered with the ipv4 object, find
+        # the one that matches the network of the nexthop
+        nifaces = ipv4.GetNInterfaces()
+        for ifidx in xrange(nifaces):
+            iface = ipv4.GetInterface(ifidx)
+            naddress = iface.GetNAddresses()
+            for addridx in xrange(naddress):
+                ifaddr = iface.GetAddress(addridx)
+                ifmask = ifaddr.GetMask()
+                
+                ifindex = ipv4.GetInterfaceForPrefix(nexthop, ifmask)
+
+                if ifindex == ifidx:
+                    return ifindex
+        return ifindex
 

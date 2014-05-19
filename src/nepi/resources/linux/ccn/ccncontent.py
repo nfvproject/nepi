@@ -34,11 +34,11 @@ class LinuxCCNContent(LinuxApplication):
     def _register_attributes(cls):
         content_name = Attribute("contentName",
                 "The name of the content to publish (e.g. ccn:/VIDEO) ",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         content = Attribute("content",
                 "The content to publish. It can be a path to a file or plain text ",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         scope = Attribute("scope",
                 "Use the given scope on the start-write request (if -r specified). "
@@ -46,7 +46,7 @@ class LinuxCCNContent(LinuxApplication):
                 "Note that a scope of 3 is encoded as the absence of any scope in the interest. ",
                 type = Types.Integer,
                 default = 1,
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         cls._register_attribute(content_name)
         cls._register_attribute(content)
@@ -96,7 +96,6 @@ class LinuxCCNContent(LinuxApplication):
             self.do_discover()
             self.do_provision()
 
-            self.debug("----- READY ---- ")
             self.set_ready()
 
     def upload_start_command(self):
