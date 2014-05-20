@@ -28,7 +28,6 @@
 #       Host1             Host3               Host2   
 
 
-
 from nepi.execution.ec import ExperimentController
 import os, time
 
@@ -85,6 +84,7 @@ def add_app(ec, command, node):
 # Create the EC
 ec = ExperimentController(exp_id = "test-tr")
 
+#XXX : Need to put 6 working nodes or to let Nepi find for you
 switch1 = "planetlab2.virtues.fi"
 switch2 = "planetlab2.upc.es"
 switch3 = "planetlab2.cs.aueb.gr"
@@ -92,9 +92,12 @@ host1 = "planetlab2.ionio.gr"
 host2 = "iraplab2.iralab.uni-karlsruhe.de"
 host3 = "planetlab2.diku.dk"
 
-ip_controller = "194.254.215.12"
+ip_controller = "xxx.yyy.zzz.ttt"
+
+#XXX : Depends on the Vsys_tag of your slice
 network = "192.168.3.0"
 
+#XXX : Name of your slice
 slicename = "inria_nepi"
 
 pl_user = os.environ.get("PL_USER")
@@ -115,10 +118,8 @@ port4 = add_port(ec, "nepi_port4", ovs1)
 port7 = add_port(ec, "nepi_port7", ovs1)
 port2 = add_port(ec, "nepi_port2", ovs2)
 port5 = add_port(ec, "nepi_port5", ovs2)
-#port8 = add_port(ec, "nepi_port8", ovs2)
 port3 = add_port(ec, "nepi_port3", ovs3)
 port6 = add_port(ec, "nepi_port6", ovs3)
-#port9 = add_port(ec, "nepi_port9", ovs3)
 
 h1_node = add_node(ec, host1, slicename, pl_user, pl_password)
 h2_node = add_node(ec, host2, slicename, pl_user, pl_password)

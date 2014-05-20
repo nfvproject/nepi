@@ -15,8 +15,9 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Author: Alina Quereilhac <alina.quereilhac@inria.fr>
-#	      Alexandros Kouvakas <alexandros.kouvakas@gmail.com>
+# Authors: Alina Quereilhac <alina.quereilhac@inria.fr>
+#         Alexandros Kouvakas <alexandros.kouvakas@inria.fr>
+#         Julien Tribino <julien.tribino@inria.fr>
 
 
 from nepi.execution.attribute import Attribute, Flags, Types

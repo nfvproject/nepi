@@ -86,14 +86,18 @@ def add_app(ec, command, node):
 # Create the EC
 ec = ExperimentController(exp_id = "test")
 
+#XXX : Need to put 4 working nodes or to let Nepi find for you
 switch1 = "planetlab2.virtues.fi"
 switch2 = "planetlab2.upc.es"
 host1 = "planetlab2.ionio.gr"
 host2 = "iraplab2.iralab.uni-karlsruhe.de"
 
-ip_controller = "194.254.215.12"
+ip_controller = "xxx.yyy.zzz.ttt"
+
+#XXX : Depends on the Vsys_tag of your slice
 network = "192.168.3.0"
 
+#XXX : Name of your slice
 slicename = "inria_nepi"
 
 pl_user = os.environ.get("PL_USER")

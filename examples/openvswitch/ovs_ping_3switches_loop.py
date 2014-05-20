@@ -94,6 +94,7 @@ def add_app(ec, command, node):
 # Create the EC
 ec = ExperimentController(exp_id = "test-tr")
 
+#XXX : Need to put 6 working nodes or to let Nepi find for you
 switch1 = "planetlab2.virtues.fi"
 switch2 = "planetlab2.upc.es"
 switch3 = "planetlab2.cs.aueb.gr"
@@ -101,9 +102,13 @@ host1 = "planetlab2.ionio.gr"
 host2 = "iraplab2.iralab.uni-karlsruhe.de"
 host3 = "planetlab2.diku.dk"
 
-ip_controller = "194.254.215.12"
+#ip_controller = "194.254.215.12"
+ip_controller = "xxx.yyy.zzz.ttt"
+
+#XXX : Depends on the Vsys_tag of your slice
 network = "192.168.3.0"
 
+#XXX : Name of your slice
 slicename = "inria_nepi"
 
 pl_user = os.environ.get("PL_USER")
@@ -165,8 +170,7 @@ ec.deploy()
 
 ec.wait_finished([app1, app2, app3, app4, app5, app6, app7, app8, app9, app10, app11, app12])
 
-# Retreive ping results and save
-# them in a file
+# Retreive ping results and save them in a file
 ping1 = ec.trace(app1, 'stdout')
 ping2 = ec.trace(app2, 'stdout')
 ping3 = ec.trace(app3, 'stdout')
