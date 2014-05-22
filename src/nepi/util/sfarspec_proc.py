@@ -156,12 +156,13 @@ class SfaRSpecProcessing(object):
         nodes = []
         channels = []
         links = []
-        self._log.info("Building RSpec for resources %s" % resources)
+        self._log.debug("Building RSpec for resources %s" % resources)
+        cardinal = 0
         for urn in resources:
             # XXX TO BE CORRECTED, this handles None values
             if not urn:
                 continue
-            self._log.info(urn)
+            self._log.debug(urn)
             resource = dict()
             # TODO: take into account the case where we send a dict of URNs without keys
             #resource['component_id'] = resource.pop('urn')
@@ -174,10 +175,20 @@ class SfaRSpecProcessing(object):
 
             if resource_type == 'node':
                 # XXX dirty hack WiLab !!!
-                if self.config:
-                    if 'wilab2' in self.config['sm']:
-                        resource['client_id'] = "PC"
-                        resource['sliver_type'] = "raw-pc"
+#                Commented Lucia, only works with config file, not the case for nepi  
+#                if self.config:
+#                    if 'wilab2' in self.config['sm']:
+#                        resource['client_id'] = "PC"
+#                        resource['sliver_type'] = "raw-pc"
+                if 'wilab2' in urn:
+                    resource['client_id'] = "node%s" % cardinal
+                    resource['sliver_type'] = "raw-pc"
+                    top_auth = resource_hrn.replace("\\", "").split('.')
+                    top_auth.pop()
+                    top_auth = '.'.join(top_auth)
+                    cm = urn.split("+")
+                    resource['component_manager_id'] = "%s+%s+authority+cm" % (cm[0],top_auth)
+                    cardinal += 1
                 nodes.append(resource)
             elif resource_type == 'link':
                 links.append(resource)
@@ -190,8 +201,8 @@ class SfaRSpecProcessing(object):
         #rspec.version.add_leases(leases)
         #rspec.version.add_links(links)
         #rspec.version.add_channels(channels)
-   
-        self._log.info("request rspec: %s"%rspec.toxml())
+
+        self._log.debug("request rspec: %s"%rspec.toxml())
         return rspec.toxml()
 
 
