@@ -237,6 +237,7 @@ class PlanetlabSfaNode(LinuxNode):
                         self.fail_node_not_alive(hostname)
                     else:
                         if self._check_if_in_slice([host_hrn]):
+                            self.debug("The node %s is already in the slice" % hostname)
                             self._slicenode = True
                         self._node_to_provision = host_hrn
                         super(PlanetlabSfaNode, self).do_discover()
@@ -278,12 +279,12 @@ class PlanetlabSfaNode(LinuxNode):
 #    
     def _blacklisted(self, host_hrn):
         if self.sfaapi.blacklisted(host_hrn):
-           self.fail_node_not_available(hostname)
+           self.fail_node_not_available(host_hrn)
         return False
 
     def _reserved(self, host_hrn):
         if self.sfaapi.reserved(host_hrn):
-            self.fail_node_not_available(hostname)
+            self.fail_node_not_available(host_hrn)
         return False
             
     def do_provision(self):
@@ -330,7 +331,7 @@ class PlanetlabSfaNode(LinuxNode):
                 # the timeout was reach without establishing ssh connection
                 # the node is blacklisted, deleted from the slice, and a new
                 # node to provision is discovered
-                self.warn(" Could not SSH login ")
+                self.warning(" Could not SSH login ")
                 self._blacklist_node(node)
                 self.do_discover()
                 continue
@@ -344,7 +345,7 @@ class PlanetlabSfaNode(LinuxNode):
                 ((out2, err2), proc2) = self.execute(cmd)
                 if out1.find("/proc type proc") < 0 or \
                     "Read-only file system".lower() in err2.lower():
-                    self.warn(" Corrupted file system ")
+                    self.warning(" Corrupted file system ")
                     self._blacklist_node(node)
                     self.do_discover()
                     continue
@@ -529,11 +530,12 @@ class PlanetlabSfaNode(LinuxNode):
         slicename = 'ple.' + slicename
         self.sfaapi.add_resource_to_slice(slicename, host_hrn)
 
-#    def _delete_node_from_slice(self, node):
-#        self.warn(" Deleting node from slice ")
-#        slicename = self.get("username")
-#        self.plapi.delete_slice_node(slicename, [node])
-#
+    def _delete_from_slice(self):
+        self.warning(" Deleting node from slice ")
+        slicename = self.get("username").replace('_', '.')
+        slicename = 'ple.' + slicename
+        self.sfaapi.remove_all_from_slice(slicename)
+
     def _get_hostname(self):
         hostname = self.get("hostname")
         if hostname:
@@ -559,8 +561,10 @@ class PlanetlabSfaNode(LinuxNode):
         slicename = self.get("username").replace('_', '.')
         slicename = 'ple.' + slicename
         slice_nodes = self.sfaapi.get_slice_resources(slicename)['resource']
-        slice_nodes_hrn = self.sfaapi.get_resources_hrn(slice_nodes)
-        nodes_inslice = list(set(hosts_hrn) & set(slice_nodes_hrn.values()))
+        if slice_nodes:
+            slice_nodes_hrn = self.sfaapi.get_resources_hrn(slice_nodes).values()
+        else: slice_nodes_hrn = []
+        nodes_inslice = list(set(hosts_hrn) & set(slice_nodes_hrn))
         return nodes_inslice
 
     def _do_ping(self, hostname):

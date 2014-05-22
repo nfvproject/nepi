@@ -390,7 +390,7 @@ class PlanetlabNode(LinuxNode):
 
     def do_release(self):
         super(PlanetlabNode, self).do_release()
-        if self.state == ResourceState.RELEASED:
+        if self.state == ResourceState.RELEASED and not self._skip_provision():
             self.debug(" Releasing PLC API ")
             self.plapi.release()
 
