@@ -252,9 +252,9 @@ def rexec(command, host, user,
 
     if gw:
         if gwuser:
-            proxycommand = 'ProxyCommand=ssh %s@%s -W %%h:%%p' % (gwuser, gw)
+            proxycommand = 'ProxyCommand=ssh -q %s@%s -W %%h:%%p' % (gwuser, gw)
         else:
-            proxycommand = 'ProxyCommand=ssh %%r@%s -W %%h:%%p' % gw
+            proxycommand = 'ProxyCommand=ssh -q %%r@%s -W %%h:%%p' % gw
         args.extend(['-o', proxycommand])
 
     if agent:
@@ -347,9 +347,9 @@ def rcopy(source, dest,
 
     if gw:
         if gwuser:
-            proxycommand = 'ProxyCommand=ssh %s@%s -W %%h:%%p' % (gwuser, gw)
+            proxycommand = 'ProxyCommand=ssh -q %s@%s -W %%h:%%p' % (gwuser, gw)
         else:
-            proxycommand = 'ProxyCommand=ssh %%r@%s -W %%h:%%p' % gw
+            proxycommand = 'ProxyCommand=ssh -q %%r@%s -W %%h:%%p' % gw
         args.extend(['-o', proxycommand])
 
     if recursive:

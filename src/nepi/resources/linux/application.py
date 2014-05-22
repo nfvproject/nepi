@@ -282,10 +282,11 @@ class LinuxApplication(ResourceManager):
             procs = dict()
             ps_aux = "ps aux |awk '{print $2,$11}'"
             (out, err), proc = self.node.execute(ps_aux)
-            for line in out.strip().split("\n"):
-                parts = line.strip().split(" ")
-                procs[parts[0]] = parts[1]
-            pickle.dump(procs, open("/tmp/save.proc", "wb"))
+            if len(out) != 0:
+                for line in out.strip().split("\n"):
+                    parts = line.strip().split(" ")
+                    procs[parts[0]] = parts[1]
+                pickle.dump(procs, open("/tmp/save.proc", "wb"))
             
         # create run dir for application
         self.node.mkdir(self.run_home)
