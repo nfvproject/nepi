@@ -25,42 +25,35 @@ import os
 exp_id = "sfa_test"
 ec = ExperimentController(exp_id)
 
-username = os.environ.get('SFA_SLICE')
+slicename = 'ple.inria.lguevgeo'
 sfauser = os.environ.get('SFA_USER')
 sfaPrivateKey = os.environ.get('SFA_PK')
 
-# server
-node1 = ec.register_resource("PlanetlabSfaNode")
-ec.set(node1, "hostname", 'planetlab1.cs.vu.nl')
-ec.set(node1, "username", username)
+# nodes
+node1 = ec.register_resource("WilabtSfaNode")
+ec.set(node1, "hostname", 'zotacB5')
+ec.set(node1, "slicename", slicename)
 ec.set(node1, "sfauser", sfauser)
 ec.set(node1, "sfaPrivateKey", sfaPrivateKey)
+ec.set(node1, "gatewayUser", "nepi")
+ec.set(node1, "gateway", "bastion.test.iminds.be")
 ec.set(node1, "cleanHome", True)
 ec.set(node1, "cleanProcesses", True)
 
-node2 = ec.register_resource("PlanetlabSfaNode")
-ec.set(node2, "hostname", 'planetlab3.xeno.cl.cam.ac.uk')
-ec.set(node2, "username", username)
+node2 = ec.register_resource("WilabtSfaNode")
+ec.set(node2, "hostname", 'zotacM20')
+ec.set(node2, "slicename", slicename)
 ec.set(node2, "sfauser", sfauser)
 ec.set(node2, "sfaPrivateKey", sfaPrivateKey)
+ec.set(node2, "gatewayUser", "nepi")
+ec.set(node2, "gateway", "bastion.test.iminds.be")
 ec.set(node2, "cleanHome", True)
 ec.set(node2, "cleanProcesses", True)
-
-app1 = ec.register_resource("LinuxApplication")
-command = "ping -c5 google.com" 
-ec.set(app1, "command", command)
-ec.register_connection(app1, node1)
-
-app2 = ec.register_resource("LinuxApplication")
-command = "ping -c5 google.com" 
-ec.set(app2, "command", command)
-ec.register_connection(app2, node2)
-
 
 # Deploy
 ec.deploy()
 
-ec.wait_finished([app1, app2])
+ec.wait_deployed([node1, node2])
 
 ec.shutdown()
 
