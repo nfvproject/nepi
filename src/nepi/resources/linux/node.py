@@ -418,15 +418,19 @@ class LinuxNode(ResourceManager):
                 pids_temp = dict()
                 ps_aux = "ps aux |awk '{print $2,$11}'"
                 (out, err), proc = self.execute(ps_aux)
-                for line in out.strip().split("\n"):
-                    parts = line.strip().split(" ")
-                    pids_temp[parts[0]] = parts[1]
-                kill_pids = set(pids_temp.items()) - set(pids.items())
-                kill_pids = ' '.join(dict(kill_pids).keys())
+                if len(out) != 0:
+                    for line in out.strip().split("\n"):
+                        parts = line.strip().split(" ")
+                        pids_temp[parts[0]] = parts[1]
+                    kill_pids = set(pids_temp.items()) - set(pids.items())
+                    kill_pids = ' '.join(dict(kill_pids).keys())
 
-                cmd = ("killall tcpdump || /bin/true ; " +
-                    "kill $(ps aux | grep '[n]epi' | awk '{print $2}') || /bin/true ; " +
-                    "kill %s || /bin/true ; " % kill_pids)
+                    cmd = ("killall tcpdump || /bin/true ; " +
+                        "kill $(ps aux | grep '[n]epi' | awk '{print $2}') || /bin/true ; " +
+                        "kill %s || /bin/true ; " % kill_pids)
+                else:
+                    cmd = ("killall tcpdump || /bin/true ; " +
+                        "kill $(ps aux | grep '[n]epi' | awk '{print $2}') || /bin/true ; ")
             else:
                 cmd = ("killall tcpdump || /bin/true ; " +
                     "kill $(ps aux | grep '[n]epi' | awk '{print $2}') || /bin/true ; ")
