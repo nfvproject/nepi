@@ -17,6 +17,12 @@
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
+# 
+# Instructions. Run with:
+#
+#  PYTHONPATH=$PYTHONPATH:~/repos/nepi/src python src/nepi/resources/ns3/resource_manager_generator.py
+#
+
 # Force the load of ns3 libraries
 from nepi.resources.ns3.ns3wrapper import load_ns3_module
 
@@ -24,11 +30,6 @@ import os
 import re
 
 adapted_types = ["ns3::Node",
-        "ns3::Application", 
-        #"ns3::DceApplication", 
-        "ns3::NetDevice",
-        "ns3::Channel",
-        "ns3::Queue",
         "ns3::Icmpv4L4Protocol",
         "ns3::ArpL3Protocol",
         "ns3::Ipv4L3Protocol",
@@ -41,7 +42,12 @@ adapted_types = ["ns3::Node",
         "ns3::WifiPhy",
         "ns3::WifiMac",
         "ns3::ErrorModel",
-        "ns3::ErrorRateModel"]
+        "ns3::ErrorRateModel",
+        "ns3::Application", 
+        #"ns3::DceApplication", 
+        "ns3::NetDevice",
+        "ns3::Channel",
+        "ns3::Queue"]
 
 base_types = ["ns3::IpL4Protocol"]
 

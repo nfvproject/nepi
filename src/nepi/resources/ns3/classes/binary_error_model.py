@@ -20,24 +20,24 @@ from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import Trace, TraceAttr
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
         ResourceState, reschedule_delay
-from nepi.resources.ns3.ns3wifichannel import NS3BaseWifiChannel 
+from nepi.resources.ns3.ns3errormodel import NS3BaseErrorModel 
 
 @clsinit_copy
-class NS3YansWifiChannel(NS3BaseWifiChannel):
-    _rtype = "ns3::YansWifiChannel"
+class NS3BinaryErrorModel(NS3BaseErrorModel):
+    _rtype = "ns3::BinaryErrorModel"
 
     @classmethod
     def _register_attributes(cls):
         
-        attr_id = Attribute("Id",
-            "The id (unique integer) of this Channel.",
-            type = Types.Integer,
-            default = "0",  
+        attr_isenabled = Attribute("IsEnabled",
+            "Whether this ErrorModel is enabled or not.",
+            type = Types.Bool,
+            default = "True",  
             allowed = None,
             range = None,    
-            flags = Flags.Reserved | Flags.NoWrite)
+            flags = Flags.Reserved | Flags.Construct)
 
-        cls._register_attribute(attr_id)
+        cls._register_attribute(attr_isenabled)
 
 
 
@@ -46,5 +46,5 @@ class NS3YansWifiChannel(NS3BaseWifiChannel):
         pass
 
     def __init__(self, ec, guid):
-        super(NS3YansWifiChannel, self).__init__(ec, guid)
-        self._home = "ns3-yans-wifi-channel-%s" % self.guid
+        super(NS3BinaryErrorModel, self).__init__(ec, guid)
+        self._home = "ns3-binary-error-model-%s" % self.guid

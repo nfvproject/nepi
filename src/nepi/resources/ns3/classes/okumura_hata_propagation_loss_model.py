@@ -20,24 +20,44 @@ from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import Trace, TraceAttr
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
         ResourceState, reschedule_delay
-from nepi.resources.ns3.ns3wifinetdevice import NS3BaseWifiNetDevice 
+from nepi.resources.ns3.ns3propagationlossmodel import NS3BasePropagationLossModel 
 
 @clsinit_copy
-class NS3WifiNetDevice(NS3BaseWifiNetDevice):
-    _rtype = "ns3::WifiNetDevice"
+class NS3OkumuraHataPropagationLossModel(NS3BasePropagationLossModel):
+    _rtype = "ns3::OkumuraHataPropagationLossModel"
 
     @classmethod
     def _register_attributes(cls):
         
-        attr_mtu = Attribute("Mtu",
-            "The MAC-level Maximum Transmission Unit",
-            type = Types.Integer,
-            default = "2296",  
+        attr_frequency = Attribute("Frequency",
+            "The propagation frequency in Hz",
+            type = Types.Double,
+            default = "2.16e+09",  
             allowed = None,
             range = None,    
             flags = Flags.Reserved | Flags.Construct)
 
-        cls._register_attribute(attr_mtu)
+        cls._register_attribute(attr_frequency)
+
+        attr_environment = Attribute("Environment",
+            "Environment Scenario",
+            type = Types.Enumerate,
+            default = "Urban",  
+            allowed = ["Urban","SubUrban","OpenAreas"],
+            range = None,    
+            flags = Flags.Reserved | Flags.Construct)
+
+        cls._register_attribute(attr_environment)
+
+        attr_citysize = Attribute("CitySize",
+            "Dimension of the city",
+            type = Types.Enumerate,
+            default = "Large",  
+            allowed = ["Small","Medium","Large"],
+            range = None,    
+            flags = Flags.Reserved | Flags.Construct)
+
+        cls._register_attribute(attr_citysize)
 
 
 
@@ -46,5 +66,5 @@ class NS3WifiNetDevice(NS3BaseWifiNetDevice):
         pass
 
     def __init__(self, ec, guid):
-        super(NS3WifiNetDevice, self).__init__(ec, guid)
-        self._home = "ns3-wifi-net-device-%s" % self.guid
+        super(NS3OkumuraHataPropagationLossModel, self).__init__(ec, guid)
+        self._home = "ns3-okumura-hata-propagation-loss-model-%s" % self.guid

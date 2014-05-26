@@ -133,8 +133,8 @@ def add_wifi_channel(ec):
 
 class LinuxNS3DceApplicationTest(unittest.TestCase):
     def setUp(self):
-        #self.fedora_host = "nepi2.pl.sophia.inria.fr"
-        self.fedora_host = "planetlabpc1.upf.edu"
+        self.fedora_host = "nepi2.pl.sophia.inria.fr"
+        #self.fedora_host = "planetlabpc1.upf.edu"
         self.fedora_user = "inria_nepi"
         self.fedora_identity = "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'])
 
@@ -179,7 +179,7 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
                 "cd iputils-s20101006/ && "
                 "sed -i 's/CFLAGS=/CFLAGS+=/g' Makefile && "
                 "make CFLAGS=-fPIC LDFLAGS=-pie ping && "
-                "cp ping ${BIN_DCE} ")
+                "cp ping ${BIN_DCE} && cd - ")
         ec.set (ping, "binary", "ping")
         ec.set (ping, "stackSize", 1<<20)
         ec.set (ping, "arguments", "-c 10;-s 1000;10.0.0.2")
@@ -244,24 +244,23 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
         ec.register_connection(chan, p2p2)
 
         ### create applications
-        ccnd1 = ec.register_resource("ns3::LinuxDceApplication")
+        ccnd1 = ec.register_resource("ns3::LinuxCCNDceApplication")
         ec.set(ccnd1, "depends", "libpcap0.8-dev openjdk-6-jdk ant1.8 autoconf "
             "libssl-dev libexpat-dev libpcap-dev libecryptfs0 libxml2-utils auto"
             "make gawk gcc g++ git-core pkg-config libpcre3-dev openjdk-6-jre-lib")
         ec.set (ccnd1, "sources", "http://www.ccnx.org/releases/ccnx-0.7.2.tar.gz")
-        ec.set (ccnd1, "build", "tar xvjf ${SRC}/iputils-s20101006.tar.bz2 && "
-                "tar zxf ${SRC}/ccnx-0.7.2.tar.gz && "
+        ec.set (ccnd1, "build", "tar zxf ${SRC}/ccnx-0.7.2.tar.gz && "
                 "cd ccnx-0.7.2 && "
-                " INSTALL_BASE=${BIN_DCE} ./configure && "
+                " INSTALL_BASE=${BIN_DCE}/.. ./configure && "
                 " make MORE_LDLIBS=-pie && "
-                " make install ")
+                " make install && cd -")
         ec.set (ccnd1, "binary", "ccndstart")
         ec.set (ccnd1, "stackSize", 1<<20)
         ec.set (ccnd1, "StartTime", "1s")
         ec.set (ccnd1, "StopTime", "20s")
         ec.register_connection(ccnd1, nsnode1)
 
-        ccnkill1 = ec.register_resource("ns3::LinuxDceApplication")
+        ccnkill1 = ec.register_resource("ns3::LinuxCCNDceApplication")
         ec.set (ccnkill1, "binary", "ccnsmoketest")
         ec.set (ccnkill1, "arguments", "kill")
         ec.set (ccnkill1, "stdinFile", "")
@@ -274,7 +273,7 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
             os.path.dirname(os.path.realpath(__file__)),
             "repoFile1")
 
-        ccnr = ec.register_resource("ns3::LinuxDceApplication")
+        ccnr = ec.register_resource("ns3::LinuxCCNDceApplication")
         ec.set (ccnr, "binary", "ccnr")
         ec.set (ccnr, "environment", "CCNR_DIRECTORY=/REPO/")
         ec.set (ccnr, "files", "%s=/REPO/repoFile1" % repofile) 
@@ -283,7 +282,7 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
         ec.set (ccnr, "StopTime", "120s")
         ec.register_connection(ccnr, nsnode1)
 
-        ccndc1 = ec.register_resource("ns3::LinuxDceApplication")
+        ccndc1 = ec.register_resource("ns3::LinuxCCNDceApplication")
         ec.set (ccndc1, "binary", "ccndc")
         ec.set (ccndc1, "arguments", "-v;add;ccnx:/;udp;10.0.0.2")
         ec.set (ccndc1, "stackSize", 1<<20)
@@ -291,14 +290,14 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
         ec.set (ccndc1, "StopTime", "120s")
         ec.register_connection(ccndc1, nsnode1)
 
-        ccnd2 = ec.register_resource("ns3::LinuxDceApplication")
+        ccnd2 = ec.register_resource("ns3::LinuxCCNDceApplication")
         ec.set (ccnd2, "binary", "ccndstart")
         ec.set (ccnd2, "stackSize", 1<<20)
         ec.set (ccnd2, "StartTime", "1s")
         ec.set (ccnd2, "StopTime", "120s")
         ec.register_connection(ccnd2, nsnode2)
 
-        ccndc2 = ec.register_resource("ns3::LinuxDceApplication")
+        ccndc2 = ec.register_resource("ns3::LinuxCCNDceApplication")
         ec.set (ccndc2, "binary", "ccndc")
         ec.set (ccndc2, "arguments", "-v;add;ccnx:/;udp;10.0.0.1")
         ec.set (ccndc2, "stackSize", 1<<20)
@@ -306,7 +305,7 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
         ec.set (ccndc2, "StopTime", "120s")
         ec.register_connection(ccndc2, nsnode2)
 
-        ccnpeek = ec.register_resource("ns3::LinuxDceApplication")
+        ccnpeek = ec.register_resource("ns3::LinuxCCNDceApplication")
         ec.set (ccnpeek, "binary", "ccnpeek")
         ec.set (ccnpeek, "arguments", "ccnx:/test/bunny.ts")
         ec.set (ccnpeek, "stdinFile", "")
@@ -315,7 +314,7 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
         ec.set (ccnpeek, "StopTime", "120s")
         ec.register_connection(ccnpeek, nsnode2)
 
-        ccncat = ec.register_resource("ns3::LinuxDceApplication")
+        ccncat = ec.register_resource("ns3::LinuxCCNDceApplication")
         ec.set (ccncat, "binary", "ccncat")
         ec.set (ccncat, "arguments", "ccnx:/test/bunny.ts")
         ec.set (ccncat, "stdinFile", "")
@@ -324,7 +323,7 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
         ec.set (ccncat, "StopTime", "120s")
         ec.register_connection(ccncat, nsnode2)
 
-        ccnkill2 = ec.register_resource("ns3::LinuxDceApplication")
+        ccnkill2 = ec.register_resource("ns3::LinuxCCNDceApplication")
         ec.set (ccnkill2, "binary", "ccnsmoketest")
         ec.set (ccnkill2, "arguments", "kill")
         ec.set (ccnkill2, "stdinFile", "")
@@ -335,7 +334,7 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
 
         ec.deploy()
 
-        ec.wait_finished([ping])
+        ec.wait_finished([ccncat, ccnkill1, ccnkill2])
 
         print ec.trace(ccncat, "cmdline")
         """
@@ -344,7 +343,7 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
         self.assertTrue(cmdline.find(expected) > -1, cmdline)
         """
 
-        print ec.trace(cccat, "status")
+        print ec.trace(ccncat, "status")
         """
         expected = "Start Time: NS3 Time:          1s ("
         status = ec.trace(ping, "status")
@@ -363,8 +362,6 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
         self.assertTrue(stderr.find(expected) > -1, stderr)
 
         ec.shutdown()
-
-
 
 if __name__ == '__main__':
     unittest.main()

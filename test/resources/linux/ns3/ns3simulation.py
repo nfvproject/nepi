@@ -285,6 +285,7 @@ class LinuxNS3SimulationTest(unittest.TestCase):
         sources = os.path.join(os.path.dirname(os.path.realpath(__file__)), 
                 "ns-3.18-user.tar.gz")
         ec.set(simu, "sources", sources)
+        ec.set(simu, "pybindgenVersion", "834")
         ec.register_connection(simu, node)
 
         nsnode1 = add_ns3_node(ec, simu)

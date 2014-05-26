@@ -23,41 +23,21 @@ from nepi.execution.resource import ResourceManager, clsinit_copy, \
 from nepi.resources.ns3.ns3netdevice import NS3BaseNetDevice 
 
 @clsinit_copy
-class NS3LteEnbNetDevice(NS3BaseNetDevice):
-    _rtype = "ns3::LteEnbNetDevice"
+class NS3LteUeNetDevice(NS3BaseNetDevice):
+    _rtype = "ns3::LteUeNetDevice"
 
     @classmethod
     def _register_attributes(cls):
         
-        attr_ulbandwidth = Attribute("UlBandwidth",
-            "Uplink Transmission Bandwidth Configuration in number of Resource Blocks",
-            type = Types.Integer,
-            default = "25",  
-            allowed = None,
-            range = None,    
-            flags = Flags.Reserved | Flags.Construct)
-
-        cls._register_attribute(attr_ulbandwidth)
-
-        attr_dlbandwidth = Attribute("DlBandwidth",
-            "Downlink Transmission Bandwidth Configuration in number of Resource Blocks",
-            type = Types.Integer,
-            default = "25",  
-            allowed = None,
-            range = None,    
-            flags = Flags.Reserved | Flags.Construct)
-
-        cls._register_attribute(attr_dlbandwidth)
-
-        attr_cellid = Attribute("CellId",
-            "Cell Identifier",
+        attr_imsi = Attribute("Imsi",
+            "International Mobile Subscriber Identity assigned to this UE",
             type = Types.Integer,
             default = "0",  
             allowed = None,
             range = None,    
             flags = Flags.Reserved | Flags.Construct)
 
-        cls._register_attribute(attr_cellid)
+        cls._register_attribute(attr_imsi)
 
         attr_dlearfcn = Attribute("DlEarfcn",
             "Downlink E-UTRA Absolute Radio Frequency Channel Number (EARFCN) as per 3GPP 36.101 Section 5.7.3. ",
@@ -69,18 +49,8 @@ class NS3LteEnbNetDevice(NS3BaseNetDevice):
 
         cls._register_attribute(attr_dlearfcn)
 
-        attr_ulearfcn = Attribute("UlEarfcn",
-            "Uplink E-UTRA Absolute Radio Frequency Channel Number (EARFCN) as per 3GPP 36.101 Section 5.7.3. ",
-            type = Types.Integer,
-            default = "18100",  
-            allowed = None,
-            range = None,    
-            flags = Flags.Reserved | Flags.Construct)
-
-        cls._register_attribute(attr_ulearfcn)
-
         attr_csgid = Attribute("CsgId",
-            "The Closed Subscriber Group (CSG) identity that this eNodeB belongs to",
+            "The Closed Subscriber Group (CSG) identity that this UE is associated with, i.e., giving the UE access to cells which belong to this particular CSG. This restriction only applies to initial cell selection and EPC-enabled simulation. This does not revoke the UE\'s access to non-CSG cells. ",
             type = Types.Integer,
             default = "0",  
             allowed = None,
@@ -88,16 +58,6 @@ class NS3LteEnbNetDevice(NS3BaseNetDevice):
             flags = Flags.Reserved | Flags.Construct)
 
         cls._register_attribute(attr_csgid)
-
-        attr_csgindication = Attribute("CsgIndication",
-            "If true, only UEs which are members of the CSG (i.e. same CSG ID) can gain access to the eNodeB, therefore enforcing closed access mode. Otherwise, the eNodeB operates as a non-CSG cell and implements open access mode.",
-            type = Types.Bool,
-            default = "False",  
-            allowed = None,
-            range = None,    
-            flags = Flags.Reserved | Flags.Construct)
-
-        cls._register_attribute(attr_csgindication)
 
         attr_mtu = Attribute("Mtu",
             "The MAC-level Maximum Transmission Unit",
@@ -116,5 +76,5 @@ class NS3LteEnbNetDevice(NS3BaseNetDevice):
         pass
 
     def __init__(self, ec, guid):
-        super(NS3LteEnbNetDevice, self).__init__(ec, guid)
-        self._home = "ns3-lte-enb-net-device-%s" % self.guid
+        super(NS3LteUeNetDevice, self).__init__(ec, guid)
+        self._home = "ns3-lte-ue-net-device-%s" % self.guid

@@ -224,8 +224,7 @@ class NS3BaseNetDevice(NS3Base):
             self.simulation.invoke(self.uuid, "Attach", channel.uuid)
             self._connected.add(channel.uuid)
         
-        queue = self.queue
         # Verify that the device has a queue. If no queue is added a segfault 
         # error occurs
-        if queue and queue.uuid not in self.connected:
-            self._connected.add(queue.uuid)
+        queue = self.queue
+

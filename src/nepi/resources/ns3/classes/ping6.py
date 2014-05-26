@@ -52,7 +52,7 @@ class NS3Ping6(NS3BaseApplication):
         attr_remoteipv6 = Attribute("RemoteIpv6",
             "The Ipv6Address of the outbound packets",
             type = Types.String,
-            default = "0000:0000:0000:0000:0000:0000:0000:0000",  
+            default = "::",  
             allowed = None,
             range = None,    
             flags = Flags.Reserved | Flags.Construct)
@@ -62,7 +62,7 @@ class NS3Ping6(NS3BaseApplication):
         attr_localipv6 = Attribute("LocalIpv6",
             "Local Ipv6Address of the sender",
             type = Types.String,
-            default = "0000:0000:0000:0000:0000:0000:0000:0000",  
+            default = "::",  
             allowed = None,
             range = None,    
             flags = Flags.Reserved | Flags.Construct)
