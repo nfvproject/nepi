@@ -20,31 +20,20 @@ from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import Trace, TraceAttr
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
         ResourceState, reschedule_delay
-from nepi.resources.ns3.ns3wifichannel import NS3BaseWifiChannel 
+from nepi.resources.ns3.ns3propagationlossmodel import NS3BasePropagationLossModel 
 
 @clsinit_copy
-class NS3YansWifiChannel(NS3BaseWifiChannel):
-    _rtype = "ns3::YansWifiChannel"
+class NS3Kun2600MhzPropagationLossModel(NS3BasePropagationLossModel):
+    _rtype = "ns3::Kun2600MhzPropagationLossModel"
 
     @classmethod
     def _register_attributes(cls):
-        
-        attr_id = Attribute("Id",
-            "The id (unique integer) of this Channel.",
-            type = Types.Integer,
-            default = "0",  
-            allowed = None,
-            range = None,    
-            flags = Flags.Reserved | Flags.NoWrite)
-
-        cls._register_attribute(attr_id)
-
-
+        pass
 
     @classmethod
     def _register_traces(cls):
         pass
 
     def __init__(self, ec, guid):
-        super(NS3YansWifiChannel, self).__init__(ec, guid)
-        self._home = "ns3-yans-wifi-channel-%s" % self.guid
+        super(NS3Kun2600MhzPropagationLossModel, self).__init__(ec, guid)
+        self._home = "ns3-kun2600mhz-propagation-loss-model-%s" % self.guid

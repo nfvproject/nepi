@@ -32,6 +32,9 @@ import os
 import time
 import threading
 
+## TODO: Clean up DCE part. All that is DCE specific should go
+##       in the linux ns3dceapplication.py
+
 @clsinit_copy
 class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
     _rtype = "LinuxNS3Simulation"

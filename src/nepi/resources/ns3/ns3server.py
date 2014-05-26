@@ -68,6 +68,8 @@ def handle_message(ns3_wrapper, msg_type, args, kwargs):
         ns3_wrapper.logger.debug("CREATE %s %s" % (clazzname, str(args)))
 
         uuid = ns3_wrapper.create(clazzname, *args)
+        
+        #ns3_wrapper.logger.debug("%s = CREATE " % str(uuid))
         return uuid
 
     if msg_type == NS3WrapperMessage.FACTORY:
@@ -76,6 +78,8 @@ def handle_message(ns3_wrapper, msg_type, args, kwargs):
         ns3_wrapper.logger.debug("FACTORY %s %s" % (type_name, str(kwargs)))
 
         uuid = ns3_wrapper.factory(type_name, **kwargs)
+        
+        #ns3_wrapper.logger.debug("%s = FACTORY " % str(uuid))
         return uuid
 
     if msg_type == NS3WrapperMessage.INVOKE:

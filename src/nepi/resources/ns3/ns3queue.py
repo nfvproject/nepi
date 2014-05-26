@@ -51,4 +51,5 @@ class NS3BaseQueue(NS3Base):
         if device.uuid not in self.connected:
             self.simulation.invoke(device.uuid, "SetQueue", self.uuid)
             self._connected.add(device.uuid)
+            device._connected.add(self.uuid)
 

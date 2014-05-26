@@ -20,11 +20,11 @@ from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import Trace, TraceAttr
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
         ResourceState, reschedule_delay
-from nepi.resources.ns3.ns3wifichannel import NS3BaseWifiChannel 
+from nepi.resources.ns3.ns3channel import NS3BaseChannel 
 
 @clsinit_copy
-class NS3YansWifiChannel(NS3BaseWifiChannel):
-    _rtype = "ns3::YansWifiChannel"
+class NS3ErrorChannelSixlow(NS3BaseChannel):
+    _rtype = "ns3::ErrorChannelSixlow"
 
     @classmethod
     def _register_attributes(cls):
@@ -46,5 +46,5 @@ class NS3YansWifiChannel(NS3BaseWifiChannel):
         pass
 
     def __init__(self, ec, guid):
-        super(NS3YansWifiChannel, self).__init__(ec, guid)
-        self._home = "ns3-yans-wifi-channel-%s" % self.guid
+        super(NS3ErrorChannelSixlow, self).__init__(ec, guid)
+        self._home = "ns3-error-channel-sixlow-%s" % self.guid

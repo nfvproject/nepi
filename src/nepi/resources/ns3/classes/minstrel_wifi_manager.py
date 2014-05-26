@@ -110,7 +110,7 @@ class NS3MinstrelWifiManager(NS3BaseWifiRemoteStationManager):
         cls._register_attribute(attr_maxslrc)
 
         attr_rtsctsthreshold = Attribute("RtsCtsThreshold",
-            "If  the size of the data packet + LLC header + MAC header + FCS trailer is bigger than this value, we use an RTS/CTS handshake before sending the data, as per IEEE Std. 802.11-2007, Section 9.2.6. This value will not have any effect on some rate control algorithms.",
+            "If  the size of the data packet + LLC header + MAC header + FCS trailer is bigger than this value, we use an RTS/CTS handshake before sending the data, as per IEEE Std. 802.11-2012, Section 9.3.5. This value will not have any effect on some rate control algorithms.",
             type = Types.Integer,
             default = "2346",  
             allowed = None,
@@ -120,7 +120,7 @@ class NS3MinstrelWifiManager(NS3BaseWifiRemoteStationManager):
         cls._register_attribute(attr_rtsctsthreshold)
 
         attr_fragmentationthreshold = Attribute("FragmentationThreshold",
-            "If the size of the data packet + LLC header + MAC header + FCS trailer is biggerthan this value, we fragment it such that the size of the fragments are equal or smaller than this value, as per IEEE Std. 802.11-2007, Section 9.4. This value will not have any effect on some rate control algorithms.",
+            "If the size of the data packet + LLC header + MAC header + FCS trailer is biggerthan this value, we fragment it such that the size of the fragments are equal or smaller than this value, as per IEEE Std. 802.11-2012, Section 9.5. This value will not have any effect on some rate control algorithms.",
             type = Types.Integer,
             default = "2346",  
             allowed = None,

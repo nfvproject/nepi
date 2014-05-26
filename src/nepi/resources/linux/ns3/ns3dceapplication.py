@@ -45,34 +45,9 @@ class NS3LinuxDceApplication(NS3BaseDceApplication):
                 "Space-separated list of packages required to run the application",
                 flags = Flags.Design)
 
-        files = Attribute("files", 
-                "Semi-colon separated list of 'key=value' pairs to set as "
-                "DCE files (AddFile). The key should be a path to a local file "
-                "and the key is the path to be set in DCE for that file" ,
-                flags = Flags.Design)
-
-        stdinfile = Attribute("stdinFile", 
-                "File to set as StdinFile. The value shoudl be either an empty "
-                "or a path to a local file ",
-                flags = Flags.Design)
-
-        starttime = Attribute("StartTime",
-            "Time at which the application will start",
-            default = "+0.0ns",  
-            flags = Flags.Reserved | Flags.Construct)
-
-        stoptime = Attribute("StopTime",
-            "Time at which the application will stop",
-            default = "+0.0ns",  
-            flags = Flags.Reserved | Flags.Construct)
-
         cls._register_attribute(sources)
         cls._register_attribute(build)
         cls._register_attribute(depends)
-        cls._register_attribute(files)
-        cls._register_attribute(stoptime)
-        cls._register_attribute(starttime)
-        cls._register_attribute(stdinfile)
 
     def _instantiate_object(self):
         command = []
@@ -91,29 +66,6 @@ class NS3LinuxDceApplication(NS3BaseDceApplication):
             if scmd:
                 command.append(scmd)
                 
-        # Upload files to the remote machine. These files will 
-        # be added to the DceApplication by invoking dce.AddFile()
-        files = self.get("files") or ""
-        if files:
-            upfiles = []
-            for files in map(str.strip, files.split(";")):
-                localpath, dcepath = env.split("=")
-                upfiles.append(localpath)
-
-            if upfiles:
-                fcmd = self.siumlation.upload_files(files = upfiles)
-                if fcmd:
-                    command.append(fcmd)
-
-        # Upload files to the remote machine. These files will 
-        # be added to the DceApplication by invoking dce.AddFile()
-        stdinfile = self.get("stdinFile")
-        if stdinfile and stdinfile != "":
-            stdincmd = self.siumlation.upload_files(files = stdinfile)
-            if stdincmd:
-                command.append(stdincmd)
-
-
         # Upload instructions to build the binary
         build = self.get("build")
         if build:

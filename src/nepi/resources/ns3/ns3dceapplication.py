@@ -48,10 +48,22 @@ class NS3BaseDceApplication(NS3BaseApplication):
                 "DCE environment variables.",
                 flags = Flags.Design)
 
+        starttime = Attribute("StartTime",
+            "Time at which the application will start",
+            default = "+0.0ns",  
+            flags = Flags.Reserved | Flags.Construct)
+
+        stoptime = Attribute("StopTime",
+            "Time at which the application will stop",
+            default = "+0.0ns",  
+            flags = Flags.Reserved | Flags.Construct)
+
         cls._register_attribute(binary)
         cls._register_attribute(stack_size)
         cls._register_attribute(arguments)
         cls._register_attribute(environment)
+        cls._register_attribute(stoptime)
+        cls._register_attribute(starttime)
 
     @property
     def node(self):
@@ -95,37 +107,20 @@ class NS3BaseDceApplication(NS3BaseApplication):
                         self.simulation.dce_application_helper_uuid, 
                         "SetStackSize", self.get("stackSize")) 
 
-                arguments = self.get("arguments") or ""
-                for arg in map(str.strip, arguments.split(";")):
-                    self.simulation.invoke(
-                            self.simulation.dce_application_helper_uuid, 
-                        "AddArgument", arg)
-
-                environment = self.get("environment") or ""
-                for env in map(str.strip, environment.split(";")):
-                    key, val = env.split("=")
-                    self.simulation.invoke(
-                            self.simulation.dce_application_helper_uuid, 
-                        "AddEnvironment", key, val)
-
-                if self.has_attribute("files"):
-                    files = self.get("files") or ""
-                    for files in map(str.strip, files.split(";")):
-                        remotepath, dcepath = env.split("=")
-                        localpath = "${SHARE}/" + os.path.basename(remotepath)
+                arguments = self.get("arguments")
+                if arguments:
+                    for arg in map(str.strip, arguments.split(";")):
                         self.simulation.invoke(
                                 self.simulation.dce_application_helper_uuid, 
-                            "AddFile", localpath, dcepath)
+                            "AddArgument", arg)
 
-                if self.has_attribute("stdinFile"):
-                    stdinfile = self.get("stdinFile")
-                    if stdinfile:
-                        if stdinfile != "":
-                            stdinfile = "${SHARE}/" + os.path.basename(stdinfile)
-        
+                environment = self.get("environment")
+                if environment:
+                    for env in map(str.strip, environment.split(";")):
+                        key, val = env.split("=")
                         self.simulation.invoke(
                                 self.simulation.dce_application_helper_uuid, 
-                                "SetStdinFile", stdinfile)
+                            "AddEnvironment", key, val)
 
                 apps_uuid = self.simulation.invoke(
                         self.simulation.dce_application_helper_uuid, 

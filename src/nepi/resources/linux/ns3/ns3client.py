@@ -70,11 +70,12 @@ class LinuxNS3Client(NS3Client):
                     "socket_addr": self.simulation.remote_socket,
                     }
 
-            (reply, err), proc = self.simulation.node.execute(command)
+            (reply, err), proc = self.simulation.node.execute(command) 
 
             if (err and proc.poll()) or reply.strip() == "":
-                msg = " Couldn't connect to remote socket %s" % (
-                        self.simulation.remote_socket)
+                msg = (" Couldn't connect to remote socket %s - REPLY: %s "
+                      "- ERROR: %s ") % (
+                        self.simulation.remote_socket, reply, err)
                 self.simulation.error(msg, reply, err)
                 raise RuntimeError(msg)
                    

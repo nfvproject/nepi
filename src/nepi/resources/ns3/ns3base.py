@@ -99,7 +99,7 @@ class NS3Base(ResourceManager):
     def _wait_rms(self):
         """ Returns True if dependent RMs are not yer READY, False otherwise"""
         for rm in self._rms_to_wait:
-            if rm and rm.state < ResourceState.READY:
+            if rm.state < ResourceState.READY:
                 return True
         return False
 

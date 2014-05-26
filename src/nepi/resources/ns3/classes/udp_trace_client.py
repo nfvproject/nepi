@@ -50,7 +50,7 @@ class NS3UdpTraceClient(NS3BaseApplication):
         cls._register_attribute(attr_remoteport)
 
         attr_maxpacketsize = Attribute("MaxPacketSize",
-            "The maximum size of a packet.",
+            "The maximum size of a packet (including the SeqTsHeader, 12 bytes).",
             type = Types.Integer,
             default = "1024",  
             allowed = None,

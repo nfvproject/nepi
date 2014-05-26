@@ -49,15 +49,15 @@ class NS3FriisPropagationLossModel(NS3BasePropagationLossModel):
 
         cls._register_attribute(attr_systemloss)
 
-        attr_mindistance = Attribute("MinDistance",
-            "The distance under which the propagation model refuses to give results (m)",
+        attr_minloss = Attribute("MinLoss",
+            "The minimum value (dB) of the total loss, used at short ranges. Note: ",
             type = Types.Double,
-            default = "0.5",  
+            default = "0",  
             allowed = None,
             range = None,    
             flags = Flags.Reserved | Flags.Construct)
 
-        cls._register_attribute(attr_mindistance)
+        cls._register_attribute(attr_minloss)
 
 
 
