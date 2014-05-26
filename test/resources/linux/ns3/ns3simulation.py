@@ -771,12 +771,10 @@ class LinuxNS3SimulationTest(unittest.TestCase):
         ec.register_connection(simu, node)
 
         nsnode1 = add_ns3_node(ec, simu)
-        ec.set(nsnode1, "enableDCE", True)
         p2p1 = add_point2point_device(ec, nsnode1, "10.0.0.1", "30")
         ec.set(p2p1, "DataRate", "5Mbps")
 
         nsnode2 = add_ns3_node(ec, simu)
-        ec.set(nsnode2, "enableDCE", True)
         p2p2 = add_point2point_device(ec, nsnode2, "10.0.0.2", "30")
         ec.set(p2p2, "DataRate", "5Mbps")
 

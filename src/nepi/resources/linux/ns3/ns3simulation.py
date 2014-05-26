@@ -126,11 +126,6 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         self._socket_name = "ns3-%s.sock" % os.urandom(4).encode('hex')
         self._dce_manager_helper_uuid = None
         self._dce_application_helper_uuid = None
-        
-        # Lock used to synchronize usage of DceManagerHelper 
-        self.dce_manager_lock = threading.Lock()
-        # Lock used to synchronize usage of DceApplicationHelper
-        self.dce_application_lock = threading.Lock()
 
     @property
     def socket_name(self):
@@ -139,14 +134,6 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
     @property
     def remote_socket(self):
         return os.path.join(self.run_home, self.socket_name)
-
-    @property
-    def dce_manager_helper_uuid(self):
-        return self._dce_manager_helper_uuid
-
-    @property
-    def dce_application_helper_uuid(self):
-        return self._dce_application_helper_uuid
 
     @property
     def ns3_build_home(self):
@@ -233,10 +220,6 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
             stype = self.create("StringValue", sched_type)
             self.invoke(GLOBAL_VALUE_UUID, "Bind", "SchedulerType", btrue)
         
-        if self.get("enableDCE"):
-            self._dce_manager_helper_uuid = self.create("DceManagerHelper")
-            self._dce_application_helper_uuid = self.create("DceApplicationHelper")
-
     def do_deploy(self):
         if not self.node or self.node.state < ResourceState.READY:
             self.debug("---- RESCHEDULING DEPLOY ---- node state %s " % self.node.state )
@@ -357,8 +340,8 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
 
     @property
     def dce_repo(self):
-        #return "http://code.nsnam.org/ns-3-dce"
-        return "http://code.nsnam.org/epmancini/ns-3-dce"
+        return "http://code.nsnam.org/ns-3-dce"
+        #eturn "http://code.nsnam.org/epmancini/ns-3-dce"
 
     @property
     def _build(self):
@@ -581,7 +564,7 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
             .replace("${HOME}", self.node.home_dir)
             # If NS3LIBRARIES is defined and not empty, use that value, 
             # if not use ns3_build_home/lib/
-            .replace("${BIN_DCE}", "${NS3LIBRARIES-%s/lib/}../bin_dce" % \
+            .replace("${BIN_DCE}", "${NS3LIBRARIES-%s/lib}/../bin_dce" % \
                     self.ns3_build_home)
             )
 

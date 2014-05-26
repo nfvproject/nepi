@@ -22,26 +22,21 @@ from nepi.execution.resource import clsinit_copy, ResourceState, reschedule_dela
 from nepi.resources.ns3.ns3dceapplication import NS3BaseDceApplication
 
 import os
+import threading
 
 @clsinit_copy
 class NS3BaseCCNDceApplication(NS3BaseDceApplication):
     _rtype = "abstract::ns3::CCNDceApplication"
 
-    @classmethod
-    def _register_attributes(cls):
-        files = Attribute("files", 
-                "Semi-colon separated list of 'key=value' pairs to set as "
-                "DCE files (AddFile). The key should be a path to a local file "
-                "and the key is the path to be set in DCE for that file" ,
-                flags = Flags.Design)
+    # Lock used to synchronize usage of CcnClientHelper 
+    ccn_client_lock = threading.Lock()
+    _ccn_client_helper_uuid = None
 
-        stdinfile = Attribute("stdinFile", 
-                "File to set as StdinFile. The value shoudl be either an empty "
-                "or a path to a local file ",
-                flags = Flags.Design)
-
-        cls._register_attribute(files)
-        cls._register_attribute(stdinfile)
+    @property
+    def ccn_client_helper_uuid(self):
+        if not self._ccn_client_helper_uuid:
+            self._ccn_client_helper_uuid = self.simulation.create("CcnClientHelper")
+        return self._ccn_client_helper_uuid
 
     def _instantiate_object(self):
         pass
@@ -53,61 +48,73 @@ class NS3BaseCCNDceApplication(NS3BaseDceApplication):
 
             # Preventing concurrent access to the DceApplicationHelper
             # from different DceApplication RMs
-            with self.simulation.dce_application_lock:
+            with self.ccn_client_lock:
                 self.simulation.invoke(
-                        self.simulation.ccn_client_helper_uuid, 
+                        self.ccn_client_helper_uuid, 
                         "ResetArguments") 
 
                 self.simulation.invoke(
-                        self.simulation.ccn_client_helper_uuid, 
+                        self.ccn_client_helper_uuid, 
                         "ResetEnvironment") 
 
                 self.simulation.invoke(
-                        self.simulation.ccn_client_helper_uuid, 
+                        self.ccn_client_helper_uuid, 
                         "SetBinary", self.get("binary")) 
 
                 self.simulation.invoke(
-                        self.simulation.ccn_client_helper_uuid, 
+                        self.ccn_client_helper_uuid, 
                         "SetStackSize", self.get("stackSize")) 
 
                 arguments = self.get("arguments")
                 if arguments:
                     for arg in map(str.strip, arguments.split(";")):
                         self.simulation.invoke(
-                                self.simulation.ccn_client_helper_uuid, 
-                            "AddArgument", arg)
+                                 self.ccn_client_helper_uuid, 
+                                "AddArgument", arg)
 
                 environment = self.get("environment")
                 if environment:
                     for env in map(str.strip, environment.split(";")):
                         key, val = env.split("=")
                         self.simulation.invoke(
-                                self.simulation.ccn_client_helper_uuid, 
-                            "AddEnvironment", key, val)
+                                self.ccn_client_helper_uuid, 
+                               "AddEnvironment", key, val)
 
                 if self.has_attribute("files"):
                     files = self.get("files")
                     if files:
-                        for files in map(str.strip, files.split(";")):
-                            remotepath, dcepath = files.split("=")
-                            localpath = "${SHARE}/" + os.path.basename(remotepath)
+                        for file in map(str.strip, files.split(";")):
+                            remotepath, dcepath = file.split("=")
+                            localpath =  os.path.join(self.simulation.app_home, 
+                                    os.path.basename(remotepath))
                             self.simulation.invoke(
-                                    self.simulation.ccn_client_helper_uuid, 
-                                "AddFile", localpath, dcepath)
+                                    self.ccn_client_helper_uuid, 
+                                    "AddFile", localpath, dcepath)
 
                 if self.has_attribute("stdinFile"):
                     stdinfile = self.get("stdinFile")
                     if stdinfile:
+                        # stdinfile might be an empty text that should be set as
+                        # stdin
                         if stdinfile != "":
-                            stdinfile = "${SHARE}/" + os.path.basename(stdinfile)
-        
+                            stdinfile = os.path.join(self.simulation.app_home, 
+                                os.path.basename(stdinfile))
+       
                         self.simulation.invoke(
-                                self.simulation.ccn_client_helper_uuid, 
+                                self.ccn_client_helper_uuid, 
                                 "SetStdinFile", stdinfile)
 
                 apps_uuid = self.simulation.invoke(
-                        self.simulation.ccn_client_helper_uuid, 
+                        self.ccn_client_helper_uuid, 
                         "InstallInNode", self.node.uuid)
+
+                """
+                container_uuid = self.simulation.create("NodeContainer")
+                self.simulation.invoke(container_uuid, "Add", self.node.uuid)
+                apps_uuid = self.simulation.invoke(
+                        self.ccn_client_helper_uuid, 
+                        "Install", container_uuid)
+                """
 
             self._uuid = self.simulation.invoke(apps_uuid, "Get", 0)
 

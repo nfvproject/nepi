@@ -22,10 +22,19 @@ from nepi.execution.resource import clsinit_copy, ResourceState, reschedule_dela
 from nepi.resources.ns3.ns3application import NS3BaseApplication
 
 import os
-
+import threading
+        
 @clsinit_copy
 class NS3BaseDceApplication(NS3BaseApplication):
     _rtype = "abstract::ns3::DceApplication"
+
+    # Lock used to synchronize usage of DceManagerHelper 
+    dce_manager_lock = threading.Lock()
+    # Lock used to synchronize usage of DceApplicationHelper
+    dce_application_lock = threading.Lock()
+   
+    _dce_manager_helper_uuid = None
+    _dce_application_helper_uuid = None
 
     @classmethod
     def _register_attributes(cls):
@@ -75,11 +84,20 @@ class NS3BaseDceApplication(NS3BaseApplication):
             self.error(msg)
             raise RuntimeError, msg
 
-        if nodes[0].get("enableDCE") == False:
-            raise RuntimeError("DceApplication not connected to DCE enabled node")
-
         return nodes[0]
-    
+
+    @property
+    def dce_manager_helper_uuid(self):
+        if not self._dce_manager_helper_uuid:
+            self._dce_manager_helper_uuid = self.simulation.create("DceManagerHelper")
+        return self._dce_manager_helper_uuid
+
+    @property
+    def dce_application_helper_uuid(self):
+        if not self._dce_application_helper_uuid:
+            self._dce_application_helper_uuid = self.simulation.create("DceApplicationHelper")
+        return self._dce_application_helper_uuid
+
     def _instantiate_object(self):
         pass
 
@@ -90,28 +108,28 @@ class NS3BaseDceApplication(NS3BaseApplication):
 
             # Preventing concurrent access to the DceApplicationHelper
             # from different DceApplication RMs
-            with self.simulation.dce_application_lock:
+            with self.dce_application_lock:
                 self.simulation.invoke(
-                        self.simulation.dce_application_helper_uuid, 
+                        self.dce_application_helper_uuid, 
                         "ResetArguments") 
 
                 self.simulation.invoke(
-                        self.simulation.dce_application_helper_uuid, 
+                        self.dce_application_helper_uuid, 
                         "ResetEnvironment") 
 
                 self.simulation.invoke(
-                        self.simulation.dce_application_helper_uuid, 
+                        self.dce_application_helper_uuid, 
                         "SetBinary", self.get("binary")) 
 
                 self.simulation.invoke(
-                        self.simulation.dce_application_helper_uuid, 
+                        self.dce_application_helper_uuid, 
                         "SetStackSize", self.get("stackSize")) 
 
                 arguments = self.get("arguments")
                 if arguments:
                     for arg in map(str.strip, arguments.split(";")):
                         self.simulation.invoke(
-                                self.simulation.dce_application_helper_uuid, 
+                                self.dce_application_helper_uuid, 
                             "AddArgument", arg)
 
                 environment = self.get("environment")
@@ -119,12 +137,20 @@ class NS3BaseDceApplication(NS3BaseApplication):
                     for env in map(str.strip, environment.split(";")):
                         key, val = env.split("=")
                         self.simulation.invoke(
-                                self.simulation.dce_application_helper_uuid, 
+                                self.dce_application_helper_uuid, 
                             "AddEnvironment", key, val)
 
                 apps_uuid = self.simulation.invoke(
-                        self.simulation.dce_application_helper_uuid, 
+                        self.dce_application_helper_uuid, 
                         "InstallInNode", self.node.uuid)
+
+                """
+                container_uuid = self.simulation.create("NodeContainer")
+                self.simulation.invoke(container_uuid, "Add", self.node.uuid)
+                apps_uuid = self.simulation.invoke(
+                        self.dce_application_helper_uuid, 
+                        "Install", container_uuid)
+                """
 
             self._uuid = self.simulation.invoke(apps_uuid, "Get", 0)
 
@@ -153,9 +179,9 @@ class NS3BaseDceApplication(NS3BaseApplication):
     def _configure_traces(self):
         # Preventing concurrent access to the DceApplicationHelper
         # from different DceApplication RMs
-        with self.simulation.dce_application_lock:
-            pid = self.simulation.invoke(self.simulation.dce_application_helper_uuid, 
-                    "GetPid", self._uuid)
+        with self.dce_application_lock:
+            pid = self.simulation.invoke(self.dce_application_helper_uuid, 
+                    "GetPid", self.uuid)
         node_id = self.simulation.invoke(self.node.uuid, "GetId")
         self._trace_filename["stdout"] = "files-%s/var/log/%s/stdout" % (node_id, pid)
         self._trace_filename["stderr"] = "files-%s/var/log/%s/stderr" % (node_id, pid)
