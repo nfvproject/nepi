@@ -22,7 +22,7 @@ from nepi.execution.resource import clsinit_copy, ResourceState, reschedule_dela
 from nepi.resources.ns3.ns3dceapplication import NS3BaseDceApplication
 
 @clsinit_copy
-class NS3LinuxDceApplication(NS3BaseDceApplication):
+class LinuxNS3DceApplication(NS3BaseDceApplication):
     _rtype = "ns3::LinuxDceApplication"
 
     @classmethod

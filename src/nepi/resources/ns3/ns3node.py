@@ -25,16 +25,6 @@ from nepi.resources.ns3.ns3base import NS3Base
 class NS3BaseNode(NS3Base):
     _rtype = "abstract::ns3::Node"
 
-    @classmethod
-    def _register_attributes(cls):
-        enable_dce = Attribute("enableDCE", 
-                "This node will run in DCE emulation mode ",
-                default = False,
-                type = Types.Bool,
-                flags = Flags.Design)
-
-        cls._register_attribute(enable_dce)
-
     @property
     def simulation(self):
         from nepi.resources.ns3.ns3simulation import NS3Simulation
@@ -74,6 +64,13 @@ class NS3BaseNode(NS3Base):
         return devices
 
     @property
+    def dceapplications(self):
+        from nepi.resources.ns3.ns3dceapplication import NS3BaseDceApplication
+        dceapplications = self.get_connected(NS3BaseDceApplication.get_rtype())
+
+        return dceapplications
+
+    @property
     def _rms_to_wait(self):
         rms = set()
         rms.add(self.simulation)
@@ -93,8 +90,9 @@ class NS3BaseNode(NS3Base):
         uuid_packet_socket_factory = self.simulation.create("PacketSocketFactory")
         self.simulation.invoke(self.uuid, "AggregateObject", uuid_packet_socket_factory)
 
-        if self.get("enableDCE") == True:
-            self._add_dce()
+        dceapplications = self.dceapplications
+        if dceapplications:
+            self._add_dce(dceapplications)
 
     def _connect_object(self):
         ipv4 = self.ipv4
@@ -105,10 +103,12 @@ class NS3BaseNode(NS3Base):
         if mobility:
             self.simulation.invoke(self.uuid, "AggregateObject", mobility.uuid)
 
-    def _add_dce(self):
+    def _add_dce(self, dceapplications):
+        dceapp = dceapplications[0]
+
         container_uuid = self.simulation.create("NodeContainer")
         self.simulation.invoke(container_uuid, "Add", self.uuid)
-        with self.simulation.dce_manager_lock:
-            self.simulation.invoke(self.simulation.dce_manager_helper_uuid, 
+        with dceapp.dce_manager_lock:
+            self.simulation.invoke(dceapp.dce_manager_helper_uuid, 
                     "Install", container_uuid)
 

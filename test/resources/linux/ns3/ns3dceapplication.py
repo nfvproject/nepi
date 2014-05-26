@@ -42,6 +42,10 @@ def add_ns3_node(ec, simu):
     udp = ec.register_resource("ns3::UdpL4Protocol")
     ec.register_connection(node, udp)
 
+    tcp = ec.register_resource("ns3::TcpL4Protocol")
+    ec.register_connection(node, tcp)
+
+
     return node
 
 def add_point2point_device(ec, node, address = None,  prefix = None):
@@ -133,10 +137,13 @@ def add_wifi_channel(ec):
 
 class LinuxNS3DceApplicationTest(unittest.TestCase):
     def setUp(self):
-        self.fedora_host = "nepi2.pl.sophia.inria.fr"
+        #self.fedora_host = "nepi2.pl.sophia.inria.fr"
         #self.fedora_host = "planetlabpc1.upf.edu"
-        self.fedora_user = "inria_nepi"
-        self.fedora_identity = "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'])
+        #self.fedora_user = "inria_nepi"
+        #self.fedora_identity = "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'])
+        self.fedora_host = "mimas.inria.fr"
+        self.fedora_user = "aquereil"
+        self.fedora_identity = "%s/.ssh/id_rsa" % (os.environ['HOME'])
 
     def test_dce_ping(self):
         ec = ExperimentController(exp_id = "test-dce-ping")
@@ -145,7 +152,7 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
         ec.set(node, "hostname", self.fedora_host)
         ec.set(node, "username", self.fedora_user)
         ec.set(node, "identity", self.fedora_identity)
-        ec.set(node, "cleanProcesses", True)
+        #ec.set(node, "cleanProcesses", True)
         #ec.set(node, "cleanHome", True)
 
         simu = ec.register_resource("LinuxNS3Simulation")
@@ -156,12 +163,10 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
         ec.register_connection(simu, node)
 
         nsnode1 = add_ns3_node(ec, simu)
-        ec.set(nsnode1, "enableDCE", True)
         p2p1 = add_point2point_device(ec, nsnode1, "10.0.0.1", "30")
         ec.set(p2p1, "DataRate", "5Mbps")
 
         nsnode2 = add_ns3_node(ec, simu)
-        ec.set(nsnode2, "enableDCE", True)
         p2p2 = add_point2point_device(ec, nsnode2, "10.0.0.2", "30")
         ec.set(p2p2, "DataRate", "5Mbps")
 
@@ -216,7 +221,7 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
         ec.set(node, "hostname", self.fedora_host)
         ec.set(node, "username", self.fedora_user)
         ec.set(node, "identity", self.fedora_identity)
-        ec.set(node, "cleanProcesses", True)
+        #ec.set(node, "cleanProcesses", True)
         #ec.set(node, "cleanHome", True)
 
         simu = ec.register_resource("LinuxNS3Simulation")
@@ -227,12 +232,10 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
         ec.register_connection(simu, node)
 
         nsnode1 = add_ns3_node(ec, simu)
-        ec.set(nsnode1, "enableDCE", True)
         p2p1 = add_point2point_device(ec, nsnode1, "10.0.0.1", "30")
         ec.set(p2p1, "DataRate", "5Mbps")
 
         nsnode2 = add_ns3_node(ec, simu)
-        ec.set(nsnode2, "enableDCE", True)
         p2p2 = add_point2point_device(ec, nsnode2, "10.0.0.2", "30")
         ec.set(p2p2, "DataRate", "5Mbps")
 
@@ -245,6 +248,7 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
 
         ### create applications
         ccnd1 = ec.register_resource("ns3::LinuxCCNDceApplication")
+
         ec.set(ccnd1, "depends", "libpcap0.8-dev openjdk-6-jdk ant1.8 autoconf "
             "libssl-dev libexpat-dev libpcap-dev libecryptfs0 libxml2-utils auto"
             "make gawk gcc g++ git-core pkg-config libpcre3-dev openjdk-6-jre-lib")
@@ -253,21 +257,15 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
                 "cd ccnx-0.7.2 && "
                 " INSTALL_BASE=${BIN_DCE}/.. ./configure && "
                 " make MORE_LDLIBS=-pie && "
-                " make install && cd -")
-        ec.set (ccnd1, "binary", "ccndstart")
+                " make install && "
+                " cp ${BIN_DCE}/../bin/ccn* ${BIN_DCE} && "
+                " cd -")
+        ec.set (ccnd1, "binary", "ccnd")
         ec.set (ccnd1, "stackSize", 1<<20)
+        ec.set (ccnd1, "environment", "CCND_CAP=50000; CCND_DEBUG=7")
         ec.set (ccnd1, "StartTime", "1s")
         ec.set (ccnd1, "StopTime", "20s")
         ec.register_connection(ccnd1, nsnode1)
-
-        ccnkill1 = ec.register_resource("ns3::LinuxCCNDceApplication")
-        ec.set (ccnkill1, "binary", "ccnsmoketest")
-        ec.set (ccnkill1, "arguments", "kill")
-        ec.set (ccnkill1, "stdinFile", "")
-        ec.set (ccnkill1, "stackSize", 1<<20)
-        ec.set (ccnkill1, "StartTime", "110s")
-        ec.set (ccnkill1, "StopTime", "120s")
-        ec.register_connection(ccnkill1, nsnode1)
 
         repofile = os.path.join(
             os.path.dirname(os.path.realpath(__file__)),
@@ -291,8 +289,9 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
         ec.register_connection(ccndc1, nsnode1)
 
         ccnd2 = ec.register_resource("ns3::LinuxCCNDceApplication")
-        ec.set (ccnd2, "binary", "ccndstart")
+        ec.set (ccnd2, "binary", "ccnd")
         ec.set (ccnd2, "stackSize", 1<<20)
+        ec.set (ccnd2, "environment", "CCND_CAP=50000; CCND_DEBUG=7")
         ec.set (ccnd2, "StartTime", "1s")
         ec.set (ccnd2, "StopTime", "120s")
         ec.register_connection(ccnd2, nsnode2)
@@ -323,43 +322,21 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
         ec.set (ccncat, "StopTime", "120s")
         ec.register_connection(ccncat, nsnode2)
 
-        ccnkill2 = ec.register_resource("ns3::LinuxCCNDceApplication")
-        ec.set (ccnkill2, "binary", "ccnsmoketest")
-        ec.set (ccnkill2, "arguments", "kill")
-        ec.set (ccnkill2, "stdinFile", "")
-        ec.set (ccnkill2, "stackSize", 1<<20)
-        ec.set (ccnkill2, "StartTime", "110s")
-        ec.set (ccnkill2, "StopTime", "120s")
-        ec.register_connection(ccnkill2, nsnode2)
-
         ec.deploy()
 
-        ec.wait_finished([ccncat, ccnkill1, ccnkill2])
+        ec.wait_finished([ccncat])
 
-        print ec.trace(ccncat, "cmdline")
-        """
-        expected = "ping -c 10 -s 1000 10.0.0.2"
-        cmdline = ec.trace(ping, "cmdline")
+        expected = "ccncat ccnx:/test/bunny.ts"
+        cmdline = ec.trace(ccncat, "cmdline")
         self.assertTrue(cmdline.find(expected) > -1, cmdline)
-        """
 
-        print ec.trace(ccncat, "status")
-        """
-        expected = "Start Time: NS3 Time:          1s ("
-        status = ec.trace(ping, "status")
+        expected = "Start Time: NS3 Time:          4s ("
+        status = ec.trace(ccncat, "status")
         self.assertTrue(status.find(expected) > -1, status)
-        """
 
-        print len(ec.trace(ccncat, "stdout"))
-        """
-        expected = "10 packets transmitted, 10 received, 0% packet loss, time 9002ms"
-        stdout = ec.trace(ping, "stdout")
-        self.assertTrue(stdout.find(expected) > -1, stdout)
-        """
-
-        stderr = ec.trace(simu, "stderr")
-        expected = "DceApplication:StartApplication"
-        self.assertTrue(stderr.find(expected) > -1, stderr)
+        expected = 2873956
+        stdout = ec.trace(ccncat, "stdout")
+        self.assertTrue(len(stdout) == expected , stdout)
 
         ec.shutdown()
 
