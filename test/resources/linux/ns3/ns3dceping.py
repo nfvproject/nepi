@@ -71,7 +71,7 @@ class LinuxNS3PingDceApplicationTest(unittest.TestCase):
         self.fedora_identity = "%s/.ssh/id_rsa" % (os.environ['HOME'])
 
     def test_dce_ping(self):
-        ec = ExperimentController(exp_id = "test-dce-ping")
+        ec = ExperimentController(exp_id = "test-dceping")
         
         node = ec.register_resource("LinuxNode")
         ec.set(node, "hostname", self.fedora_host)
