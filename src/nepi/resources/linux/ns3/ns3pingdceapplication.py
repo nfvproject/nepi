@@ -191,11 +191,17 @@ class LinuxDcePing(LinuxNS3DceApplication):
 
     @property
     def _build(self):
-        return ("tar xvjf ${SRC}/iputils-s20101006.tar.bz2 && "
+        return  (" ( "
+                " test -f ${SRC}/iputils-s20101006.tar.bz2 && "
+                " echo 'binaries found, nothing to do' "
+                " ) || ( "
+                "tar xvjf ${SRC}/iputils-s20101006.tar.bz2 && "
                 "cd iputils-s20101006/ && "
                 "sed -i 's/CFLAGS=/CFLAGS+=/g' Makefile && "
                 "make CFLAGS=-fPIC LDFLAGS=-pie ping && "
-                "cp ping ${BIN_DCE} && cd - ")
+                "cp ping ${BIN_DCE} && cd - "
+                " )"   
+                )
 
     @property
     def _arguments(self):
