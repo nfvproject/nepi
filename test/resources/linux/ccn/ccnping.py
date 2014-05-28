@@ -92,7 +92,7 @@ class LinuxCCNPingTestCase(unittest.TestCase):
                 self.target)
 
     def test_count_ubuntu(self):
-        self.t_count(self.ubuntu_user, self.ubuntu_host, self.fedora_user,
+        self.t_count(self.ubuntu_user, self.ubuntu_host, self.ubuntu_user,
                 self.target)
 
 if __name__ == '__main__':
