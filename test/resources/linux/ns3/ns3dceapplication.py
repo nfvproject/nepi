@@ -268,7 +268,7 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
         ec.register_connection(ccnd1, nsnode1)
 
         repofile = os.path.join(
-            os.path.dirname(os.path.realpath(__file__)),
+            os.path.dirname(os.path.realpath(__file__)), "ccn", 
             "repoFile1")
 
         ccnr = ec.register_resource("ns3::LinuxCCNDceApplication")
