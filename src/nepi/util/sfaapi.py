@@ -36,7 +36,7 @@ from nepi.util.sfarspec_proc import SfaRSpecProcessing
 
 class SFAAPI(object):
     """
-    API for quering the SFA service.
+    API for quering the SFA service. It uses Sfi class from the tool sfi client.
     """
     def __init__(self, sfi_user, sfi_auth, sfi_registry, sfi_sm, private_key, ec,
         batch, rtype, timeout):
@@ -73,6 +73,10 @@ class SFAAPI(object):
             self._set_blacklist()
 
     def _set_blacklist(self):
+        """
+        Initialize the blacklist with previous nodes blacklisted, in 
+        previous runs.
+        """
         nepi_home = os.path.join(os.path.expanduser("~"), ".nepi")
         plblacklist_file = os.path.join(nepi_home, "plblacklist.txt")
         with open(plblacklist_file, 'r') as f:
@@ -82,6 +86,12 @@ class SFAAPI(object):
                     self._blacklist.add(host)
 
     def _get_total_res(self):
+        """
+        Get the total amount of resources instanciated using this API,
+        to be able to add them using the same Allocate and Provision
+        call at once. Specially for Wilabt testbed that doesn't allow 
+        to add slivers after the slice already has some.
+        """
         rms = list()
         res_gids = self._ec.resources
         for gid in res_gids:
@@ -92,7 +102,8 @@ class SFAAPI(object):
 
     def _sfi_exec_method(self, command, slicename=None, rspec=None, urn=None):
         """
-        Execute sfi method.
+        Execute sfi method, which correspond to SFA call. It can be the following
+        calls: Describe, Delete, Allocate, Provision, ListResources.
         """
         if command in ['describe', 'delete', 'allocate', 'provision']:
             if not slicename:
@@ -232,10 +243,10 @@ class SFAAPI(object):
     def add_resource_to_slice_batch(self, slicename, resource_hrn, leases=None):
         """
         Method to add all resources together to the slice. Previous deletion of slivers.
+        Specially used for wilabt that doesn't allow to add more resources to the slice
+        after some resources are added. Every sliver have to be deleted and the batch 
+        has to be added at once.
         """
-        # Specially used for wilabt that doesn't allow to add more resources to the slice
-        # after some resources are added. Every sliver have to be deleted and the batch 
-        # has to be added at once.
         self._count += 1
         self._slice_resources_batch.append(resource_hrn)
         resources_hrn_new = list()
@@ -295,8 +306,8 @@ class SFAAPI(object):
 
     def remove_resource_from_slice(self, slicename, resource_hrn, leases=None):
         """
-        Get the list of resources' urn, build the rspec string and call the allocate 
-        and provision method.
+        Remove slivers from slice. Currently sfi doesn't support removing particular
+        slivers.
         """
         resource_urn = self._get_resources_urn([resource_hrn]).pop()
         with self.lock_slice:
@@ -309,6 +320,9 @@ class SFAAPI(object):
     def remove_all_from_slice(self, slicename):
         """
         De-allocate and de-provision all slivers of the named slice.
+        Currently sfi doesn't support removing particular
+        slivers, so this method works only for removing every sliver. Setting the
+        resource_hrn parameter is not necessary.
         """
         with self.lock_slice:
             try:
@@ -329,6 +343,10 @@ class SFAAPI(object):
         return resources_urn
 
     def blacklist_resource(self, resource_hrn):
+        """
+        Adding resource_hrn to blacklist, and taking 
+        the resource from the reserved list.
+        """
         with self.lock_blist:
             self._blacklist.add(resource_hrn)
         with self.lock_resv:
@@ -336,15 +354,24 @@ class SFAAPI(object):
                 self._reserved.remove(resource_hrn)
 
     def blacklisted(self, resource_hrn):
+        """
+        Check if the resource is in the blacklist. 
+        """
         with self.lock_blist:
             if resource_hrn in self._blacklist:
                 return True
         return False
 
     def reserve_resource(self, resource_hrn):
+        """
+        Add resource to the reserved list.
+        """
         self._reserved.add(resource_hrn)
 
     def reserved(self, resource_hrn):
+        """
+        Check that the resource in not reserved.
+        """
         with self.lock_resv:
             if resource_hrn in self._reserved:
                 return True

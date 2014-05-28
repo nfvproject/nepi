@@ -83,6 +83,10 @@ class WilabtSfaNode(LinuxNode):
     
     @property
     def sfaapi(self):
+        """
+        Property to instanciate the SFA API based in sfi client.
+        For each SFA method called this instance is used.
+        """
         if not self._sfaapi:
             sfa_user = self.get("sfauser")
             sfa_sm = "http://www.wilab2.ilabt.iminds.be:12369/protogeni/xmlrpc/am/3.0"
@@ -104,7 +108,7 @@ class WilabtSfaNode(LinuxNode):
     def do_discover(self):
         """
         Based on the attributes defined by the user, discover the suitable 
-        nodes for provision.
+        node for provision.
         """
         if self._skip_provision():
             super(WilabtSfaNode, self).do_discover()
@@ -132,8 +136,8 @@ class WilabtSfaNode(LinuxNode):
 
     def do_provision(self):
         """
-        Add node to user's slice after verifing that the node is functioning
-        correctly.
+        Add node to user's slice and verifing that the node is functioning
+        correctly. Check ssh, omf rc running, hostname, file system.
         """
         if self._skip_provision():
             super(WilabtSfaNode, self).do_provision()
@@ -152,11 +156,17 @@ class WilabtSfaNode(LinuxNode):
                 time.sleep(300) # Timout for the testbed to allow a new reservation
             self._add_node_to_slice(node)
             t = 0
-            while not self._check_if_in_slice([node]) and t < timeout:
+            while not self._check_if_in_slice([node]) and t < timeout \
+                and not self._ecobj().abort:
                 t = t + 5
                 time.sleep(t)
                 self.debug("Waiting 5 seg for resources to be added")
                 continue
+
+            if not self._check_if_in_slice([node]):
+                self.debug("Couldn't add node %s to slice" % node)
+                self.fail_node_not_available(node)
+
             self._get_username()
             ssh_ok = self._check_ssh_loop()          
 
@@ -191,16 +201,28 @@ class WilabtSfaNode(LinuxNode):
         super(WilabtSfaNode, self).do_provision()
 
     def _blacklisted(self, host_hrn):
+        """
+        Check in the SFA API that the node is not in the blacklist.
+        """
         if self.sfaapi.blacklisted(host_hrn):
            self.fail_node_not_available(host_hrn)
         return False
 
     def _reserved(self, host_hrn):
+        """
+        Check in the SFA API that the node is not in the reserved
+        list.
+        """
         if self.sfaapi.reserved(host_hrn):
             self.fail_node_not_available(host_hrn)
         return False
 
     def _get_username(self):
+        """
+        Get the username for login in to the nodes from RSpec.
+        Wilabt username is not made out of any convention, it
+        has to be retrived from the manifest RSpec.
+        """
         slicename = self.get("slicename")
         if self._username is None:
             slice_info = self.sfaapi.get_slice_resources(slicename)
@@ -210,6 +232,10 @@ class WilabtSfaNode(LinuxNode):
             self._username = username
             
     def _check_ssh_loop(self):
+        """
+        Check that the ssh login is possible. In wilabt is done
+        through the gateway because is private testbed.
+        """
         t = 0
         timeout = 10
         ssh_ok = False
@@ -228,6 +254,9 @@ class WilabtSfaNode(LinuxNode):
         return ssh_ok
 
     def _check_fs(self):
+        """
+        Check file system, /proc well mounted.
+        """
         cmd = 'mount |grep proc'
         ((out, err), proc) = self.execute(cmd)
         if out.find("/proc type proc") < 0:
@@ -237,6 +266,9 @@ class WilabtSfaNode(LinuxNode):
         return True
 
     def _check_omfrc(self):
+        """
+        Check that OMF 6 resource controller is running.
+        """
         cmd = 'ps aux|grep omf'
         ((out, err), proc) = self.execute(cmd)
         if out.find("/usr/local/rvm/gems/ruby-1.9.3-p286@omf/bin/omf_rc") < 0:
@@ -244,6 +276,9 @@ class WilabtSfaNode(LinuxNode):
         return True
 
     def _check_hostname(self):
+        """
+        Check that the hostname in the image is not set to localhost.
+        """
         cmd = 'hostname'
         ((out, err), proc) = self.execute(cmd)
         if 'localhost' in out.lower():
@@ -251,16 +286,32 @@ class WilabtSfaNode(LinuxNode):
         return True 
 
     def _add_node_to_slice(self, host_hrn):
+        """
+        Add node to slice, using SFA API. Actually Wilabt testbed
+        doesn't allow adding nodes, in fact in the API there is method
+        to group all the nodes instanciated as WilabtSfaNodes and the
+        Allocate and Provision is done with the last call at 
+        sfaapi.add_resource_to_slice_batch.
+        """
         self.info(" Adding node to slice ")
         slicename = self.get("slicename")
         self.sfaapi.add_resource_to_slice_batch(slicename, host_hrn)
 
     def _delete_from_slice(self):
+        """
+        Delete every node from slice, using SFA API.
+        Wilabt doesn't allow to remove one sliver so this method 
+        remove every slice from the slice.
+        """
+
         self.warning(" Deleting all slivers from slice ")
         slicename = self.get("slicename")
         self.sfaapi.remove_all_from_slice(slicename)
 
     def _get_hostname(self):
+        """
+        Get the attribute hostname.
+        """
         hostname = self.get("hostname")
         if hostname:
             return hostname
@@ -270,7 +321,7 @@ class WilabtSfaNode(LinuxNode):
     def _set_hostname_attr(self, node):
         """
         Query SFAAPI for the hostname of a certain host hrn and sets the
-        attribute hostname, it will over write the previous value
+        attribute hostname, it will over write the previous value.
         """
         hosts_hrn = self.sfaapi.get_resources_hrn()
         for hostname, hrn  in hosts_hrn.iteritems():
@@ -281,7 +332,7 @@ class WilabtSfaNode(LinuxNode):
     def _check_if_in_slice(self, hosts_hrn):
         """
         Check using SFA API if any host hrn from hosts_hrn is in the user's
-        slice
+        slice.
         """
         slicename = self.get("slicename")
         slice_nodes = self.sfaapi.get_slice_resources(slicename)['resource']
@@ -294,7 +345,7 @@ class WilabtSfaNode(LinuxNode):
 
     def _do_ping(self, hostname):
         """
-        Perform ping command on node's IP matching hostname
+        Perform ping command on node's IP matching hostname.
         """
         ping_ok = False
         guser = self.get("gatewayUser")
@@ -310,7 +361,7 @@ class WilabtSfaNode(LinuxNode):
 
     def _blacklist_node(self, host_hrn):
         """
-        Add node mal functioning node to blacklist
+        Add mal functioning node to blacklist (in SFA API).
         """
         self.warning(" Blacklisting malfunctioning node ")
         self.sfaapi.blacklist_resource(host_hrn)
@@ -322,13 +373,13 @@ class WilabtSfaNode(LinuxNode):
     def _put_node_in_provision(self, host_hrn):
         """
         Add node to the list of nodes being provisioned, in order for other RMs
-        to not try to provision the same one again
+        to not try to provision the same one again.
         """
         self.sfaapi.reserve_resource(host_hrn)
 
     def _get_ip(self, hostname):
         """
-        Query PLCAPI for the IP of a node with certain node id
+        Query cache for the IP of a node with certain hostname
         """
         try:
             ip = sshfuncs.gethostbyname(hostname)

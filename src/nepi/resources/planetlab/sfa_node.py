@@ -192,6 +192,10 @@ class PlanetlabSfaNode(LinuxNode):
     
     @property
     def sfaapi(self):
+        """
+        Property to instanciate the SFA API based in sfi client.
+        For each SFA method called this instance is used.
+        """
         if not self._sfaapi:
             sfa_user = self.get("sfauser")
             sfa_sm = "http://sfa3.planet-lab.eu:12346/"
@@ -278,19 +282,26 @@ class PlanetlabSfaNode(LinuxNode):
 #               self.fail_not_enough_nodes() 
 #    
     def _blacklisted(self, host_hrn):
+        """
+        Check in the SFA API that the node is not in the blacklist.
+        """
         if self.sfaapi.blacklisted(host_hrn):
            self.fail_node_not_available(host_hrn)
         return False
 
     def _reserved(self, host_hrn):
+        """
+        Check in the SFA API that the node is not in the reserved
+        list.
+        """
         if self.sfaapi.reserved(host_hrn):
             self.fail_node_not_available(host_hrn)
         return False
             
     def do_provision(self):
         """
-        Add node to user's slice after verifing that the node is functioning
-        correctly.
+        Add node to user's slice and verifing that the node is functioning
+        correctly. Check ssh, file system.
         """
         if self._skip_provision():
             super(PlanetlabSfaNode, self).do_provision()
@@ -525,18 +536,28 @@ class PlanetlabSfaNode(LinuxNode):
 #        return self.plapi.get_nodes(filters, fields=['node_id'])
 #
     def _add_node_to_slice(self, host_hrn):
+        """
+        Add node to slice, using SFA API.
+        """
         self.info(" Adding node to slice ")
         slicename = self.get("username").replace('_', '.')
         slicename = 'ple.' + slicename
         self.sfaapi.add_resource_to_slice(slicename, host_hrn)
 
     def _delete_from_slice(self):
+        """
+        Delete every node from slice, using SFA API.
+        Sfi client doesn't work for particular node urns.
+        """
         self.warning(" Deleting node from slice ")
         slicename = self.get("username").replace('_', '.')
         slicename = 'ple.' + slicename
         self.sfaapi.remove_all_from_slice(slicename)
 
     def _get_hostname(self):
+        """
+        Get the attribute hostname.
+        """
         hostname = self.get("hostname")
         if hostname:
             return hostname
@@ -546,7 +567,7 @@ class PlanetlabSfaNode(LinuxNode):
     def _set_hostname_attr(self, node):
         """
         Query SFAAPI for the hostname of a certain host hrn and sets the
-        attribute hostname, it will over write the previous value
+        attribute hostname, it will over write the previous value.
         """
         hosts_hrn = self.sfaapi.get_resources_hrn()
         for hostname, hrn  in hosts_hrn.iteritems():
@@ -556,7 +577,7 @@ class PlanetlabSfaNode(LinuxNode):
     def _check_if_in_slice(self, hosts_hrn):
         """
         Check using SFA API if any host hrn from hosts_hrn is in the user's
-        slice
+        slice.
         """
         slicename = self.get("username").replace('_', '.')
         slicename = 'ple.' + slicename
@@ -569,7 +590,7 @@ class PlanetlabSfaNode(LinuxNode):
 
     def _do_ping(self, hostname):
         """
-        Perform ping command on node's IP matching hostname
+        Perform ping command on node's IP matching hostname.
         """
         ping_ok = False
         ip = self._get_ip(hostname)
@@ -585,7 +606,7 @@ class PlanetlabSfaNode(LinuxNode):
 
     def _blacklist_node(self, host_hrn):
         """
-        Add node mal functioning node to blacklist
+        Add mal functioning node to blacklist (in SFA API).
         """
         self.warning(" Blacklisting malfunctioning node ")
         self.sfaapi.blacklist_resource(host_hrn)

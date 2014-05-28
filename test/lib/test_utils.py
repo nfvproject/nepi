@@ -122,3 +122,16 @@ def skipIfNotSfaCredentials(func):
 
     return wrapped
 
+def skipIfNotSfi(func):
+    name = func.__name__
+    def wrapped(*args, **kwargs):
+        try:
+            from sfa.client.sfi import Sfi
+            from sfa.util.xrn import hrn_to_urn
+        except ImportError:
+            print "*** WARNING: Skipping test %s: sfi-client or sfi-common not installed\n" % name
+            return
+
+        return func(*args, **kwargs)
+
+    return wrapped

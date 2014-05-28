@@ -38,7 +38,7 @@ class PLSfaNodeFactoryTestCase(unittest.TestCase):
 
     def test_creation_phase(self):
         self.assertEquals(PlanetlabSfaNode._rtype, "PlanetlabSfaNode")
-        self.assertEquals(len(PlanetlabSfaNode._attributes), 29)
+        self.assertEquals(len(PlanetlabSfaNode._attributes), 31)
 
 class PLSfaNodeTestCase(unittest.TestCase):
     """
@@ -73,8 +73,8 @@ class PLSfaNodeTestCase(unittest.TestCase):
 
         api1 = plnode_rm1.sfaapi
         self.assertIsInstance(api1, SFAAPI)
-        self.assertEquals(len(api1.reserved()), 0)
-        self.assertEquals(len(api1.blacklisted()), 0)
+        self.assertEquals(len(api1._reserved), 0)
+        self.assertEquals(len(api1._blacklist), 0)
 
         node2 = self.ec.register_resource("PlanetlabSfaNode")
         self.ec.set(node2, "hostname", "planetlab2.ionio.gr")
@@ -92,7 +92,7 @@ class PLSfaNodeTestCase(unittest.TestCase):
         Check that the method do_discover reserve the right node.
         """
         node = self.ec.register_resource("PlanetlabSfaNode")
-        self.ec.set(node, "hostname", "planetlab2.ionio.gr")
+        self.ec.set(node, "hostname", "roti.mimuw.edu.pl")
         self.ec.set(node, "username", self.username)
         self.ec.set(node, "sfauser", self.sfauser)
         self.ec.set(node, "sfaPrivateKey", self.sfaPrivateKey)
@@ -102,11 +102,14 @@ class PLSfaNodeTestCase(unittest.TestCase):
         hostname = plnode_rm.get("hostname")
         self.assertIsNotNone(hostname)
 
-        self.assertEquals(plnode_rm.sfaapi.reserved(), set())
+        self.assertEquals(len(plnode_rm.sfaapi._reserved), 0)
 
         plnode_rm.do_discover()
-        self.assertEquals(plnode_rm.sfaapi.reserved().pop(), 'ple.dbislab.planetlab2.ionio.gr')
-        self.assertEquals(plnode_rm._node_to_provision, 'ple.dbislab.planetlab2.ionio.gr')
+
+        self.assertEquals(len(plnode_rm.sfaapi._reserved), 1)
+        self.assertEquals(plnode_rm._node_to_provision, 'ple.mimuw.roti.mimuw.edu.pl')
+        plnode_rm.sfaapi._reserved = set()
+        plnode_rm.sfaapi._blacklist = set()
 
     @skipIfNotSfaCredentials
     def test_provision(self):
@@ -122,10 +125,8 @@ class PLSfaNodeTestCase(unittest.TestCase):
 
         plnode_rm = self.ec.get_resource(node)
 
-        self.assertEquals(plnode_rm.sfaapi.reserved(), set())
+        self.assertEquals(plnode_rm.sfaapi._reserved, set())
         self.assertIsNone(plnode_rm._node_to_provision)
-
-        slicename = 'ple.' + self.username.replace('_', '.')
 
         plnode_rm.do_discover()
         plnode_rm.do_provision()    
@@ -134,20 +135,13 @@ class PLSfaNodeTestCase(unittest.TestCase):
         ((out, err), proc) = plnode_rm.execute(cmd)
         self.assertEquals(out.strip(), "IT WORKED")
 
-        urn_to_delete = 'urn:publicid:IDN+ple:dbislab+node+planetlab2.ionio.gr'
-        plnode_rm.sfaapi.remove_resource_from_slice(slicename, urn_to_delete)
-
-        slice_resources = plnode_rm.sfaapi.get_slice_resources(slicename)['resource']
-        if slice_resources:
-            slice_resources_hrn = plnode_rm.sfaapi.get_resources_hrn(slice_resources)
-            self.assertNotIn('planetlab2.ionio.gr', slice_resources_hrn.keys())           
+        plnode_rm.sfaapi._reserved = set()
+        plnode_rm.sfaapi._blacklist = set()
 
     @skipIfNotSfaCredentials
-    def test_xdeploy(self):
+    def test_xdeploy1(self):
         """
-        Test with the nodes being discover and provision at the same time.
-        The deploy should fail as the test before, there aren't 4 nodes of 
-        that carachteristics.
+        Test deploy 1 node.
         """
         node = self.ec.register_resource("PlanetlabSfaNode")
         self.ec.set(node, "hostname", "planetlab2.ionio.gr")
@@ -158,7 +152,70 @@ class PLSfaNodeTestCase(unittest.TestCase):
         self.ec.deploy()
         self.ec.wait_deployed(node)
         state = self.ec.state(node)
-        self.assertEquals(state, 3)
+        if not self.ec.abort:
+            self.assertIn(state, (3, 4))
+
+        plnode_rm = self.ec.get_resource(1)
+        plnode_rm.sfaapi._reserved = set()
+        plnode_rm.sfaapi._blacklist = set()
+
+    @skipIfNotSfaCredentials
+    def test_xdeploy2(self):
+        """
+        Test deploy 2 nodes. Empty slice.
+        """
+        node1 = self.ec.register_resource("PlanetlabSfaNode")
+        self.ec.set(node1, "hostname", "planetlab3.xeno.cl.cam.ac.uk")
+        self.ec.set(node1, "username", self.username)
+        self.ec.set(node1, "sfauser", self.sfauser)
+        self.ec.set(node1, "sfaPrivateKey", self.sfaPrivateKey)
+
+        node2 = self.ec.register_resource("PlanetlabSfaNode")
+        self.ec.set(node2, "hostname", "planetlab1.cs.vu.nl")
+        self.ec.set(node2, "username", self.username)
+        self.ec.set(node2, "sfauser", self.sfauser)
+        self.ec.set(node2, "sfaPrivateKey", self.sfaPrivateKey)
+
+        node1rm = self.ec.get_resource(node1)
+        node1rm._delete_from_slice()
+
+        self.ec.deploy()
+        self.ec.wait_deployed([node1, node2])
+        state1 = self.ec.state(node1)
+        state2 = self.ec.state(node2)
+        if not self.ec.abort:
+            self.assertIn(state1, (3, 4))
+            self.assertIn(state2, (3, 4))
+
+        plnode_rm = self.ec.get_resource(1)
+        plnode_rm.sfaapi._reserved = set()
+        plnode_rm.sfaapi._blacklist = set()
+
+    @skipIfNotSfaCredentials
+    def test_xdeploy3(self):
+        """
+        Test deploy 2 nodes, already in the slice.
+        """
+        node1 = self.ec.register_resource("PlanetlabSfaNode")
+        self.ec.set(node1, "hostname", "planetlab3.xeno.cl.cam.ac.uk")
+        self.ec.set(node1, "username", self.username)
+        self.ec.set(node1, "sfauser", self.sfauser)
+        self.ec.set(node1, "sfaPrivateKey", self.sfaPrivateKey)
+
+        node2 = self.ec.register_resource("PlanetlabSfaNode")
+        self.ec.set(node2, "hostname", "planetlab1.cs.vu.nl")
+        self.ec.set(node2, "username", self.username)
+        self.ec.set(node2, "sfauser", self.sfauser)
+        self.ec.set(node2, "sfaPrivateKey", self.sfaPrivateKey)
+
+        self.ec.deploy()
+        self.ec.wait_deployed([node1, node2])
+        state1 = self.ec.state(node1)
+        state2 = self.ec.state(node2)
+        if not self.ec.abort:
+            self.assertIn(state1, (3, 4))
+            self.assertIn(state2, (3, 4))
+
 
     def tearDown(self):
         self.ec.shutdown()
