@@ -485,6 +485,7 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
                         " (   "
                          # If not, copy ns-3 build to bin
                         "  cd ${SRC}/dce/ns-3-dce && "
+                        "  rm -rf ${SRC}/dce/ns-3-dce/build && "
                         "  ./waf configure %(enable_opt)s --with-pybindgen=${SRC}/pybindgen/%(pybindgen_version)s "
                         "  --prefix=%(ns3_build_home)s --with-ns3=%(ns3_build_home)s && "
                         "  ./waf build && "
@@ -512,6 +513,7 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
                  # If not, copy ns-3 build to bin
                 "  mkdir -p %(ns3_build_home)s && "
                 "  cd ${SRC}/ns-3/%(ns3_version)s && "
+                "  rm -rf ${SRC}/ns-3/%(ns3_version)s/build && "
                 "  ./waf configure -d %(build_mode)s --with-pybindgen=${SRC}/pybindgen/%(pybindgen_version)s "
                 "  --prefix=%(ns3_build_home)s && "
                 "  ./waf build && "
