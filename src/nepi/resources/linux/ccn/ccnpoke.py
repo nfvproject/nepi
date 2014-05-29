@@ -17,40 +17,48 @@
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
+from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.resource import clsinit_copy, ResourceState, \
     reschedule_delay
-from nepi.resources.linux.application import LinuxApplication
-from nepi.resources.linux.ccn.ccnd import LinuxCCND
+from nepi.resources.linux.ccn.ccnapplication import LinuxCCNApplication
 
 import os
 
 @clsinit_copy
-class LinuxCCNApplication(LinuxApplication):
-    _rtype = "LinuxCCNApplication"
+class LinuxCCNPoke(LinuxCCNApplication):
+    _rtype = "LinuxCCNPoke"
+
+    @classmethod
+    def _register_attributes(cls):
+        content_name = Attribute("contentName",
+            "Content name for the content to peek",
+            flags = Flags.Design)
+
+        content = Attribute("content",
+            "Content to poke (as a text string)",
+            flags = Flags.Design)
+
+        cls._register_attribute(content_name)
+        cls._register_attribute(content)
 
     def __init__(self, ec, guid):
-        super(LinuxCCNApplication, self).__init__(ec, guid)
-        self._home = "ccnapp-%s" % self.guid
-
-    @property
-    def ccnd(self):
-        ccnd = self.get_connected(LinuxCCND.get_rtype())
-        if ccnd: return ccnd[0]
-        return None
-
-    @property
-    def node(self):
-        if self.ccnd: return self.ccnd.node
-        return None
+        super(LinuxCCNPoke, self).__init__(ec, guid)
+        self._home = "ccnpoke-%s" % self.guid
 
     def do_deploy(self):
         if not self.ccnd or self.ccnd.state < ResourceState.READY:
             self.debug("---- RESCHEDULING DEPLOY ---- node state %s " % self.node.state )
             self.ec.schedule(reschedule_delay, self.deploy)
         else:
-            command = self.get("command") or ""
+            command = self.get("command")
+            if not command:
+                command = "ccnpoke %s" % self.get("contentName")
+                self.set("command", command) 
 
             self.info("Deploying command '%s' " % command)
+
+            if self.get("content"):
+                self.set("stdin", self.get("content"))
             
             if not self.get("env"):
                 self.set("env", self._environment)
@@ -60,10 +68,6 @@ class LinuxCCNApplication(LinuxApplication):
 
             self.set_ready()
 
-    @property
-    def _environment(self):
-        return self.ccnd.path
-       
     def valid_connection(self, guid):
         # TODO: Validate!
         return True
