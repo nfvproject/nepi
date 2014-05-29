@@ -169,6 +169,7 @@ class LinuxNS3DceCCND(LinuxNS3CCNDceApplication):
             " ) || "
             # If not, untar and build
             " ( "
+                " tar zxf ${SRC}/%(tar)s  && "
                 " cd %(version)s && "
                 " INSTALL_BASE=${BIN_DCE}/.. ./configure && "
                 " make MORE_LDLIBS=-pie && "
