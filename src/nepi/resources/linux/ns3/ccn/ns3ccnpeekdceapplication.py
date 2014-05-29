@@ -44,21 +44,4 @@ class LinuxNS3DceCCNPeek(LinuxNS3CCNDceApplication):
 
         super(LinuxNS3DceCCNPeek, self)._instantiate_object()
 
-    @property
-    def _arguments(self):
-        args = ["-v", "add"]
-
-        if self.get("uri"):
-            args.append(self.get("uri"))
-        if self.get("protocol"):
-            args.append(self.get("protocol"))
-        if self.get("host"):
-            args.append(self.get("host"))
-        if self.get("port"):
-            args.append(self.get("port"))
-        if self.get("ip"):
-            args.append(self.get("ip"))
-
-        return ";".join(args) 
-
 
