@@ -57,7 +57,7 @@ class LinuxNS3CCNPeekDceApplicationTest(unittest.TestCase):
         self.fedora_user = "aquereil"
         self.fedora_identity = "%s/.ssh/id_rsa" % (os.environ['HOME'])
 
-    def test_dce_ccn(self):
+    def test_dce_ccnpeek(pself):
         ec = ExperimentController(exp_id = "test-dce-ccnpeek")
         
         node = ec.register_resource("LinuxNode")
@@ -72,6 +72,57 @@ class LinuxNS3CCNPeekDceApplicationTest(unittest.TestCase):
         ec.set(simu, "enableDCE", True)
         ec.set(simu, "buildMode", "debug")
         ec.set(simu, "nsLog", "DceApplication")
+        ec.register_connection(simu, node)
+
+        nsnode = add_ns3_node(ec, simu)
+
+        ### create applications
+        ccnd = ec.register_resource("ns3::LinuxDceCCND")
+        ec.set (ccnd, "stackSize", 1<<20)
+        ec.set (ccnd, "StartTime", "1s")
+        ec.register_connection(ccnd, nsnode)
+
+        ccnpoke = ec.register_resource("ns3::LinuxDceCCNPoke")
+        ec.set (ccnpoke, "contentName", "ccnx:/chunk0")
+        ec.set (ccnpoke, "content", "DATA")
+        ec.set (ccnpoke, "stackSize", 1<<20)
+        ec.set (ccnpoke, "StartTime", "2s")
+        ec.register_connection(ccnpoke, nsnode)
+
+        ccnpeek = ec.register_resource("ns3::LinuxDceCCNPeek")
+        ec.set (ccnpeek, "contentName", "ccnx:/chunk0")
+        ec.set (ccnpeek, "stackSize", 1<<20)
+        ec.set (ccnpeek, "StartTime", "4s")
+        ec.set (ccnpeek, "StopTime", "20s")
+        ec.register_connection(ccnpeek, nsnode)
+
+        ec.deploy()
+
+        ec.wait_finished([ccnpeek])
+
+        expected = "ccnpeek ccnx:/chunk0"
+        cmdline = ec.trace(ccnpeek, "cmdline")
+        self.assertTrue(cmdline.find(expected) > -1, cmdline)
+
+        expected = "Start Time: NS3 Time:          4s ("
+        status = ec.trace(ccnpeek, "status")
+        self.assertTrue(status.find(expected) > -1, status)
+
+        expected = "DATA"
+        stdout = ec.trace(ccnpeek, "stdout")
+        self.assertTrue(stdout.find(expected) > -1, stdout)
+
+        ec.shutdown()
+
+    def test_dce_ccnpeek_local(self):
+        ec = ExperimentController(exp_id = "test-dce-ccnpeek-local")
+        
+        node = ec.register_resource("LinuxNode")
+        ec.set(node, "hostname", "localhost")
+
+        simu = ec.register_resource("LinuxNS3Simulation")
+        ec.set(simu, "verbose", True)
+        ec.set(simu, "enableDCE", True)
         ec.register_connection(simu, node)
 
         nsnode = add_ns3_node(ec, simu)
