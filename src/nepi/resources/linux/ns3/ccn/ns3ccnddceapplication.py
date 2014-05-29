@@ -164,7 +164,7 @@ class LinuxNS3DceCCND(LinuxNS3CCNDceApplication):
         return (
             # Evaluate if ccnx binaries are already installed
             " ( "
-                " test -f ${SRC}/%(tar)s && "
+                " test -f ${BIN_DCE}/ccnd && "
                 " echo 'binaries found, nothing to do' "
             " ) || "
             # If not, untar and build
