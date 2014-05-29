@@ -101,15 +101,6 @@ class LinuxNS3CCNDceApplication(NS3BaseCCNDceApplication):
             if fcmd:
                 command.append(fcmd)
 
-        # Upload CCN files (e.g. repo)
-        stdin_file = self.get("stdinFile")
-        if stdin_file:
-            stdincmd = self.simulation.upload_extra_sources(sources = stdin_file, 
-                    src_dir = self.simulation.app_home)
-
-            if stdincmd:
-                command.append(stdincmd)
-
         if command:
             deploy_command = ";".join(command)
             prefix = "%d_deploy" % self.guid 
