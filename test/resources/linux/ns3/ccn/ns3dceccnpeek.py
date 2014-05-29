@@ -116,8 +116,7 @@ class LinuxNS3CCNPeekDceApplicationTest(unittest.TestCase):
 
         ec.shutdown()
 
-    ## TODO: Not working because ns-3-dev is broken
-    def ztest_dce_ccnpeek_local(self):
+    def test_dce_ccnpeek_local(self):
         ec = ExperimentController(exp_id = "test-dce-ccnpeek-local")
         
         node = ec.register_resource("LinuxNode")
@@ -125,8 +124,8 @@ class LinuxNS3CCNPeekDceApplicationTest(unittest.TestCase):
 
         simu = ec.register_resource("LinuxNS3Simulation")
         ec.set(simu, "verbose", True)
-        ec.set(simu, "ns3Version", "ns-3.19")
-        ec.set(simu, "pybindgenVersion", "834")
+        #ec.set(simu, "ns3Version", "ns-3.19")
+        #ec.set(simu, "pybindgenVersion", "834")
         ec.set(simu, "enableDCE", True)
         ec.register_connection(simu, node)
 

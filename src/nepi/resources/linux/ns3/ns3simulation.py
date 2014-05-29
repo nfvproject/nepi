@@ -85,8 +85,8 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
 
         ns3_version = Attribute("ns3Version",
             "Version of ns-3 to install from nsam repo",
-            default = "ns-3.19", 
-            #default = "ns-3-dev", 
+            #default = "ns-3.19", 
+            default = "ns-3-dev", 
             flags = Flags.Design)
 
         enable_dce = Attribute("enableDCE",
@@ -97,8 +97,8 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
 
         pybindgen_version = Attribute("pybindgenVersion",
             "Version of pybindgen to install from bazar repo",
-            default = "864", 
-            #default = "868", 
+            #default = "864", 
+            default = "868", 
             flags = Flags.Design)
 
         populate_routing_tables = Attribute("populateRoutingTables",
