@@ -60,7 +60,7 @@ def add_point2point_device(ec, node, address = None,  prefix = None):
 
     return dev
 
-class LinuxNS3PingDceApplicationTest(unittest.TestCase):
+class LinuxNS3CCNDceApplicationTest(unittest.TestCase):
     def setUp(self):
         #self.fedora_host = "nepi2.pl.sophia.inria.fr"
         #self.fedora_host = "planetlabpc1.upf.edu"
@@ -71,7 +71,7 @@ class LinuxNS3PingDceApplicationTest(unittest.TestCase):
         self.fedora_identity = "%s/.ssh/id_rsa" % (os.environ['HOME'])
 
     def test_dce_ccn(self):
-        ec = ExperimentController(exp_id = "test-dceccn")
+        ec = ExperimentController(exp_id = "test-dce-ccn")
         
         node = ec.register_resource("LinuxNode")
         ec.set(node, "hostname", self.fedora_host)

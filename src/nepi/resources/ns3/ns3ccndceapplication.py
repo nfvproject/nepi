@@ -96,10 +96,6 @@ class NS3BaseCCNDceApplication(NS3BaseDceApplication):
                     if stdinfile:
                         # stdinfile might be an empty text that should be set as
                         # stdin
-                        if stdinfile != "":
-                            stdinfile = os.path.join(self.simulation.app_home, 
-                                os.path.basename(stdinfile))
-       
                         self.simulation.invoke(
                                 self.ccn_client_helper_uuid, 
                                 "SetStdinFile", stdinfile)
