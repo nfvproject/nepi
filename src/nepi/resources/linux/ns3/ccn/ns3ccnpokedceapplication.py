@@ -58,6 +58,7 @@ class LinuxNS3DceCCNPoke(LinuxNS3CCNDceApplication):
         localpath = f.name
         dcepath = os.path.join("/tmp", os.path.basename(localpath))
 
+        self.set("environment", "HOME=/root")
         self.set("files", "%s=%s" % (localpath, dcepath))
         self.set("stdinFile", dcepath)
 

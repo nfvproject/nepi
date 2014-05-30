@@ -192,7 +192,7 @@ class LinuxDcePing(LinuxNS3DceApplication):
     @property
     def _build(self):
         return  (" ( "
-                " test -f ${SRC}/iputils-s20101006.tar.bz2 && "
+                " test -f ${BIN_DCE}/ping && "
                 " echo 'binaries found, nothing to do' "
                 " ) || ( "
                 "tar xvjf ${SRC}/iputils-s20101006.tar.bz2 && "

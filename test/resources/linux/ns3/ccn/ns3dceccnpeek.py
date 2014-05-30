@@ -49,28 +49,25 @@ def add_ns3_node(ec, simu):
 
 class LinuxNS3CCNPeekDceApplicationTest(unittest.TestCase):
     def setUp(self):
-        #self.fedora_host = "nepi2.pl.sophia.inria.fr"
-        #self.fedora_host = "planetlabpc1.upf.edu"
-        #self.fedora_user = "inria_nepi"
-        #self.fedora_identity = "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'])
-        self.fedora_host = "mimas.inria.fr"
-        self.fedora_user = "aquereil"
-        self.fedora_identity = "%s/.ssh/id_rsa" % (os.environ['HOME'])
+        self.fedora_host = "nepi2.pl.sophia.inria.fr"
+        self.fedora_host = "planetlabpc1.upf.edu"
+        self.fedora_user = "inria_nepi"
+        self.fedora_identity = "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'])
 
-    def test_dce_ccnpeek(pself):
+    def test_dce_ccnpeek(self):
         ec = ExperimentController(exp_id = "test-dce-ccnpeek")
         
         node = ec.register_resource("LinuxNode")
         ec.set(node, "hostname", self.fedora_host)
         ec.set(node, "username", self.fedora_user)
         ec.set(node, "identity", self.fedora_identity)
-        #ec.set(node, "cleanProcesses", True)
-        #ec.set(node, "cleanHome", True)
+        ec.set(node, "cleanProcesses", True)
+        ec.set(node, "cleanHome", True)
 
         simu = ec.register_resource("LinuxNS3Simulation")
         ec.set(simu, "verbose", True)
         ec.set(simu, "ns3Version", "ns-3-dev")
-        ec.set(simu, "pybindgenVersion", "838")
+        ec.set(simu, "pybindgenVersion", "868")
         ec.set(simu, "enableDCE", True)
         ec.set(simu, "buildMode", "debug")
         ec.set(simu, "nsLog", "DceApplication")
@@ -124,8 +121,8 @@ class LinuxNS3CCNPeekDceApplicationTest(unittest.TestCase):
 
         simu = ec.register_resource("LinuxNS3Simulation")
         ec.set(simu, "verbose", True)
-        #ec.set(simu, "ns3Version", "ns-3.19")
-        #ec.set(simu, "pybindgenVersion", "834")
+        ec.set(simu, "ns3Version", "ns-3.19")
+        ec.set(simu, "pybindgenVersion", "834")
         ec.set(simu, "enableDCE", True)
         ec.register_connection(simu, node)
 
