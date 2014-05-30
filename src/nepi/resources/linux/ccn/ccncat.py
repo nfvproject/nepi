@@ -34,7 +34,12 @@ class LinuxCCNCat(LinuxCCNApplication):
             "Content name for the content to peek",
             flags = Flags.Design)
 
+        pipeline = Attribute("pipeline",
+            "CCNCat pipeline",
+            flags = Flags.Design)
+
         cls._register_attribute(content_name)
+        cls._register_attribute(pipeline)
 
     def __init__(self, ec, guid):
         super(LinuxCCNCat, self).__init__(ec, guid)
@@ -48,7 +53,10 @@ class LinuxCCNCat(LinuxCCNApplication):
             command = self.get("command")
             if not command:
                 command = "ccncat %s" % self.get("contentName")
-                self.set("command", command) 
+            if self.get("pipeline"):
+                command += " -p %s " % self.get("pipeline")
+
+            self.set("command", command) 
 
             self.info("Deploying command '%s' " % command)
             

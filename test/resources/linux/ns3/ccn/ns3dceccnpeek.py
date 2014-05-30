@@ -61,8 +61,8 @@ class LinuxNS3CCNPeekDceApplicationTest(unittest.TestCase):
         ec.set(node, "hostname", self.fedora_host)
         ec.set(node, "username", self.fedora_user)
         ec.set(node, "identity", self.fedora_identity)
-        ec.set(node, "cleanProcesses", True)
-        ec.set(node, "cleanHome", True)
+        #ec.set(node, "cleanProcesses", True)
+        #ec.set(node, "cleanHome", True)
 
         simu = ec.register_resource("LinuxNS3Simulation")
         ec.set(simu, "verbose", True)

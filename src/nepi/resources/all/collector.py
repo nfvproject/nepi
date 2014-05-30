@@ -80,7 +80,7 @@ class Collector(ResourceManager):
             raise RuntimeError, msg
 
         store_dir = self.get("storeDir")
-        self._store_path = os.path.join(store_dir, self.ec.exp_id, self.ec.run_id)
+        self._store_path = os.path.join(store_dir, self.ec.run_id)
 
         subdir = self.get("subDir")
         if subdir:
