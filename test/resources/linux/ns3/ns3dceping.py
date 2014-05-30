@@ -69,6 +69,9 @@ class LinuxNS3PingDceApplicationTest(unittest.TestCase):
         self.fedora_host = "mimas.inria.fr"
         self.fedora_user = "aquereil"
         self.fedora_identity = "%s/.ssh/id_rsa" % (os.environ['HOME'])
+        self.fedora_host = "planetlab1.informatik.uni-goettingen.de"
+        self.fedora_user = "inria_nepi"
+        self.fedora_identity = "%s/.ssh/id_rsa_inria_twitter" % (os.environ['HOME'])
 
     def test_dce_ping(self):
         ec = ExperimentController(exp_id = "test-dceping")
