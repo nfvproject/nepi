@@ -182,6 +182,7 @@ class NS3BaseDceApplication(NS3BaseApplication):
         with self.dce_application_lock:
             pid = self.simulation.invoke(self.dce_application_helper_uuid, 
                     "GetPid", self.uuid)
+
         node_id = self.simulation.invoke(self.node.uuid, "GetId")
         self._trace_filename["stdout"] = "files-%s/var/log/%s/stdout" % (node_id, pid)
         self._trace_filename["stderr"] = "files-%s/var/log/%s/stderr" % (node_id, pid)
