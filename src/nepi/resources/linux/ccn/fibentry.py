@@ -176,6 +176,7 @@ class LinuxFIBEntry(LinuxApplication):
             self.ec.set(self._mtr, "printTimestamp", True)
             self.ec.set(self._mtr, "continuous", True)
             self.ec.set(self._mtr, "target", self.get("host"))
+            self.ec.set(self._mtr, "earlyStart", True)
             self.ec.register_connection(self._mtr, self.node.guid)
             # schedule mtr deploy
             self.ec.deploy(guids=[self._mtr], group = self.deployment_group)
@@ -186,6 +187,7 @@ class LinuxFIBEntry(LinuxApplication):
             self.ec.set(self._traceroute, "printTimestamp", True)
             self.ec.set(self._traceroute, "continuous", True)
             self.ec.set(self._traceroute, "target", self.get("host"))
+            self.ec.set(self._traceroute, "earlyStart", True)
             self.ec.register_connection(self._traceroute, self.node.guid)
             # schedule mtr deploy
             self.ec.deploy(guids=[self._traceroute], group = self.deployment_group)
