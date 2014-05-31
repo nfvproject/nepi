@@ -70,6 +70,12 @@ class LinuxMtr(LinuxApplication):
             "mtr target host (host that will be pinged)",
             flags = Flags.Design)
 
+        early_start = Attribute("earlyStart",
+            "Start ping as early as deployment. ",
+            type = Types.Bool,
+            default = False,
+            flags = Flags.Design)
+
         cls._register_attribute(report_cycles)
         cls._register_attribute(no_dns)
         cls._register_attribute(address)
@@ -77,11 +83,18 @@ class LinuxMtr(LinuxApplication):
         cls._register_attribute(countinuous)
         cls._register_attribute(print_timestamp)
         cls._register_attribute(target)
+        cls._register_attribute(early_start)
 
     def __init__(self, ec, guid):
         super(LinuxMtr, self).__init__(ec, guid)
         self._home = "mtr-%s" % self.guid
         self._sudo_kill = True
+
+    def upload_start_command(self):
+        super(LinuxMtr, self).upload_start_command()
+        
+        if self.get("earlyStart") == True:
+            self._run_in_background()
 
     def do_deploy(self):
         if not self.get("command"):
@@ -94,6 +107,20 @@ class LinuxMtr(LinuxApplication):
             self.set("depends", "mtr")
 
         super(LinuxMtr, self).do_deploy()
+
+    def do_start(self):
+        if self.get("earlyStart") == True:
+            if self.state == ResourceState.READY:
+                command = self.get("command")
+                self.info("Starting command '%s'" % command)
+
+                self.set_started()
+            else:
+                msg = " Failed to execute command '%s'" % command
+                self.error(msg, out, err)
+                raise RuntimeError, msg
+        else:
+           super(LinuxMtr, self).do_start()
 
     @property
     def _start_command(self):
