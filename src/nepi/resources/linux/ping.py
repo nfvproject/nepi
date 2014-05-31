@@ -156,6 +156,12 @@ class LinuxPing(LinuxApplication):
             "The host to ping .",
             flags = Flags.Design)
 
+        early_start = Attribute("earlyStart",
+            "Start ping as early as deployment. ",
+            type = Types.Bool,
+            default = False,
+            flags = Flags.Design)
+
         cls._register_attribute(count)
         cls._register_attribute(mark)
         cls._register_attribute(interval)
@@ -179,16 +185,56 @@ class LinuxPing(LinuxApplication):
         cls._register_attribute(deadline)
         cls._register_attribute(timeout)
         cls._register_attribute(target)
+        cls._register_attribute(early_start)
 
     def __init__(self, ec, guid):
         super(LinuxPing, self).__init__(ec, guid)
         self._home = "ping-%s" % self.guid
+
+    def upload_start_command(self):
+        if self.get("earlyStart") == True:
+            command = self.get("command")
+            env = self.get("env")
+
+            # We want to make sure the FIB entries are created
+            # before the experiment starts.
+            # Run the command as a bash script in the background, 
+            # in the host ( but wait until the command has
+            # finished to continue )
+            env = env and self.replace_paths(env)
+            command = self.replace_paths(command)
+
+            # ccndc seems to return exitcode OK even if a (dns) error
+            # occurred, so we need to account for this case here. 
+            (out, err), proc = self.execute_command(command, 
+                    env, blocking = True)
+
+            if proc.poll():
+                msg = "Failed to execute command"
+                self.error(msg, out, err)
+                raise RuntimeError, msg
+        else:
+            super(LinuxPing, self).upload_start_command()
 
     def do_deploy(self):
         if not self.get("command"):
             self.set("command", self._start_command)
 
         super(LinuxPing, self).do_deploy()
+
+    def do_start(self):
+        if self.get("earlyStart") == True:
+            if self.state == ResourceState.READY:
+                command = self.get("command")
+                self.info("Starting command '%s'" % command)
+
+                self.set_started()
+            else:
+                msg = " Failed to execute command '%s'" % command
+                self.error(msg, out, err)
+                raise RuntimeError, msg
+        else:
+           super(LinuxPing, self).do_start()
 
     @property
     def _start_command(self):

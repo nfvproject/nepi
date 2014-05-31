@@ -429,7 +429,7 @@ class ResourceManager(Logger):
         :rtype: str
 
         """
-        return " %s guid: %d - %s " % (self._rtype, self.guid, msg)
+        return " %s guid %d - %s " % (self._rtype, self.guid, msg)
 
     def register_connection(self, guid):
         """ Registers a connection to the RM identified by guid

@@ -164,6 +164,7 @@ class LinuxFIBEntry(LinuxApplication):
             self._ping = self.ec.register_resource("LinuxPing")
             self.ec.set(self._ping, "printTimestamp", True)
             self.ec.set(self._ping, "target", self.get("host"))
+            self.ec.set(self._ping, "earlyStart", True)
             self.ec.register_connection(self._ping, self.node.guid)
             # schedule ping deploy
             self.ec.deploy(guids=[self._ping], group = self.deployment_group)
