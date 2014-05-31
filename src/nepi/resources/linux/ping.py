@@ -192,29 +192,10 @@ class LinuxPing(LinuxApplication):
         self._home = "ping-%s" % self.guid
 
     def upload_start_command(self):
+        super(LinuxPing, self).upload_start_command()
+        
         if self.get("earlyStart") == True:
-            command = self.get("command")
-            env = self.get("env")
-
-            # We want to make sure the FIB entries are created
-            # before the experiment starts.
-            # Run the command as a bash script in the background, 
-            # in the host ( but wait until the command has
-            # finished to continue )
-            env = env and self.replace_paths(env)
-            command = self.replace_paths(command)
-
-            # ccndc seems to return exitcode OK even if a (dns) error
-            # occurred, so we need to account for this case here. 
-            (out, err), proc = self.execute_command(command, 
-                    env, blocking = True)
-
-            if proc.poll():
-                msg = "Failed to execute command"
-                self.error(msg, out, err)
-                raise RuntimeError, msg
-        else:
-            super(LinuxPing, self).upload_start_command()
+            self._run_in_background()
 
     def do_deploy(self):
         if not self.get("command"):
