@@ -121,9 +121,11 @@ class Collector(ResourceManager):
                 f.write(result)
                 f.close()
             except:
+                import traceback
+                err = traceback.format_exc()
                 msg = "Couldn't retrieve trace %s for %d at %s " % (trace_name, 
                         rm.guid, fpath)
-                self.error(msg)
+                self.error(msg, out = "", err = err)
                 continue
 
         super(Collector, self).do_release()
