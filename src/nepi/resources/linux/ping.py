@@ -18,7 +18,7 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 from nepi.execution.attribute import Attribute, Flags, Types
-from nepi.execution.resource import clsinit_copy
+from nepi.execution.resource import clsinit_copy, ResourceState 
 from nepi.resources.linux.application import LinuxApplication
 from nepi.util.timefuncs import tnow
 
