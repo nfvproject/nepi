@@ -120,7 +120,7 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         self._socket_name = "ns3-%s.sock" % os.urandom(4).encode('hex')
         self._dce_manager_helper_uuid = None
         self._dce_application_helper_uuid = None
-        self._enable_dce = False
+        self._enable_dce = None
 
     @property
     def socket_name(self):
