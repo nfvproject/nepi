@@ -65,51 +65,55 @@ def handle_message(ns3_wrapper, msg_type, args, kwargs):
     if msg_type == NS3WrapperMessage.CREATE:
         clazzname = args.pop(0)
         
-        ns3_wrapper.logger.debug("CREATE %s %s" % (clazzname, str(args)))
+        result = ns3_wrapper.create(clazzname, *args)
 
-        uuid = ns3_wrapper.create(clazzname, *args)
+        ns3_wrapper.logger.debug("%s CREATE %s %s" % (str(result), clazzname, 
+            str(args)))
         
-        #ns3_wrapper.logger.debug("%s = CREATE " % str(uuid))
-        return uuid
+        return result
 
     if msg_type == NS3WrapperMessage.FACTORY:
         type_name = args.pop(0)
 
-        ns3_wrapper.logger.debug("FACTORY %s %s" % (type_name, str(kwargs)))
-
-        uuid = ns3_wrapper.factory(type_name, **kwargs)
+        result = ns3_wrapper.factory(type_name, **kwargs)
         
-        #ns3_wrapper.logger.debug("%s = FACTORY " % str(uuid))
-        return uuid
+        ns3_wrapper.logger.debug("%s FACTORY %s %s" % (str(result), type_name, 
+            str(kwargs)))
+        
+        return result
 
     if msg_type == NS3WrapperMessage.INVOKE:
         uuid = args.pop(0)
         operation = args.pop(0)
-        
-        ns3_wrapper.logger.debug("INVOKE %s %s %s %s " % (uuid, operation, 
-            str(args), str(kwargs)))
-    
-        uuid = ns3_wrapper.invoke(uuid, operation, *args, **kwargs)
-        return uuid
+   
+        result = ns3_wrapper.invoke(uuid, operation, *args, **kwargs)
+
+        ns3_wrapper.logger.debug("%s INVOKE %s %s %s %s " % (str(result), uuid, 
+            operation, str(args), str(kwargs)))
+
+        return result
 
     if msg_type == NS3WrapperMessage.GET:
         uuid = args.pop(0)
         name = args.pop(0)
 
-        ns3_wrapper.logger.debug("GET %s %s" % (uuid, name))
+        result = ns3_wrapper.get(uuid, name)
+        
+        ns3_wrapper.logger.debug("%s GET %s %s" % (str(result), uuid, name))
 
-        value = ns3_wrapper.get(uuid, name)
-        return value
+        return result
 
     if msg_type == NS3WrapperMessage.SET:
         uuid = args.pop(0)
         name = args.pop(0)
         value = args.pop(0)
 
-        ns3_wrapper.logger.debug("SET %s %s %s" % (uuid, name, str(value)))
+        result = ns3_wrapper.set(uuid, name, value)
 
-        value = ns3_wrapper.set(uuid, name, value)
-        return value
+        ns3_wrapper.logger.debug("%s SET %s %s %s" % (str(result), uuid, name, 
+            str(value)))
+
+        return result
  
     if msg_type == NS3WrapperMessage.FLUSH:
         # Forces flushing output and error streams.
