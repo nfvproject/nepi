@@ -71,7 +71,6 @@ class LinuxNS3CCNPeekDceApplicationTest(unittest.TestCase):
         ec.set(simu, "verbose", True)
         ec.set(simu, "ns3Version", "ns-3-dev")
         ec.set(simu, "pybindgenVersion", "868")
-        ec.set(simu, "enableDCE", True)
         ec.set(simu, "buildMode", "debug")
         ec.set(simu, "nsLog", "DceApplication")
         ec.register_connection(simu, node)
@@ -124,9 +123,8 @@ class LinuxNS3CCNPeekDceApplicationTest(unittest.TestCase):
 
         simu = ec.register_resource("LinuxNS3Simulation")
         ec.set(simu, "verbose", True)
-        ec.set(simu, "ns3Version", "ns-3.19")
-        ec.set(simu, "pybindgenVersion", "834")
-        ec.set(simu, "enableDCE", True)
+        #ec.set(simu, "ns3Version", "ns-3.19")
+        #ec.set(simu, "pybindgenVersion", "834")
         ec.set(node, "cleanExperiment", True)
         ec.register_connection(simu, node)
 

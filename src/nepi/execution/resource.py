@@ -741,7 +741,6 @@ class ResourceManager(Logger):
         connected = []
         rclass = ResourceFactory.get_resource_type(rtype)
         for guid in self.connections:
-
             rm = self.ec.get_resource(guid)
             if not rtype or isinstance(rm, rclass):
                 connected.append(rm)
