@@ -20,7 +20,7 @@
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.trace import Trace, TraceAttr
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
-        ResourceState, reschedule_delay
+        ResourceState, ResourceFactory, reschedule_delay
 from nepi.resources.linux.application import LinuxApplication
 from nepi.util.timefuncs import tnow, tdiffsec
 from nepi.resources.ns3.ns3simulation import NS3Simulation
