@@ -317,7 +317,8 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
     def enable_dce(self):
         if self._enable_dce is None:
             from nepi.resources.ns3.ns3dceapplication import NS3BaseDceApplication
-            rclass = ResourceFactory.get_resource_type(NS3BaseDceApplication)
+            rclass = ResourceFactory.get_resource_type(
+                    NS3BaseDceApplication.get_rtype())
             
             self._enable_dce = False
             for guid in self.ec.resources:
