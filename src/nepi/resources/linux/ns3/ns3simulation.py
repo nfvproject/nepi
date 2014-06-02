@@ -277,9 +277,9 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
 
             self._client.start()
 
-            # Wait until the Simulation starts...
+            # Wait until the Simulation is actually started...
             is_running = False
-            for i in xrange(100):
+            for i in xrange(1000):
                 is_running = self.invoke(SIMULATOR_UUID, "isRunning")
             
                 if is_running:
