@@ -275,7 +275,22 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
             if self.get("populateRoutingTables") == True:
                 self.invoke(IPV4_GLOBAL_ROUTING_HELPER_UUID, "PopulateRoutingTables")
 
-            self._client.start() 
+            self._client.start()
+
+            # Wait until the Simulation starts...
+            is_running = False
+            for i in xrange(100):
+                is_running = self.invoke(SIMULATOR_UUID, "isRunning")
+            
+                if is_running:
+                    break
+                else:
+                    time.sleep(1)
+            else:
+                if not is_running:
+                    msg = " Simulation did not start"
+                    self.error(msg)
+                    raise RuntimeError
 
             self.set_started()
         else:
@@ -407,7 +422,6 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
                      ) % {
                             'dce_repo': self.dce_repo
                          }
-
 
         return (
                 # NS3 installation
