@@ -213,7 +213,7 @@ class NS3Wrapper(object):
 
     def invoke(self, uuid, operation, *args, **kwargs):
         if operation == "isRunning":
-            return self._is_running()
+            return self.is_running()
         if operation == "isAppRunning":
             return self._is_app_running(uuid)
         if operation == "addStaticRoute":
@@ -448,16 +448,6 @@ class NS3Wrapper(object):
                 for k, v in realkwargs.iteritems()])
 
         return realkwargs
-
-    def _is_running(self): 
-        if self.ns3.Simulator.IsFinished():
-            return False
-
-        now = self.ns3.Simulator.Now()
-        if now.IsZero():
-            return False
-        
-        return True
 
     def _is_app_running(self, uuid): 
         now = self.ns3.Simulator.Now()
