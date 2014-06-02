@@ -57,7 +57,7 @@ class LinuxNS3CCNPeekDceApplicationTest(unittest.TestCase):
         self.fedora_identity = "%s/.ssh/id_rsa" % (os.environ['HOME'])
 
     def test_dce_ccnpeek(self):
-        ec = ExperimentController(exp_id = "test-dce-ccnpeek2")
+        ec = ExperimentController(exp_id = "test-dce-ccnpeek")
         
         node = ec.register_resource("LinuxNode")
         ec.set(node, "hostname", self.fedora_host)
@@ -127,6 +127,7 @@ class LinuxNS3CCNPeekDceApplicationTest(unittest.TestCase):
         ec.set(simu, "ns3Version", "ns-3.19")
         ec.set(simu, "pybindgenVersion", "834")
         ec.set(simu, "enableDCE", True)
+        ec.set(node, "cleanExperiment", True)
         ec.register_connection(simu, node)
 
         nsnode = add_ns3_node(ec, simu)
