@@ -82,7 +82,6 @@ class LinuxNS3CCNDceApplicationTest(unittest.TestCase):
 
         simu = ec.register_resource("LinuxNS3Simulation")
         ec.set(simu, "verbose", True)
-        ec.set(simu, "enableDCE", True)
         ec.set(simu, "buildMode", "debug")
         ec.set(simu, "nsLog", "DceApplication")
         ec.register_connection(simu, node)

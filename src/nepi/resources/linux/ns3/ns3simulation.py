@@ -89,12 +89,6 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
             default = "ns-3-dev", 
             flags = Flags.Design)
 
-        enable_dce = Attribute("enableDCE",
-            "Install DCE source code",
-            default = False, 
-            type = Types.Bool,
-            flags = Flags.Design)
-
         pybindgen_version = Attribute("pybindgenVersion",
             "Version of pybindgen to install from bazar repo",
             #default = "864", 
@@ -116,7 +110,6 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         cls._register_attribute(ns3_version)
         cls._register_attribute(pybindgen_version)
         cls._register_attribute(populate_routing_tables)
-        cls._register_attribute(enable_dce)
 
     def __init__(self, ec, guid):
         LinuxApplication.__init__(self, ec, guid)
@@ -127,6 +120,7 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         self._socket_name = "ns3-%s.sock" % os.urandom(4).encode('hex')
         self._dce_manager_helper_uuid = None
         self._dce_application_helper_uuid = None
+        self._enable_dce = False
 
     @property
     def socket_name(self):
@@ -320,6 +314,21 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         super(LinuxApplication, self).do_release()
 
     @property
+    def enable_dce(self):
+        if self._enable_dce is None:
+            from nepi.resources.ns3.ns3dceapplication import NS3BaseDceApplication
+            rclass = ResourceFactory.get_resource_type(NS3BaseDceApplication)
+            
+            self._enable_dce = False
+            for guid in self.ec.resources:
+                rm = self.ec.get_resource(guid)
+                if isinstance(rm, rclass):
+                    self._enable_dce = True
+                    break
+
+        return self._enable_dce
+
+    @property
     def _start_command(self):
         command = [] 
 
@@ -403,7 +412,7 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
                                 }
 
         clone_dce_cmd = " echo 'DCE will not be built' "
-        if self.get("enableDCE"):
+        if self.enable_dce:
             clone_dce_cmd = (
                         # DCE installation
                         # Test if dce is alredy installed
@@ -489,7 +498,7 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
     @property
     def _install(self):
         install_dce_cmd = " echo 'DCE will not be installed' "
-        if self.get("enableDCE"):
+        if self.enable_dce:
             install_dce_cmd = (
                         " ( "
                         "   ((test -d %(ns3_build_home)s/bin_dce ) && "
