@@ -213,7 +213,7 @@ class NS3Wrapper(object):
 
     def invoke(self, uuid, operation, *args, **kwargs):
         if operation == "isRunning":
-            return self.is_running()
+            return self.is_running
         if operation == "isAppRunning":
             return self._is_app_running(uuid)
         if operation == "addStaticRoute":

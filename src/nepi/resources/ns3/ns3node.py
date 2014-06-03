@@ -25,6 +25,17 @@ from nepi.resources.ns3.ns3base import NS3Base
 class NS3BaseNode(NS3Base):
     _rtype = "abstract::ns3::Node"
 
+    @classmethod
+    def _register_attributes(cls):
+        enablestack = Attribute("enableStack", 
+                "Install network stack in Node, including: ARP, "
+                "IP4, ICMP, UDP and TCP ",
+                type = Types.Bool,
+                default = False,
+                flags = Flags.Design)
+
+        cls._register_attribute(enablestack)
+
     @property
     def simulation(self):
         from nepi.resources.ns3.ns3simulation import NS3Simulation
@@ -98,6 +109,10 @@ class NS3BaseNode(NS3Base):
         ipv4 = self.ipv4
         if ipv4:
             self.simulation.invoke(self.uuid, "AggregateObject", ipv4.uuid)
+
+        if self.get("enableStack"):
+            uuid_stack_helper = self.simulation.create("InternetStackHelper")
+            self.simulation.invoke(uuid_stack_helper, "Install", self.uuid)
 
         mobility = self.mobility
         if mobility:
