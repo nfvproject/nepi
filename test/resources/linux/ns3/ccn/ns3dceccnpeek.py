@@ -169,7 +169,7 @@ class LinuxNS3CCNPeekDceApplicationTest(unittest.TestCase):
         ec.shutdown()
 
     def test_dce_ccnpeek_local_with_stack(self):
-        ec = ExperimentController(exp_id = "test-dce-ccnpeek-lostack")
+        ec = ExperimentController(exp_id = "test-dce-peek-lostack")
         
         node = ec.register_resource("LinuxNode")
         ec.set(node, "hostname", "localhost")
