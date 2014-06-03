@@ -97,9 +97,13 @@ class NS3BaseNode(NS3Base):
         return rms
 
     def _configure_object(self):
-        ### node.AggregateObject(PacketSocketFactory())
-        uuid_packet_socket_factory = self.simulation.create("PacketSocketFactory")
-        self.simulation.invoke(self.uuid, "AggregateObject", uuid_packet_socket_factory)
+        if self.get("enableStack"):
+            uuid_stack_helper = self.simulation.create("InternetStackHelper")
+            self.simulation.invoke(uuid_stack_helper, "Install", self.uuid)
+        else:
+            ### node.AggregateObject(PacketSocketFactory())
+            uuid_packet_socket_factory = self.simulation.create("PacketSocketFactory")
+            self.simulation.invoke(self.uuid, "AggregateObject", uuid_packet_socket_factory)
 
         dceapplications = self.dceapplications
         if dceapplications:
@@ -109,10 +113,6 @@ class NS3BaseNode(NS3Base):
         ipv4 = self.ipv4
         if ipv4:
             self.simulation.invoke(self.uuid, "AggregateObject", ipv4.uuid)
-
-        if self.get("enableStack"):
-            uuid_stack_helper = self.simulation.create("InternetStackHelper")
-            self.simulation.invoke(uuid_stack_helper, "Install", self.uuid)
 
         mobility = self.mobility
         if mobility:
