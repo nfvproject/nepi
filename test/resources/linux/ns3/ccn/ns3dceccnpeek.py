@@ -168,5 +168,61 @@ class LinuxNS3CCNPeekDceApplicationTest(unittest.TestCase):
 
         ec.shutdown()
 
+    def test_dce_ccnpeek_local_with_stack(self):
+        ec = ExperimentController(exp_id = "test-dce-ccnpeek-local")
+        
+        node = ec.register_resource("LinuxNode")
+        ec.set(node, "hostname", "localhost")
+
+        simu = ec.register_resource("LinuxNS3Simulation")
+        ec.set(simu, "verbose", True)
+        #ec.set(simu, "ns3Version", "ns-3.19")
+        #ec.set(simu, "pybindgenVersion", "834")
+        ec.set(node, "cleanExperiment", True)
+        ec.register_connection(simu, node)
+
+        nsnode = ec.register_resource("ns3::Node")
+        ec.set(nsnode, "enableStack", True)
+        ec.register_connection(nsnode, simu)
+
+        ### create applications
+        ccnd = ec.register_resource("ns3::LinuxDceCCND")
+        ec.set (ccnd, "stackSize", 1<<20)
+        ec.set (ccnd, "StartTime", "1s")
+        ec.register_connection(ccnd, nsnode)
+
+        ccnpoke = ec.register_resource("ns3::LinuxDceCCNPoke")
+        ec.set (ccnpoke, "contentName", "ccnx:/chunk0")
+        ec.set (ccnpoke, "content", "DATA")
+        ec.set (ccnpoke, "stackSize", 1<<20)
+        ec.set (ccnpoke, "StartTime", "2s")
+        ec.register_connection(ccnpoke, nsnode)
+
+        ccnpeek = ec.register_resource("ns3::LinuxDceCCNPeek")
+        ec.set (ccnpeek, "contentName", "ccnx:/chunk0")
+        ec.set (ccnpeek, "stackSize", 1<<20)
+        ec.set (ccnpeek, "StartTime", "4s")
+        ec.set (ccnpeek, "StopTime", "20s")
+        ec.register_connection(ccnpeek, nsnode)
+
+        ec.deploy()
+
+        ec.wait_finished([ccnpeek])
+
+        expected = "ccnpeek ccnx:/chunk0"
+        cmdline = ec.trace(ccnpeek, "cmdline")
+        self.assertTrue(cmdline.find(expected) > -1, cmdline)
+
+        expected = "Start Time: NS3 Time:          4s ("
+        status = ec.trace(ccnpeek, "status")
+        self.assertTrue(status.find(expected) > -1, status)
+
+        expected = "DATA"
+        stdout = ec.trace(ccnpeek, "stdout")
+        self.assertTrue(stdout.find(expected) > -1, stdout)
+
+        ec.shutdown()
+
+
 if __name__ == '__main__':
     unittest.main()
