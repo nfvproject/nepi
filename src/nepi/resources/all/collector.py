@@ -59,7 +59,7 @@ class Collector(ResourceManager):
         user_run_id = Attribute("useRunId", 
                 "If set to True stores traces into a sub directory named after "
                 "the RUN ID assigned by the EC", 
-                type = types.Bool,
+                type = Types.Bool,
                 default = False,
                 flags = Flags.Design)
 
