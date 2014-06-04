@@ -56,7 +56,7 @@ class Collector(ResourceManager):
                 default = tempfile.gettempdir(),
                 flags = Flags.Design)
 
-        user_run_id = Attribute("useRunId", 
+        use_run_id = Attribute("useRunId", 
                 "If set to True stores traces into a sub directory named after "
                 "the RUN ID assigned by the EC", 
                 type = Types.Bool,
