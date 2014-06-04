@@ -75,7 +75,7 @@ class Collector(ResourceManager):
         cls._register_attribute(store_dir)
         cls._register_attribute(sub_dir)
         cls._register_attribute(rename)
-        cls._register_attribute(useRunId)
+        cls._register_attribute(use_run_id)
 
     def __init__(self, ec, guid):
         super(Collector, self).__init__(ec, guid)
