@@ -131,6 +131,9 @@ class OMF6Parser(Logger):
 
 
     def _inform_creation_ok(self, root, namespaces):
+        """ Parse and Display CREATION OK message
+
+        """
         #ET.dump(root)
         uid = self._check_for_tag(root, namespaces, "uid")
         cid = self._check_for_tag(root, namespaces, "cid")
@@ -139,6 +142,8 @@ class OMF6Parser(Logger):
         msg = "CREATION OK -- "
         if binary_path :
             msg = msg + "The resource : '"+binary_path
+        else :
+            msg = msg + "The interface"
         if uid :
             msg = msg + "' is listening to the topics : '"+ uid
         if member :
@@ -148,6 +153,9 @@ class OMF6Parser(Logger):
             self.mailbox['create'].append([cid, uid ])
 
     def _inform_creation_failed(self, root, namespaces):
+        """ Parse and Display CREATION FAILED message
+
+        """
         reason = self._check_for_tag(root, namespaces, "reason")
         cid = self._check_for_tag(root, namespaces, "cid")
         msg = "CREATION FAILED - The reason : "+reason
@@ -156,6 +164,9 @@ class OMF6Parser(Logger):
             self.mailbox['create'].append([cid, uid ])
 
     def _inform_status(self, root, namespaces):
+        """ Parse and Display STATUS message
+
+        """
         props = self._check_for_props(root, namespaces)
         uid = self._check_for_tag(root, namespaces, "uid")
         msg = "STATUS -- "
@@ -172,6 +183,9 @@ class OMF6Parser(Logger):
         self.info(msg)
 
     def _inform_released(self, root, namespaces):
+        """ Parse and Display RELEASED message
+
+        """
         #ET.dump(root)
         parent_id = self._check_for_tag(root, namespaces, "src")
         child_id = self._check_for_tag(root, namespaces, "res_id")
@@ -183,17 +197,24 @@ class OMF6Parser(Logger):
             self.mailbox['release'].append(cid)
 
     def _inform_error(self, root, namespaces):
+        """ Parse and Display ERROR message
+
+        """
         reason = self._check_for_tag(root, namespaces, "reason")
         msg = "The reason : "+reason
         self.error(msg)
 
     def _inform_warn(self, root, namespaces):
+        """ Parse and Display WARN message
+
+        """
         reason = self._check_for_tag(root, namespaces, "reason")
         msg = "The reason : "+reason
         self.warn(msg)
 
     def _parse_inform(self, root, namespaces):
-        """ Check the significative element in the answer and display it
+        """ Check the significative element in the answer
+            Then Parse it and display using specific method
 
         :param root: Root of the tree
         :type root: ElementTree Element
@@ -214,6 +235,14 @@ class OMF6Parser(Logger):
         
 
     def check_mailbox(self, itype, attr):
+        """ Check the mail box
+
+        :param itype: type of mail
+        :type itype: str
+        :param attr: value wanted
+        :type attr: str
+
+        """
         if itype == "create":
             for res in self.mailbox[itype]:
                 binary, uid = res
@@ -228,6 +257,11 @@ class OMF6Parser(Logger):
                
 
     def handle(self, iq):
+        """ Check the mail box
+
+        :param iq: message received
+        :type itype: iq
+        """
         namespaces = "{http://schema.mytestbed.net/omf/6.0/protocol}"
         for i in iq['pubsub_event']['items']:
             root = ET.fromstring(str(i))

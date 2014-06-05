@@ -26,7 +26,7 @@ from nepi.resources.omf.node import OMFNode
 from nepi.resources.omf.application import OMFApplication
 from nepi.resources.omf.interface import OMFWifiInterface
 from nepi.resources.omf.channel import OMFChannel
-from nepi.resources.omf.omf_api import OMFAPIFactory
+from nepi.resources.omf.omf_api_factory import OMFAPIFactory
 
 from nepi.util.timefuncs import *
 
@@ -43,43 +43,48 @@ class OMFVLCWrongCaseAllCritical(unittest.TestCase):
 
         self.node1 = self.ec.register_resource("OMFNode")
         self.ec.set(self.node1, 'hostname', 'omf.plexus.wlab17')
-        self.ec.set(self.node1, 'xmppSlice', "nepi")
-        self.ec.set(self.node1, 'xmppHost', "xmpp-plexus.onelab.eu")
+        self.ec.set(self.node1, 'xmppUser', "nepi")
+        self.ec.set(self.node1, 'xmppServer', "xmpp-plexus.onelab.eu")
         self.ec.set(self.node1, 'xmppPort', "5222")
         self.ec.set(self.node1, 'xmppPassword', "1234")
+        self.ec.set(self.node1, 'version', "5")
         
         self.iface1 = self.ec.register_resource("OMFWifiInterface")
-        self.ec.set(self.iface1, 'alias', "w0")
+        self.ec.set(self.iface1, 'name', "wlan0")
         self.ec.set(self.iface1, 'mode', "adhoc")
-        self.ec.set(self.iface1, 'type', "g")
+        self.ec.set(self.iface1, 'hw_mode', "g")
         self.ec.set(self.iface1, 'essid', "vlcexp")
-        self.ec.set(self.iface1, 'ip', "10.0.0.17")
+        self.ec.set(self.iface1, 'ip', "10.0.0.17/24")
+        self.ec.set(self.iface1, 'version', "5")
 
         self.app1 = self.ec.register_resource("OMFApplication")
         self.ec.set(self.app1, 'appid', 'Vlc#1')
-        self.ec.set(self.app1, 'path', "/opt/vlc-1.1.13/cvlc")
-        self.ec.set(self.app1, 'args', "/opt/10-by-p0d.avi --sout '#rtp{dst=10.0.0.37,port=1234,mux=ts}'")
+        self.ec.set(self.app1, 'command', "/opt/vlc-1.1.13/cvlc /opt/10-by-p0d.avi --sout '#rtp{dst=10.0.0.37,port=1234,mux=ts}'")
         self.ec.set(self.app1, 'env', "DISPLAY=localhost:10.0 XAUTHORITY=/root/.Xauthority")
+        self.ec.set(self.app1, 'version', "5")
 
         self.ec.register_connection(self.app1, self.node1)
         self.ec.register_connection(self.node1, self.iface1)
 
     def test_deploy_wo_node(self):
         self.node2 = self.ec.register_resource("OMFNode")
+        self.ec.set(self.node2, 'version', "5")
 
         self.iface2 = self.ec.register_resource("OMFWifiInterface")
-        self.ec.set(self.iface2, 'alias', "w0")
+        self.ec.set(self.iface2, 'name', "wlan0")
         self.ec.set(self.iface2, 'mode', "adhoc")
-        self.ec.set(self.iface2, 'type', "g")
+        self.ec.set(self.iface2, 'hw_mode', "g")
         self.ec.set(self.iface2, 'essid', "vlcexp")
-        self.ec.set(self.iface2, 'ip', "10.0.0.37")
+        self.ec.set(self.iface2, 'ip', "10.0.0.37/24")
+        self.ec.set(self.iface2, 'version', "5")
         
         self.channel = self.ec.register_resource("OMFChannel")
         self.ec.set(self.channel, 'channel', "6")
-        self.ec.set(self.channel, 'xmppSlice', "nepi")
-        self.ec.set(self.channel, 'xmppHost', "xmpp-plexus.onelab.eu")
+        self.ec.set(self.channel, 'xmppUser', "nepi")
+        self.ec.set(self.channel, 'xmppServer', "xmpp-plexus.onelab.eu")
         self.ec.set(self.channel, 'xmppPort', "5222")
         self.ec.set(self.channel, 'xmppPassword', "1234")
+        self.ec.set(self.channel, 'version', "5")
 
         self.ec.register_connection(self.iface1, self.channel)
         self.ec.register_connection(self.node2, self.iface2)
@@ -105,27 +110,31 @@ class OMFVLCWrongCaseAllCritical(unittest.TestCase):
     def test_deploy_wo_hostname(self):
 
         self.node2 = self.ec.register_resource("OMFNode")
-        self.ec.set(self.node2, 'xmppSlice', "nepi")
-        self.ec.set(self.node2, 'xmppHost', "xmpp-plexus.onelab.eu")
+        self.ec.set(self.node2, 'xmppUser', "nepi")
+        self.ec.set(self.node2, 'xmppServer', "xmpp-plexus.onelab.eu")
         self.ec.set(self.node2, 'xmppPort', "5222")
         self.ec.set(self.node2, 'xmppPassword', "1234")
+        self.ec.set(self.node2, 'version', "5")
 
         self.iface2 = self.ec.register_resource("OMFWifiInterface")
-        self.ec.set(self.iface2, 'alias', "w0")
+        self.ec.set(self.iface2, 'name', "wlan0")
         self.ec.set(self.iface2, 'mode', "adhoc")
-        self.ec.set(self.iface2, 'type', "g")
+        self.ec.set(self.iface2, 'hw_mode', "g")
         self.ec.set(self.iface2, 'essid', "vlcexp")
-        self.ec.set(self.iface2, 'ip', "10.0.0.37")
+        self.ec.set(self.iface2, 'ip', "10.0.0.37/24")
+        self.ec.set(self.iface2, 'version', "5")
         
         self.channel = self.ec.register_resource("OMFChannel")
         self.ec.set(self.channel, 'channel', "6")
-        self.ec.set(self.channel, 'xmppSlice', "nepi")
-        self.ec.set(self.channel, 'xmppHost', "xmpp-plexus.onelab.eu")
+        self.ec.set(self.channel, 'xmppUser', "nepi")
+        self.ec.set(self.channel, 'xmppServer', "xmpp-plexus.onelab.eu")
         self.ec.set(self.channel, 'xmppPort', "5222")
         self.ec.set(self.channel, 'xmppPassword', "1234")
+        self.ec.set(self.channel, 'version', "5")
 
         self.ec.register_connection(self.iface1, self.channel)
         self.ec.register_connection(self.node2, self.iface2)
+        self.ec.register_connection(self.iface2, self.channel)
 
         self.ec.register_condition([self.app1], ResourceAction.STOP, self.app1, ResourceState.STARTED , "2s")
 
@@ -147,22 +156,26 @@ class OMFVLCWrongCaseAllCritical(unittest.TestCase):
     def test_deploy_wo_iface(self):
         self.node2 = self.ec.register_resource("OMFNode")
         self.ec.set(self.node2, 'hostname', 'omf.plexus.wlab17')
-        self.ec.set(self.node2, 'xmppSlice', "nepi")
-        self.ec.set(self.node2, 'xmppHost', "xmpp-plexus.onelab.eu")
+        self.ec.set(self.node2, 'xmppUser', "nepi")
+        self.ec.set(self.node2, 'xmppServer', "xmpp-plexus.onelab.eu")
         self.ec.set(self.node2, 'xmppPort', "5222")
         self.ec.set(self.node2, 'xmppPassword', "1234")
+        self.ec.set(self.node2, 'version', "5")
 
         self.iface2 = self.ec.register_resource("OMFWifiInterface")
+        self.ec.set(self.iface2, 'version', "5")
         
         self.channel = self.ec.register_resource("OMFChannel")
         self.ec.set(self.channel, 'channel', "6")
-        self.ec.set(self.channel, 'xmppSlice', "nepi")
-        self.ec.set(self.channel, 'xmppHost', "xmpp-plexus.onelab.eu")
+        self.ec.set(self.channel, 'xmppUser', "nepi")
+        self.ec.set(self.channel, 'xmppServer', "xmpp-plexus.onelab.eu")
         self.ec.set(self.channel, 'xmppPort', "5222")
         self.ec.set(self.channel, 'xmppPassword', "1234")
+        self.ec.set(self.channel, 'version', "5")
 
         self.ec.register_connection(self.iface1, self.channel)
         self.ec.register_connection(self.node2, self.iface2)
+        self.ec.register_connection(self.iface2, self.channel)
 
         self.ec.register_condition([self.app1], ResourceAction.STOP, self.app1, ResourceState.STARTED , "2s")
 
@@ -184,26 +197,30 @@ class OMFVLCWrongCaseAllCritical(unittest.TestCase):
     def test_deploy_wo_ip(self):
         self.node2 = self.ec.register_resource("OMFNode")
         self.ec.set(self.node2, 'hostname', 'omf.plexus.wlab17')
-        self.ec.set(self.node2, 'xmppSlice', "nepi")
-        self.ec.set(self.node2, 'xmppHost', "xmpp-plexus.onelab.eu")
+        self.ec.set(self.node2, 'xmppUser', "nepi")
+        self.ec.set(self.node2, 'xmppServer', "xmpp-plexus.onelab.eu")
         self.ec.set(self.node2, 'xmppPort', "5222")
         self.ec.set(self.node2, 'xmppPassword', "1234")
+        self.ec.set(self.node2, 'version', "5")
 
         self.iface2 = self.ec.register_resource("OMFWifiInterface")
-        self.ec.set(self.iface2, 'alias', "w0")
+        self.ec.set(self.iface2, 'name', "wlan0")
         self.ec.set(self.iface2, 'mode', "adhoc")
-        self.ec.set(self.iface2, 'type', "g")
-        self.ec.set(self.iface2, 'essid', "vlcexp")     
+        self.ec.set(self.iface2, 'hw_mode', "g")
+        self.ec.set(self.iface2, 'essid', "vlcexp")
+        self.ec.set(self.iface2, 'version', "5")
 
         self.channel = self.ec.register_resource("OMFChannel")
         self.ec.set(self.channel, 'channel', "6")
-        self.ec.set(self.channel, 'xmppSlice', "nepi")
-        self.ec.set(self.channel, 'xmppHost', "xmpp-plexus.onelab.eu")
+        self.ec.set(self.channel, 'xmppUser', "nepi")
+        self.ec.set(self.channel, 'xmppServer', "xmpp-plexus.onelab.eu")
         self.ec.set(self.channel, 'xmppPort', "5222")
         self.ec.set(self.channel, 'xmppPassword', "1234")
+        self.ec.set(self.channel, 'version', "5")
 
         self.ec.register_connection(self.iface1, self.channel)
         self.ec.register_connection(self.node2, self.iface2)
+        self.ec.register_connection(self.iface2, self.channel)
 
         self.ec.register_condition([self.app1], ResourceAction.STOP, self.app1, ResourceState.STARTED , "2s")
 
@@ -222,29 +239,73 @@ class OMFVLCWrongCaseAllCritical(unittest.TestCase):
         self.assertEquals(self.ec.get_resource(self.channel).state, ResourceState.RELEASED)
         self.assertEquals(self.ec.get_resource(self.app1).state, ResourceState.RELEASED)
 
+    def test_deploy_wo_channel(self):
+        self.node2 = self.ec.register_resource("OMFNode")
+        self.ec.set(self.node2, 'hostname', 'omf.plexus.wlab17')
+        self.ec.set(self.node2, 'xmppUser', "nepi")
+        self.ec.set(self.node2, 'xmppServer', "xmpp-plexus.onelab.eu")
+        self.ec.set(self.node2, 'xmppPort', "5222")
+        self.ec.set(self.node2, 'xmppPassword', "1234")
+        self.ec.set(self.node2, 'version', "5")
+
+        self.iface2 = self.ec.register_resource("OMFWifiInterface")
+        self.ec.set(self.iface2, 'name', "wlan0")
+        self.ec.set(self.iface2, 'mode', "adhoc")
+        self.ec.set(self.iface2, 'hw_mode', "g")
+        self.ec.set(self.iface2, 'essid', "vlcexp")
+        self.ec.set(self.iface2, 'version', "5")
+
+        self.channel = self.ec.register_resource("OMFChannel")
+        self.ec.set(self.channel, 'version', "5")
+
+        self.ec.register_connection(self.iface1, self.channel)
+        self.ec.register_connection(self.node2, self.iface2)
+        self.ec.register_connection(self.iface2, self.channel)
+
+        self.ec.register_condition([self.app1], ResourceAction.STOP, self.app1, ResourceState.STARTED , "2s")
+
+        self.ec.deploy()
+
+        self.ec.wait_finished([self.app1])
+
+        self.assertEquals(self.ec.get_resource(self.channel).state, ResourceState.FAILED)
+
+        self.ec.shutdown()
+
+        self.assertEquals(self.ec.get_resource(self.node1).state, ResourceState.RELEASED)
+        self.assertEquals(self.ec.get_resource(self.node2).state, ResourceState.RELEASED)
+        self.assertEquals(self.ec.get_resource(self.iface1).state, ResourceState.RELEASED)
+        self.assertEquals(self.ec.get_resource(self.iface2).state, ResourceState.RELEASED)
+        self.assertEquals(self.ec.get_resource(self.channel).state, ResourceState.RELEASED)
+        self.assertEquals(self.ec.get_resource(self.app1).state, ResourceState.RELEASED)
+
     def test_deploy_wo_app(self):
         self.node2 = self.ec.register_resource("OMFNode")
         self.ec.set(self.node2, 'hostname', 'omf.plexus.wlab17')
-        self.ec.set(self.node2, 'xmppSlice', "nepi")
-        self.ec.set(self.node2, 'xmppHost', "xmpp-plexus.onelab.eu")
+        self.ec.set(self.node2, 'xmppUser', "nepi")
+        self.ec.set(self.node2, 'xmppServer', "xmpp-plexus.onelab.eu")
         self.ec.set(self.node2, 'xmppPort', "5222")
         self.ec.set(self.node2, 'xmppPassword', "1234")
+        self.ec.set(self.node2, 'version', "5")
 
         self.iface2 = self.ec.register_resource("OMFWifiInterface")
-        self.ec.set(self.iface2, 'alias', "w0")
+        self.ec.set(self.iface2, 'name', "wlan0")
         self.ec.set(self.iface2, 'mode', "adhoc")
-        self.ec.set(self.iface2, 'type', "g")
+        self.ec.set(self.iface2, 'hw_mode', "g")
         self.ec.set(self.iface2, 'essid', "vlcexp")   
-        self.ec.set(self.iface2, 'ip', "10.0.0.37")  
+        self.ec.set(self.iface2, 'ip', "10.0.0.37/24")
+        self.ec.set(self.iface2, 'version', "5")
 
         self.channel = self.ec.register_resource("OMFChannel")
         self.ec.set(self.channel, 'channel', "6")
-        self.ec.set(self.channel, 'xmppSlice', "nepi")
-        self.ec.set(self.channel, 'xmppHost', "xmpp-plexus.onelab.eu")
+        self.ec.set(self.channel, 'xmppUser', "nepi")
+        self.ec.set(self.channel, 'xmppServer', "xmpp-plexus.onelab.eu")
         self.ec.set(self.channel, 'xmppPort', "5222")
         self.ec.set(self.channel, 'xmppPassword', "1234")
+        self.ec.set(self.channel, 'version', "5")
 
         self.app2 = self.ec.register_resource("OMFApplication")
+        self.ec.set(self.app2, 'version', "5")
 
         self.ec.register_connection(self.iface1, self.channel)
         self.ec.register_connection(self.iface2, self.channel)
@@ -273,27 +334,31 @@ class OMFVLCWrongCaseAllCritical(unittest.TestCase):
     def test_deploy_wo_app_path(self):
         self.node2 = self.ec.register_resource("OMFNode")
         self.ec.set(self.node2, 'hostname', 'omf.plexus.wlab17')
-        self.ec.set(self.node2, 'xmppSlice', "nepi")
-        self.ec.set(self.node2, 'xmppHost', "xmpp-plexus.onelab.eu")
+        self.ec.set(self.node2, 'xmppUser', "nepi")
+        self.ec.set(self.node2, 'xmppServer', "xmpp-plexus.onelab.eu")
         self.ec.set(self.node2, 'xmppPort', "5222")
         self.ec.set(self.node2, 'xmppPassword', "1234")
+        self.ec.set(self.node2, 'version', "5")
 
         self.iface2 = self.ec.register_resource("OMFWifiInterface")
-        self.ec.set(self.iface2, 'alias', "w0")
+        self.ec.set(self.iface2, 'name', "wlan0")
         self.ec.set(self.iface2, 'mode', "adhoc")
-        self.ec.set(self.iface2, 'type', "g")
+        self.ec.set(self.iface2, 'hw_mode', "g")
         self.ec.set(self.iface2, 'essid', "vlcexp")   
-        self.ec.set(self.iface2, 'ip', "10.0.0.37")  
+        self.ec.set(self.iface2, 'ip', "10.0.0.37/24")
+        self.ec.set(self.iface2, 'version', "5")
 
         self.channel = self.ec.register_resource("OMFChannel")
         self.ec.set(self.channel, 'channel', "6")
-        self.ec.set(self.channel, 'xmppSlice', "nepi")
-        self.ec.set(self.channel, 'xmppHost', "xmpp-plexus.onelab.eu")
+        self.ec.set(self.channel, 'xmppUser', "nepi")
+        self.ec.set(self.channel, 'xmppServer', "xmpp-plexus.onelab.eu")
         self.ec.set(self.channel, 'xmppPort', "5222")
         self.ec.set(self.channel, 'xmppPassword', "1234")
+        self.ec.set(self.channel, 'version', "5")
 
         self.app2 = self.ec.register_resource("OMFApplication")
         self.ec.set(self.app2, 'appid', 'Vlc#2')
+        self.ec.set(self.app2, 'version', "5")
 
         self.ec.register_connection(self.iface1, self.channel)
         self.ec.register_connection(self.iface2, self.channel)

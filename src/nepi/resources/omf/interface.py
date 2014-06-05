@@ -23,7 +23,7 @@ from nepi.execution.resource import ResourceManager, clsinit_copy, \
         ResourceState, reschedule_delay
 from nepi.execution.attribute import Attribute, Flags 
 
-from nepi.resources.omf.node import OMFNode, confirmation_counter
+from nepi.resources.omf.node import OMFNode, confirmation_counter, reschedule_check
 from nepi.resources.omf.omf_resource import ResourceGateway, OMFResource
 from nepi.resources.omf.channel import OMFChannel
 from nepi.resources.omf.omf_api_factory import OMFAPIFactory
@@ -42,22 +42,16 @@ class OMFWifiInterface(OMFResource):
     _rtype = "OMFWifiInterface"
     _authorized_connections = ["OMFNode" , "OMFChannel"]
 
-    #alias2name = dict({'w0':'wlan0', 'w1':'wlan1'})
-
     @classmethod
     def _register_attributes(cls):
         """Register the attributes of an OMF interface 
 
         """
-        alias = Attribute("alias","Alias of the interface", default = "w0")
-        type = Attribute("type","Choose between : a, b, g, n")
-        name = Attribute("name","Alias of the interface", default = "wlan0")
+        name = Attribute("name","Alias of the interface : wlan0, wlan1, ..", default = "wlan0")
         mode = Attribute("mode","Mode of the interface")
         hw_mode = Attribute("hw_mode","Choose between : a, b, g, n")
         essid = Attribute("essid","Essid of the interface")
         ip = Attribute("ip","IP of the interface")
-        cls._register_attribute(alias)
-        cls._register_attribute(type)
         cls._register_attribute(name)
         cls._register_attribute(mode)
         cls._register_attribute(hw_mode)
@@ -77,8 +71,8 @@ class OMFWifiInterface(OMFResource):
         super(OMFWifiInterface, self).__init__(ec, guid)
 
         self._conf = False
-
-        self._alias = self.get('alias')
+        self.alias = None
+        self._type = None
 
         self.create_id = None
         self._create_cnt = 0
@@ -135,8 +129,11 @@ class OMFWifiInterface(OMFResource):
             return False
 
         for attrname in ["mode", "type", "essid"]:
-            attrval = self.get(attrname)
-            attrname = "net/%s/%s" % (self._alias, attrname)
+            if attrname == "type" :
+                attrval = self._type
+            else :
+                attrval = self.get(attrname)
+            attrname = "net/%s/%s" % (self.alias, attrname)
             self._omf_api.configure(self.node.get('hostname'), attrname, 
                         attrval)
         
@@ -146,32 +143,52 @@ class OMFWifiInterface(OMFResource):
     def configure_ip(self):
         """ Configure the ip of the interface
 
+        .. note : The ip is separated from the others parameters to avoid 
+        CELL ID shraing problem. By putting th ip at the end of the configuration, 
+        each node use the same channel and can then share the same CELL ID.
+        In the second case, the channel is defined at the end and the node don't
+        share a common CELL ID and can not communicate.
+
         """
         if self.channel.state < ResourceState.READY:
             self.ec.schedule(reschedule_delay, self.deploy)
             return False
 
         attrval = self.get("ip")
-        attrname = "net/%s/%s" % (self._alias, "ip")
+        if '/' in attrval:
+           attrval,mask = attrval.split('/')
+        attrname = "net/%s/%s" % (self.alias, "ip")
         self._omf_api.configure(self.node.get('hostname'), attrname, 
                     attrval)
         return True
 
 
     def configure_on_omf5(self):
-        # Just for information
-#        self.debug(" " + self.get_rtype() + " ( Guid : " + str(self._guid) +") : " + \
-#            self.get('mode') + " : " + self.get('type') + " : " + \
-#            self.get('essid') + " : " + self.get('ip'))
+        """ Method to configure the wifi interface when OMF 5.4 is used.
+
+        """    
+
+        self._type = self.get('hw_mode')
+        if self.get('name') == "wlan0" or "eth0":
+            self.alias = "w0"
+        else:    
+            self.alias = "w1"
+        res = False
         if self.state < ResourceState.PROVISIONED:
             if self._conf == False:
                 self._conf = self.configure_iface()
-                res = self._conf
         if self._conf == True:
             res = self.configure_ip()
         return res
 
     def check_deploy(self, cid):
+        """ Check, through the mail box in the parser, 
+        if the confirmation of the creation has been received
+
+        :param cid: the id of the original message
+        :type guid: string
+
+        """
         uid = self._omf_api.check_mailbox("create", cid)
         if uid : 
             return uid
@@ -179,8 +196,8 @@ class OMFWifiInterface(OMFResource):
 
     def do_deploy(self):
         """ Deploy the RM. It means : Get the xmpp client and send messages 
-        using OMF 5.4 protocol to configure the interface.
-        It becomes DEPLOYED after sending messages to configure the interface
+        using OMF 5.4 or 6 protocol to configure the interface.
+
         """
         if not self.node or self.node.state < ResourceState.READY:
             self.debug("---- RESCHEDULING DEPLOY ---- node state %s "
@@ -215,16 +232,20 @@ class OMFWifiInterface(OMFResource):
               self.get('xmppServer'), self.get('xmppUser'), self.get('xmppPort'),
                self.get('xmppPassword'), exp_id = self.exp_id)
 
-        if not (self.get('name') and self.get('mode') and self.get('essid') \
+        if not (self.get('name')):
+            msg = "Interface's name is not initialized"
+            self.error(msg)
+            raise RuntimeError, msg
+
+        if not (self.get('mode') and self.get('essid') \
                  and self.get('hw_mode') and self.get('ip')):
             msg = "Interface's variable are not initialized"
             self.error(msg)
             raise RuntimeError, msg
 
-        self.set('type',self.get('hw_mode'))
-
         if self.get('version') == "5":
-            res = self.configure_on_omf5()
+            res = self.configure_on_omf5()        
+
         else :
             res = self.configure_on_omf6()
 
@@ -232,6 +253,9 @@ class OMFWifiInterface(OMFResource):
             super(OMFWifiInterface, self).do_deploy()
 
     def configure_on_omf6(self):
+        """ Method to configure the wifi interface when OMF 6 is used.
+
+        """   
         if not self.create_id :
             props = {}
             props['wlan:if_name'] = self.get('name')
@@ -258,7 +282,7 @@ class OMFWifiInterface(OMFResource):
         uid = self.check_deploy(self.create_id)
         if not uid:
             self._create_cnt +=1
-            self.ec.schedule(reschedule_delay, self.deploy)
+            self.ec.schedule(reschedule_check, self.deploy)
             return False
 
         self._topic_iface = uid
@@ -266,6 +290,13 @@ class OMFWifiInterface(OMFResource):
         return True
 
     def check_release(self, cid):
+        """ Check, through the mail box in the parser, 
+        if the confirmation of the release has been received
+
+        :param cid: the id of the original message
+        :type guid: string
+
+        """
         res = self._omf_api.check_mailbox("release", cid)
         if res : 
             return res
@@ -275,22 +306,23 @@ class OMFWifiInterface(OMFResource):
         """ Clean the RM at the end of the experiment and release the API
 
         """
-        if self.get('version') == "6":
-            if not self.release_id:
-                self.release_id = os.urandom(16).encode('hex')
-                self._omf_api.frcp_release( self.release_id, self.node.get('hostname'),self._topic_iface, res_id=self._topic_iface)
-    
-            if self._release_cnt < confirmation_counter:
-                cid = self.check_release(self.release_id)
-                if not cid:
-                    self._release_cnt +=1
-                    self.ec.schedule(reschedule_delay, self.release)
-                    return
-            else:
-                msg = "Couldn't retrieve the confirmation of the release"
-                self.error(msg)
-
         if self._omf_api:
+            if self.get('version') == "6":
+                if not self.release_id:
+                    self.release_id = os.urandom(16).encode('hex')
+                    self._omf_api.frcp_release( self.release_id, self.node.get('hostname'),self._topic_iface, res_id=self._topic_iface)
+    
+                if self._release_cnt < confirmation_counter:
+                    cid = self.check_release(self.release_id)
+                    if not cid:
+                        self._release_cnt +=1
+                        self.ec.schedule(reschedule_check, self.release)
+                        return
+                else:
+                    msg = "Couldn't retrieve the confirmation of the release"
+                    self.error(msg)
+
+
             OMFAPIFactory.release_api(self.get('version'), 
               self.get('xmppServer'), self.get('xmppUser'), self.get('xmppPort'),
                self.get('xmppPassword'), exp_id = self.exp_id)
