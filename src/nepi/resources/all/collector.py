@@ -104,7 +104,7 @@ class Collector(ResourceManager):
             self._store_path = os.path.join(self._store_path, subdir)
         
         msg = "Creating local directory at %s to store %s traces " % (
-            store_dir, trace_name)
+            self._store_path, trace_name)
         self.info(msg)
 
         try:
