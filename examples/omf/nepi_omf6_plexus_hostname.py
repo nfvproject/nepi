@@ -15,26 +15,9 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-    Author: Julien Tribino <julien.tribino@inria.fr>
+    Author: Alina Quereilhac <alina.quereilhac@inria.fr>
+            Julien Tribino <julien.tribino@inria.fr>
 
-    Example :
-      - Testbed : Plexus
-      - Explanation :
-
-       Test the STDIN Message
-                   
-     Node 
-     wlab17
-     0 
-     |
-     |
-     0
-     Application CTRL_test.rb
-   
-      - Experiment:
-        * t0 : Deployment
-        * t1 : After the application started, one stdin message is sent
-        * t2 (t1 + 5s) : An other message is send
 
 """
 
@@ -42,41 +25,45 @@
 from nepi.execution.resource import ResourceFactory, ResourceAction, ResourceState
 from nepi.execution.ec import ExperimentController
 
-import time
-
 # Create the EC
 ec = ExperimentController()
 
 # Create and Configure the Nodes
+
 node1 = ec.register_resource("OMFNode")
-ec.set(node1, 'hostname', 'omf.plexus.wlab17')
-ec.set(node1, 'xmppSlice', "nepi")
-ec.set(node1, 'xmppHost', "xmpp-plexus.onelab.eu")
+ec.set(node1, 'hostname', 'wlab12')
+ec.set(node1, 'xmppServer', "xmpp-plexus.onelab.eu")
+ec.set(node1, 'xmppUser', "nepi")
 ec.set(node1, 'xmppPort', "5222")
 ec.set(node1, 'xmppPassword', "1234")
 
 # Create and Configure the Application
 app1 = ec.register_resource("OMFApplication")
-ec.set(app1, 'appid', "robot")
-ec.set(app1, 'path', "/root/CTRL_test.rb")
-ec.set(app1, 'args', "coord.csv")
-ec.set(app1, 'env', "DISPLAY=localhost:10.0 XAUTHORITY=/root/.Xauthority")
+ec.set(app1, 'command', '/bin/hostname -f')
+ec.set(app1, 'env', "")
+
+app2 = ec.register_resource("OMFApplication")
+ec.set(app2, 'command', '/bin/date')
+ec.set(app2, 'env', "")
+
+app3 = ec.register_resource("OMFApplication")
+ec.set(app3, 'command', '/bin/hostname -f')
+ec.set(app3, 'env', "")
 
 # Connection
 ec.register_connection(app1, node1)
+ec.register_connection(app2, node1)
+ec.register_connection(app3, node1)
 
-ec.register_condition(app1, ResourceAction.STOP, app1, ResourceState.STARTED , "20s")
+ec.register_condition([app2,app3], ResourceAction.START, app1, ResourceState.STARTED , "3s")
+ec.register_condition([app1,app2,app3], ResourceAction.STOP, app2, ResourceState.STARTED , "5s")
+
 
 # Deploy
 ec.deploy()
 
-ec.wait_started([app1])
-ec.set(app1, 'stdin', "xxxxxxxxxxxxxxxxx")
-
-time.sleep(5)
-ec.set(app1, 'stdin', "xxxxxxxxxxxxxxxxx")
-
-ec.wait_finished([app1])
+ec.wait_finished([app1,app2,app3])
 
 # Stop Experiment
 ec.shutdown()
+

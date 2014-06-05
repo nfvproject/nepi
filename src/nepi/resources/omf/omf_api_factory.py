@@ -43,14 +43,18 @@ class OMFAPIFactory(object):
     def get_api(cls, version, server, user, port, password, exp_id = None):
         """ Get an OMF Api
 
-        :param slice: Xmpp Slice Name
-        :type slice: str
+        :param version: OMF Version. Either 5 or 6
+        :type version: str
         :param server: Xmpp Server Adress
         :type server: str
+        :param user: Xmpp User
+        :type user: str
         :param port: Xmpp Port (Default : 5222)
         :type port: str
         :param password: Xmpp Password
         :type password: str
+        :param exp_id: Id of the experiment
+        :type exp_id: str
 
         """
         if version and user and server and port and password:
@@ -71,14 +75,18 @@ class OMFAPIFactory(object):
     def create_api(cls, version, server, user, port, password, exp_id):
         """ Create an OMF API if this one doesn't exist yet with this credentials
 
-        :param slice: Xmpp Slice Name
-        :type slice: str
+        :param version: OMF Version. Either 5 or 6
+        :type version: str
         :param server: Xmpp Server Adress
         :type server: str
+        :param user: Xmpp User
+        :type user: str
         :param port: Xmpp Port (Default : 5222)
         :type port: str
         :param password: Xmpp Password
         :type password: str
+        :param exp_id: Id of the experiment
+        :type exp_id: str
 
         """
         key = cls._make_key(version, server, user, port, password, exp_id)
@@ -95,14 +103,18 @@ class OMFAPIFactory(object):
     def release_api(cls, version, server, user, port, password, exp_id = None):
         """ Release an OMF API with this credentials
 
-        :param slice: Xmpp Slice Name
-        :type slice: str
+        :param version: OMF Version. Either 5 or 6
+        :type version: str
         :param server: Xmpp Server Adress
         :type server: str
+        :param user: Xmpp User
+        :type user: str
         :param port: Xmpp Port (Default : 5222)
         :type port: str
         :param password: Xmpp Password
         :type password: str
+        :param exp_id: Id of the experiment
+        :type exp_id: str
 
         """
         if version and user and server and port and password:
@@ -120,7 +132,7 @@ class OMFAPIFactory(object):
         """ Hash the credentials in order to create a key
 
         :param args: list of arguments used to create the hash (server, user, port, ...)
-        :type args: list of args
+        :type args: list
 
         """
         skey = "".join(map(str, args))

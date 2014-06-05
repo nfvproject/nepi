@@ -86,6 +86,19 @@ class MessageHandler():
 
     def create_function(self, msg_id, src, rtype, timestamp, props = None, guards = None):
         """ Build a create message
+
+        :param msg_id: Id of the message
+        :type msg_id: str
+        :param src: Src node that send the message (jabber source)
+        :type src: str
+        :param rtype: Type of the object
+        :type rtype: str
+        :param timestamp: Unix Timestamp
+        :type timestamp: str
+        :param props: List of properties
+        :type props: list
+        :param guards: list of guards (assertions for properties)
+        :type guards: list
         """
         payload = self._type_element("create", "http://schema.mytestbed.net/omf/6.0/protocol", msg_id )
         self._attr_element(payload,"src",src)
@@ -119,6 +132,17 @@ class MessageHandler():
 
     def configure_function(self, msg_id, src, timestamp, props = None, guards = None):
         """ Build a configure message
+
+        :param msg_id: Id of the message
+        :type msg_id: str
+        :param src: Src node that send the message (jabber source)
+        :type src: str
+        :param timestamp: Unix Timestamp
+        :type timestamp: str
+        :param props: List of properties
+        :type props: list
+        :param guards: list of guards (assertions for properties)
+        :type guards: list
         """
         payload = self._type_element("configure", "http://schema.mytestbed.net/omf/6.0/protocol", msg_id )
         self._attr_element(payload,"src",src)
@@ -139,6 +163,16 @@ class MessageHandler():
     def request_function(self, msg_id, src, timestamp,  props = None, guards = None):
         """ Build a request message
 
+        :param msg_id: Id of the message
+        :type msg_id: str
+        :param src: Src node that send the message (jabber source)
+        :type src: str
+        :param timestamp: Unix Timestamp
+        :type timestamp: str
+        :param props: List of properties
+        :type props: list
+        :param guards: list of guards (assertions for properties)
+        :type guards: list
         """
         payload = self._type_element("request", "http://schema.mytestbed.net/omf/6.0/protocol", msg_id )
         self._attr_element(payload,"src",src)
@@ -155,21 +189,48 @@ class MessageHandler():
                 self._attr_element(guardians,guard,guards[guard])
         return payload
 
-    def inform_function(self, msg_id, src, timestamp, cid, itype):
-        """ Build an inform message
+#  For now, we don't need the inform message since it is ht RC that send them.
 
-        """
-        payload = self._type_element("inform", "http://schema.mytestbed.net/omf/6.0/protocol", msg_id )
-        sliceid = self._attr_element(payload,"src",src)
-        expid = self._attr_element(config,"ts",timestamp)
-        target = self._attr_element(config,"cid",cid)
-        value = self._attr_element(config,"itype",value)
-        path = self._attr_element(config,"properties",path)
-        return payload
+#    def inform_function(self, msg_id, src, timestamp, cid, itype):
+#        """ Build an inform message
+
+#        :param msg_id: Id of the message
+#        :type msg_id: str
+#        :param src: Src node that send the message (jabber source)
+#        :type src: str
+#        :param rtype: Type of the object
+#        :type rtype: str
+#        :param timestamp: Unix Timestamp
+#        :type timestamp: str
+#        :param cid: Id of the orignial message
+#        :type cid: str
+#        :param itype: type of the object created
+#        :type itype: str
+#        """
+
+#        payload = self._type_element("inform", "http://schema.mytestbed.net/omf/6.0/protocol", msg_id )
+#        sliceid = self._attr_element(payload,"src",src)
+#        expid = self._attr_element(config,"ts",timestamp)
+#        target = self._attr_element(config,"cid",cid)
+#        value = self._attr_element(config,"itype",value)
+#        path = self._attr_element(config,"properties",path)
+#        return payload
 
     def release_function(self, msg_id, src, timestamp, res_id = None, props = None, guards = None):
         """ Build a release message
 
+        :param msg_id: Id of the message
+        :type msg_id: str
+        :param src: Src node that send the message (jabber source)
+        :type src: str
+        :param timestamp: Unix Timestamp
+        :type timestamp: str
+        :param res_id: Id of the release resource
+        :type res_id: str
+        :param props: List of properties
+        :type props: list
+        :param guards: list of guards (assertions for properties)
+        :type guards: list
         """
         payload = self._type_element("release", "http://schema.mytestbed.net/omf/6.0/protocol", msg_id )
         self._attr_element(payload,"src",src)

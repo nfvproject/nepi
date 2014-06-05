@@ -26,7 +26,8 @@ from nepi.resources.omf.omf_api_factory import OMFAPIFactory
 
 import time
 
-confirmation_counter = 600
+reschedule_check = "0.3s"
+confirmation_counter = 300
 
 @clsinit_copy
 class OMFNode(OMFResource):
@@ -96,7 +97,6 @@ class OMFNode(OMFResource):
     def do_deploy(self):
         """ Deploy the RM. It means : Send Xmpp Message Using OMF protocol 
             to enroll the node into the experiment.
-            It becomes DEPLOYED after sending messages to enroll the node
 
         """ 
         if not self.get('xmppServer'):
@@ -132,7 +132,8 @@ class OMFNode(OMFResource):
         super(OMFNode, self).do_deploy()
 
     def do_release(self):
-        """ Clean the RM at the end of the experiment
+        """ Clean the RM at the end of the experiment by unenrolling
+        the node from the topic
 
         """
         from nepi.resources.omf.application import OMFApplication

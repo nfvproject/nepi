@@ -31,10 +31,10 @@ class OMF5API(Logger):
     """
     .. class:: Class Args :
       
-        :param slice: Xmpp Slice
-        :type slice: str
         :param host: Xmpp Server
         :type host: str
+        :param slice: Xmpp Slice
+        :type slice: str
         :param port: Xmpp Port
         :type port: str
         :param password: Xmpp password
@@ -49,14 +49,13 @@ class OMF5API(Logger):
        instead of OMF used for OMF5.3
 
     """
-    def __init__(self, slice, host, port, password, xmpp_root = None, 
+    def __init__(self, host, slice, port, password, xmpp_root = None, 
             exp_id = None):
         """
-    
-        :param slice: Xmpp Slice
-        :type slice: str
         :param host: Xmpp Server
         :type host: str
+        :param slice: Xmpp Slice
+        :type slice: str
         :param port: Xmpp Port
         :type port: str
         :param password: Xmpp password
@@ -65,7 +64,7 @@ class OMF5API(Logger):
         :type xmpp_root: str
 
         """
-        super(OMFAPI, self).__init__("OMFAPI")
+        super(OMF5API, self).__init__("OMF5API")
         self._exp_id = exp_id 
         self._user = "%s-%s" % (slice, self._exp_id)
         self._slice = slice

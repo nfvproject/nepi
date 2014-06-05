@@ -24,7 +24,7 @@ from nepi.execution.resource import ResourceManager, clsinit_copy, \
         ResourceState, reschedule_delay
 from nepi.execution.attribute import Attribute, Flags 
 from nepi.resources.omf.omf_resource import ResourceGateway, OMFResource
-from nepi.resources.omf.node import OMFNode, confirmation_counter
+from nepi.resources.omf.node import OMFNode, confirmation_counter, reschedule_check
 from nepi.resources.omf.omf_api_factory import OMFAPIFactory
 
 from nepi.util import sshfuncs
@@ -83,8 +83,8 @@ class OMFApplication(OMFResource):
 
         self.set('command', "")
         self.set('appid', "")
-        self.path= ""
-        self.args = ""
+        self._path= ""
+        self._args = ""
         self.set('env', "")
 
         self._node = None
@@ -101,9 +101,9 @@ class OMFApplication(OMFResource):
 
     def _init_command(self):
         comm = self.get('command').split(' ')
-        self.path= comm[0]
+        self._path= comm[0]
         if len(comm)>1:
-            self.args = ' '.join(comm[1:])
+            self._args = ' '.join(comm[1:])
 
     @property
     def exp_id(self):
@@ -117,14 +117,14 @@ class OMFApplication(OMFResource):
 
     def stdin_hook(self, old_value, new_value):
         """ Set a hook to the stdin attribute in order to send a message at each time
-        the value of this parameter is changed
+        the value of this parameter is changed. Used ofr OMF 5.4 only
 
         """
         self._omf_api.send_stdin(self.node.get('hostname'), new_value, self.get('appid'))
         return new_value
 
     def add_set_hook(self):
-        """ Initialize the hooks
+        """ Initialize the hooks for OMF 5.4 only
 
         """
         attr = self._attrs["stdin"]
@@ -166,7 +166,7 @@ class OMFApplication(OMFResource):
     def do_deploy(self):
         """ Deploy the RM. It means nothing special for an application 
         for now (later it will be upload sources, ...)
-        It becomes DEPLOYED after getting the xmpp client.
+        It becomes DEPLOYED after the topic for the application has been created
 
         """
         if not self.node or self.node.state < ResourceState.READY:
@@ -192,6 +192,11 @@ class OMFApplication(OMFResource):
                    or self.get('xmppPassword')):
             msg = "Credentials are not all initialzed. Default values will be used"
             self.warn(msg)
+
+        if not self.get('command') :
+            msg = "Application's Command is not initialized"
+            self.error(msg)
+            raise RuntimeError, msg
 
         if not self._omf_api :
             self._omf_api = OMFAPIFactory.get_api(self.get('version'), 
@@ -225,7 +230,7 @@ class OMFApplication(OMFResource):
             uid = self.check_deploy(self.create_id)
             if not uid:
                 self._create_cnt +=1
-                self.ec.schedule(reschedule_delay, self.deploy)
+                self.ec.schedule(reschedule_check, self.deploy)
                 return
 
             self._topic_app = uid
@@ -234,6 +239,13 @@ class OMFApplication(OMFResource):
         super(OMFApplication, self).do_deploy()
 
     def check_deploy(self, cid):
+        """ Check, through the mail box in the parser, 
+        if the confirmation of the creation has been received
+
+        :param cid: the id of the original message
+        :type guid: string
+
+        """
         uid = self._omf_api.check_mailbox("create", cid)
         if uid : 
             return uid
@@ -242,13 +254,8 @@ class OMFApplication(OMFResource):
     def do_start(self):
         """ Start the RM. It means : Send Xmpp Message Using OMF protocol 
          to execute the application. 
-         It becomes STARTED before the messages are sent (for coordination)
 
         """
-        if not self.get('command') :
-            msg = "Application's Command is not initialized"
-            self.error(msg)
-            raise RuntimeError, msg
 
         if not self.get('env'):
             self.set('env', " ")
@@ -256,12 +263,12 @@ class OMFApplication(OMFResource):
         if self.get('version') == "5":
             # Some information to check the command for OMF5
             msg = " " + self.get_rtype() + " ( Guid : " + str(self._guid) +") : " + \
-                self.get('appid') + " : " + self.path + " : " + \
-                self.args + " : " + self.get('env')
+                self.get('appid') + " : " + self._path + " : " + \
+                self._args + " : " + self.get('env')
             self.debug(msg)
 
             self._omf_api.execute(self.node.get('hostname'),self.get('appid'), \
-                self.get('args'), self.get('path'), self.get('env'))
+                self._args, self._path, self.get('env'))
         else:
             #For OMF 6
             if self._start_cnt == 0:
@@ -282,12 +289,19 @@ class OMFApplication(OMFResource):
             res = self.check_start(self._topic_app)
             if not res:
                 self._start_cnt +=1
-                self.ec.schedule(reschedule_delay, self.start)
+                self.ec.schedule(reschedule_check, self.start)
                 return
 
         super(OMFApplication, self).do_start()
 
     def check_start(self, uid):
+        """ Check, through the mail box in the parser, 
+        if the confirmation of the start has been received
+
+        :param uid: the id of the original message
+        :type guid: string
+
+        """
         res = self._omf_api.check_mailbox("started", uid)
         if res : 
             return True
@@ -304,6 +318,13 @@ class OMFApplication(OMFResource):
         super(OMFApplication, self).do_stop()
 
     def check_release(self, cid):
+        """ Check, through the mail box in the parser, 
+        if the confirmation of the release has been received
+
+        :param cid: the id of the original message
+        :type guid: string
+
+        """
         res = self._omf_api.check_mailbox("release", cid)
         if res : 
             return res
@@ -313,22 +334,23 @@ class OMFApplication(OMFResource):
         """ Clean the RM at the end of the experiment and release the API.
 
         """
-        if self.get('version') == "6":
-            if not self.release_id:
-                self.release_id = os.urandom(16).encode('hex')
-                self._omf_api.frcp_release( self.release_id, self.node.get('hostname'),self._topic_app, res_id=self._topic_app)
-    
-            if self._release_cnt < confirmation_counter:
-                cid = self.check_release(self.release_id)
-                if not cid:
-                    self._release_cnt +=1
-                    self.ec.schedule(reschedule_delay, self.release)
-                    return
-            else:
-                msg = "Couldn't retrieve the confirmation of the release"
-                self.error(msg)
-
         if self._omf_api:
+            if self.get('version') == "6":
+                if not self.release_id:
+                    self.release_id = os.urandom(16).encode('hex')
+                    self._omf_api.frcp_release( self.release_id, self.node.get('hostname'),self._topic_app, res_id=self._topic_app)
+    
+                if self._release_cnt < confirmation_counter:
+                    cid = self.check_release(self.release_id)
+                    if not cid:
+                        self._release_cnt +=1
+                        self.ec.schedule(reschedule_check, self.release)
+                        return
+                else:
+                    msg = "Couldn't retrieve the confirmation of the release"
+                    self.error(msg)
+
+
             OMFAPIFactory.release_api(self.get('version'), 
               self.get('xmppServer'), self.get('xmppUser'), self.get('xmppPort'),
                self.get('xmppPassword'), exp_id = self.exp_id)

@@ -124,20 +124,26 @@ class OMFChannel(OMFResource):
                     if rm_iface.state < ResourceState.PROVISIONED or \
                             rm_node.state < ResourceState.READY:
                         return "reschedule"
-                    couple = [rm_node.get('hostname'), rm_iface.get('alias')]
-                    #print couple
+                    couple = [rm_node.get('hostname'), rm_iface.alias]
                     res.append(couple)
         return res
 
     def get_frequency(self, channel):
+        """ Returns the frequency of a specific channel number
+
+        """           
         return OMFChannel.ChannelToFreq[channel]
 
     def do_deploy(self):
         """ Deploy the RM. It means : Get the xmpp client and send messages 
-        using OMF 5.4 protocol to configure the channel.
-        It becomes DEPLOYED after sending messages to configure the channel
+        using OMF 5.4 or 6 protocol to configure the channel.
 
         """   
+        if not self.get('channel'):
+            msg = "Channel's value is not initialized"
+            self.error(msg)
+            raise RuntimeError, msg
+
         if self.get('version') == "6":
             self.frequency = self.get_frequency(self.get('channel'))
             super(OMFChannel, self).do_deploy()
@@ -155,21 +161,16 @@ class OMFChannel(OMFResource):
             self.warn(msg)
 
         if not self._omf_api :
-            self._omf_api = OMFAPIFactory.get_api(self.get('xmppSlice'), 
-                self.get('xmppHost'), self.get('xmppPort'), 
-                self.get('xmppPassword'), exp_id = self.exp_id)
-
-        if not self.get('channel'):
-            msg = "Channel's value is not initialized"
-            self.error(msg)
-            raise RuntimeError, msg
+            self._omf_api = OMFAPIFactory.get_api(self.get('version'), 
+              self.get('xmppServer'), self.get('xmppUser'), self.get('xmppPort'),
+               self.get('xmppPassword'), exp_id = self.exp_id)
 
         self._nodes_guid = self._get_target(self._connections)
 
 
 
         if self._nodes_guid == "reschedule" :
-            self.ec.schedule("2s", self.deploy)
+            self.ec.schedule("1s", self.deploy)
         else:
             for couple in self._nodes_guid:
                 attrval = self.get('channel')

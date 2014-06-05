@@ -334,6 +334,14 @@ class OMFClient(sleekxmpp.ClientXMPP, Logger):
             self.error(msg)
 
     def check_mailbox(self, itype, attr):
+        """ Check the mail box
+
+        :param itype: type of mail
+        :type itype: str
+        :param attr: value wanted
+        :type attr: str
+
+        """
         return self._parser.check_mailbox(itype, attr)
 
 

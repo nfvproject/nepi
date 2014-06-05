@@ -34,10 +34,10 @@ class OMF6API(Logger):
     """
     .. class:: Class Args :
       
-        :param slice: Xmpp Slice
-        :type slice: str
         :param server: Xmpp Server
         :type server: str
+        :param user: Xmpp User
+        :type user: str
         :param port: Xmpp Port
         :type port: str
         :param password: Xmpp password
@@ -55,11 +55,10 @@ class OMF6API(Logger):
     def __init__(self, server, user = "nepi", port="5222", password="1234",
             exp_id = None):
         """
-    
-        :param slice: Xmpp Slice
-        :type slice: str
         :param server: Xmpp Server
         :type server: str
+        :param user: Xmpp User
+        :type user: str
         :param port: Xmpp Port
         :type port: str
         :param password: Xmpp password
@@ -129,12 +128,15 @@ class OMF6API(Logger):
 
     @property
     def _nepi_topic(self):
+        """ Return the name of the session topic
+
+        """
         msg = "nepi-" + self._exp_id
         self.debug(msg)
         return msg
 
     def _enroll_nepi(self):
-        """ Create and Subscribe to the Session Topic
+        """ Create and Subscribe to the session Topic
 
         """
         nepi_topic = self._nepi_topic
@@ -172,7 +174,7 @@ class OMF6API(Logger):
 
 
     def frcp_inform(self, topic, cid, itype):
-        """ Configure attribute on the node
+        """ Publish an inform message
 
         """
         msg_id = os.urandom(16).encode('hex')
@@ -182,7 +184,7 @@ class OMF6API(Logger):
         self._client.publish(payload, xmpp_node)
 
     def frcp_configure(self, topic, props = None, guards = None ):
-        """ Configure attribute on the node
+        """ Publish a configure message
 
         """
         msg_id = os.urandom(16).encode('hex')
@@ -192,7 +194,7 @@ class OMF6API(Logger):
 
     
     def frcp_create(self, msg_id, topic, rtype, props = None, guards = None ):
-        """ Send to the stdin of the application the value
+        """ Publish a create message
 
         """
         timestamp = tsformat()
@@ -210,7 +212,7 @@ class OMF6API(Logger):
         self._client.publish(payload, xmpp_node)
 
     def frcp_release(self, msg_id, parent, child, res_id = None, props = None, guards = None ):
-        """ Delete the session and logger topics. Then disconnect 
+        """ Publish a release message
 
         """
         timestamp = tsformat()
@@ -224,6 +226,14 @@ class OMF6API(Logger):
         #self._client.delete(child)
 
     def check_mailbox(self, itype, attr):
+        """ Check the mail box
+
+        :param itype: type of mail
+        :type itype: str
+        :param attr: value wanted
+        :type attr: str
+
+        """
         return self._client.check_mailbox(itype, attr)
 
     def unenroll_topic(self, topic):

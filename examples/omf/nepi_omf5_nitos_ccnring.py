@@ -47,73 +47,76 @@ from nepi.execution.ec import ExperimentController
 from optparse import OptionParser, SUPPRESS_HELP
 
 ###  Define OMF Method to simplify definition of resources ###
-def add_node(ec, hostname, xmppSlice, xmppHost, xmppPort = "5222", xmppPassword = "1234"):
+def add_node(ec, hostname, xmppServer, xmppUser, xmppPort = "5222", xmppPassword = "1234"):
     node = ec.register_resource("OMFNode")
     ec.set(node, 'hostname', hostname)
-    ec.set(node, 'xmppSlice', xmppSlice)
-    ec.set(node, 'xmppHost', xmppHost)
+    ec.set(node, 'xmppServer', xmppServer)
+    ec.set(node, 'xmppUser', xmppUser)
     ec.set(node, 'xmppPort', xmppPort)
     ec.set(node, 'xmppPassword', xmppPassword)
+    ec.set(node, 'version', "5")
     return node
 
-def add_interface(ec, ip, xmppSlice, xmppHost, essid = "ccn", alias = "w0", mode = "adhoc",
+def add_interface(ec, ip, xmppServer, xmppUser, essid = "ccn", name = "wlan0", mode = "adhoc",
                  typ = "g", xmppPort = "5222", xmppPassword = "1234"):
     iface = ec.register_resource("OMFWifiInterface")
-    ec.set(iface, 'alias', alias)
+    ec.set(iface, 'name', name)
     ec.set(iface, 'mode', mode)
-    ec.set(iface, 'type', typ)
+    ec.set(iface, 'hw_mode', typ)
     ec.set(iface, 'essid', essid)
     ec.set(iface, 'ip', ip)
+    ec.set(iface, 'version', "5")
     return iface
 
-def add_channel(ec, channel, xmppSlice, xmppHost, xmppPort = "5222", xmppPassword = "1234"):
+def add_channel(ec, channel, xmppServer, xmppUser, xmppPort = "5222", xmppPassword = "1234"):
     chan = ec.register_resource("OMFChannel")
     ec.set(chan, 'channel', channel)
-    ec.set(chan, 'xmppSlice', xmppSlice)
-    ec.set(chan, 'xmppHost', xmppHost)
+    ec.set(chan, 'xmppServer', xmppServer)
+    ec.set(chan, 'xmppUser', xmppUser)
     ec.set(chan, 'xmppPort', xmppPort)
     ec.set(chan, 'xmppPassword', xmppPassword)
+    ec.set(chan, 'version', "5")
     return chan
 
-def add_app(ec, host,  appid, command, args, env, xmppSlice, xmppHost, 
+def add_app(ec, host,  appid, command, env, xmppServer, xmppUser, 
                 xmppPort = "5222", xmppPassword = "1234"):
     app = ec.register_resource("OMFApplication")
     ec.set(app, 'appid', appid)
-    ec.set(app, 'path', command)
-    ec.set(app, 'args', args)
+    ec.set(app, 'command', command)
     ec.set(app, 'env', env)
+    ec.set(app, 'version', "5")
     ec.register_connection(app, host)
     return app
 
 
 ###  Define a CCND application  ###
-def add_ccnd(ec, host, peers, xmppSlice, xmppHost, xmppPort = "5222", xmppPassword = "1234"):
+def add_ccnd(ec, host, peers, xmppServer, xmppUser, xmppPort = "5222", xmppPassword = "1234"):
     env = 'PATH=$PATH:/root/ccnx-0.7.2/bin HOME=/root \
 CCNR_DIRECTORY="/root" CCNR_STATUS_PORT="8080"'
 
     # BASH command -> ' ccndstart ; ccndc add ccnx:/ udp host ; ccnr '
     command = "ccndc add ccnx:/ udp " + peers
-    app = add_app(ec, host, "#ccnd", command, "", env, xmppSlice, xmppHost,
+    app = add_app(ec, host, "#ccnd", command, env, xmppServer, xmppUser,
                     xmppPort = xmppPort, xmppPassword = xmppPassword)
     return app
 
 ###  Define a CCN SeqWriter application ###
-def add_publish(ec, host,  movie, xmppSlice, xmppHost, xmppPort = "5222", xmppPassword = "1234"):
+def add_publish(ec, host,  movie, xmppServer, xmppUser, xmppPort = "5222", xmppPassword = "1234"):
     env = 'PATH=$PATH:/root/ccnx-0.7.2/bin HOME=/root CCNR_DIRECTORY="/root" CCNR_STATUS_PORT="8080"'
 
     # BASH command -> 'ccnseqwriter -r ccnx:/VIDEO < movie'
     command = "ccnseqwriter -r ccnx:/VIDEO"
     command += " < " + movie
 
-    app = add_app(ec, host, "#ccn_write", command, "", env, xmppSlice, xmppHost,
+    app = add_app(ec, host, "#ccn_write", command, env, xmppServer, xmppUser,
                   xmppPort = xmppPort, xmppPassword = xmppPassword)
     return app
 
 ###  Define a streaming application ###
-def add_stream(ec, host, xmppSlice, xmppHost, xmppPort = "5222", xmppPassword = "1234"):
+def add_stream(ec, host, xmppServer, xmppUser, xmppPort = "5222", xmppPassword = "1234"):
     env = 'PATH=$PATH:/root/ccnx-0.7.2/bin HOME=/root CCNR_DIRECTORY="/root" CCNR_STATUS_PORT="8080"'
     command = " ddbus-uuidgen --ensure ; ( /root/ccnx-0.7.2/bin/ccncat ccnx:/VIDEO | /root/vlc-1.1.13/cvlc - )  "
-    app = add_app(ec, host, "#ccn_stream", command, "", env, xmppSlice, xmppHost,
+    app = add_app(ec, host, "#ccn_stream", command, env, xmppServer, xmppUser,
                   xmppPort = xmppPort, xmppPassword = xmppPassword)
     return app
 
@@ -158,12 +161,12 @@ if __name__ == '__main__':
     host5 = "omf.nitos.node026"  # b1
     host6 = "omf.nitos.node027"  # b2
 
-    ip1 = "192.168.0.22"
-    ip2 = "192.168.0.28"
-    ip3 = "192.168.0.24"
-    ip4 = "192.168.0.25"
-    ip5 = "192.168.0.26"
-    ip6 = "192.168.0.27"
+    ip1 = "192.168.0.22/24"
+    ip2 = "192.168.0.28/24"
+    ip3 = "192.168.0.24/24"
+    ip4 = "192.168.0.25/24"
+    ip5 = "192.168.0.26/24"
+    ip6 = "192.168.0.27/24"
 
     all_hosts = [host1, host2, host3, host4, host5, host6]
     all_ip = [ip1, ip2, ip3, ip4, ip5, ip6]
@@ -184,9 +187,9 @@ if __name__ == '__main__':
     ccnrs = dict()
     for i in xrange(len(all_hosts)):
         ccndstart = add_app(ec, nodes[all_hosts[i]],  "#ccndstart", "ccndstart &", 
-                              "", env, xmpp_slice, xmpp_host)
+                              env, xmpp_slice, xmpp_host)
         ccnr = add_app(ec, nodes[all_hosts[i]],  "#ccnr", "ccnr &", 
-                            "", env, xmpp_slice, xmpp_host)
+                             env, xmpp_slice, xmpp_host)
         ccnds[all_hosts[i]] = ccndstart
         ccnrs[all_hosts[i]] = ccnr
         ec.register_condition(ccnr, ResourceAction.START, ccndstart, ResourceState.STARTED, "1s")
@@ -238,8 +241,8 @@ if __name__ == '__main__':
     ec.register_condition(stream, ResourceAction.START, pub, ResourceState.STARTED, "2s")
 
 # break the lin
-    ccndcstop1 = add_app(ec,nodes[host1], "#ccndc", "ccndc del ccnx:/ udp " + ip3, "", env, xmpp_slice, xmpp_host)
-    ccndcstop2 = add_app(ec,nodes[host3], "#ccndc", "ccndc del ccnx:/ udp " + ip1, "", env, xmpp_slice, xmpp_host)
+    ccndcstop1 = add_app(ec,nodes[host1], "#ccndc", "ccndc del ccnx:/ udp " + ip3, env, xmpp_slice, xmpp_host)
+    ccndcstop2 = add_app(ec,nodes[host3], "#ccndc", "ccndc del ccnx:/ udp " + ip1, env, xmpp_slice, xmpp_host)
 
 
 # Change the behaviour
@@ -252,10 +255,10 @@ if __name__ == '__main__':
 # Cleaning when the experiment stop
     ccndstops = []
     for i in xrange(len(all_hosts)):
-        ccndstop = add_app(ec, nodes[all_hosts[i]], "#ccndstop", "ccndstop", "", env, xmpp_slice, xmpp_host)
+        ccndstop = add_app(ec, nodes[all_hosts[i]], "#ccndstop", "ccndstop", env, xmpp_slice, xmpp_host)
         ccndstops.append(ccndstop)
 
-    killall = add_app(ec, nodes[host6], "#kill", "killall sh", "", "", xmpp_slice, xmpp_host)
+    killall = add_app(ec, nodes[host6], "#kill", "killall sh", "", xmpp_slice, xmpp_host)
 
 # Condition to stop and clean the experiment
     apps = []

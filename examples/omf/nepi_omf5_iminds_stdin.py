@@ -52,16 +52,18 @@ node1 = ec.register_resource("OMFNode")
     # If the hostname is not declared, Nepi will take SFA to provision one.
 ec.set(node1, 'hostname', 'node0.nepi-robot.nepi.wilab2.ilabt.iminds.be')
     # XMPP credentials
-ec.set(node1, 'xmppSlice', "default_slice_iminds")
-ec.set(node1, 'xmppHost', "am.wilab2.ilabt.iminds.be")
+ec.set(node1, 'xmppServer', "default_slice_iminds")
+ec.set(node1, 'xmppUser', "am.wilab2.ilabt.iminds.be")
 ec.set(node1, 'xmppPort', "5222")
 ec.set(node1, 'xmppPassword', "1234")
+ec.set(node1, 'version', "5")
 
 # Create and Configure the Application
 app1 = ec.register_resource("OMFRobotApplication")
 ec.set(app1, 'appid', "robot")
-ec.set(app1, 'path', "/users/jtribino/RobotCTRLComm.rb") # /users/username/RobotCTRLComm.rb
-ec.set(app1, 'args', "/users/jtribino/coordinate.csv")   #/users/username/coordinate.csv
+ec.set(app1, 'version', "5")
+ec.set(app1, 'command', "/users/jtribino/RobotCTRLComm.rb /users/jtribino/coordinate.csv") 
+                    # /users/username/RobotCTRLComm.rb /users/username/coordinate.csv
 ec.set(app1, 'env', " ")
 ec.set(app1, 'sources', "/home/wlab18/Desktop/coordinate.csv")  # local path
 ec.set(app1, 'sshUser', "jtribino")  # username
