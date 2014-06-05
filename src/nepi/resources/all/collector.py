@@ -47,20 +47,35 @@ class Collector(ResourceManager):
 
     @classmethod
     def _register_attributes(cls):
-        trace_name = Attribute("traceName", "Name of the trace to be collected", 
-                flags = Flags.ExecReadOnly)
-        store_dir = Attribute("storeDir", "Path to local directory to store trace results", 
+        trace_name = Attribute("traceName", 
+                "Name of the trace to be collected", 
+                flags = Flags.Design)
+
+        store_dir = Attribute("storeDir", 
+                "Path to local directory to store trace results", 
                 default = tempfile.gettempdir(),
-                flags = Flags.ExecReadOnly)
-        sub_dir = Attribute("subDir", "Sub directory to collect traces into", 
-                flags = Flags.ExecReadOnly)
-        rename = Attribute("rename", "Name to give to the collected trace file", 
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
+
+        use_run_id = Attribute("useRunId", 
+                "If set to True stores traces into a sub directory named after "
+                "the RUN ID assigned by the EC", 
+                type = Types.Bool,
+                default = False,
+                flags = Flags.Design)
+
+        sub_dir = Attribute("subDir", 
+                "Sub directory to collect traces into", 
+                flags = Flags.Design)
+
+        rename = Attribute("rename", 
+                "Name to give to the collected trace file", 
+                flags = Flags.Design)
 
         cls._register_attribute(trace_name)
         cls._register_attribute(store_dir)
         cls._register_attribute(sub_dir)
         cls._register_attribute(rename)
+        cls._register_attribute(use_run_id)
 
     def __init__(self, ec, guid):
         super(Collector, self).__init__(ec, guid)
@@ -79,8 +94,10 @@ class Collector(ResourceManager):
             self.error(msg)
             raise RuntimeError, msg
 
-        store_dir = self.get("storeDir")
-        self._store_path = os.path.join(store_dir, self.ec.exp_id, self.ec.run_id)
+        self._store_path = self.get("storeDir")
+
+        if self.get("useRunId"):
+            self._store_path = os.path.join(self._store_path, self.ec.run_id)
 
         subdir = self.get("subDir")
         if subdir:
@@ -121,9 +138,11 @@ class Collector(ResourceManager):
                 f.write(result)
                 f.close()
             except:
+                import traceback
+                err = traceback.format_exc()
                 msg = "Couldn't retrieve trace %s for %d at %s " % (trace_name, 
                         rm.guid, fpath)
-                self.error(msg)
+                self.error(msg, out = "", err = err)
                 continue
 
         super(Collector, self).do_release()

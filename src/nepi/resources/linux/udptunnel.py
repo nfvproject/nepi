@@ -43,25 +43,25 @@ class UdpTunnel(LinuxApplication):
                 default = None,
                 allowed = ["PLAIN", "AES", "Blowfish", "DES", "DES3"],
                 type = Types.Enumerate, 
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         cipher_key = Attribute("cipherKey",
                 "Specify a symmetric encryption key with which to protect "
                 "packets across the tunnel. python-crypto must be installed "
                 "on the system." ,
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         txqueuelen = Attribute("txQueueLen",
                 "Specifies the interface's transmission queue length. "
                 "Defaults to 1000. ", 
                 type = Types.Integer, 
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         bwlimit = Attribute("bwLimit",
                 "Specifies the interface's emulated bandwidth in bytes "
                 "per second.",
                 type = Types.Integer, 
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         cls._register_attribute(cipher)
         cls._register_attribute(cipher_key)
@@ -198,7 +198,6 @@ class UdpTunnel(LinuxApplication):
             self.do_discover()
             self.do_provision()
  
-            self.debug("----- READY ---- ")
             self.set_ready()
 
     def do_start(self):
@@ -290,7 +289,7 @@ class UdpTunnel(LinuxApplication):
         result = None
         delay = 1.0
 
-        for i in xrange(4):
+        for i in xrange(20):
             (out, err), proc = endpoint.node.check_output(
                     self.run_home(endpoint), filename)
 

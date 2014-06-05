@@ -52,7 +52,7 @@ class OvsTestCase(unittest.TestCase):
         ec.set(node1, "cleanHome", True)
         ec.set(node1, "cleanProcesses", True)  
 
-        ovs1 = ec.register_resource("OVSWitch")
+        ovs1 = ec.register_resource("OVSSwitch")
         ec.set(ovs1, "bridge_name", "nepi_bridge")
         ec.set(ovs1, "virtual_ip_pref", "192.168.3.1/24")
         ec.set(ovs1, "controller_ip", "85.23.168.77")
@@ -73,7 +73,7 @@ class OvsTestCase(unittest.TestCase):
         ec.set(node2, "cleanHome", True)
         ec.set(node2, "cleanProcesses", True) 
 
-        ovs2 = ec.register_resource("OVSWitch")
+        ovs2 = ec.register_resource("OVSSwitch")
         ec.set(ovs2, "bridge_name", "nepi_bridge")
         ec.set(ovs2, "virtual_ip_pref", "192.168.3.2/24")
         ec.set(ovs2, "controller_ip", "85.23.168.77")

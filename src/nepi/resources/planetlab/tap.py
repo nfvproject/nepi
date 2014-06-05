@@ -42,35 +42,35 @@ class PlanetlabTap(LinuxApplication):
     @classmethod
     def _register_attributes(cls):
         ip4 = Attribute("ip4", "IPv4 Address",
-              flags = Flags.ExecReadOnly)
+              flags = Flags.Design)
 
         mac = Attribute("mac", "MAC Address",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         prefix4 = Attribute("prefix4", "IPv4 network prefix",
                 type = Types.Integer,
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         mtu = Attribute("mtu", "Maximum transmition unit for device",
                 type = Types.Integer)
 
         devname = Attribute("deviceName", 
                 "Name of the network interface (e.g. eth0, wlan0, etc)",
-                flags = Flags.ReadOnly)
+                flags = Flags.NoWrite)
 
         up = Attribute("up", "Link up", 
                 type = Types.Bool)
         
         snat = Attribute("snat", "Set SNAT=1", 
                 type = Types.Bool,
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
         
         pointopoint = Attribute("pointopoint", "Peer IP address", 
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         tear_down = Attribute("tearDown", "Bash script to be executed before " + \
                 "releasing the resource",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         cls._register_attribute(ip4)
         cls._register_attribute(mac)
@@ -169,7 +169,6 @@ class PlanetlabTap(LinuxApplication):
             self.do_discover()
             self.do_provision()
 
-            self.debug("----- READY ---- ")
             self.set_ready()
 
     def do_start(self):
@@ -231,7 +230,7 @@ class PlanetlabTap(LinuxApplication):
         if_name = None
         delay = 1.0
 
-        for i in xrange(10):
+        for i in xrange(20):
             (out, err), proc = self.node.check_output(self.run_home, "if_name")
 
             if out:

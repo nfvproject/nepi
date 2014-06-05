@@ -220,7 +220,7 @@ class MANIFOLDAPI(object):
         for field in fields:
             if field not in valid_fields:
                 fields.remove(field)
-                #self.warn(" Invalid Manifold field or filter ")
+                #self.warning(" Invalid Manifold field or filter ")
         
         return fields
 

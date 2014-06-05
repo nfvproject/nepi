@@ -21,7 +21,6 @@ from nepi.execution.resource import clsinit_copy, ResourceState, \
     reschedule_delay
 from nepi.resources.linux.application import LinuxApplication
 from nepi.resources.linux.ccn.ccnd import LinuxCCND
-from nepi.util.timefuncs import tnow, tdiffsec
 
 import os
 
@@ -59,7 +58,6 @@ class LinuxCCNApplication(LinuxApplication):
             self.do_discover()
             self.do_provision()
 
-            self.debug("----- READY ---- ")
             self.set_ready()
 
     @property
