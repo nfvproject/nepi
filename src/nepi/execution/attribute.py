@@ -30,16 +30,30 @@ class Flags:
     """ Differents flags to characterize an attribute
 
     """
-    # Attribute can be modified by the user 
-    NoFlags         = 0x00
-    # Attribute is not modifiable by the user
-    ReadOnly        = 0x01
-    # Attribute is not modifiable by the user during runtime
-    ExecReadOnly        = 0x02
-    # Attribute is an access credential
-    Credential      = 0x04
+    # Attribute value can not be read (it is hidden to the user) 
+    NoRead    = 1 # 1
+    
+    # Attribute value can not be modified (it is not editable by the user)
+    NoWrite   = 1 << 1 # 2
+    
+    # Attribute value can be modified only before deployment
+    Design  = 1 << 2 # 4
+
+    # Attribute value will be used at deployment time for initial configuration
+    Construct    = 1 << 3 #  8
+
+    # Attribute provides credentials to access resources
+    Credential  = 1 << 4  | Design # 16 + 4
+
     # Attribute is a filter used to discover resources
-    Filter      = 0x08
+    Filter  = 1 << 5 | Design # 32 + 4
+
+    # Attribute Flag is reserved for internal RM usage (i.e. should be 
+    # transparent to the user)
+    Reserved  = 1 << 6 # 64
+
+    # Attribute global is set to all resources of rtype
+    Global  = 1 << 7 # 128
 
 class Attribute(object):
     """
@@ -77,18 +91,18 @@ class Attribute(object):
                 attributes.
         :type range: (int, int) or (float, float)
         
-        :param set_hook: Function that will be executed when ever a new 
+        :param set_hook: Function that will be executed whenever a new 
                 value is set for the attribute.
         :type set_hook: function
 
     """
     def __init__(self, name, help, type = Types.String,
-            flags = Flags.NoFlags, default = None, allowed = None,
+            flags = None, default = None, allowed = None,
             range = None, set_hook = None):
         self._name = name
         self._help = help
         self._type = type
-        self._flags = flags
+        self._flags = flags or 0
         self._allowed = allowed
         self._range = range
         self._default = self._value = default
@@ -134,7 +148,7 @@ class Attribute(object):
     def has_flag(self, flag):
         """ Returns true if the attribute has the flag 'flag'
 
-        :param flag: Flag that need to be ckecked
+        :param flag: Flag to be checked
         :type flag: Flags
         """
         return (self._flags & flag) == flag
@@ -152,6 +166,9 @@ class Attribute(object):
 
         if self.type in [Types.Double, Types.Integer] and self.range:
             (min, max) = self.range
+
+            value = float(value)
+
             valid = (value >= min and value <= max) 
         
         valid = valid and self.is_valid_value(value)
@@ -173,3 +190,6 @@ class Attribute(object):
         adequate validation"""
         return True
 
+    def has_changed(self):
+        """ Returns true if the value has changed from the default """
+        return self.value != self.default

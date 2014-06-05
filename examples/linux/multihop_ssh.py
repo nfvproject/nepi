@@ -27,7 +27,7 @@ ec = ExperimentController(exp_id)
 
 # server
 node1 = ec.register_resource("LinuxNode")
-ec.set(node1, "hostname", "wlab19.")
+ec.set(node1, "hostname", "wlab29.")
 ec.set(node1, "username", "root")
 ec.set(node1, "gatewayUser", "etourdi")
 ec.set(node1, "gateway", "etourdi.pl.sophia.inria.fr")
@@ -46,7 +46,7 @@ ec.set(node2, "cleanProcesses", True)
 app1 = ec.register_resource("LinuxApplication")
 video= "../big_buck_bunny_240p_mpeg4_lq.ts"
 ec.set(app1, "sources", video)
-command = "cat ${SRC}/big_buck_bunny_240p_mpeg4_lq.ts| nc wlab5 1234" 
+command = "cat ${SRC}/big_buck_bunny_240p_mpeg4_lq.ts| nc wlab5. 1234" 
 ec.set(app1, "command", command)
 ec.register_connection(app1, node1)
 

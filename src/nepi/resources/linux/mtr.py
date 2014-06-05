@@ -18,7 +18,7 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 from nepi.execution.attribute import Attribute, Flags, Types
-from nepi.execution.resource import clsinit_copy 
+from nepi.execution.resource import clsinit_copy, ResourceState 
 from nepi.resources.linux.application import LinuxApplication
 from nepi.util.timefuncs import tnow
 
@@ -34,41 +34,47 @@ class LinuxMtr(LinuxApplication):
             "sets mtr --report-cycles (-c) option. Determines the number of "
             "pings sent to determine both machines in the networks. Each "
             "cycle lasts one sencond.",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         no_dns = Attribute("noDns",
             "sets mtr --no-dns (-n) option. Forces mtr to display IPs intead of "
             "trying to resolve to host names ",
             type = Types.Bool,
             default = True,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         address = Attribute("address",
             "sets mtr --address (-a) option. Binds the socket to send outgoing "
             "packets to the interface of the specified address, so that any "
             "any packets are sent through this interface. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         interval = Attribute("interval",
             "sets mtr --interval (-i) option. Specifies the number of seconds "
             "between ICMP ECHO requests. Default value is one second ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         countinuous = Attribute("continuous",
             "Run mtr in a while loop",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         print_timestamp = Attribute("printTimestamp",
             "Print timestamp before running mtr",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         target = Attribute("target",
             "mtr target host (host that will be pinged)",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
+
+        early_start = Attribute("earlyStart",
+            "Start ping as early as deployment. ",
+            type = Types.Bool,
+            default = False,
+            flags = Flags.Design)
 
         cls._register_attribute(report_cycles)
         cls._register_attribute(no_dns)
@@ -77,11 +83,18 @@ class LinuxMtr(LinuxApplication):
         cls._register_attribute(countinuous)
         cls._register_attribute(print_timestamp)
         cls._register_attribute(target)
+        cls._register_attribute(early_start)
 
     def __init__(self, ec, guid):
         super(LinuxMtr, self).__init__(ec, guid)
         self._home = "mtr-%s" % self.guid
         self._sudo_kill = True
+
+    def upload_start_command(self):
+        super(LinuxMtr, self).upload_start_command()
+        
+        if self.get("earlyStart") == True:
+            self._run_in_background()
 
     def do_deploy(self):
         if not self.get("command"):
@@ -94,6 +107,20 @@ class LinuxMtr(LinuxApplication):
             self.set("depends", "mtr")
 
         super(LinuxMtr, self).do_deploy()
+
+    def do_start(self):
+        if self.get("earlyStart") == True:
+            if self.state == ResourceState.READY:
+                command = self.get("command")
+                self.info("Starting command '%s'" % command)
+
+                self.set_started()
+            else:
+                msg = " Failed to execute command '%s'" % command
+                self.error(msg, out, err)
+                raise RuntimeError, msg
+        else:
+           super(LinuxMtr, self).do_start()
 
     @property
     def _start_command(self):

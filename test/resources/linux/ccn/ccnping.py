@@ -29,7 +29,7 @@ import unittest
 class LinuxCCNPingTestCase(unittest.TestCase):
     def setUp(self):
         self.fedora_host = "nepi2.pl.sophia.inria.fr"
-        self.fedora_user = "inria_test"
+        self.fedora_user = "inria_nepi"
 
         self.ubuntu_host = "roseval.pl.sophia.inria.fr"
         self.ubuntu_user = "alina"
@@ -92,7 +92,7 @@ class LinuxCCNPingTestCase(unittest.TestCase):
                 self.target)
 
     def test_count_ubuntu(self):
-        self.t_count(self.ubuntu_user, self.ubuntu_host, self.fedora_user,
+        self.t_count(self.ubuntu_user, self.ubuntu_host, self.ubuntu_user,
                 self.target)
 
 if __name__ == '__main__':

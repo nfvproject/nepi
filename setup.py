@@ -20,8 +20,11 @@ setup(
             "nepi.resources.all",
             "nepi.resources.linux",
             "nepi.resources.linux.ccn",
+            "nepi.resources.linux.ns3",
+            "nepi.resources.linux.ns3.ccn",
             "nepi.resources.netns",
             "nepi.resources.ns3",
+            "nepi.resources.ns3.classes",
             "nepi.resources.omf",
             "nepi.resources.planetlab",
             "nepi.resources.planetlab.openvswitch",
@@ -29,6 +32,7 @@ setup(
         package_dir = {"": "src"},
         package_data = {
             "nepi.resources.planetlab" : [ "scripts/*.py" ],
-            "nepi.resources.linux" : [ "scripts/*.py" ]
+            "nepi.resources.linux" : [ "scripts/*.py" ],
+            "nepi.resources.linux.ns3" : [ "dependencies/*.tar.gz" ]
             }
     )

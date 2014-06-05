@@ -31,7 +31,6 @@ from nepi.execution.trace import TraceAttr
 import functools
 import logging
 import os
-import random
 import sys
 import time
 import threading
@@ -65,19 +64,24 @@ class FailureManager(object):
     def abort(self):
         if self._failure_level == FailureLevel.OK:
             for guid in self.ec.resources:
-                state = self.ec.state(guid)
-                critical = self.ec.get(guid, "critical")
-                if state == ResourceState.FAILED and critical:
-                    self._failure_level = FailureLevel.RM_FAILURE
-                    self.ec.logger.debug("RM critical failure occurred on guid %d." \
-                            " Setting EC FAILURE LEVEL to RM_FAILURE" % guid)
-                    break
+                try:
+                    state = self.ec.state(guid)
+                    critical = self.ec.get(guid, "critical")
+                    if state == ResourceState.FAILED and critical:
+                        self._failure_level = FailureLevel.RM_FAILURE
+                        self.ec.logger.debug("RM critical failure occurred on guid %d." \
+                                " Setting EC FAILURE LEVEL to RM_FAILURE" % guid)
+                        break
+                except:
+                    # An error might occure because a RM was deleted abruptly.
+                    # In this case the error should be ignored.
+                    if guid in self.ec._resources:
+                        raise
 
         return self._failure_level != FailureLevel.OK
 
     def set_ec_failure(self):
         self._failure_level = FailureLevel.EC_FAILURE
-
 
 class ECState(object):
     """ Possible states for an ExperimentController
@@ -197,6 +201,16 @@ class ExperimentController(object):
         # EC state
         self._state = ECState.RUNNING
 
+        # Blacklist file for PL nodes
+        nepi_home = os.path.join(os.path.expanduser("~"), ".nepi")
+        plblacklist_file = os.path.join(nepi_home, "plblacklist.txt")
+        if not os.path.exists(plblacklist_file):
+            if os.path.isdir(nepi_home):
+                open(plblacklist_file, 'w').close()
+            else:
+                os.makedirs(nepi_home)
+                open(plblacklist_file, 'w').close()
+                    
         # The runner is a pool of threads used to parallelize 
         # execution of tasks
         nthreads = int(os.environ.get("NEPI_NTHREADS", "50"))
@@ -207,7 +221,7 @@ class ExperimentController(object):
         self._thread = threading.Thread(target = self._process)
         self._thread.setDaemon(True)
         self._thread.start()
-
+        
     @property
     def logger(self):
         """ Returns the logger instance of the Experiment Controller
@@ -369,7 +383,11 @@ class ExperimentController(object):
             :rtype: ResourceManager
             
         """
-        return self._resources.get(guid)
+        rm = self._resources.get(guid)
+        return rm
+
+    def remove_resource(self, guid):
+        del self._resources[guid]
 
     @property
     def resources(self):
@@ -379,7 +397,9 @@ class ExperimentController(object):
             :rtype: set
 
         """
-        return self._resources.keys()
+        keys = self._resources.keys()
+
+        return keys
 
     def register_resource(self, rtype, guid = None):
         """ Registers a new ResourceManager of type 'rtype' in the experiment
@@ -608,7 +628,39 @@ class ExperimentController(object):
 
         """
         rm = self.get_resource(guid)
-        return rm.set(name, value)
+        rm.set(name, value)
+
+    def get_global(self, rtype, name):
+        """ Returns the value of the global attribute with name 'name' on the
+        RMs of rtype 'rtype'.
+
+            :param guid: Guid of the RM
+            :type guid: int
+
+            :param name: Name of the attribute 
+            :type name: str
+
+            :return: The value of the attribute with name 'name'
+
+        """
+        rclass = ResourceFactory.get_resource_type(rtype)
+        return rclass.get_global(name)
+
+    def set_global(self, rtype, name, value):
+        """ Modifies the value of the global attribute with name 'name' on the 
+        RMs of with rtype 'rtype'.
+
+            :param guid: Guid of the RM
+            :type guid: int
+
+            :param name: Name of the attribute
+            :type name: str
+
+            :param value: Value of the attribute
+
+        """
+        rclass = ResourceFactory.get_resource_type(rtype)
+        return rclass.set_global(name, value)
 
     def state(self, guid, hr = False):
         """ Returns the state of a resource
@@ -654,6 +706,41 @@ class ExperimentController(object):
         """
         rm = self.get_resource(guid)
         return rm.start()
+
+    def get_start_time(self, guid):
+        """ Returns the start time of the RM as a timestamp """
+        rm = self.get_resource(guid)
+        return rm.start_time
+
+    def get_stop_time(self, guid):
+        """ Returns the stop time of the RM as a timestamp """
+        rm = self.get_resource(guid)
+        return rm.stop_time
+
+    def get_discover_time(self, guid):
+        """ Returns the discover time of the RM as a timestamp """
+        rm = self.get_resource(guid)
+        return rm.discover_time
+
+    def get_provision_time(self, guid):
+        """ Returns the provision time of the RM as a timestamp """
+        rm = self.get_resource(guid)
+        return rm.provision_time
+
+    def get_ready_time(self, guid):
+        """ Returns the deployment time of the RM as a timestamp """
+        rm = self.get_resource(guid)
+        return rm.ready_time
+
+    def get_release_time(self, guid):
+        """ Returns the release time of the RM as a timestamp """
+        rm = self.get_resource(guid)
+        return rm.release_time
+
+    def get_failed_time(self, guid):
+        """ Returns the time failure occured for the RM as a timestamp """
+        rm = self.get_resource(guid)
+        return rm.failed_time
 
     def set_with_conditions(self, name, value, guids1, guids2, state,
             time = None):
@@ -747,7 +834,6 @@ class ExperimentController(object):
                     break
 
             if reschedule:
-
                 callback = functools.partial(wait_all_and_start, group)
                 self.schedule("1s", callback)
             else:
@@ -755,6 +841,11 @@ class ExperimentController(object):
                 for guid in guids:
                     rm = self.get_resource(guid)
                     self.schedule("0s", rm.start_with_conditions)
+
+                    if rm.conditions.get(ResourceAction.STOP):
+                        # Only if the RM has STOP conditions we
+                        # schedule a stop. Otherwise the RM will stop immediately
+                        self.schedule("0s", rm.stop_with_conditions)
 
         if wait_all_ready and new_group:
             # Schedule a function to check that all resources are
@@ -774,10 +865,10 @@ class ExperimentController(object):
             if not wait_all_ready:
                 self.schedule("0s", rm.start_with_conditions)
 
-            if rm.conditions.get(ResourceAction.STOP):
-                # Only if the RM has STOP conditions we
-                # schedule a stop. Otherwise the RM will stop immediately
-                self.schedule("0s", rm.stop_with_conditions)
+                if rm.conditions.get(ResourceAction.STOP):
+                    # Only if the RM has STOP conditions we
+                    # schedule a stop. Otherwise the RM will stop immediately
+                    self.schedule("0s", rm.stop_with_conditions)
 
     def release(self, guids = None):
         """ Releases all ResourceManagers in the guids list.
@@ -789,20 +880,21 @@ class ExperimentController(object):
             :type guids: list
 
         """
+        if isinstance(guids, int):
+            guids = [guids]
+
         if not guids:
             guids = self.resources
-
-        # Remove all pending tasks from the scheduler queue
-        for tid in list(self._scheduler.pending):
-            self._scheduler.remove(tid)
-
-        self._runner.empty()
 
         for guid in guids:
             rm = self.get_resource(guid)
             self.schedule("0s", rm.release)
 
         self.wait_released(guids)
+
+        for guid in guids:
+            if self.get(guid, "hardRelease"):
+                self.remove_resource(guid)
         
     def shutdown(self):
         """ Releases all resources and stops the ExperimentController
@@ -811,6 +903,13 @@ class ExperimentController(object):
         # If there was a major failure we can't exit gracefully
         if self._state == ECState.FAILED:
             raise RuntimeError("EC failure. Can not exit gracefully")
+
+        # Remove all pending tasks from the scheduler queue
+        for tid in list(self._scheduler.pending):
+            self._scheduler.remove(tid)
+
+        # Remove pending tasks from the workers queue
+        self._runner.empty()
 
         self.release()
 
@@ -953,11 +1052,10 @@ class ExperimentController(object):
             :type task: Task
 
         """
-        # Invoke callback
-        task.status = TaskStatus.DONE
-
         try:
+            # Invoke callback
             task.result = task.callback()
+            task.status = TaskStatus.DONE
         except:
             import traceback
             err = traceback.format_exc()

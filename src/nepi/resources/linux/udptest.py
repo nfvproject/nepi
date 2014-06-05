@@ -40,103 +40,103 @@ class LinuxUdpTest(LinuxApplication):
             "Runs in server mode. ",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         p = Attribute("p",
             "Port to listen to in server mode, or to connect to in client mode. "
             "Defaults to 5678. ",
             type = Types.Integer,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         a = Attribute("a",
             "Client option. Perform UDP Round Trip Time (latency) ",
             type = Types.Bool,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         A = Attribute("A",
             "Client option. "
             "Message size for UDP RTT test. "
             "UDP RTT (latency) test with specified message size.",
             type = Types.Integer,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         b = Attribute("b",
             "Client option. "
             "Client UDP buffer size in bytes. Using system default "
             "value if not defined.",
             type = Types.Integer,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         B = Attribute("B",
             "Client option. "
             "Server UDP buffer size in bytes. The same as cleint's by default.",
             type = Types.Integer,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         c = Attribute("c",
             "Client option. "
             "CPU log option. Tracing system info during the test. "
             "Only available when output is defined. ",
             type = Types.Bool,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         d = Attribute("d",
             "Client option. "
             "Data size of each read/write in bytes. The same as packet size "
             "by default.",
             type = Types.Integer,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         e = Attribute("e",
             "Client option. "
             "Exponential test (data size of each sending increasing from 1 "
             "byte to packet size). ",
             type = Types.Bool,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         g = Attribute("g",
             "Client option. "
             "UDP traffic generator (Keep sending data to a host). "
             "Work without server's support.",
             type = Types.Bool,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         target = Attribute("target",
             "Client option. "
             "Hostname or IP address of UDP server. Must be specified.",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         i = Attribute("i",
             "Client option. "
             "Bidirectional UDP throuhgput test. Default is unidirection "
             "stream test. ",
             type = Types.Bool,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         l = Attribute("l",
             "Client option. "
             "UDP datagram (packet) size in bytes ( < udp-buffer-szie ). "
             "1460 by default.",
             type = Types.Integer,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         m = Attribute("m",
             "Client option. "
             "Total message size in bytes. 1048576 by default.",
             type = Types.Integer,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         o = Attribute("o",
             "Client option. "
             "Output file name. ",
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         P = Attribute("P",
             "Client option. "
             "Write the plot file for gnuplot. Only enable when the output "
             "is specified. ",
             type = Types.Bool,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         q = Attribute("q",
             "Client option. "
@@ -152,38 +152,38 @@ class LinuxUdpTest(LinuxApplication):
             "is specified. ",
             type = Types.Enumerate,
             allowed = ["1", "2", "3", "4", "5", "6"],
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         r = Attribute("r",
             "Client option. "
             "Repetition of tests. 10 by default. ",
             type = Types.Integer,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         t = Attribute("t",
             "Client option. "
             "Test time constraint in seconds. 5 by default. ",
             type = Types.Integer,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         T = Attribute("T",
             "Client option. "
             "Throughput constraint for UDP generator or throughput "
             "test. Unlimited by default. ",
             type = Types.Integer,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         continuous = Attribute("continuous",
             "Run nping in a while loop",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         print_timestamp = Attribute("printTimestamp",
             "Print timestamp before running nping",
             type = Types.Bool,
             default = False,
-            flags = Flags.ExecReadOnly)
+            flags = Flags.Design)
 
         cls._register_attribute(s)
         cls._register_attribute(p)

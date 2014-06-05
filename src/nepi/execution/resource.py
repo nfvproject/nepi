@@ -186,16 +186,24 @@ class ResourceManager(Logger):
         attributes.
 
         """
-        
         critical = Attribute("critical", 
                 "Defines whether the resource is critical. "
                 "A failure on a critical resource will interrupt "
                 "the experiment. ",
                 type = Types.Bool,
                 default = True,
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
+        hard_release = Attribute("hardRelease", 
+                "Forces removal of all result files and directories associated "
+                "to the RM upon resource release. After release the RM will "
+                "be removed from the EC and the results will not longer be "
+                "accessible",
+                type = Types.Bool,
+                default = False,
+                flags = Flags.Design)
 
         cls._register_attribute(critical)
+        cls._register_attribute(hard_release)
         
     @classmethod
     def _register_traces(cls):
@@ -288,6 +296,32 @@ class ResourceManager(Logger):
 
         """
         return cls._backend
+
+    @classmethod
+    def get_global(cls, name):
+        """ Returns the value of a global attribute
+            Global attribute meaning an attribute for 
+            all the resources from a rtype
+
+        :param name: Name of the attribute
+        :type name: str
+        :rtype: str
+        """
+        global_attr = cls._attributes[name]
+        return global_attr.value
+
+    @classmethod
+    def set_global(cls, name, value):
+        """ Set value for a global attribute
+
+        :param name: Name of the attribute
+        :type name: str
+        :param name: Value of the attribute
+        :type name: str
+        """
+        global_attr = cls._attributes[name]
+        global_attr.value = value
+        return value
 
     def __init__(self, ec, guid):
         super(ResourceManager, self).__init__(self.get_rtype())
@@ -395,7 +429,7 @@ class ResourceManager(Logger):
         :rtype: str
 
         """
-        return " %s guid: %d - %s " % (self._rtype, self.guid, msg)
+        return " %s guid %d - %s " % (self._rtype, self.guid, msg)
 
     def register_connection(self, guid):
         """ Registers a connection to the RM identified by guid
@@ -512,7 +546,6 @@ class ResourceManager(Logger):
         with self._release_lock:
             if self._state != ResourceState.RELEASED:
                 self.do_deploy()
-                self.debug("----- READY ---- ")
 
     def release(self):
         """ Perform actions to free resources used by the RM.
@@ -531,8 +564,8 @@ class ResourceManager(Logger):
                 import traceback
                 err = traceback.format_exc()
                 self.error(err)
+
                 self.set_released()
-                self.debug("----- RELEASED ---- ")
 
     def fail(self):
         """ Sets the RM to state FAILED.
@@ -555,6 +588,7 @@ class ResourceManager(Logger):
         """
         attr = self._attrs[name]
         attr.value = value
+        return value
 
     def get(self, name):
         """ Returns the value of the attribute
@@ -564,7 +598,38 @@ class ResourceManager(Logger):
         :rtype: str
         """
         attr = self._attrs[name]
+        if attr.has_flag(Flags.Global):
+            self.warning( "Attribute %s is global. Use get_global instead." % name)
+            
         return attr.value
+
+    def has_changed(self, name):
+        """ Returns the True is the value of the attribute
+            has been modified by the user.
+
+        :param name: Name of the attribute
+        :type name: str
+        :rtype: str
+        """
+        attr = self._attrs[name]
+        return attr.has_changed()
+
+    def has_flag(self, name, flag):
+        """ Returns true if the attribute has the flag 'flag'
+
+        :param flag: Flag to be checked
+        :type flag: Flags
+        """
+        attr = self._attrs[name]
+        return attr.has_flag(flag)
+
+    def has_attribute(self, name):
+        """ Returns true if the RM has an attribute with name
+
+        :param name: name of the attribute
+        :type name: string
+        """
+        return name in self._attrs
 
     def enable_trace(self, name):
         """ Explicitly enable trace generation
@@ -946,7 +1011,6 @@ class ResourceManager(Logger):
 
     def do_release(self):
         self.set_released()
-        self.debug("----- RELEASED ---- ")
 
     def do_fail(self):
         self.set_failed()
@@ -954,30 +1018,37 @@ class ResourceManager(Logger):
     def set_started(self):
         """ Mark ResourceManager as STARTED """
         self.set_state(ResourceState.STARTED, "_start_time")
-        
+        self.debug("----- STARTED ---- ")
+
     def set_stopped(self):
         """ Mark ResourceManager as STOPPED """
         self.set_state(ResourceState.STOPPED, "_stop_time")
+        self.debug("----- STOPPED ---- ")
 
     def set_ready(self):
         """ Mark ResourceManager as READY """
         self.set_state(ResourceState.READY, "_ready_time")
+        self.debug("----- READY ---- ")
 
     def set_released(self):
         """ Mark ResourceManager as REALEASED """
         self.set_state(ResourceState.RELEASED, "_release_time")
+        self.debug("----- RELEASED ---- ")
 
     def set_failed(self):
         """ Mark ResourceManager as FAILED """
         self.set_state(ResourceState.FAILED, "_failed_time")
+        self.debug("----- FAILED ---- ")
 
     def set_discovered(self):
         """ Mark ResourceManager as DISCOVERED """
         self.set_state(ResourceState.DISCOVERED, "_discover_time")
+        self.debug("----- DISCOVERED ---- ")
 
     def set_provisioned(self):
         """ Mark ResourceManager as PROVISIONED """
         self.set_state(ResourceState.PROVISIONED, "_provision_time")
+        self.debug("----- PROVISIONED ---- ")
 
     def set_state(self, state, state_time_attr):
         """ Set the state of the RM while keeping a trace of the time """
@@ -1033,7 +1104,7 @@ def find_types():
     path = os.path.dirname(nepi.resources.__file__)
     search_path.add(path)
 
-    types = []
+    types = set()
 
     for importer, modname, ispkg in pkgutil.walk_packages(search_path, 
             prefix = "nepi.resources."):
@@ -1041,7 +1112,7 @@ def find_types():
         loader = importer.find_module(modname)
         
         try:
-            # Notice: Repeated calls to load_module will act as a reload of teh module
+            # Notice: Repeated calls to load_module will act as a reload of the module
             if modname in sys.modules:
                 module = sys.modules.get(modname)
             else:
@@ -1060,7 +1131,7 @@ def find_types():
                     continue
 
                 if issubclass(attr, ResourceManager):
-                    types.append(attr)
+                    types.add(attr)
 
                     if not modname in sys.modules:
                         sys.modules[modname] = module
@@ -1073,5 +1144,4 @@ def find_types():
             logger.error("Error while loading Resource Managers %s" % err)
 
     return types
-
 

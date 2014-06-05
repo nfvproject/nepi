@@ -42,7 +42,7 @@ class LinuxFIBEntry(LinuxApplication):
         uri = Attribute("uri",
                 "URI prefix to match and route for this FIB entry",
                 default = "ccnx:/",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         protocol = Attribute("protocol",
                 "Transport protocol used in network connection to peer "
@@ -50,20 +50,20 @@ class LinuxFIBEntry(LinuxApplication):
                 type = Types.Enumerate, 
                 default = "udp",
                 allowed = ["udp", "tcp"],
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         host = Attribute("host",
                 "Peer hostname used in network connection for this FIB entry. ",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         port = Attribute("port",
                 "Peer port address used in network connection to peer "
                 "for this FIB entry.",
-                flags = Flags.ExecReadOnly)
+                flags = Flags.Design)
 
         ip = Attribute("ip",
                 "Peer host public IP used in network connection for this FIB entry. ",
-                flags = Flags.ReadOnly)
+                flags = Flags.Design)
 
         cls._register_attribute(uri)
         cls._register_attribute(protocol)
@@ -134,7 +134,6 @@ class LinuxFIBEntry(LinuxApplication):
             self.do_provision()
             self.configure()
 
-            self.debug("----- READY ---- ")
             self.set_ready()
 
     def upload_start_command(self):
@@ -165,6 +164,7 @@ class LinuxFIBEntry(LinuxApplication):
             self._ping = self.ec.register_resource("LinuxPing")
             self.ec.set(self._ping, "printTimestamp", True)
             self.ec.set(self._ping, "target", self.get("host"))
+            self.ec.set(self._ping, "earlyStart", True)
             self.ec.register_connection(self._ping, self.node.guid)
             # schedule ping deploy
             self.ec.deploy(guids=[self._ping], group = self.deployment_group)
@@ -176,6 +176,7 @@ class LinuxFIBEntry(LinuxApplication):
             self.ec.set(self._mtr, "printTimestamp", True)
             self.ec.set(self._mtr, "continuous", True)
             self.ec.set(self._mtr, "target", self.get("host"))
+            self.ec.set(self._mtr, "earlyStart", True)
             self.ec.register_connection(self._mtr, self.node.guid)
             # schedule mtr deploy
             self.ec.deploy(guids=[self._mtr], group = self.deployment_group)
@@ -186,6 +187,7 @@ class LinuxFIBEntry(LinuxApplication):
             self.ec.set(self._traceroute, "printTimestamp", True)
             self.ec.set(self._traceroute, "continuous", True)
             self.ec.set(self._traceroute, "target", self.get("host"))
+            self.ec.set(self._traceroute, "earlyStart", True)
             self.ec.register_connection(self._traceroute, self.node.guid)
             # schedule mtr deploy
             self.ec.deploy(guids=[self._traceroute], group = self.deployment_group)
