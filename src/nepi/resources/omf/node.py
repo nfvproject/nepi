@@ -26,8 +26,8 @@ from nepi.resources.omf.omf_api_factory import OMFAPIFactory
 
 import time
 
-reschedule_check = "0.3s"
-confirmation_counter = 300
+reschedule_check = "0.4s"
+confirmation_counter = 600
 
 @clsinit_copy
 class OMFNode(OMFResource):
