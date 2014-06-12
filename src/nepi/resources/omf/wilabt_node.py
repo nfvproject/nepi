@@ -20,7 +20,7 @@
 from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
         ResourceState, reschedule_delay 
-from nepi.resources.linux.node import LinuxNode
+from nepi.resources.omf.node import OMFNode
 from nepi.util.sfaapi import SFAAPIFactory 
 from nepi.util.execfuncs import lexec
 from nepi.util import sshfuncs
@@ -34,7 +34,7 @@ import threading
 import datetime
 
 @clsinit_copy
-class WilabtSfaNode(LinuxNode):
+class WilabtSfaNode(OMFNode):
     _rtype = "WilabtSfaNode"
     _help = "Controls a Wilabt host accessible using a SSH key " \
             "and provisioned using SFA"
@@ -42,6 +42,15 @@ class WilabtSfaNode(LinuxNode):
 
     @classmethod
     def _register_attributes(cls):
+        
+        username = Attribute("username", "Local account username",
+                flags = Flags.Credential)
+
+        identity = Attribute("identity", "SSH identity file",
+                flags = Flags.Credential)
+
+        server_key = Attribute("serverKey", "Server public key",
+                flags = Flags.Design)
 
         sfa_user = Attribute("sfauser", "SFA user",
                     flags = Flags.Credential)
@@ -59,11 +68,22 @@ class WilabtSfaNode(LinuxNode):
         gateway = Attribute("gateway", "Hostname of the gateway machine",
                 flags = Flags.Design)
 
+        hostxmpp = Attribute("hostxmpp", "Hostname from RSpec to use in xmpp messages",
+                flags = Flags.Design)
+
+        disk_image = Attribute("disk_image", "Specify a specific disk image for a node",
+                flags = Flags.Design)
+        
+        cls._register_attribute(username)
+        cls._register_attribute(identity)
+        cls._register_attribute(server_key)
         cls._register_attribute(sfa_user)
         cls._register_attribute(sfa_private_key)
         cls._register_attribute(slicename)
         cls._register_attribute(gateway_user)
         cls._register_attribute(gateway)
+        cls._register_attribute(hostxmpp)
+        cls._register_attribute(disk_image)
 
     def __init__(self, ec, guid):
         super(WilabtSfaNode, self).__init__(ec, guid)
@@ -152,7 +172,7 @@ class WilabtSfaNode(LinuxNode):
             node = self._node_to_provision
             if self._slicenode:
                 self._delete_from_slice()
-                self.debug("Waiting 300 seg for re-adding to slice")
+                self.debug("Waiting 300 sec for re-adding to slice")
                 time.sleep(300) # Timout for the testbed to allow a new reservation
             self._add_node_to_slice(node)
             t = 0
@@ -160,7 +180,7 @@ class WilabtSfaNode(LinuxNode):
                 and not self._ecobj().abort:
                 t = t + 5
                 time.sleep(t)
-                self.debug("Waiting 5 seg for resources to be added")
+                self.debug("Waiting 5 sec for resources to be added")
                 continue
 
             if not self._check_if_in_slice([node]):
@@ -185,7 +205,7 @@ class WilabtSfaNode(LinuxNode):
                 if not self._check_fs():
                     self.do_discover()
                     continue
-                if not self._check_omf():
+                if not self._check_omfrc():
                     self.do_discover()
                     continue
                 if not self._check_hostname():
@@ -199,6 +219,12 @@ class WilabtSfaNode(LinuxNode):
                     self.info(" Node provisioned ")            
             
         super(WilabtSfaNode, self).do_provision()
+
+    def do_release(self):
+        super(WilabtSfaNode, self).do_release()
+        if self.state == ResourceState.RELEASED and not self._skip_provision():
+            self.debug(" Releasing SFA API ")
+            self.sfaapi.release()
 
     def _blacklisted(self, host_hrn):
         """
@@ -237,15 +263,15 @@ class WilabtSfaNode(LinuxNode):
         through the gateway because is private testbed.
         """
         t = 0
-        timeout = 10
+        timeout = 300
         ssh_ok = False
         while t < timeout and not ssh_ok:
             cmd = 'echo \'GOOD NODE\''
             ((out, err), proc) = self.execute(cmd)
             if out.find("GOOD NODE") < 0:
-                self.debug( "No SSH connection, waiting 60s" )
-                t = t + 5
-                time.sleep(5)
+                self.debug( "No SSH connection, waiting 20s" )
+                t = t + 20
+                time.sleep(20)
                 continue
             else:
                 self.debug( "SSH OK" )
@@ -283,7 +309,47 @@ class WilabtSfaNode(LinuxNode):
         ((out, err), proc) = self.execute(cmd)
         if 'localhost' in out.lower():
             return False
+        else:
+            self.set('hostxmpp', out.strip()) 
         return True 
+
+    def execute(self, command,
+        sudo = False,
+        env = None,
+        tty = False,
+        forward_x11 = False,
+        retry = 3,
+        connect_timeout = 30,
+        strict_host_checking = False,
+        persistent = True,
+        blocking = True,
+        ):
+        """ Notice that this invocation will block until the
+        execution finishes. If this is not the desired behavior,
+        use 'run' instead."""
+        (out, err), proc = sshfuncs.rexec(
+            command,
+            host = self.get("hostname"),
+            user = self.get("username"),
+            port = 22,
+            gwuser = self.get("gatewayUser"),
+            gw = self.get("gateway"),
+            agent = True,
+            sudo = sudo,
+            identity = self.get("identity"),
+            server_key = self.get("serverKey"),
+            env = env,
+            tty = tty,
+            forward_x11 = forward_x11,
+            retry = retry,
+            connect_timeout = connect_timeout,
+            persistent = persistent,
+            blocking = blocking,
+            strict_host_checking = strict_host_checking
+            )
+
+        return (out, err), proc
+
 
     def _add_node_to_slice(self, host_hrn):
         """
@@ -295,7 +361,11 @@ class WilabtSfaNode(LinuxNode):
         """
         self.info(" Adding node to slice ")
         slicename = self.get("slicename")
-        self.sfaapi.add_resource_to_slice_batch(slicename, host_hrn)
+        disk_image = self.get("disk_image")
+        if disk_image is not None:
+            properties = {'disk_image': disk_image}
+        else: properties = None
+        self.sfaapi.add_resource_to_slice_batch(slicename, host_hrn, properties=properties)
 
     def _delete_from_slice(self):
         """
@@ -398,16 +468,15 @@ class WilabtSfaNode(LinuxNode):
         raise RuntimeError, msg
     
     def fail_node_not_available(self, hostname):
-        msg = "Node %s not available for provisioning" % hostname
+        msg = "Some nodes not available for provisioning"
         raise RuntimeError, msg
 
     def fail_not_enough_nodes(self):
         msg = "Not enough nodes available for provisioning"
         raise RuntimeError, msg
 
-    def fail_plapi(self):
-        msg = "Failing while trying to instanciate the PLC API.\nSet the" + \
-            " attributes pluser and plpassword."
+    def fail_sfaapi(self):
+        msg = "Failing while trying to instanciate the SFA API."
         raise RuntimeError, msg
 
     def valid_connection(self, guid):
