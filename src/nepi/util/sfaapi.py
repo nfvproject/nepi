@@ -46,6 +46,7 @@ class SFAAPI(object):
         self._resources_cache = None
         self._already_cached = False
         self._ec = ec 
+        self.apis = 1
 
         if batch:
             self._testbed_res = rtype
@@ -100,12 +101,12 @@ class SFAAPI(object):
                 rms.append(rm)
         return rms
 
-    def _sfi_exec_method(self, command, slicename=None, rspec=None, urn=None):
+    def _sfi_exec_method(self, command, slicename=None, rspec=None, urn=None, action=None):
         """
         Execute sfi method, which correspond to SFA call. It can be the following
         calls: Describe, Delete, Allocate, Provision, ListResources.
         """
-        if command in ['describe', 'delete', 'allocate', 'provision']:
+        if command in ['describe', 'delete', 'allocate', 'provision', 'action']:
             if not slicename:
                 raise TypeError("The slice hrn is expected for this method %s" % command)
             if command == 'allocate' and not rspec:
@@ -117,6 +118,8 @@ class SFAAPI(object):
                 args_list = [slicename]
             if command != 'delete':
                 args_list = args_list + ['-o', '/tmp/rspec_output']
+            if command == 'action':
+                args_list = [slicename, action]
 
         elif command == 'resources':
             args_list = ['-o', '/tmp/rspec_output']
@@ -240,7 +243,7 @@ class SFAAPI(object):
                     raise RuntimeError("Fail to provision resource for slice %s" % slicename)
                 return True
 
-    def add_resource_to_slice_batch(self, slicename, resource_hrn, leases=None):
+    def add_resource_to_slice_batch(self, slicename, resource_hrn, properties=None, leases=None):
         """
         Method to add all resources together to the slice. Previous deletion of slivers.
         Specially used for wilabt that doesn't allow to add more resources to the slice
@@ -259,8 +262,7 @@ class SFAAPI(object):
                 self._sfi_exec_method('delete', slicename)
                 # Re implementing urn from hrn because the library sfa-common doesn't work for wilabt
                 resources_urn = self._get_urn(resources_hrn_new)
-                rspec = self.rspec_proc.build_sfa_rspec(slicename, resources_urn, leases)
-
+                rspec = self.rspec_proc.build_sfa_rspec(slicename, resources_urn, properties, leases)
                 f = open("/tmp/rspec_input.rspec", "w")
                 f.truncate(0)
                 f.write(rspec)
@@ -281,6 +283,7 @@ class SFAAPI(object):
                     try:
                         self._log.debug("Provisioning resources in slice %s" % slicename)
                         self._sfi_exec_method('provision', slicename)
+                        self._sfi_exec_method('action', slicename=slicename, action='geni_start')
                     except:
                         raise RuntimeError("Fail to provision resource for slice %s" % slicename)
                     return True
@@ -379,6 +382,33 @@ class SFAAPI(object):
                 self.reserve_resource(resource_hrn)
                 return False
 
+    def release(self):
+        """
+        Remove hosts from the reserved and blacklist lists, and in case
+        the persist attribute is set, it saves the blacklisted hosts
+        in the blacklist file.
+        """
+        self.apis -= 1
+        if self.apis == 0:
+            blacklist = self._blacklist
+            self._blacklist = set()
+            self._reserved = set()
+#            if self._ecobj.get_global('PlanetlabSfaNode', 'persist_blacklist'):
+#                if blacklist:
+#                    to_blacklist = list()
+#                    hostnames = self.get_nodes(list(blacklist), ['hostname'])
+#                    for hostname in hostnames:
+#                        to_blacklist.append(hostname['hostname'])
+#
+#                    nepi_home = os.path.join(os.path.expanduser("~"), ".nepi")
+#                    plblacklist_file = os.path.join(nepi_home, "plblacklist.txt")
+#
+#                    with open(plblacklist_file, 'w') as f:
+#                        for host in to_blacklist:
+#                            f.write("%s\n" % host)
+#
+
+
 class SFAAPIFactory(object):
     """
     API Factory to manage a map of SFAAPI instances as key-value pairs, it
@@ -403,6 +433,8 @@ class SFAAPIFactory(object):
                     api = SFAAPI(sfi_user, sfi_auth, sfi_registry, sfi_sm, private_key,
                         ec, batch, rtype, timeout)
                     cls._apis[key] = api
+                else:
+                    api.apis += 1
 
                 return api
 

@@ -133,7 +133,7 @@ class SfaRSpecProcessing(object):
 #               }
 
  
-    def build_sfa_rspec(self, slice_id, resources, leases):
+    def build_sfa_rspec(self, slice_id, resources, properties, leases):
         """
         Build the XML RSpec from list of resources' urns.
         eg. resources = ["urn:publicid:IDN+ple:modenaple+node+planetlab-1.ing.unimo.it"]
@@ -158,6 +158,7 @@ class SfaRSpecProcessing(object):
         links = []
         self._log.debug("Building RSpec for resources %s" % resources)
         cardinal = 0
+        wilab = False
         for urn in resources:
             # XXX TO BE CORRECTED, this handles None values
             if not urn:
@@ -167,6 +168,7 @@ class SfaRSpecProcessing(object):
             # TODO: take into account the case where we send a dict of URNs without keys
             #resource['component_id'] = resource.pop('urn')
             resource['component_id'] = urn
+            print resource['component_id']
             resource_hrn, resource_type = urn_to_hrn(resource['component_id'])
             # build component_manager_id
             top_auth = resource_hrn.split('.')[0]
@@ -175,14 +177,16 @@ class SfaRSpecProcessing(object):
 
             if resource_type == 'node':
                 # XXX dirty hack WiLab !!!
-#                Commented Lucia, only works with config file, not the case for nepi  
+#                Commented Lucia, doesn't work for wilabt  
 #                if self.config:
 #                    if 'wilab2' in self.config['sm']:
 #                        resource['client_id'] = "PC"
 #                        resource['sliver_type'] = "raw-pc"
                 if 'wilab2' in urn:
+                    wilab = True
                     resource['client_id'] = "node%s" % cardinal
                     resource['sliver_type'] = "raw-pc"
+                    resource['disk_image'] = "hola"
                     top_auth = resource_hrn.replace("\\", "").split('.')
                     top_auth.pop()
                     top_auth = '.'.join(top_auth)
@@ -202,7 +206,19 @@ class SfaRSpecProcessing(object):
         #rspec.version.add_links(links)
         #rspec.version.add_channels(channels)
 
-        self._log.debug("request rspec: %s"%rspec.toxml())
-        return rspec.toxml()
+        #self._log.debug("request rspec: %s"%rspec.toxml())
+        string = rspec.toxml()
+        if wilab and properties is not None:
+            ## dirty hack for the f4f demo
+            b = string.split('\n')
+            for i, n in enumerate(b):
+                if 'sliver_type name="raw-pc"' in n:
+                    b[i] = '<sliver_type name="raw-pc">'
+                    #b.insert(i+1, '<disk_image name="urn:publicid:IDN+wall2.ilabt.iminds.be+image+emulab-ops//%s"/>' % properties['disk_image'])
+                    b.insert(i+1, '<disk_image name="urn:publicid:IDN+wilab2.ilabt.iminds.be+image+nepi:%s"/>' % properties['disk_image'])
+                    b.insert(i+2, '</sliver_type>')
+            string = ''.join(b)
+        self._log.debug("request rspec : %s" % string)
+        return string
 
 
