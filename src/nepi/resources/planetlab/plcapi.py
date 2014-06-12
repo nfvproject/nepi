@@ -493,19 +493,24 @@ class PLCAPI(object):
 
     def release(self):
         self.count -= 1
-        if self._ecobj.get_global('PlanetlabNode', 'persist_blacklist') and self.count == 0:
-            if self._blacklist:
-                to_blacklist = list()
-                hostnames = self.get_nodes(list(self._blacklist), ['hostname'])
-                for hostname in hostnames:
-                    to_blacklist.append(hostname['hostname'])
-
-                nepi_home = os.path.join(os.path.expanduser("~"), ".nepi")
-                plblacklist_file = os.path.join(nepi_home, "plblacklist.txt")
-
-                with open(plblacklist_file, 'w') as f:
-                    for host in to_blacklist:
-                        f.write("%s\n" % host)
+        if self.count == 0:
+            blacklist = self._blacklist
+            self._blacklist = set()
+            self._reserved = set()
+            if self._ecobj.get_global('PlanetlabNode', 'persist_blacklist'):
+                if blacklist:
+                    to_blacklist = list()
+                    hostnames = self.get_nodes(list(blacklist), ['hostname'])
+                    for hostname in hostnames:
+                        to_blacklist.append(hostname['hostname'])
+    
+                    nepi_home = os.path.join(os.path.expanduser("~"), ".nepi")
+                    plblacklist_file = os.path.join(nepi_home, "plblacklist.txt")
+    
+                    with open(plblacklist_file, 'w') as f:
+                        for host in to_blacklist:
+                            f.write("%s\n" % host)
+    
 
 class PLCAPIFactory(object):
     """ 
