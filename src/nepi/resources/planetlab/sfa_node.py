@@ -369,6 +369,12 @@ class PlanetlabSfaNode(LinuxNode):
             
         super(PlanetlabSfaNode, self).do_provision()
 
+    def do_release(self):
+        super(PlanetlabSfaNode, self).do_release()
+        if self.state == ResourceState.RELEASED and not self._skip_provision():
+            self.debug(" Releasing SFA API ")
+            self.sfaapi.release()
+
 #    def _filter_based_on_attributes(self):
 #        """
 #        Retrive the list of nodes hrn that match user's constraints 
