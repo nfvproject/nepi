@@ -12,11 +12,9 @@ class IOTLABNode(ResourceManager):
         :type ec: ExperimentController
         :param guid: guid of the RM
         :type guid: int
-        :param creds: Credentials to communicate with the rm (RESTClient)
-        :type creds: dict
-
     """
     _rtype = "IOTLABNode"
+    _authorized_connections = ["IOTLABApplication"]
 
 	
     @classmethod
