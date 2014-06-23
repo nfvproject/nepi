@@ -21,9 +21,9 @@
 from nepi.execution.ec import ExperimentController 
 from nepi.execution.trace import TraceAttr
 
-ec = ExperimentController(exp_id = "ns3-p2p-ping")
+ec = ExperimentController(exp_id = "ns3-local-ping")
 
-# Simulation will run in the local machine
+# Simulation will executed in the local machine
 node = ec.register_resource("LinuxNode")
 ec.set(node, "hostname", "localhost")
 
