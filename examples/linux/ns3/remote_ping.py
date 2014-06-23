@@ -20,11 +20,33 @@
 
 from nepi.execution.ec import ExperimentController 
 
-ec = ExperimentController(exp_id = "ns3-local-ping")
+from optparse import OptionParser, SUPPRESS_HELP
 
-# Simulation will executed in the local machine
+usage = ("usage: %prog -H <hostanme> -u <username> -i <ssh-key>")
+
+parser = OptionParser(usage = usage)
+parser.add_option("-H", "--hostname", dest="hostname", 
+        help="Remote host name or IP address", type="str")
+parser.add_option("-u", "--username", dest="username", 
+        help="Username to SSH to remote host", type="str")
+parser.add_option("-i", "--ssh-key", dest="ssh_key", 
+        help="Path to private SSH key to be used for connection", 
+        type="str")
+(options, args) = parser.parse_args()
+
+hostname = options.hostname
+username = options.username
+identity = options.ssh_key
+
+ec = ExperimentController(exp_id = "ns3-remote-ping")
+
+# Simulation will run in a remote machine
 node = ec.register_resource("LinuxNode")
-ec.set(node, "hostname", "localhost")
+ec.set(node, "hostname", hostname)
+ec.set(node, "username", username)
+ec.set(node, "identity", identity)
+ec.set(node, "cleanProcesses", True)
+ec.set(node, "cleanExperiment", True)
 
 # Add a simulation resource
 simu = ec.register_resource("LinuxNS3Simulation")
