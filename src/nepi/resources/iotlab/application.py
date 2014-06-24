@@ -1,4 +1,5 @@
-from nepi.execution.resource import ResourceManager, clsinit_copy
+from nepi.execution.resource import ResourceManager, clsinit_copy, \
+     ResourceState, reschedule_delay
 from nepi.resources.iotlab.node import IOTLABNode
 from nepi.execution.attribute import Attribute, Flags
 from nepi.resources.iotlab.iotlab_api_factory import IOTLABAPIFactory
@@ -54,9 +55,12 @@ class IOTLABApplication(ResourceManager):
     def do_deploy(self):
         """ Deploy the RM.
         """
-        self.set('username',self.node.get('username'))
-        self.set('password',self.node.get('password'))
-        self.set('hostname',self.node.get('hostname'))
+        if not self.node:
+        #if not self.node or self.node.state < ResourceState.READY:
+            #self.debug("---- RESCHEDULING DEPLOY ---- node state %s "
+            #           % self.node.state )
+            self.ec.schedule(reschedule_delay, self.deploy)
+            return
         
         if not self.get('command'):
         	msg = "Command is not initialized."
@@ -70,8 +74,8 @@ class IOTLABApplication(ResourceManager):
         	raise RuntimeError, msg
 
         if not self._rest_api :
-            self._rest_api = IOTLABAPIFactory.get_api(self.get('username'),
-             	self.get('password'), self.get('hostname'), exp_id = self.exp_id)
+            self._rest_api = IOTLABAPIFactory.get_api(self.node.get('username'),
+             	self.node.get('password'), self.node.get('hostname'), exp_id = self.exp_id)
 
         super(IOTLABApplication, self).do_deploy()
 

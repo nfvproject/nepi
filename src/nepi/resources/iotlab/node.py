@@ -21,7 +21,7 @@ class IOTLABNode(ResourceManager):
     def _register_attributes(cls):
         hostname = Attribute("hostname", "Hostname of the node",
                 flags = Flags.Design)
-        username = Attribute("user","REST API login", 
+        username = Attribute("username", "REST API login", 
             flags = Flags.Credential)
         password = Attribute("password", "REST API password",
                 flags = Flags.Credential)
