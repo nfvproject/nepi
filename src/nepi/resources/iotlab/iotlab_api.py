@@ -11,6 +11,9 @@ class IOTLABAPI(Logger):
        This class is the implementation of a REST IOt-LAB API. 
 
     """
+    
+    urlrest = 'https://www.iot-lab.info/rest/'  # url of the REST server
+
     def __init__(self, username=None, password=None, hostname=None, 
             exp_id = None):
         """
@@ -20,12 +23,11 @@ class IOTLABAPI(Logger):
         :type password: str
         """
         super(IOTLABAPI, self).__init__("IOTLABAPI")
-        self._exp_id = self._get_experiment_id(exp_id)
-        self._username = username # login of the user
-        self._password = password # password of the user
-        self._hostname = hostname # hostname of the node
-        self._auth = HTTPBasicAuth(self._username, self._password)
-        self._server = "https://www.iot-lab.info/rest/" # name of the REST server
+        self.username = username # login of the user
+        self.password = password # password of the user
+        self.hostname = hostname # hostname of the node
+        self.auth = HTTPBasicAuth(self.username, self.password)
+        self.exp_id = self._get_experiment_id(exp_id)
 
     def _rest_method(self, url, method='GET', data=None):
         """
@@ -33,17 +35,17 @@ class IOTLABAPI(Logger):
         :param method: request method
         :param data: request data
         """
-        method_url = urljoin(self.url, url)
+        method_url = urljoin(IOTLABAPI.urlrest, url)
         if method == 'POST':
             headers = {'content-type': 'application/json'}
             req = requests.post(method_url, data=data, headers=headers,
                                 auth=self._auth)
         elif method == 'MULTIPART':
-            req = requests.post(method_url, files=data, auth=self._auth)
+            req = requests.post(method_url, files=data, auth=self.auth)
         elif method == 'DELETE':
-            req = requests.delete(method_url, auth=self._auth)
+            req = requests.delete(method_url, auth=self.auth)
         else:
-            req = requests.get(method_url, auth=self._auth)
+            req = requests.get(method_url, auth=self.auth)
 
         if req.status_code == requests.codes.ok:
             return req.text
@@ -77,7 +79,7 @@ class IOTLABAPI(Logger):
     def _get_experiment_id(self, exp_id = None):
         """ Get experiment id. 
         """
-        if exp_id is not None:
+        if not 'exp-' in exp_id:
             return exp_id
         else:
             exp_json = json.loads(self._get_experiments())
@@ -98,22 +100,22 @@ class IOTLABAPI(Logger):
     def start(self):
         """ Start command on IoT-LAB node
         """
-        msg = self._rest_method('experiments/%s/nodes?start' % self._exp_id,
-                            method='POST', data='['+self._hostname+']')
+        msg = self._rest_method('experiments/%s/nodes?start' % self.exp_id,
+                            method='POST', data='['+self.hostname+']')
         self.info(msg)
 
     def stop(self):
         """ Stop command on IoT-LAB node
         """
-        msg = self._rest_method('experiments/%s/nodes?stop' % self._exp_id,
-                           method='POST', data='['+self._hostname+']')
+        msg = self._rest_method('experiments/%s/nodes?stop' % self.exp_id,
+                           method='POST', data='['+self.hostname+']')
         self.info(msg)
 
     def reset(self):
         """ Reset command on IoT-LAB node
         """
-        msg = self._rest_method('experiments/%s/nodes?reset' % self._exp_id,
-                          method='POST', data='['+self._hostname+']')
+        msg = self._rest_method('experiments/%s/nodes?reset' % self.exp_id,
+                          method='POST', data='['+self.hostname+']')
         self.info(msg)
 
     def update(self, firmware_path):
@@ -121,10 +123,10 @@ class IOTLABAPI(Logger):
         """
         files = {}
         firmware_name, firmware_data = self._open_firmware(firmware_path)
-        json_file = StringIO('['+self._hostname+']')
+        json_file = StringIO('['+self.hostname+']')
         files['firmware_name'] = firmware_data
         files['node.json'] = json_file.read()
-        msg = self._rest_method('experiments/%s/nodes?update' % self._exp_id,
+        msg = self._rest_method('experiments/%s/nodes?update' % self.exp_id,
                           method='MULTIPART', data=files)
         self.info(msg)
 
