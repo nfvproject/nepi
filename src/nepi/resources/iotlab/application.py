@@ -39,7 +39,6 @@ class IOTLABApplication(ResourceManager):
         :type guid: int
         """
         super(IOTLABApplication, self).__init__(ec, guid)
-        self._node = None
         self._rest_api = None
 
     @property
@@ -55,29 +54,28 @@ class IOTLABApplication(ResourceManager):
     def do_deploy(self):
         """ Deploy the RM.
         """
-        if not self.node:
-        #if not self.node or self.node.state < ResourceState.READY:
-            #self.debug("---- RESCHEDULING DEPLOY ---- node state %s "
-            #           % self.node.state )
+        node = self.node
+        if not node or node.state < ResourceState.READY:
+            self.debug("---- RESCHEDULING DEPLOY ---- node state %s "
+                       % node.state )
             self.ec.schedule(reschedule_delay, self.deploy)
-            return
-        
-        if not self.get('command'):
-        	msg = "Command is not initialized."
-        	self.error(msg)
-        	raise RuntimeError, msg
+        else: 
+            if not self.get('command'):
+            	msg = "Command is not initialized."
+            	self.error(msg)
+            	raise RuntimeError(msg)
 
-        if (self.get('command') == 'update' and 
-        	not self.get('firmware_path')):
-        	msg = "Firmware path is not initialized."
-        	self.error(msg)
-        	raise RuntimeError, msg
+            if (self.get('command') == 'update' and 
+            	not self.get('firmware_path')):
+            	msg = "Firmware path is not initialized."
+            	self.error(msg)
+            	raise RuntimeError(msg)
 
-        if not self._rest_api :
-            self._rest_api = IOTLABAPIFactory.get_api(self.node.get('username'),
-             	self.node.get('password'), self.node.get('hostname'), exp_id = self.exp_id)
+            if not self._rest_api :
+                self._rest_api = IOTLABAPIFactory.get_api(node.get('username'),
+                 	node.get('password'), node.get('hostname'), exp_id = self.exp_id)
 
-        super(IOTLABApplication, self).do_deploy()
+            super(IOTLABApplication, self).do_deploy()
 
     def do_start(self):
         """ Start the RM. It means : Send REST Request to execute
@@ -94,7 +92,7 @@ class IOTLABApplication(ResourceManager):
         else:
             msg = "Command is unknown."
             self.error(msg)
-            raise RuntimeError, msg
+            raise RuntimeError(msg)
 
         super(IOTLABApplication, self).do_start()
 

@@ -53,12 +53,12 @@ class IOTLABNode(ResourceManager):
         if not (self.get('username') or self.get('password')):
             msg = "Credentials are not all initialzed."
             self.error(msg)
-            raise RuntimeError, msg
+            raise RuntimeError(msg)
 
         if not self.get('hostname') :
             msg = "Hostname's value is not initialized"
             self.error(msg)
-            raise RuntimeError, msg
+            raise RuntimeError(msg)
 
         if not self._rest_api :
             self._rest_api = IOTLABAPIFactory.get_api(self.get('username'), 
