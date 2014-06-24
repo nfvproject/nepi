@@ -1,7 +1,6 @@
 from nepi.util.logger import Logger
 from requests.auth import HTTPBasicAuth
-from requests.codes import ok
-from requests import post, delete, get
+import requests
 from urlparse import urljoin
 from os.path import expanduser, basename
 from cStringIO import StringIO
@@ -37,16 +36,16 @@ class IOTLABAPI(Logger):
         method_url = urljoin(self.url, url)
         if method == 'POST':
             headers = {'content-type': 'application/json'}
-            req = post(method_url, data=data, headers=headers,
+            req = requests.post(method_url, data=data, headers=headers,
                                 auth=self._auth)
         elif method == 'MULTIPART':
-            req = post(method_url, files=data, auth=self._auth)
+            req = requests.post(method_url, files=data, auth=self._auth)
         elif method == 'DELETE':
-            req = delete(method_url, auth=self._auth)
+            req = requests.delete(method_url, auth=self._auth)
         else:
-            req = get(method_url, auth=self._auth)
+            req = requests.get(method_url, auth=self._auth)
 
-        if req.status_code == ok:
+        if req.status_code == requests.codes.ok:
             return req.text
         # we have HTTP error (code != 200)
         else:
@@ -128,3 +127,10 @@ class IOTLABAPI(Logger):
         msg = self._rest_method('experiments/%s/nodes?update' % self._exp_id,
                           method='MULTIPART', data=files)
         self.info(msg)
+
+    def disconnect(self) :
+        """ Delete the session and logger topics. Then disconnect 
+
+        """
+        msg = " Disconnected IoT-LAB API"
+        self.debug(msg)
