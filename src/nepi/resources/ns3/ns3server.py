@@ -43,78 +43,50 @@ class NS3WrapperMessage:
 def handle_message(ns3_wrapper, msg_type, args, kwargs):
     if msg_type == NS3WrapperMessage.SHUTDOWN:
         ns3_wrapper.shutdown()
-        
-        ns3_wrapper.logger.debug("SHUTDOWN")
-        
+
         return "BYEBYE"
     
     if msg_type == NS3WrapperMessage.STOP:
         time = kwargs.get("time")
 
-        ns3_wrapper.logger.debug("STOP time=%s" % str(time))
-
         ns3_wrapper.stop(time=time)
+
         return "STOPPED"
 
     if msg_type == NS3WrapperMessage.START:
-        ns3_wrapper.logger.debug("START") 
-
         ns3_wrapper.start()
+
         return "STARTED"
 
     if msg_type == NS3WrapperMessage.CREATE:
         clazzname = args.pop(0)
         
-        result = ns3_wrapper.create(clazzname, *args)
-
-        ns3_wrapper.logger.debug("%s CREATE %s %s" % (str(result), clazzname, 
-            str(args)))
+        return ns3_wrapper.create(clazzname, *args)
         
-        return result
-
     if msg_type == NS3WrapperMessage.FACTORY:
         type_name = args.pop(0)
 
-        result = ns3_wrapper.factory(type_name, **kwargs)
-        
-        ns3_wrapper.logger.debug("%s FACTORY %s %s" % (str(result), type_name, 
-            str(kwargs)))
-        
-        return result
-
+        return ns3_wrapper.factory(type_name, **kwargs)
+       
     if msg_type == NS3WrapperMessage.INVOKE:
         uuid = args.pop(0)
         operation = args.pop(0)
    
-        result = ns3_wrapper.invoke(uuid, operation, *args, **kwargs)
-
-        ns3_wrapper.logger.debug("%s INVOKE %s %s %s %s " % (str(result), uuid, 
-            operation, str(args), str(kwargs)))
-
-        return result
+        return ns3_wrapper.invoke(uuid, operation, *args, **kwargs)
 
     if msg_type == NS3WrapperMessage.GET:
         uuid = args.pop(0)
         name = args.pop(0)
 
-        result = ns3_wrapper.get(uuid, name)
+        return ns3_wrapper.get(uuid, name)
         
-        ns3_wrapper.logger.debug("%s GET %s %s" % (str(result), uuid, name))
-
-        return result
-
     if msg_type == NS3WrapperMessage.SET:
         uuid = args.pop(0)
         name = args.pop(0)
         value = args.pop(0)
 
-        result = ns3_wrapper.set(uuid, name, value)
+        return ns3_wrapper.set(uuid, name, value)
 
-        ns3_wrapper.logger.debug("%s SET %s %s %s" % (str(result), uuid, name, 
-            str(value)))
-
-        return result
- 
     if msg_type == NS3WrapperMessage.FLUSH:
         # Forces flushing output and error streams.
         # NS-3 output will stay unflushed until the program exits or 
@@ -175,7 +147,7 @@ def send_reply(conn, reply):
     conn.send("%s\n" % encoded)
 
 def get_options():
-    usage = ("usage: %prog -S <socket-name> -L <NS_LOG> -v ")
+    usage = ("usage: %prog -S <socket-name> -L <ns-log>  -D <enable-dump> -v ")
     
     parser = OptionParser(usage = usage)
 
@@ -187,6 +159,12 @@ def get_options():
         help = "NS_LOG environmental variable to be set", 
         default = "", type="str")
 
+    parser.add_option("-D", "--enable-dump", dest="enable_dump",
+        help = "Enable dumping the remote executed ns-3 commands to a script "
+            "in order to later reproduce and debug the experiment",
+        action = "store_true",
+        default = False)
+
     parser.add_option("-v", "--verbose",
         help="Print debug output",
         action="store_true", 
@@ -194,9 +172,11 @@ def get_options():
 
     (options, args) = parser.parse_args()
     
-    return (options.socket_name, options.verbose, options.ns_log)
+    return (options.socket_name, options.verbose, options.ns_log,
+            options.enable_dump)
 
-def run_server(socket_name, level = logging.INFO, ns_log = None):
+def run_server(socket_name, level = logging.INFO, ns_log = None, 
+        enable_dump = False):
 
     # Sets NS_LOG environmental variable for NS debugging
     if ns_log:
@@ -204,7 +184,7 @@ def run_server(socket_name, level = logging.INFO, ns_log = None):
 
     ###### ns-3 wrapper instantiation
 
-    ns3_wrapper = NS3Wrapper(loglevel=level)
+    ns3_wrapper = NS3Wrapper(loglevel=level, enable_dump = enable_dump)
     
     ns3_wrapper.logger.info("STARTING...")
 
@@ -249,7 +229,7 @@ def run_server(socket_name, level = logging.INFO, ns_log = None):
 
 if __name__ == '__main__':
             
-    (socket_name, verbose, ns_log) = get_options()
+    (socket_name, verbose, ns_log, enable_dump) = get_options()
 
     ## configure logging
     FORMAT = "%(asctime)s %(name)s %(levelname)-4s %(message)s"
@@ -258,5 +238,5 @@ if __name__ == '__main__':
     logging.basicConfig(format = FORMAT, level = level)
 
     ## Run the server
-    run_server(socket_name, level, ns_log)
+    run_server(socket_name, level, ns_log, enable_dump)
 

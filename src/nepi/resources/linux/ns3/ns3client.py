@@ -56,7 +56,6 @@ class LinuxNS3Client(NS3Client):
             sock.send("%s\n" % encoded)
             reply = sock.recv(1024)
             sock.close()
-
         else:
             command = ( "python -c 'import socket;"
                 "sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM);"

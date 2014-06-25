@@ -76,6 +76,13 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
             type = Types.Bool,
             flags = Flags.Design)
 
+        enable_dump = Attribute("enableDump",
+            "Enable dumping the remote executed ns-3 commands to a script "
+            "in order to later reproduce and debug the experiment",
+            type = Types.Bool,
+            default = False,
+            flags = Flags.Design)
+
         build_mode = Attribute("buildMode",
             "Mode used to build ns-3 with waf. One if: debug, release, oprimized ",
             default = "optimized", 
@@ -105,6 +112,7 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         cls._register_attribute(sched_type)
         cls._register_attribute(check_sum)
         cls._register_attribute(ns_log)
+        cls._register_attribute(enable_dump)
         cls._register_attribute(verbose)
         cls._register_attribute(build_mode)
         cls._register_attribute(ns3_version)
@@ -148,6 +156,14 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
 
         self.node.upload(ns3_wrapper,
                 os.path.join(self.node.src_dir, "ns3wrapper", "ns3wrapper.py"),
+                overwrite = False)
+
+        # upload ns3 wrapper debug python script
+        ns3_wrapper_debug = os.path.join(os.path.dirname(__file__), "..", "..", "ns3", 
+                "ns3wrapper_debug.py")
+
+        self.node.upload(ns3_wrapper_debug,
+                os.path.join(self.node.src_dir, "ns3wrapper", "ns3wrapper_debug.py"),
                 overwrite = False)
 
         # upload ns3_server python script
@@ -341,6 +357,9 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         ns_log = self.get("nsLog")
         if ns_log:
             command.append("-L '%s'" % ns_log)
+
+        if self.get("enableDump"):
+            command.append("-D")
 
         if self.get("verbose"):
             command.append("-v")

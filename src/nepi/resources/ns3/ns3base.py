@@ -104,9 +104,6 @@ class NS3Base(ResourceManager):
         return False
 
     def do_provision(self):
-        # TODO: create run dir for ns3 object !!!!
-        # self.simulation.node.mkdir(self.run_home)
-
         self._instantiate_object()
         self._connect_object()
         self._configure_object()
