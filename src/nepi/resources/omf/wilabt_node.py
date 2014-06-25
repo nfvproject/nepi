@@ -68,11 +68,11 @@ class WilabtSfaNode(OMFNode):
         gateway = Attribute("gateway", "Hostname of the gateway machine",
                 flags = Flags.Design)
 
-        hostxmpp = Attribute("hostxmpp", "Hostname from RSpec to use in xmpp messages",
+        host = Attribute("host", "Name of the physical machine",
                 flags = Flags.Design)
 
-        disk_image = Attribute("disk_image", "Specify a specific disk image for a node",
-                flags = Flags.Design)
+        #disk_image = Attribute("disk_image", "Specify a specific disk image for a node",
+        #        flags = Flags.Design)
         
         cls._register_attribute(username)
         cls._register_attribute(identity)
@@ -82,8 +82,8 @@ class WilabtSfaNode(OMFNode):
         cls._register_attribute(slicename)
         cls._register_attribute(gateway_user)
         cls._register_attribute(gateway)
-        cls._register_attribute(hostxmpp)
-        cls._register_attribute(disk_image)
+        cls._register_attribute(host)
+        #cls._register_attribute(disk_image)
 
     def __init__(self, ec, guid):
         super(WilabtSfaNode, self).__init__(ec, guid)
@@ -92,7 +92,7 @@ class WilabtSfaNode(OMFNode):
         self._sfaapi = None
         self._node_to_provision = None
         self._slicenode = False
-        self._hostname = False
+        self._host = False
         self._username = None
 
     def _skip_provision(self):
@@ -136,11 +136,11 @@ class WilabtSfaNode(OMFNode):
 
         nodes = self.sfaapi.get_resources_hrn()
 
-        hostname = self._get_hostname()
-        if hostname:
+        host = self._get_host()
+        if host:
             # the user specified one particular node to be provisioned
-            self._hostname = True
-            host_hrn = nodes[hostname]
+            self._host = True
+            host_hrn = nodes[host]
 
             # check that the node is not blacklisted or being provisioned
             # by other RM
@@ -149,8 +149,8 @@ class WilabtSfaNode(OMFNode):
                     if self._check_if_in_slice([host_hrn]):
                         self.debug("Node already in slice %s" % host_hrn)
                         self._slicenode = True
-                    hostname = hostname + '.wilab2.ilabt.iminds.be'
-                    self.set('hostname', hostname)
+                    host = host + '.wilab2.ilabt.iminds.be'
+                    self.set('host', host)
                     self._node_to_provision = host_hrn
                     super(WilabtSfaNode, self).do_discover()
 
@@ -214,11 +214,18 @@ class WilabtSfaNode(OMFNode):
             
                 else:
                     provision_ok = True
-                    if not self.get('hostname'):
-                        self._set_hostname_attr(node)            
+                    if not self.get('host'):
+                        self._set_host_attr(node)            
                     self.info(" Node provisioned ")            
             
         super(WilabtSfaNode, self).do_provision()
+
+    def do_deploy(self):
+        if self.state == ResourceState.NEW:
+            self.info("Deploying w-iLab.t node")
+            self.do_discover()
+            self.do_provision()
+        super(WilabtSfaNode, self).do_deploy()
 
     def do_release(self):
         super(WilabtSfaNode, self).do_release()
@@ -263,7 +270,7 @@ class WilabtSfaNode(OMFNode):
         through the gateway because is private testbed.
         """
         t = 0
-        timeout = 300
+        timeout = 1200
         ssh_ok = False
         while t < timeout and not ssh_ok:
             cmd = 'echo \'GOOD NODE\''
@@ -310,7 +317,7 @@ class WilabtSfaNode(OMFNode):
         if 'localhost' in out.lower():
             return False
         else:
-            self.set('hostxmpp', out.strip()) 
+            self.set('hostname', out.strip()) 
         return True 
 
     def execute(self, command,
@@ -329,7 +336,7 @@ class WilabtSfaNode(OMFNode):
         use 'run' instead."""
         (out, err), proc = sshfuncs.rexec(
             command,
-            host = self.get("hostname"),
+            host = self.get("host"),
             user = self.get("username"),
             port = 22,
             gwuser = self.get("gatewayUser"),
@@ -361,10 +368,11 @@ class WilabtSfaNode(OMFNode):
         """
         self.info(" Adding node to slice ")
         slicename = self.get("slicename")
-        disk_image = self.get("disk_image")
-        if disk_image is not None:
-            properties = {'disk_image': disk_image}
-        else: properties = None
+        #disk_image = self.get("disk_image")
+        #if disk_image is not None:
+        #    properties = {'disk_image': disk_image}
+        #else: properties = None
+        properties = None
         self.sfaapi.add_resource_to_slice_batch(slicename, host_hrn, properties=properties)
 
     def _delete_from_slice(self):
@@ -378,26 +386,26 @@ class WilabtSfaNode(OMFNode):
         slicename = self.get("slicename")
         self.sfaapi.remove_all_from_slice(slicename)
 
-    def _get_hostname(self):
+    def _get_host(self):
         """
         Get the attribute hostname.
         """
-        hostname = self.get("hostname")
-        if hostname:
-            return hostname
+        host = self.get("host")
+        if host:
+            return host
         else:
             return None
 
-    def _set_hostname_attr(self, node):
+    def _set_host_attr(self, node):
         """
         Query SFAAPI for the hostname of a certain host hrn and sets the
         attribute hostname, it will over write the previous value.
         """
         hosts_hrn = self.sfaapi.get_resources_hrn()
-        for hostname, hrn  in hosts_hrn.iteritems():
+        for host, hrn  in hosts_hrn.iteritems():
             if hrn == node:
-                hostname = hostname + '.wilab2.ilabt.iminds.be'
-                self.set("hostname", hostname)
+                host = host + '.wilab2.ilabt.iminds.be'
+                self.set("host", host)
 
     def _check_if_in_slice(self, hosts_hrn):
         """
@@ -413,32 +421,16 @@ class WilabtSfaNode(OMFNode):
         nodes_inslice = list(set(hosts_hrn) & set(slice_nodes_hrn))
         return nodes_inslice
 
-    def _do_ping(self, hostname):
-        """
-        Perform ping command on node's IP matching hostname.
-        """
-        ping_ok = False
-        guser = self.get("gatewayUser")
-        gw = self.get("gateway")
-        host = hostname + ".wilab2.ilabt.iminds.be"
-        command = "ssh %s@%s 'ping -c4 %s'" % (guser, gw, host)
-        (out, err) = lexec(command)
-        m = re.search("(\d+)% packet loss", str(out))
-        if m and int(m.groups()[0]) < 50:
-            ping_ok = True
-
-        return ping_ok
-
     def _blacklist_node(self, host_hrn):
         """
         Add mal functioning node to blacklist (in SFA API).
         """
         self.warning(" Blacklisting malfunctioning node ")
         self.sfaapi.blacklist_resource(host_hrn)
-        if not self._hostname:
-            self.set('hostname', None)
+        if not self._host:
+            self.set('host', None)
         else:
-            self.set('hostname', host_hrn.split('.').pop())
+            self.set('host', host_hrn.split('.').pop())
 
     def _put_node_in_provision(self, host_hrn):
         """
@@ -447,12 +439,12 @@ class WilabtSfaNode(OMFNode):
         """
         self.sfaapi.reserve_resource(host_hrn)
 
-    def _get_ip(self, hostname):
+    def _get_ip(self, host):
         """
         Query cache for the IP of a node with certain hostname
         """
         try:
-            ip = sshfuncs.gethostbyname(hostname)
+            ip = sshfuncs.gethostbyname(host)
         except:
             # Fail while trying to find the IP
             return None
@@ -463,11 +455,11 @@ class WilabtSfaNode(OMFNode):
         self.error(msg)
         raise RuntimeError, msg
 
-    def fail_node_not_alive(self, hostname=None):
-        msg = "Node %s not alive" % hostname
+    def fail_node_not_alive(self, host=None):
+        msg = "Node %s not alive" % host
         raise RuntimeError, msg
     
-    def fail_node_not_available(self, hostname):
+    def fail_node_not_available(self, host):
         msg = "Some nodes not available for provisioning"
         raise RuntimeError, msg
 

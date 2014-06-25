@@ -40,7 +40,7 @@ class OMFWifiInterface(OMFResource):
 
     """
     _rtype = "OMFWifiInterface"
-    _authorized_connections = ["OMFNode" , "OMFChannel"]
+    _authorized_connections = ["OMFNode" , "OMFChannel", "WilabtSfaNode"]
 
     @classmethod
     def _register_attributes(cls):

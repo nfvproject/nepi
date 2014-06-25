@@ -41,7 +41,7 @@ class OMFApplication(OMFResource):
 
     """
     _rtype = "OMFApplication"
-    _authorized_connections = ["OMFNode"]
+    _authorized_connections = ["OMFNode", "WilabtSfaNode"]
 
     @classmethod
     def _register_attributes(cls):
