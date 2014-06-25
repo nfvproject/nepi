@@ -56,6 +56,13 @@ class NS3BaseNode(NS3Base):
         return None
 
     @property
+    def arp(self):
+        from nepi.resources.ns3.ns3arpl3protocol import NS3BaseArpL3Protocol
+        arps = self.get_connected(NS3BaseArpL3Protocol.get_rtype())
+        if arps: return arps[0]
+        return None
+
+    @property
     def mobility(self):
         from nepi.resources.ns3.ns3mobilitymodel import NS3BaseMobilityModel
         mobility = self.get_connected(NS3BaseMobilityModel.get_rtype())
@@ -90,6 +97,10 @@ class NS3BaseNode(NS3Base):
         if ipv4:
             rms.add(ipv4)
 
+        arp = self.arp
+        if arp:
+            rms.add(arp)
+
         mobility = self.mobility
         if mobility:
             rms.add(mobility)
@@ -113,10 +124,20 @@ class NS3BaseNode(NS3Base):
         ipv4 = self.ipv4
         if ipv4:
             self.simulation.invoke(self.uuid, "AggregateObject", ipv4.uuid)
+            self._connected.add(ipv4.uuid)
+            ipv4._connected.add(self.uuid)
+
+        arp = self.arp
+        if arp:
+            self.simulation.invoke(self.uuid, "AggregateObject", arp.uuid)
+            self._connected.add(arp.uuid)
+            arp._connected.add(self.uuid)
 
         mobility = self.mobility
         if mobility:
             self.simulation.invoke(self.uuid, "AggregateObject", mobility.uuid)
+            self._connected.add(mobility.uuid)
+            mobility._connected.add(self.uuid)
 
     def _add_dce(self, dceapplications):
         dceapp = dceapplications[0]
