@@ -39,6 +39,8 @@ class NS3BaseArpL3Protocol(NS3Base):
     @property
     def _rms_to_wait(self):
         rms = set()
-        rms.add(self.node)
+        rms.add(self.simulation)
         return rms
 
+    def _connect_object(self):
+        pass
