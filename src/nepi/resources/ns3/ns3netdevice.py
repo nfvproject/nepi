@@ -128,10 +128,6 @@ class NS3BaseNetDevice(NS3Base):
         node = self.node
         rms.add(node)
 
-        ipv4 = node.ipv4
-        if node.ipv4:
-            rms.add(ipv4)
-
         rms.add(self.channel)
         return rms
 

@@ -101,7 +101,7 @@ def load_ns3_module():
     return ns3mod
 
 class NS3Wrapper(object):
-    def __init__(self, loglevel = logging.INFO):
+    def __init__(self, loglevel = logging.INFO, enable_dump = False):
         super(NS3Wrapper, self).__init__()
         # Thread used to run the simulation
         self._simulation_thread = None
@@ -129,6 +129,14 @@ class NS3Wrapper(object):
 
         # Collection of allowed ns3 classes
         self._allowed_types = None
+
+        # Object to dump instructions to reproduce and debug experiment
+        from ns3wrapper_debug import NS3WrapperDebuger
+        self._debuger = NS3WrapperDebuger(enabled = enable_dump)
+
+    @property
+    def debuger(self):
+        return self._debuger
 
     @property
     def ns3(self):
@@ -175,10 +183,21 @@ class NS3Wrapper(object):
         return self._objects.get(uuid)
 
     def factory(self, type_name, **kwargs):
+        """ This method should be used to construct ns-3 objects
+        that have a TypeId and related introspection information """
+
         if type_name not in self.allowed_types:
             msg = "Type %s not supported" % (type_name) 
             self.logger.error(msg)
- 
+
+        uuid = self.make_uuid()
+        
+        ### DEBUG
+        self.logger.debug("FACTORY %s( %s )" % (type_name, str(kwargs)))
+        
+        self.debuger.dump_factory(uuid, type_name, kwargs)
+        ########
+
         factory = self.ns3.ObjectFactory()
         factory.SetTypeId(type_name)
 
@@ -188,16 +207,31 @@ class NS3Wrapper(object):
 
         obj = factory.Create()
 
-        uuid = self.make_uuid()
         self._objects[uuid] = obj
 
+        ### DEBUG
+        self.logger.debug("RET FACTORY ( uuid %s ) %s = %s( %s )" % (
+            str(uuid), str(obj), type_name, str(kwargs)))
+        ########
+ 
         return uuid
 
     def create(self, clazzname, *args):
+        """ This method should be used to construct ns-3 objects that
+        do not have a TypeId (e.g. Values) """
+
         if not hasattr(self.ns3, clazzname):
             msg = "Type %s not supported" % (clazzname) 
             self.logger.error(msg)
-     
+
+        uuid = self.make_uuid()
+        
+        ### DEBUG
+        self.logger.debug("CREATE %s( %s )" % (clazzname, str(args)))
+    
+        self.debuger.dump_create(uuid, clazzname, args)
+        ########
+
         clazz = getattr(self.ns3, clazzname)
  
         # arguments starting with 'uuid' identify ns-3 C++
@@ -206,47 +240,81 @@ class NS3Wrapper(object):
        
         obj = clazz(*realargs)
         
-        uuid = self.make_uuid()
         self._objects[uuid] = obj
+
+        ### DEBUG
+        self.logger.debug("RET CREATE ( uuid %s ) %s = %s( %s )" % (str(uuid), 
+            str(obj), clazzname, str(args)))
+        ########
 
         return uuid
 
     def invoke(self, uuid, operation, *args, **kwargs):
+        ### DEBUG
+        self.logger.debug("INVOKE %s -> %s( %s, %s ) " % (
+            uuid, operation, str(args), str(kwargs)))
+        ########
+
+        result = None
+        newuuid = None
+
         if operation == "isRunning":
-            return self.is_running
-        if operation == "isAppRunning":
-            return self._is_app_running(uuid)
-        if operation == "addStaticRoute":
-            return self._add_static_route(uuid, *args)
+            result = self.is_running
+        elif operation == "isAppRunning":
+            result = self._is_app_running(uuid)
+        elif operation == "addStaticRoute":
+            ### DEBUG
+            self.debuger.dump_add_static_route(uuid, args)
+            ########
 
-        if uuid.startswith(SINGLETON):
-            obj = self._singleton(uuid)
+            result = self._add_static_route(uuid, *args)
         else:
-            obj = self.get_object(uuid)
-        
-        method = getattr(obj, operation)
+            newuuid = self.make_uuid()
 
-        # arguments starting with 'uuid' identify ns-3 C++
-        # objects and must be replaced by the actual object
-        realargs = self.replace_args(args)
-        realkwargs = self.replace_kwargs(kwargs)
+            ### DEBUG
+            self.debuger.dump_invoke(newuuid, uuid, operation, args, kwargs)
+            ########
 
-        result = method(*realargs, **realkwargs)
+            if uuid.startswith(SINGLETON):
+                obj = self._singleton(uuid)
+            else:
+                obj = self.get_object(uuid)
+            
+            method = getattr(obj, operation)
 
-        # If the result is not an object, no need to 
-        # keep a reference. Directly return value.
-        if result is None or type(result) in [bool, float, long, str, int]:
-            return result
-      
-        newuuid = self.make_uuid()
-        self._objects[newuuid] = result
+            # arguments starting with 'uuid' identify ns-3 C++
+            # objects and must be replaced by the actual object
+            realargs = self.replace_args(args)
+            realkwargs = self.replace_kwargs(kwargs)
 
-        return newuuid
+            result = method(*realargs, **realkwargs)
+
+            # If the result is an object (not a base value),
+            # then keep track of the object a return the object
+            # reference (newuuid)
+            if not (result is None or type(result) in [
+                    bool, float, long, str, int]):
+                self._objects[newuuid] = result
+                result = newuuid
+
+        ### DEBUG
+        self.logger.debug("RET INVOKE %s%s = %s -> %s(%s, %s) " % (
+            "(uuid %s) " % str(newuuid) if newuuid else "", str(result), uuid, 
+            operation, str(args), str(kwargs)))
+        ########
+
+        return result
 
     def _set_attr(self, obj, name, ns3_value):
         obj.SetAttribute(name, ns3_value)
 
     def set(self, uuid, name, value):
+        ### DEBUG
+        self.logger.debug("SET %s %s %s" % (uuid, name, str(value)))
+    
+        self.debuger.dump_set(uuid, name, value)
+        ########
+
         obj = self.get_object(uuid)
         type_name = obj.GetInstanceTypeId().GetName()
         ns3_value = self._attr_from_string_to_ns3_value(type_name, name, value)
@@ -269,12 +337,23 @@ class NS3Wrapper(object):
         if not event_executed[0]:
             self._set_attr(obj, name, ns3_value)
 
+        ### DEBUG
+        self.logger.debug("RET SET %s = %s -> set(%s, %s)" % (str(value), uuid, name, 
+            str(value)))
+        ########
+
         return value
 
     def _get_attr(self, obj, name, ns3_value):
         obj.GetAttribute(name, ns3_value)
 
     def get(self, uuid, name):
+        ### DEBUG
+        self.logger.debug("GET %s %s" % (uuid, name))
+        
+        self.debuger.dump_get(uuid, name)
+        ########
+
         obj = self.get_object(uuid)
         type_name = obj.GetInstanceTypeId().GetName()
         ns3_value = self._create_attr_ns3_value(type_name, name)
@@ -289,9 +368,19 @@ class NS3Wrapper(object):
         if not event_executed[0]:
             self._get_attr(obj, name, ns3_value)
 
-        return self._attr_from_ns3_value_to_string(type_name, name, ns3_value)
+        result = self._attr_from_ns3_value_to_string(type_name, name, ns3_value)
+
+        ### DEBUG
+        self.logger.debug("RET GET %s = %s -> get(%s)" % (str(result), uuid, name))
+        ########
+
+        return result
 
     def start(self):
+        ### DEBUG
+        self.debuger.dump_start()
+        ########
+
         # Launch the simulator thread and Start the
         # simulator in that thread
         self._condition = threading.Condition()
@@ -302,13 +391,29 @@ class NS3Wrapper(object):
         self._simulator_thread.start()
         self._started = True
 
+        ### DEBUG
+        self.logger.debug("START")
+        ########
+
     def stop(self, time = None):
+        ### DEBUG
+        self.debuger.dump_stop(time=time)
+        ########
+        
         if time is None:
             self.ns3.Simulator.Stop()
         else:
             self.ns3.Simulator.Stop(self.ns3.Time(time))
 
+        ### DEBUG
+        self.logger.debug("STOP time=%s" % str(time))
+        ########
+
     def shutdown(self):
+        ### DEBUG
+        self.debuger.dump_shutdown()
+        ########
+
         while not self.ns3.Simulator.IsFinished():
             #self.logger.debug("Waiting for simulation to finish")
             time.sleep(0.5)
@@ -323,6 +428,10 @@ class NS3Wrapper(object):
         
         sys.stdout.flush()
         sys.stderr.flush()
+
+        ### DEBUG
+        self.logger.debug("SHUTDOWN")
+        ########
 
     def _simulator_run(self, condition):
         # Run simulation
