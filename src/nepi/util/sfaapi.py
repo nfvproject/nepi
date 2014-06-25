@@ -218,7 +218,7 @@ class SFAAPI(object):
 
 
             resources_urn = self._get_resources_urn(resources_hrn_new)
-            rspec = self.rspec_proc.build_sfa_rspec(slicename, resources_urn, leases)
+            rspec = self.rspec_proc.build_sfa_rspec(slicename, resources_urn, None, leases)
             f = open("/tmp/rspec_input.rspec", "w")
             f.truncate(0)
             f.write(rspec)

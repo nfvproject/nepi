@@ -48,9 +48,10 @@ class WilabtSfaNodeTestCase(unittest.TestCase):
 
     def setUp(self):
         self.ec = DummyEC()
-        slicepl = os.environ.get('SFA_SLICE')
-        slicename = ['ple'] + slicepl.split('_')
-        self.slicename = '.'.join(slicename)
+        #slicepl = os.environ.get('SFA_SLICE')
+        #slicename = ['ple'] + slicepl.split('_')
+        #self.slicename = '.'.join(slicename)
+        self.slicename = os.environ.get('SFA_SLICE')
         self.sfauser = os.environ.get('SFA_USER')
         self.sfaPrivateKey = os.environ.get('SFA_PK')
         
@@ -62,14 +63,12 @@ class WilabtSfaNodeTestCase(unittest.TestCase):
         the same credentials, the same object of the api is used.
         """
         node1 = self.ec.register_resource("WilabtSfaNode")
-        self.ec.set(node1, "hostname", "zotacB5")
+        self.ec.set(node1, "host", "zotacE5")
         self.ec.set(node1, "slicename", self.slicename)
         self.ec.set(node1, "sfauser", self.sfauser)
         self.ec.set(node1, "sfaPrivateKey", self.sfaPrivateKey)
         self.ec.set(node1, "gatewayUser", "nepi")
         self.ec.set(node1, "gateway", "bastion.test.iminds.be")
-        self.ec.set(node1, "cleanHome", True)
-        self.ec.set(node1, "cleanProcesses", True)
 
         wnode_rm1 = self.ec.get_resource(node1)
 
@@ -81,14 +80,12 @@ class WilabtSfaNodeTestCase(unittest.TestCase):
         self.assertEquals(len(api1._blacklist), 0)
 
         node2 = self.ec.register_resource("WilabtSfaNode")
-        self.ec.set(node2, "hostname", "zotacM20")
+        self.ec.set(node2, "host", "zotacM20")
         self.ec.set(node2, "slicename", self.slicename)
         self.ec.set(node2, "sfauser", self.sfauser)
         self.ec.set(node2, "sfaPrivateKey", self.sfaPrivateKey)
         self.ec.set(node1, "gatewayUser", "nepi")
         self.ec.set(node1, "gateway", "bastion.test.iminds.be")
-        self.ec.set(node1, "cleanHome", True)
-        self.ec.set(node1, "cleanProcesses", True)
 
         wnode_rm2 = self.ec.get_resource(node2)
         api2 = wnode_rm2.sfaapi
@@ -103,25 +100,23 @@ class WilabtSfaNodeTestCase(unittest.TestCase):
         Check that the method do_discover reserve the right node.
         """
         node1 = self.ec.register_resource("WilabtSfaNode")
-        self.ec.set(node1, "hostname", "zotacB5")
+        self.ec.set(node1, "host", "zotacE5")
         self.ec.set(node1, "slicename", self.slicename)
         self.ec.set(node1, "sfauser", self.sfauser)
         self.ec.set(node1, "sfaPrivateKey", self.sfaPrivateKey)
         self.ec.set(node1, "gatewayUser", "nepi")
         self.ec.set(node1, "gateway", "bastion.test.iminds.be")
-        self.ec.set(node1, "cleanHome", True)
-        self.ec.set(node1, "cleanProcesses", True)
 
         wnode_rm = self.ec.get_resource(node1)
        
-        hostname = wnode_rm.get("hostname")
-        self.assertIsNotNone(hostname)
+        host = wnode_rm.get("host")
+        self.assertIsNotNone(host)
 
         self.assertEquals(wnode_rm.sfaapi._reserved, set())
 
         wnode_rm.do_discover()
         self.assertEquals(len(wnode_rm.sfaapi._reserved), 1)
-        self.assertEquals(wnode_rm._node_to_provision, 'wilab2.ilabt.iminds.be.zotacB5')
+        self.assertEquals(wnode_rm._node_to_provision, 'wilab2.ilabt.iminds.be.zotacE5')
 
         wnode_rm.sfaapi._reserved = set()
         wnode_rm.sfaapi._blacklist = set()
@@ -133,14 +128,12 @@ class WilabtSfaNodeTestCase(unittest.TestCase):
         its well functioning.
         """
         node = self.ec.register_resource("WilabtSfaNode")
-        self.ec.set(node, "hostname", "zotacB5")
+        self.ec.set(node, "host", "zotacE5")
         self.ec.set(node, "slicename", self.slicename)
         self.ec.set(node, "sfauser", self.sfauser)
         self.ec.set(node, "sfaPrivateKey", self.sfaPrivateKey)
         self.ec.set(node, "gatewayUser", "nepi")
         self.ec.set(node, "gateway", "bastion.test.iminds.be")
-        self.ec.set(node, "cleanHome", True)
-        self.ec.set(node, "cleanProcesses", True)
 
         wnode_rm = self.ec.get_resource(node)
 
@@ -148,16 +141,17 @@ class WilabtSfaNodeTestCase(unittest.TestCase):
         self.assertIsNone(wnode_rm._node_to_provision)
 
         wnode_rm.do_discover()
-        with self.assertRaises(RuntimeError):
-            wnode_rm.do_provision()
+        #with self.assertRaises(RuntimeError):
+        #    wnode_rm.do_provision()
+        wnode_rm.do_provision()
 
         if not self.ec.abort and self.ec.state(node) > 2:
             cmd = 'echo "IT WORKED"'
             ((out, err), proc) = wnode_rm.execute(cmd)
             self.assertEquals(out.strip(), "IT WORKED")
 
-        wnode_rm.sfaapi._reserved = set()
-        wnode_rm.sfaapi._blacklist = set()
+        #wnode_rm.sfaapi._reserved = set()
+        #wnode_rm.sfaapi._blacklist = set()
 
         self.ec.shutdown()
 
@@ -167,14 +161,12 @@ class WilabtSfaNodeTestCase(unittest.TestCase):
         Test deploy 1 node.
         """
         node = self.ec.register_resource("WilabtSfaNode")
-        self.ec.set(node, "hostname", "zotacM20")
+        self.ec.set(node, "host", "zotacM20")
         self.ec.set(node, "slicename", self.slicename)
         self.ec.set(node, "sfauser", self.sfauser)
         self.ec.set(node, "sfaPrivateKey", self.sfaPrivateKey)
         self.ec.set(node, "gatewayUser", "nepi")
         self.ec.set(node, "gateway", "bastion.test.iminds.be")
-        self.ec.set(node, "cleanHome", True)
-        self.ec.set(node, "cleanProcesses", True)
 
         self.ec.deploy()
         self.ec.wait_deployed(node)
@@ -194,24 +186,20 @@ class WilabtSfaNodeTestCase(unittest.TestCase):
         Test deploy 2 nodes.
         """
         node1 = self.ec.register_resource("WilabtSfaNode")
-        self.ec.set(node1, "hostname", "zotacB5")
+        self.ec.set(node1, "host", "zotacE3")
         self.ec.set(node1, "slicename", self.slicename)
         self.ec.set(node1, "sfauser", self.sfauser)
         self.ec.set(node1, "sfaPrivateKey", self.sfaPrivateKey)
         self.ec.set(node1, "gatewayUser", "nepi")
         self.ec.set(node1, "gateway", "bastion.test.iminds.be")
-        self.ec.set(node1, "cleanHome", True)
-        self.ec.set(node1, "cleanProcesses", True)
 
         node2 = self.ec.register_resource("WilabtSfaNode")
-        self.ec.set(node2, "hostname", "zotacM20")
+        self.ec.set(node2, "host", "zotacM20")
         self.ec.set(node2, "slicename", self.slicename)
         self.ec.set(node2, "sfauser", self.sfauser)
         self.ec.set(node2, "sfaPrivateKey", self.sfaPrivateKey)
         self.ec.set(node2, "gatewayUser", "nepi")
         self.ec.set(node2, "gateway", "bastion.test.iminds.be")
-        self.ec.set(node2, "cleanHome", True)
-        self.ec.set(node2, "cleanProcesses", True)
 
         self.ec.deploy()
         self.ec.wait_deployed([node1, node2])
@@ -233,24 +221,20 @@ class WilabtSfaNodeTestCase(unittest.TestCase):
         Test deploy 2 nodes, already in the slice.
         """
         node1 = self.ec.register_resource("WilabtSfaNode")
-        self.ec.set(node1, "hostname", "zotacM20")
+        self.ec.set(node1, "host", "zotacM20")
         self.ec.set(node1, "slicename", self.slicename)
         self.ec.set(node1, "sfauser", self.sfauser)
         self.ec.set(node1, "sfaPrivateKey", self.sfaPrivateKey)
         self.ec.set(node1, "gatewayUser", "nepi")
         self.ec.set(node1, "gateway", "bastion.test.iminds.be")
-        self.ec.set(node1, "cleanHome", True)
-        self.ec.set(node1, "cleanProcesses", True)
 
         node2 = self.ec.register_resource("WilabtSfaNode")
-        self.ec.set(node2, "hostname", "zotacB5")
+        self.ec.set(node2, "host", "zotacE3")
         self.ec.set(node2, "slicename", self.slicename)
         self.ec.set(node2, "sfauser", self.sfauser)
         self.ec.set(node2, "sfaPrivateKey", self.sfaPrivateKey)
         self.ec.set(node2, "gatewayUser", "nepi")
         self.ec.set(node2, "gateway", "bastion.test.iminds.be")
-        self.ec.set(node2, "cleanHome", True)
-        self.ec.set(node2, "cleanProcesses", True)
 
         self.ec.deploy()
         self.ec.wait_deployed([node1, node2])

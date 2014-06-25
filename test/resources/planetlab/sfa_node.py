@@ -50,7 +50,7 @@ class PLSfaNodeTestCase(unittest.TestCase):
 
     def setUp(self):
         self.ec = DummyEC()
-        self.username = os.environ.get('SFA_SLICE')
+        self.username = 'inria_lguevgeo'
         self.sfauser = os.environ.get('SFA_USER')
         self.sfaPrivateKey = os.environ.get('SFA_PK')
         

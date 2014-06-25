@@ -168,7 +168,6 @@ class SfaRSpecProcessing(object):
             # TODO: take into account the case where we send a dict of URNs without keys
             #resource['component_id'] = resource.pop('urn')
             resource['component_id'] = urn
-            print resource['component_id']
             resource_hrn, resource_type = urn_to_hrn(resource['component_id'])
             # build component_manager_id
             top_auth = resource_hrn.split('.')[0]
@@ -214,8 +213,8 @@ class SfaRSpecProcessing(object):
             for i, n in enumerate(b):
                 if 'sliver_type name="raw-pc"' in n:
                     b[i] = '<sliver_type name="raw-pc">'
-                    #b.insert(i+1, '<disk_image name="urn:publicid:IDN+wall2.ilabt.iminds.be+image+emulab-ops//%s"/>' % properties['disk_image'])
-                    b.insert(i+1, '<disk_image name="urn:publicid:IDN+wilab2.ilabt.iminds.be+image+nepi:%s"/>' % properties['disk_image'])
+                    b.insert(i+1, '<disk_image name="urn:publicid:IDN+wall2.ilabt.iminds.be+image+emulab-ops//%s"/>' % properties['disk_image'])
+                    #b.insert(i+1, '<disk_image name="urn:publicid:IDN+wilab2.ilabt.iminds.be+image+nepi:%s"/>' % properties['disk_image'])
                     b.insert(i+2, '</sliver_type>')
             string = ''.join(b)
         self._log.debug("request rspec : %s" % string)

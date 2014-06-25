@@ -25,7 +25,8 @@ import os
 exp_id = "sfa_test"
 ec = ExperimentController(exp_id)
 
-username = os.environ.get('SFA_SLICE')
+#username = os.environ.get('SFA_SLICE')
+username = 'inria_lguevgeo'
 sfauser = os.environ.get('SFA_USER')
 sfaPrivateKey = os.environ.get('SFA_PK')
 
@@ -39,7 +40,7 @@ ec.set(node1, "cleanHome", True)
 ec.set(node1, "cleanProcesses", True)
 
 node2 = ec.register_resource("PlanetlabSfaNode")
-ec.set(node2, "hostname", 'planetlab3.xeno.cl.cam.ac.uk')
+ec.set(node2, "hostname", 'onelab1.info.ucl.ac.be')
 ec.set(node2, "username", username)
 ec.set(node2, "sfauser", sfauser)
 ec.set(node2, "sfaPrivateKey", sfaPrivateKey)
