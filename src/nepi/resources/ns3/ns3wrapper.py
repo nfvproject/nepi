@@ -174,7 +174,7 @@ class NS3Wrapper(object):
 
     @property
     def is_running(self):
-        return self._started and self.ns3.Simulator.IsFinished()
+        return self._started and not self.ns3.Simulator.IsFinished()
 
     def make_uuid(self):
         return "uuid%s" % uuid.uuid4()
