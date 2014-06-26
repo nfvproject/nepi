@@ -115,7 +115,7 @@ class OMF6API(Logger):
 
     def check_ready(self, xmpp):
         delay = 1.0
-        for i in xrange(4):
+        for i in xrange(10):
             if xmpp.ready:
                 break
             else:
@@ -123,7 +123,7 @@ class OMF6API(Logger):
                 delay = delay * 1.5
         else:
             msg = "XMPP Client is not ready after long time"
-            self.error(msg, out, err)
+            self.error(msg)
             raise RuntimeError, msg
 
     @property
