@@ -287,7 +287,10 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
 
             self._client.start()
 
-            # Wait until the Simulation is actually started...
+            """
+            # XXX: IS THIS REALLY NEEDED??
+            # Wait until the Simulation is actually started... 
+
             is_running = False
             for i in xrange(1000):
                 is_running = self.invoke(SIMULATOR_UUID, "isRunning")
@@ -301,6 +304,7 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
                     msg = " Simulation did not start"
                     self.error(msg)
                     raise RuntimeError
+            """
 
             self.set_started()
         else:
