@@ -126,7 +126,7 @@ ec.set(node, "hostname", "localhost")
 simu = ec.register_resource("LinuxNS3Simulation")
 ec.set(simu, "verbose", True)
 ec.set(simu, "enableDump", True)
-ec.set (simu, "StopTime", "22s")
+ec.set (simu, "stopTime", "22s")
 ec.register_connection(simu, node)
 
 x = 30

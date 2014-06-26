@@ -108,6 +108,10 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
             type = Types.Bool,
             flags = Flags.Design)
 
+        stoptime = Attribute("stopTime",
+            "Time at which the simulation will stop",
+            flags = Flags.Design)
+
         cls._register_attribute(impl_type)
         cls._register_attribute(sched_type)
         cls._register_attribute(check_sum)
@@ -118,6 +122,7 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         cls._register_attribute(ns3_version)
         cls._register_attribute(pybindgen_version)
         cls._register_attribute(populate_routing_tables)
+        cls._register_attribute(stoptime)
 
     def __init__(self, ec, guid):
         LinuxApplication.__init__(self, ec, guid)
@@ -287,10 +292,8 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
 
             self._client.start()
 
-            """
-            # XXX: IS THIS REALLY NEEDED??
+            # XXX: IS THIS REALLY NEEDED??!!!
             # Wait until the Simulation is actually started... 
-
             is_running = False
             for i in xrange(1000):
                 is_running = self.invoke(SIMULATOR_UUID, "isRunning")
@@ -304,7 +307,6 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
                     msg = " Simulation did not start"
                     self.error(msg)
                     raise RuntimeError
-            """
 
             self.set_started()
         else:
@@ -317,7 +319,11 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
 
         """
         if self.state == ResourceState.STARTED:
-            self._client.stop() 
+            time = None
+            if self.get("stopTime"):
+                time = self.get("stopTime")
+
+            self._client.stop(time=time) 
             self.set_stopped()
 
     def do_release(self):
