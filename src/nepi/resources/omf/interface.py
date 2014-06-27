@@ -307,7 +307,7 @@ class OMFWifiInterface(OMFResource):
 
         """
         if self._omf_api:
-            if self.get('version') == "6":
+            if self.get('version') == "6" and self._topic_iface :
                 if not self.release_id:
                     self.release_id = os.urandom(16).encode('hex')
                     self._omf_api.frcp_release( self.release_id, self.node.get('hostname'),self._topic_iface, res_id=self._topic_iface)
