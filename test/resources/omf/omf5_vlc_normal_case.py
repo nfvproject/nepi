@@ -37,16 +37,16 @@ class OMFResourceFactoryTestCase(unittest.TestCase):
     def test_creation_phase(self):
 
         self.assertEquals(OMFNode.get_rtype(), "OMFNode")
-        self.assertEquals(len(OMFNode._attributes), 7)
+        self.assertEquals(len(OMFNode._attributes), 8)
 
         self.assertEquals(OMFWifiInterface.get_rtype(), "OMFWifiInterface")
-        self.assertEquals(len(OMFWifiInterface._attributes), 11)
+        self.assertEquals(len(OMFWifiInterface._attributes), 12)
 
         self.assertEquals(OMFChannel.get_rtype(), "OMFChannel")
-        self.assertEquals(len(OMFChannel._attributes), 7)
+        self.assertEquals(len(OMFChannel._attributes), 8)
 
         self.assertEquals(OMFApplication.get_rtype(), "OMFApplication")
-        self.assertEquals(len(OMFApplication._attributes), 13)
+        self.assertEquals(len(OMFApplication._attributes), 14)
 
 class OMFEachTestCase(unittest.TestCase):
     def setUp(self):

@@ -60,7 +60,6 @@ class OMFVLCWrongCaseAllCritical(unittest.TestCase):
         self.ec.set(self.app1, 'command', "/opt/vlc-1.1.13/cvlc /opt/10-by-p0d.avi --sout '#rtp{dst=10.0.0.49,port=1234,mux=ts}'")
         self.ec.set(self.app1, 'env', "DISPLAY=localhost:10.0 XAUTHORITY=/root/.Xauthority")
 
-
         self.ec.register_connection(self.app1, self.node1)
         self.ec.register_connection(self.node1, self.iface1)
 

@@ -37,16 +37,16 @@ class OMFResourceFactoryTestCase(unittest.TestCase):
     def test_creation_phase(self):
 
         self.assertEquals(OMFNode.get_rtype(), "OMFNode")
-        self.assertEquals(len(OMFNode._attributes), 7)
+        self.assertEquals(len(OMFNode._attributes), 8)
 
         self.assertEquals(OMFWifiInterface.get_rtype(), "OMFWifiInterface")
-        self.assertEquals(len(OMFWifiInterface._attributes), 11)
+        self.assertEquals(len(OMFWifiInterface._attributes), 12)
 
         self.assertEquals(OMFChannel.get_rtype(), "OMFChannel")
-        self.assertEquals(len(OMFChannel._attributes), 7)
+        self.assertEquals(len(OMFChannel._attributes), 8)
 
         self.assertEquals(OMFApplication.get_rtype(), "OMFApplication")
-        self.assertEquals(len(OMFApplication._attributes), 13)
+        self.assertEquals(len(OMFApplication._attributes), 14)
 
 class OMFEachTestCase(unittest.TestCase):
     def setUp(self):
@@ -221,11 +221,11 @@ class OMFVLCNormalCase(unittest.TestCase):
 
         ec.wait_finished([self.app1, self.app2, self.app3,self.app4, self.app5])
 
-        self.assertEquals(round(tdiffsec(ec.get_resource(self.app2).start_time, ec.get_resource(self.app1).start_time),0), 3.0)
-        self.assertEquals(round(tdiffsec(ec.get_resource(self.app3).start_time, ec.get_resource(self.app2).start_time),0), 2.0)
-        self.assertEquals(round(tdiffsec(ec.get_resource(self.app4).start_time, ec.get_resource(self.app3).start_time),0), 3.0)
-        self.assertEquals(round(tdiffsec(ec.get_resource(self.app5).start_time, ec.get_resource(self.app3).start_time),0), 20.0)
-        self.assertEquals(round(tdiffsec(ec.get_resource(self.app5).start_time, ec.get_resource(self.app1).start_time),0), 25.0)
+        self.assertGreaterEqual(round(tdiffsec(ec.get_resource(self.app2).start_time, ec.get_resource(self.app1).start_time),0), 3.0)
+        self.assertGreaterEqual(round(tdiffsec(ec.get_resource(self.app3).start_time, ec.get_resource(self.app2).start_time),0), 2.0)
+        self.assertGreaterEqual(round(tdiffsec(ec.get_resource(self.app4).start_time, ec.get_resource(self.app3).start_time),0), 3.0)
+        self.assertGreaterEqual(round(tdiffsec(ec.get_resource(self.app5).start_time, ec.get_resource(self.app3).start_time),0), 2.0)
+        self.assertGreaterEqual(round(tdiffsec(ec.get_resource(self.app5).start_time, ec.get_resource(self.app1).start_time),0), 25.0)
 
         self.assertEquals(ec.get_resource(self.node1).state, ResourceState.STARTED)
         self.assertEquals(ec.get_resource(self.iface1).state, ResourceState.STARTED)
