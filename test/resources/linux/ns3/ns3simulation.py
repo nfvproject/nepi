@@ -21,6 +21,8 @@
 from nepi.execution.ec import ExperimentController 
 from nepi.execution.trace import TraceAttr
 
+from test_utils import skipIfNotAlive
+
 import os
 import time
 import unittest
@@ -43,12 +45,10 @@ def add_ns3_node(ec, simu):
 
     return node
 
-def add_point2point_device(ec, node, address = None,  prefix = None):
+def add_point2point_device(ec, node, ip, prefix):
     dev = ec.register_resource("ns3::PointToPointNetDevice")
-    if address:
-       ec.set(dev, "ip", address)
-    if prefix:
-       ec.set(dev, "prefix", prefix)
+    ec.set(dev, "ip", ip)
+    ec.set(dev, "prefix", prefix)
     ec.register_connection(node, dev)
 
     queue = ec.register_resource("ns3::DropTailQueue")
@@ -56,12 +56,10 @@ def add_point2point_device(ec, node, address = None,  prefix = None):
 
     return dev
 
-def add_csma_device(ec, node, address = None, prefix = None):
+def add_csma_device(ec, node, ip, prefix):
     dev = ec.register_resource("ns3::CsmaNetDevice")
-    if address:
-        ec.set(dev, "ip", address)
-    if prefix:
-        ec.set(dev, "prefix", prefix)
+    ec.set(dev, "ip", ip)
+    ec.set(dev, "prefix", prefix)
     ec.register_connection(node, dev)
 
     queue = ec.register_resource("ns3::DropTailQueue")
@@ -69,13 +67,11 @@ def add_csma_device(ec, node, address = None, prefix = None):
 
     return dev
 
-def add_wifi_device(ec, node, address = None, prefix = None, 
+def add_wifi_device(ec, node, ip, prefix, 
         access_point = False):
     dev = ec.register_resource("ns3::WifiNetDevice")
-    if address:
-        ec.set(dev, "ip", address)
-    if prefix:
-        ec.set(dev, "prefix", prefix)
+    ec.set(dev, "ip", ip)
+    ec.set(dev, "prefix", prefix)
     ec.register_connection(node, dev)
 
     phy = ec.register_resource("ns3::YansWifiPhy")
@@ -136,55 +132,18 @@ class LinuxNS3SimulationTest(unittest.TestCase):
         self.fedora_user = "inria_nepi"
         self.fedora_identity = "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'])
 
-    def test_local_p2p_ping(self):
-        ec = ExperimentController(exp_id = "test-ns3-local-p2p")
-        
-        node = ec.register_resource("LinuxNode")
-        ec.set(node, "hostname", "localhost")
-
-        simu = ec.register_resource("LinuxNS3Simulation")
-        ec.set(simu, "verbose", True)
-        ec.register_connection(simu, node)
-
-        nsnode1 = add_ns3_node(ec, simu)
-        dev1 = add_point2point_device(ec, nsnode1, "10.0.0.1", "30")
-
-        nsnode2 = add_ns3_node(ec, simu)
-        dev2 = add_point2point_device(ec, nsnode2, "10.0.0.2", "30")
-
-        # Create channel
-        chan = ec.register_resource("ns3::PointToPointChannel")
-        ec.set(chan, "Delay", "0s")
-        ec.register_connection(chan, dev1)
-        ec.register_connection(chan, dev2)
-
-        ### create pinger
-        ping = ec.register_resource("ns3::V4Ping")
-        ec.set (ping, "Remote", "10.0.0.2")
-        ec.set (ping, "Interval", "1s")
-        ec.set (ping, "Verbose", True)
-        ec.set (ping, "StartTime", "0s")
-        ec.set (ping, "StopTime", "20s")
-        ec.register_connection(ping, nsnode1)
-
-        ec.deploy()
-
-        ec.wait_finished([ping])
-        
-        stdout = ec.trace(simu, "stdout") 
-
-        expected = "20 packets transmitted, 20 received, 0% packet loss"
-        self.assertTrue(stdout.find(expected) > -1)
-
-        ec.shutdown()
-
-    def test_simple_p2p_ping(self):
+    @skipIfNotAlive
+    def t_p2p_ping(self, host, user = None, identity = None):
         ec = ExperimentController(exp_id = "test-ns3-p2p-ping")
         
         node = ec.register_resource("LinuxNode")
-        ec.set(node, "hostname", self.fedora_host)
-        ec.set(node, "username", self.fedora_user)
-        ec.set(node, "identity", self.fedora_identity)
+        if host == "localhost":
+            ec.set(node, "hostname", "localhost")
+        else:
+            ec.set(node, "hostname", host)
+            ec.set(node, "username", user)
+            ec.set(node, "identity", identity)
+        
         ec.set(node, "cleanProcesses", True)
         #ec.set(node, "cleanHome", True)
 
@@ -224,13 +183,18 @@ class LinuxNS3SimulationTest(unittest.TestCase):
 
         ec.shutdown()
 
-    def test_simple_cmsa_ping(self):
+    @skipIfNotAlive
+    def t_csma_ping(self, host, user = None, identity = None):
         ec = ExperimentController(exp_id = "test-ns3-csma-ping")
         
         node = ec.register_resource("LinuxNode")
-        ec.set(node, "hostname", self.fedora_host)
-        ec.set(node, "username", self.fedora_user)
-        ec.set(node, "identity", self.fedora_identity)
+        if host == "localhost":
+            ec.set(node, "hostname", "localhost")
+        else:
+            ec.set(node, "hostname", host)
+            ec.set(node, "username", user)
+            ec.set(node, "identity", identity)
+        
         ec.set(node, "cleanProcesses", True)
         #ec.set(node, "cleanHome", True)
 
@@ -270,13 +234,18 @@ class LinuxNS3SimulationTest(unittest.TestCase):
 
         ec.shutdown()
 
-    def test_compile_local_source(self):
-        ec = ExperimentController(exp_id = "test-ns3-local-source")
+    @skipIfNotAlive
+    def t_user_sources(self, host, user = None, identity = None):
+        ec = ExperimentController(exp_id = "test-ns3-user-sources")
         
         node = ec.register_resource("LinuxNode")
-        ec.set(node, "hostname", self.fedora_host)
-        ec.set(node, "username", self.fedora_user)
-        ec.set(node, "identity", self.fedora_identity)
+        if host == "localhost":
+            ec.set(node, "hostname", "localhost")
+        else:
+            ec.set(node, "hostname", host)
+            ec.set(node, "username", user)
+            ec.set(node, "identity", identity)
+        
         ec.set(node, "cleanProcesses", True)
         #ec.set(node, "cleanHome", True)
 
@@ -320,13 +289,18 @@ class LinuxNS3SimulationTest(unittest.TestCase):
         
         ec.shutdown()
 
-    def test_compile_debug_mode(self):
+    @skipIfNotAlive
+    def t_compile_debug_mode(self, host, user = None, identity = None):
         ec = ExperimentController(exp_id = "test-ns3-debug-mode")
         
         node = ec.register_resource("LinuxNode")
-        ec.set(node, "hostname", self.fedora_host)
-        ec.set(node, "username", self.fedora_user)
-        ec.set(node, "identity", self.fedora_identity)
+        if host == "localhost":
+            ec.set(node, "hostname", host)
+        else:
+            ec.set(node, "hostname", host)
+            ec.set(node, "username", user)
+            ec.set(node, "identity", identity)
+
         ec.set(node, "cleanProcesses", True)
         #ec.set(node, "cleanHome", True)
 
@@ -372,14 +346,19 @@ class LinuxNS3SimulationTest(unittest.TestCase):
 
         ec.shutdown()
 
-    def test_real_time(self):
+    @skipIfNotAlive
+    def t_real_time(self, host, user = None, identity = None):
         ec = ExperimentController(exp_id = "test-ns3-real-time")
         
         node = ec.register_resource("LinuxNode")
-        ec.set(node, "hostname", self.fedora_host)
-        ec.set(node, "username", self.fedora_user)
-        ec.set(node, "identity", self.fedora_identity)
-        ec.set(node, "cleanProcesses", True)
+        if host == "localhost":
+            ec.set(node, "hostname", "localhost")
+        else:
+            ec.set(node, "hostname", host)
+            ec.set(node, "username", user)
+            ec.set(node, "identity", identity)
+            ec.set(node, "cleanProcesses", True)
+
         #ec.set(node, "cleanHome", True)
 
         simu = ec.register_resource("LinuxNS3Simulation")
@@ -428,13 +407,18 @@ class LinuxNS3SimulationTest(unittest.TestCase):
 
         ec.shutdown()
 
-    def test_traces(self):
+    @skipIfNotAlive
+    def t_traces(self, host, user = None, identity = None):
         ec = ExperimentController(exp_id = "test-ns3-traces")
         
         node = ec.register_resource("LinuxNode")
-        ec.set(node, "hostname", self.fedora_host)
-        ec.set(node, "username", self.fedora_user)
-        ec.set(node, "identity", self.fedora_identity)
+        if host == "localhost":
+            ec.set(node, "hostname", "localhost")
+        else:
+            ec.set(node, "hostname", self.fedora_host)
+            ec.set(node, "username", self.fedora_user)
+            ec.set(node, "identity", self.fedora_identity)
+
         ec.set(node, "cleanProcesses", True)
         #ec.set(node, "cleanHome", True)
 
@@ -502,7 +486,8 @@ class LinuxNS3SimulationTest(unittest.TestCase):
 
         ec.shutdown()
 
-    def test_simple_wifi_ping(self):
+    @skipIfNotAlive
+    def t_wifi_ping(self, host, user = None, identity = None):
         bounds_width = bounds_height = 200
         x = y = 100
         speed = 1
@@ -510,9 +495,13 @@ class LinuxNS3SimulationTest(unittest.TestCase):
         ec = ExperimentController(exp_id = "test-ns3-wifi-ping")
         
         node = ec.register_resource("LinuxNode")
-        ec.set(node, "hostname", self.fedora_host)
-        ec.set(node, "username", self.fedora_user)
-        ec.set(node, "identity", self.fedora_identity)
+        if host == "localhost":
+            ec.set(node, "hostname", "localhost")
+        else:
+            ec.set(node, "hostname", host)
+            ec.set(node, "username", user)
+            ec.set(node, "identity", identity)
+
         ec.set(node, "cleanProcesses", True)
         #ec.set(node, "cleanHome", True)
 
@@ -554,7 +543,8 @@ class LinuxNS3SimulationTest(unittest.TestCase):
 
         ec.shutdown()
 
-    def test_routing(self):
+    @skipIfNotAlive
+    def t_routing(self, host, user = None, localhost = None):
         """ 
         network topology:
                                 n4
@@ -568,9 +558,13 @@ class LinuxNS3SimulationTest(unittest.TestCase):
         ec = ExperimentController(exp_id = "test-ns3-routes")
         
         node = ec.register_resource("LinuxNode")
-        ec.set(node, "hostname", self.fedora_host)
-        ec.set(node, "username", self.fedora_user)
-        ec.set(node, "identity", self.fedora_identity)
+        if host == "localhost":
+            ec.set(node, "hostname", host)
+        else:
+            ec.set(node, "hostname", host)
+            ec.set(node, "username", user)
+            ec.set(node, "identity", identity)
+
         ec.set(node, "cleanProcesses", True)
         #ec.set(node, "cleanHome", True)
 
@@ -666,7 +660,8 @@ class LinuxNS3SimulationTest(unittest.TestCase):
 
         ec.shutdown()
 
-    def ztest_automatic_routing(self):
+    @skipIfNotAlive
+    def t_automatic_routing(self, host, user = None, identity = None):
         """ 
         network topology:
                                 n4
@@ -680,9 +675,13 @@ class LinuxNS3SimulationTest(unittest.TestCase):
         ec = ExperimentController(exp_id = "test-ns3-routing")
         
         node = ec.register_resource("LinuxNode")
-        ec.set(node, "hostname", self.fedora_host)
-        ec.set(node, "username", self.fedora_user)
-        ec.set(node, "identity", self.fedora_identity)
+        if host == "localhost":
+            ec.set(node, "hostname", "localhost")
+        else:
+            ec.set(node, "hostname", host)
+            ec.set(node, "username", user)
+            ec.set(node, "identity", identity)
+        
         ec.set(node, "cleanProcesses", True)
         #ec.set(node, "cleanHome", True)
 
@@ -753,19 +752,23 @@ class LinuxNS3SimulationTest(unittest.TestCase):
 
         ec.shutdown()
 
-    def test_dce(self):
+    @skipIfNotAlive
+    def t_dce(self, host, user = None, identity = None):
         ec = ExperimentController(exp_id = "test-ns3-dce")
         
         node = ec.register_resource("LinuxNode")
-        ec.set(node, "hostname", self.fedora_host)
-        ec.set(node, "username", self.fedora_user)
-        ec.set(node, "identity", self.fedora_identity)
+        if host == "localhost":
+            ec.set(node, "hostname", host)
+        else:
+            ec.set(node, "hostname", host)
+            ec.set(node, "username", user)
+            ec.set(node, "identity", identity)
+
         ec.set(node, "cleanProcesses", True)
         #ec.set(node, "cleanHome", True)
 
         simu = ec.register_resource("LinuxNS3Simulation")
         ec.set(simu, "verbose", True)
-        ec.set(simu, "enableDCE", True)
         ec.set(simu, "buildMode", "debug")
         ec.set(simu, "nsLog", "DceApplication")
         ec.register_connection(simu, node)
@@ -823,6 +826,60 @@ class LinuxNS3SimulationTest(unittest.TestCase):
         self.assertTrue(stderr.find(expected) > -1, stderr)
 
         ec.shutdown()
+    
+    def test_p2p_ping_fedora(self):
+        self.t_p2p_ping(self.fedora_host, self.fedora_user, self.fedora_identity)
+
+    def test_p2p_ping_local(self):
+        self.t_p2p_ping("localhost")
+
+    def test_csma_ping_fedora(self):
+        self.t_csma_ping(self.fedora_host, self.fedora_user, self.fedora_identity)
+
+    def test_csma_ping_local(self):
+        self.t_csma_ping("localhost")
+
+    def test_wifi_ping_fedora(self):
+        self.t_wifi_ping(self.fedora_host, self.fedora_user, self.fedora_identity)
+
+    def test_wifi_ping_local(self):
+        self.t_wifi_ping("localhost")
+
+    def test_user_sources_fedora(self):
+        self.t_user_sources(self.fedora_host, self.fedora_user, self.fedora_identity)
+
+    def test_user_sources_local(self):
+        self.t_user_sources("localhost")
+
+    def test_compile_debug_mode_fedora(self):
+        self.t_compile_debug_mode(self.fedora_host, self.fedora_user, self.fedora_identity)
+
+    def test_compile_debug_mode_local(self):
+        self.t_compile_debug_mode("localhost")
+
+    def test_real_time_fedora(self):
+        self.t_real_time(self.fedora_host, self.fedora_user, self.fedora_identity)
+
+    def test_real_time_local(self):
+        self.t_real_time("localhost")
+
+    def test_traces_fedora(self):
+        self.t_traces(self.fedora_host, self.fedora_user, self.fedora_identity)
+
+    def test_traces_local(self):
+        self.t_traces("localhost")
+
+    def test_routing_fedora(self):
+        self.t_routing(self.fedora_host, self.fedora_user, self.fedora_identity)
+
+    def test_routing_local(self):
+        self.t_routing("localhost")
+
+    def test_dce_fedora(self):
+        self.t_dce(self.fedora_host, self.fedora_user, self.fedora_identity)
+
+    def test_dce_local(self):
+        self.t_dce("localhost")
 
 
 if __name__ == '__main__':

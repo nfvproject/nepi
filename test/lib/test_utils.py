@@ -27,11 +27,14 @@ class DummyEC(object):
     def exp_id(self):
         return "nepi-1"
 
-def create_node(hostname, username):
+def create_node(hostname, username = None, identity = None):
     ec = DummyEC()
     node = LinuxNode(ec, 1)
     node.set("hostname", hostname)
-    node.set("username", username)
+    if username:
+        node.set("username", username)
+    if identity:
+        node.set("identity", identity)
 
     # If we don't return the reference to the EC
     # it will be released by the garbage collector since 
@@ -41,12 +44,23 @@ def create_node(hostname, username):
 def skipIfNotAlive(func):
     name = func.__name__
     def wrapped(*args, **kwargs):
-        node, ec = create_node(args[1], args[2])
+        host = args[1]
+        if host != "localhost":
+            user = None
+            identity = None
 
-        if not node.is_alive():
-            print "*** WARNING: Skipping test %s: Node %s is not alive\n" % (
-                name, node.get("hostname"))
-            return
+            if len(args) >= 3:
+                user = args[2]
+
+            if len(args) >= 4:
+                identity = args[3]
+
+            node, ec = create_node(host, user, identity)
+
+            if not node.is_alive():
+                print "*** WARNING: Skipping test %s: Node %s is not alive\n" % (
+                    name, node.get("hostname"))
+                return
 
         return func(*args, **kwargs)
     

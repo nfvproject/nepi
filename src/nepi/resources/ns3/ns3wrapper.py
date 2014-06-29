@@ -176,6 +176,10 @@ class NS3Wrapper(object):
     def is_running(self):
         return self._started and not self.ns3.Simulator.IsFinished()
 
+    @property
+    def is_finished(self):
+        return self.ns3.Simulator.IsFinished()
+
     def make_uuid(self):
         return "uuid%s" % uuid.uuid4()
 
@@ -260,6 +264,8 @@ class NS3Wrapper(object):
 
         if operation == "isRunning":
             result = self.is_running
+        elif operation == "isFinished":
+            result = self.is_finished
         elif operation == "isAppRunning":
             result = self._is_app_running(uuid)
         elif operation == "addStaticRoute":
