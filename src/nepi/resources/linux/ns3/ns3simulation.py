@@ -93,13 +93,21 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         ns3_version = Attribute("ns3Version",
             "Version of ns-3 to install from nsam repo",
             #default = "ns-3.19", 
-            default = "ns-3-dev", 
+            default = "ns-3.20", 
+            #default = "ns-3-dev", 
             flags = Flags.Design)
 
         pybindgen_version = Attribute("pybindgenVersion",
             "Version of pybindgen to install from bazar repo",
             #default = "864", 
             default = "868", 
+            #default = "876", 
+            flags = Flags.Design)
+
+        dce_version = Attribute("dceVersion",
+            "Version of dce to install from nsam repo (tag branch for repo)",
+            default = "dce-1.3", 
+            #default = "dce-dev", 
             flags = Flags.Design)
 
         populate_routing_tables = Attribute("populateRoutingTables",
@@ -121,6 +129,7 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         cls._register_attribute(build_mode)
         cls._register_attribute(ns3_version)
         cls._register_attribute(pybindgen_version)
+        cls._register_attribute(dce_version)
         cls._register_attribute(populate_routing_tables)
         cls._register_attribute(stoptime)
 
@@ -149,7 +158,18 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
                 self.get("buildMode"), "build")
 
     def trace(self, name, attr = TraceAttr.ALL, block = 512, offset = 0):
-        self._client.flush() 
+        # stout needs to get flushed on the ns-3 server side, else we will 
+        # get an empty stream. We try twice to retrieve the stream
+        # if we get empty stdout since the stream might not be
+        # flushed immediately.
+        if name.endswith("stdout"):
+            self._client.flush() 
+            result = LinuxApplication.trace(self, name, attr, block, offset)
+            if result:
+                return result
+            # Let the stream be flushed
+            time.sleep(1)
+
         return LinuxApplication.trace(self, name, attr, block, offset)
 
     def upload_sources(self):
@@ -219,6 +239,9 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
 
         # Run the ns3wrapper 
         self._run_in_background()
+
+        # Wait until the remote socket is created
+        self.wait_remote_socket()
 
     def configure(self):
         if self.has_changed("simulatorImplementationType"):
@@ -292,13 +315,15 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
 
             self._client.start()
 
+            """
             # XXX: IS THIS REALLY NEEDED??!!!
             # Wait until the Simulation is actually started... 
             is_running = False
             for i in xrange(1000):
                 is_running = self.invoke(SIMULATOR_UUID, "isRunning")
+                is_finished = self.invoke(SIMULATOR_UUID, "isFinished")
             
-                if is_running:
+                if is_running or is_finished:
                     break
                 else:
                     time.sleep(1)
@@ -307,7 +332,7 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
                     msg = " Simulation did not start"
                     self.error(msg)
                     raise RuntimeError
-
+            """
             self.set_started()
         else:
             msg = " Failed to execute command '%s'" % command
@@ -399,6 +424,11 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         #eturn "http://code.nsnam.org/epmancini/ns-3-dce"
 
     @property
+    def dce_version(self):
+        dce_version = self.get("dceVersion")
+        return dce_version or "dce-dev"
+
+    @property
     def _build(self):
         # If the user defined local sources for ns-3, we uncompress the sources
         # on the remote sources directory. Else we clone ns-3 from the official repo.
@@ -443,23 +473,30 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
 
         clone_dce_cmd = " echo 'DCE will not be built' "
         if self.enable_dce:
+            dce_version = self.dce_version
+            dce_tag = ""
+            if dce_version != "dce-dev":
+                dce_tag = "-r %s" % dce_version
+
             clone_dce_cmd = (
                         # DCE installation
                         # Test if dce is alredy installed
                         " ( "
                         "  ( "
-                        "    ( test -d ${SRC}/dce/ns-3-dce ) "
+                        "    ( test -d ${SRC}/dce/ns-3-dce/%(dce_version)s ) "
                         "   && echo 'dce binaries found, nothing to do'"
                         "  ) "
                         " ) "
                         "  || " 
                         # Get dce source code
                         " ( "
-                        "   mkdir -p ${SRC}/dce && "
-                        "   hg clone %(dce_repo)s ${SRC}/dce/ns-3-dce"
+                        "   mkdir -p ${SRC}/dce/%(dce_version)s && "
+                        "   hg clone %(dce_repo)s %(dce_tag)s ${SRC}/dce/ns-3-dce/%(dce_version)s"
                         " ) "
                      ) % {
-                            'dce_repo': self.dce_repo
+                            "dce_repo": self.dce_repo,
+                            "dce_tag": dce_tag,
+                            "dce_version":  dce_version,
                          }
 
         return (
@@ -531,14 +568,14 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         if self.enable_dce:
             install_dce_cmd = (
                         " ( "
-                        "   ((test -d %(ns3_build_home)s/bin_dce ) && "
+                        "   ((test -d %(ns3_build_home)s/bin_dce/%(dce_version)s ) && "
                         "    echo 'dce binaries found, nothing to do' )"
                         " ) "
                         " ||" 
                         " (   "
                          # If not, copy ns-3 build to bin
-                        "  cd ${SRC}/dce/ns-3-dce && "
-                        "  rm -rf ${SRC}/dce/ns-3-dce/build && "
+                        "  cd ${SRC}/dce/ns-3-dce/%(dce_version)s && "
+                        "  rm -rf ${SRC}/dce/ns-3-dce/%(dce_version)s/build && "
                         "  ./waf configure %(enable_opt)s --with-pybindgen=${SRC}/pybindgen/%(pybindgen_version)s "
                         "  --prefix=%(ns3_build_home)s --with-ns3=%(ns3_build_home)s && "
                         "  ./waf build && "
@@ -546,11 +583,12 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
                         "  mv %(ns3_build_home)s/lib*/python*/site-packages/ns/dce.so %(ns3_build_home)s/lib/python/site-packages/ns/ "
                         " )"
                 ) % { 
-                    'ns3_version': self.get("ns3Version"),
-                    'pybindgen_version': self.get("pybindgenVersion"),
-                    'ns3_build_home': self.ns3_build_home,
-                    'build_mode': self.get("buildMode"),
-                    'enable_opt': "--enable-opt" if  self.get("buildMode") == "optimized" else ""
+                    "ns3_version": self.get("ns3Version"),
+                    "pybindgen_version": self.get("pybindgenVersion"),
+                    "ns3_build_home": self.ns3_build_home,
+                    "build_mode": self.get("buildMode"),
+                    "enable_opt": "--enable-opt" if  self.get("buildMode") == "optimized" else "",
+                    "dce_version": self.dce_version,
                     }
 
         return (
@@ -627,4 +665,20 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
     def valid_connection(self, guid):
         # TODO: Validate!
         return True
+
+    def wait_remote_socket(self):
+        """ Waits until the remote socket is created
+        """
+        command = " [ -e %s ] && echo 'DONE' " % self.remote_socket
+
+        for i in xrange(200):
+            (out, err), proc = self.node.execute(command, retry = 1, 
+                    with_lock = True)
+
+            if out.find("DONE") > -1:
+                break
+        else:
+            raise RuntimeError("Remote socket not found at %s" % \
+                    self.remote_socket)
+    
 
