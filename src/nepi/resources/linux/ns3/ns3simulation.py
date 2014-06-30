@@ -152,11 +152,6 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
     def remote_socket(self):
         return os.path.join(self.run_home, self.socket_name)
 
-    @property
-    def ns3_build_home(self):
-        return os.path.join(self.node.bin_dir, "ns-3", self.get("ns3Version"), 
-                self.get("buildMode"), "build")
-
     def trace(self, name, attr = TraceAttr.ALL, block = 512, offset = 0):
         # stout needs to get flushed on the ns-3 server side, else we will 
         # get an empty stream. We try twice to retrieve the stream
@@ -429,49 +424,83 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
         return dce_version or "dce-dev"
 
     @property
-    def _build(self):
-        # If the user defined local sources for ns-3, we uncompress the sources
-        # on the remote sources directory. Else we clone ns-3 from the official repo.
-        source = self.get("sources")
-        if not source:
-            clone_ns3_cmd = "hg clone %(ns3_repo)s/%(ns3_version)s ${SRC}/ns-3/%(ns3_version)s" \
+    def ns3_build_location(self):
+        location = "${BIN}/ns-3/%(ns3_version)s%(dce_version)s/%(build_mode)s/build" \
                     % {
-                        'ns3_version': self.get("ns3Version"),
-                        'ns3_repo':  self.ns3_repo,       
+                        "ns3_version": self.get("ns3Version"),
+                        "dce_version": "-%s" % self.get("dceVersion") \
+                                if self.enable_dce else "", 
+                        "build_mode": self.get("buildMode"),
+                      }
+
+        return location
+ 
+
+    @property
+    def ns3_src_location(self):
+        location = "${SRC}/ns-3/%(ns3_version)s" \
+                    % {
+                        "ns3_version": self.get("ns3Version"),
+                      }
+
+        return location
+ 
+    @property
+    def dce_src_location(self):
+        location = "${SRC}/ns-3-dce/%(dce_version)s" \
+                   % {
+                        "dce_version": self.get("dceVersion"),
+                     }
+
+        return location
+
+    @property
+    def _clone_ns3_command(self):
+        source = self.get("sources")
+        
+        if not source:
+            clone_ns3_cmd = "hg clone %(ns3_repo)s/%(ns3_version)s %(ns3_src)s" \
+                    % {
+                        "ns3_version": self.get("ns3Version"),
+                        "ns3_repo": self.ns3_repo,  
+                        "ns3_src": self.ns3_src_location,
                       }
         else:
             if source.find(".tar.gz") > -1:
                 clone_ns3_cmd = ( 
                             "tar xzf ${SRC}/ns-3/%(basename)s " 
-                            " --strip-components=1 -C ${SRC}/ns-3/%(ns3_version)s "
+                            " --strip-components=1 -C %(ns3_src)s"
                             ) % {
-                                'basename': os.path.basename(source),
-                                'ns3_version': self.get("ns3Version"),
+                                "basename": os.path.basename(source),
+                                "ns3_src": self.ns3_src_location,
                                 }
             elif source.find(".tar") > -1:
                 clone_ns3_cmd = ( 
                             "tar xf ${SRC}/ns-3/%(basename)s " 
-                            " --strip-components=1 -C ${SRC}/ns-3/%(ns3_version)s "
+                            " --strip-components=1 -C %(ns3_src)s"
                             ) % {
-                                'basename': os.path.basename(source),
-                                'ns3_version': self.get("ns3Version"),
+                                "basename": os.path.basename(source),
+                                "ns3_src": self.ns3_src_location,
                                 }
             elif source.find(".zip") > -1:
                 basename = os.path.basename(source)
-                bare_basename = basename.replace(".zip", "") \
-                        .replace(".tar", "") \
-                        .replace(".tar.gz", "")
+                bare_basename = basename.replace(".zip", "") 
 
                 clone_ns3_cmd = ( 
                             "unzip ${SRC}/ns-3/%(basename)s && "
-                            "mv ${SRC}/ns-3/%(bare_basename)s ${SRC}/ns-3/%(ns3_version)s "
+                            "mv ${SRC}/ns-3/%(bare_basename)s %(ns3_src)s"
                             ) % {
-                                'bare_basename': basename_name,
-                                'basename': basename,
-                                'ns3_version': self.get("ns3Version"),
+                                "bare_basename": basename_name,
+                                "basename": basename,
+                                "ns3_src": self.ns3_src_location,
                                 }
 
+        return clone_ns3_cmd
+
+    @property
+    def _clone_dce_command(self):
         clone_dce_cmd = " echo 'DCE will not be built' "
+
         if self.enable_dce:
             dce_version = self.dce_version
             dce_tag = ""
@@ -480,31 +509,40 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
 
             clone_dce_cmd = (
                         # DCE installation
-                        # Test if dce is alredy installed
+                        # Test if dce is alredy cloned
                         " ( "
                         "  ( "
-                        "    ( test -d ${SRC}/dce/ns-3-dce/%(dce_version)s ) "
+                        "    ( test -d %(dce_src)s ) "
                         "   && echo 'dce binaries found, nothing to do'"
                         "  ) "
                         " ) "
                         "  || " 
                         # Get dce source code
                         " ( "
-                        "   mkdir -p ${SRC}/dce/%(dce_version)s && "
-                        "   hg clone %(dce_repo)s %(dce_tag)s ${SRC}/dce/ns-3-dce/%(dce_version)s"
+                        "   mkdir -p %(dce_src)s && "
+                        "   hg clone %(dce_repo)s %(dce_tag)s %(dce_src)s"
                         " ) "
                      ) % {
                             "dce_repo": self.dce_repo,
                             "dce_tag": dce_tag,
-                            "dce_version":  dce_version,
+                            "dce_src": self.dce_src_location,
                          }
 
-        return (
+        return clone_dce_cmd
+
+    @property
+    def _build(self):
+        # If the user defined local sources for ns-3, we uncompress the sources
+        # on the remote sources directory. Else we clone ns-3 from the official repo.
+        clone_ns3_cmd = self._clone_ns3_command
+        clone_dce_cmd = self._clone_dce_command
+
+        ns3_build_cmd = (
                 # NS3 installation
                 "( "
                 " ( "
-                # Test if ns-3 is alredy installed
-                "  ((( test -d ${SRC}/ns-3/%(ns3_version)s ) || "
+                # Test if ns-3 is alredy cloned
+                "  ((( test -d %(ns3_src)s ) || "
                 "    ( test -d ${NS3BINDINGS:='None'} && test -d ${NS3LIBRARIES:='None'})) "
                 "  && echo 'ns-3 binaries found, nothing to do' )"
                 " ) "
@@ -545,7 +583,7 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
                 " && "
                 # Get ns-3 source code
                 "  ( "
-                "     mkdir -p ${SRC}/ns-3/%(ns3_version)s && "
+                "     mkdir -p %(ns3_src)s && "
                 "     %(clone_ns3_cmd)s "
                 "  ) "
                 " ) "
@@ -555,61 +593,69 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
                 "   %(clone_dce_cmd)s "
                 ") "
              ) % { 
-                    'ns3_version': self.get("ns3Version"),
-                    'pybindgen_version': self.get("pybindgenVersion"),
-                    'pygccxml_version': self.pygccxml_version,
-                    'clone_ns3_cmd': clone_ns3_cmd,
-                    'clone_dce_cmd': clone_dce_cmd,
+                    "ns3_src": self.ns3_src_location,
+                    "pybindgen_version": self.get("pybindgenVersion"),
+                    "pygccxml_version": self.pygccxml_version,
+                    "clone_ns3_cmd": clone_ns3_cmd,
+                    "clone_dce_cmd": clone_dce_cmd,
                  }
 
+        return ns3_build_cmd
+
     @property
-    def _install(self):
-        install_dce_cmd = " echo 'DCE will not be installed' "
+    def _install_dce_command(self):
+        install_dce_cmd = " echo 'DCE will not be installed'"
+
         if self.enable_dce:
             install_dce_cmd = (
                         " ( "
-                        "   ((test -d %(ns3_build_home)s/bin_dce/%(dce_version)s ) && "
+                        "   ((test -d %(ns3_build)s/bin_dce ) && "
                         "    echo 'dce binaries found, nothing to do' )"
                         " ) "
                         " ||" 
                         " (   "
-                         # If not, copy ns-3 build to bin
-                        "  cd ${SRC}/dce/ns-3-dce/%(dce_version)s && "
-                        "  rm -rf ${SRC}/dce/ns-3-dce/%(dce_version)s/build && "
+                         # If not, copy build to dce
+                        "  cd %(dce_src)s && "
+                        "  rm -rf %(dce_src)s/build && "
                         "  ./waf configure %(enable_opt)s --with-pybindgen=${SRC}/pybindgen/%(pybindgen_version)s "
-                        "  --prefix=%(ns3_build_home)s --with-ns3=%(ns3_build_home)s && "
+                        "  --prefix=%(ns3_build)s --with-ns3=%(ns3_build)s && "
                         "  ./waf build && "
                         "  ./waf install && "
-                        "  mv %(ns3_build_home)s/lib*/python*/site-packages/ns/dce.so %(ns3_build_home)s/lib/python/site-packages/ns/ "
+                        "  [ ! -e %(ns3_build)s/lib/python/site-packages/ns/dce.so ] && "
+                        "   mv %(ns3_build)s/lib*/python*/site-packages/ns/dce.so %(ns3_build)s/lib/python/site-packages/ns/ "
                         " )"
                 ) % { 
-                    "ns3_version": self.get("ns3Version"),
                     "pybindgen_version": self.get("pybindgenVersion"),
-                    "ns3_build_home": self.ns3_build_home,
-                    "build_mode": self.get("buildMode"),
                     "enable_opt": "--enable-opt" if  self.get("buildMode") == "optimized" else "",
-                    "dce_version": self.dce_version,
-                    }
+                    "ns3_build": self.ns3_build_location,
+                    "dce_src": self.dce_src_location,
+                     }
 
-        return (
+        return install_dce_cmd
+
+    @property
+    def _install(self):
+        install_dce_cmd = self._install_dce_command
+
+        install_ns3_cmd = (
                  # Test if ns-3 is alredy installed
                 "("
                 " ( "
-                "  ( ( (test -d %(ns3_build_home)s/lib ) || "
+                "  ( ( (test -d %(ns3_build)s/lib ) || "
                 "    (test -d ${NS3BINDINGS:='None'} && test -d ${NS3LIBRARIES:='None'}) ) && "
                 "    echo 'binaries found, nothing to do' )"
                 " ) "
                 " ||" 
                 " (   "
                  # If not, copy ns-3 build to bin
-                "  mkdir -p %(ns3_build_home)s && "
-                "  cd ${SRC}/ns-3/%(ns3_version)s && "
-                "  rm -rf ${SRC}/ns-3/%(ns3_version)s/build && "
+                "  mkdir -p %(ns3_build)s && "
+                "  cd %(ns3_src)s && "
+                "  rm -rf %(ns3_src)s/build && "
                 "  ./waf configure -d %(build_mode)s --with-pybindgen=${SRC}/pybindgen/%(pybindgen_version)s "
-                "  --prefix=%(ns3_build_home)s && "
+                "  --prefix=%(ns3_build)s && "
                 "  ./waf build && "
                 "  ./waf install && "
-                "  mv %(ns3_build_home)s/lib*/python* %(ns3_build_home)s/lib/python "
+                "  mv %(ns3_build)s/lib*/python* %(ns3_build)s/lib/python "
                 " )"
                 ") "
                 " && "
@@ -617,23 +663,25 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
                 "   %(install_dce_cmd)s "
                 ") "
               ) % { 
-                    'ns3_version': self.get("ns3Version"),
-                    'pybindgen_version': self.get("pybindgenVersion"),
-                    'build_mode': self.get("buildMode"),
-                    'ns3_build_home': self.ns3_build_home,
-                    'install_dce_cmd': install_dce_cmd
+                    "pybindgen_version": self.get("pybindgenVersion"),
+                    "build_mode": self.get("buildMode"),
+                    "install_dce_cmd": install_dce_cmd,
+                    "ns3_build": self.ns3_build_location,
+                    "ns3_src": self.ns3_src_location,
                  }
+
+        return install_ns3_cmd
 
     @property
     def _environment(self):
         env = []
-        env.append("PYTHONPATH=$PYTHONPATH:${NS3BINDINGS:=%(ns3_build_home)s/lib/python/site-packages}" % { 
-                    'ns3_build_home': self.ns3_build_home
+        env.append("PYTHONPATH=$PYTHONPATH:${NS3BINDINGS:=%(ns3_build)s/lib/python/site-packages}" % { 
+                    "ns3_build": self.ns3_build_location
                  })
         # If NS3LIBRARIES is defined and not empty, assign its value, 
         # if not assign ns3_build_home/lib/ to NS3LIBRARIES and LD_LIBARY_PATH
-        env.append("LD_LIBRARY_PATH=${NS3LIBRARIES:=%(ns3_build_home)s/lib}" % { 
-                    'ns3_build_home': self.ns3_build_home
+        env.append("LD_LIBRARY_PATH=${NS3LIBRARIES:=%(ns3_build)s/lib}" % { 
+                    "ns3_build": self.ns3_build_location
                  })
         env.append("DCE_PATH=$NS3LIBRARIES/../bin_dce")
         env.append("DCE_ROOT=$NS3LIBRARIES/..")
@@ -659,7 +707,7 @@ class LinuxNS3Simulation(LinuxApplication, NS3Simulation):
             # If NS3LIBRARIES is defined and not empty, use that value, 
             # if not use ns3_build_home/lib/
             .replace("${BIN_DCE}", "${NS3LIBRARIES-%s/lib}/../bin_dce" % \
-                    self.ns3_build_home)
+                    self.ns3_build_location)
             )
 
     def valid_connection(self, guid):
