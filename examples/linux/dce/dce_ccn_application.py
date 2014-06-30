@@ -54,7 +54,7 @@ def add_point2point_device(ec, node, ip,  prefix):
 
     return dev
 
-ec = ExperimentController(exp_id = "dce-custom-ccn")
+ec = ExperimentController(exp_id = "dce-ccn-app")
 
 node = ec.register_resource("LinuxNode")
 ec.set(node, "hostname", "localhost")
@@ -62,9 +62,6 @@ ec.set(node, "cleanProcesses", True)
 #ec.set(node, "cleanHome", True)
 
 simu = ec.register_resource("LinuxNS3Simulation")
-ec.set(simu, "verbose", True)
-ec.set(simu, "nsLog", "DceApplication")
-ec.set(simu, "enableDump", True)
 ec.register_connection(simu, node)
 
 nsnode1 = add_ns3_node(ec, simu)
@@ -83,80 +80,60 @@ ec.register_connection(chan, p2p1)
 ec.register_connection(chan, p2p2)
 
 ### create applications
-
-# Add a LinuxCCNDceApplication to ns-3 node 1 to install custom ccnx sources
-# and run a CCNx daemon
-ccnd1 = ec.register_resource("ns3::LinuxCCNDceApplication")
-# NOTE THAT INSTALLATION MIGHT FAIL IF openjdk-6-jdk is not installed
-ec.set(ccnd1, "depends", "libpcap0.8-dev openjdk-6-jdk ant1.8 autoconf "
-    "libssl-dev libexpat-dev libpcap-dev libecryptfs0 libxml2-utils auto"
-    "make gawk gcc g++ git-core pkg-config libpcre3-dev openjdk-6-jre-lib")
-ec.set (ccnd1, "sources", "http://www.ccnx.org/releases/ccnx-0.7.2.tar.gz")
-ec.set (ccnd1, "build", "tar zxf ${SRC}/ccnx-0.7.2.tar.gz && "
-        "cd ccnx-0.7.2 && "
-        " INSTALL_BASE=${BIN_DCE}/.. ./configure && "
-        " make MORE_LDLIBS='-pie -rdynamic' && "
-        " make install && "
-        " cp ${BIN_DCE}/../bin/ccn* ${BIN_DCE} && "
-        " cd -")
-ec.set (ccnd1, "binary", "ccnd")
+# Add ccnd to ns-3 node1
+ccnd1 = ec.register_resource("ns3::LinuxDceCCND")
 ec.set (ccnd1, "stackSize", 1<<20)
-ec.set (ccnd1, "environment", "CCND_CAP=50000; CCND_DEBUG=7")
+ec.set (ccnd1, "debug", 7)
+ec.set (ccnd1, "capacity", 50000)
 ec.set (ccnd1, "StartTime", "1s")
 ec.set (ccnd1, "StopTime", "20s")
 ec.register_connection(ccnd1, nsnode1)
 
-# Add a CCN repository to ns-3 node1 manually configuring all
-# parameters
+# Add CCN repository with content to ns-3 node1
 repofile = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), 
     "..", "..", "..",
     "test", "resources", "linux", "ns3", "ccn", "repoFile1")
 
-ccnr = ec.register_resource("ns3::LinuxCCNDceApplication")
-ec.set (ccnr, "binary", "ccnr")
-ec.set (ccnr, "environment", "CCNR_DIRECTORY=/REPO/")
-ec.set (ccnr, "files", "%s=/REPO/repoFile1" % repofile) 
+ccnr = ec.register_resource("ns3::LinuxDceCCNR")
+ec.set (ccnr, "repoFile1", repofile) 
 ec.set (ccnr, "stackSize", 1<<20)
 ec.set (ccnr, "StartTime", "2s")
 ec.set (ccnr, "StopTime", "120s")
 ec.register_connection(ccnr, nsnode1)
 
-# Add a LinuxCCNDceApplication to ns-3 node 1 to run a CCN
-# daemon. Note that the CCNx sources and build instructions 
-# do not need to be specified again (NEPI will take the 
-# instructions from the first definition).
-ccnd2 = ec.register_resource("ns3::LinuxCCNDceApplication")
-ec.set (ccnd2, "binary", "ccnd")
+# Add CCN repository with content to ns-3 node2
+ccnd2 = ec.register_resource("ns3::LinuxDceCCND")
 ec.set (ccnd2, "stackSize", 1<<20)
-ec.set (ccnd2, "environment", "CCND_CAP=50000; CCND_DEBUG=7")
+ec.set (ccnd2, "debug", 7)
+ec.set (ccnd2, "capacity", 50000)
 ec.set (ccnd2, "StartTime", "1s")
-ec.set (ccnd2, "StopTime", "120s")
+ec.set (ccnd2, "StopTime", "20s")
 ec.register_connection(ccnd2, nsnode2)
 
-# Add DCE application to configure peer CCN faces between
-# nodes
-ccndc1 = ec.register_resource("ns3::LinuxCCNDceApplication")
-ec.set (ccndc1, "binary", "ccndc")
-ec.set (ccndc1, "arguments", "-v;add;ccnx:/;udp;10.0.0.2")
+# Add face from ns-3 node1 to ns-3 node2
+ccndc1 = ec.register_resource("ns3::LinuxDceFIBEntry")
+ec.set (ccndc1, "protocol", "udp") 
+ec.set (ccndc1, "uri", "ccnx:/") 
+ec.set (ccndc1, "host", "10.0.0.2") 
 ec.set (ccndc1, "stackSize", 1<<20)
 ec.set (ccndc1, "StartTime", "2s")
 ec.set (ccndc1, "StopTime", "120s")
 ec.register_connection(ccndc1, nsnode1)
 
-ccndc2 = ec.register_resource("ns3::LinuxCCNDceApplication")
-ec.set (ccndc2, "binary", "ccndc")
-ec.set (ccndc2, "arguments", "-v;add;ccnx:/;udp;10.0.0.1")
+# Add face from ns-3 node2 to ns-3 node1
+ccndc2 = ec.register_resource("ns3::LinuxDceFIBEntry")
+ec.set (ccndc2, "protocol", "udp") 
+ec.set (ccndc2, "uri", "ccnx:/") 
+ec.set (ccndc2, "host", "10.0.0.1") 
 ec.set (ccndc2, "stackSize", 1<<20)
 ec.set (ccndc2, "StartTime", "2s")
 ec.set (ccndc2, "StopTime", "120s")
 ec.register_connection(ccndc2, nsnode2)
 
-# Add a DCE application to perform a ccncat and retrieve content
-ccncat = ec.register_resource("ns3::LinuxCCNDceApplication")
-ec.set (ccncat, "binary", "ccncat")
-ec.set (ccncat, "arguments", "ccnx:/test/bunny.ts")
-ec.set (ccncat, "stdinFile", "")
+# Add a ccncat to node2 to retrieve content
+ccncat = ec.register_resource("ns3::LinuxDceCCNCat")
+ec.set (ccncat, "contentName", "ccnx:/test/bunny.ts")
 ec.set (ccncat, "stackSize", 1<<20)
 ec.set (ccncat, "StartTime", "4s")
 ec.set (ccncat, "StopTime", "120s")
@@ -171,5 +148,4 @@ stdout = ec.trace(ccncat, "stdout")
 print "%0.2f MBytes received" % (len(stdout) / 1024.0 / 1024.0 )
 
 ec.shutdown()
-
 
