@@ -21,7 +21,10 @@ from nepi.execution.attribute import Attribute, Flags, Types
 from nepi.execution.resource import clsinit_copy, ResourceState, reschedule_delay
 from nepi.resources.ns3.ns3application import NS3BaseApplication
 
+from nepi.resources.ns3.ns3wrapper import SIMULATOR_UUID
+
 import os
+import time
 import threading
         
 @clsinit_copy
@@ -177,12 +180,28 @@ class NS3BaseDceApplication(NS3BaseApplication):
             self._start_time = self.simulation.start_time
 
     def _configure_traces(self):
-        # Preventing concurrent access to the DceApplicationHelper
+        # Waiting until dce application is actually started
+        is_running = False
+        for i in xrange(200):
+            is_running = self.simulation.invoke(self.uuid, "isAppRunning")
+            is_finished = self.simulation.invoke(SIMULATOR_UUID, "isFinished")
+        
+            if is_running or is_finished:
+                break
+            else:
+                time.sleep(1)
+        else:
+            if not is_running:
+                msg = " Application did not start"
+                self.error(msg)
+                raise RuntimeError
+
+        # Using lock to prevent concurrent access to the DceApplicationHelper
         # from different DceApplication RMs
         with self.dce_application_lock:
             pid = self.simulation.invoke(self.dce_application_helper_uuid, 
                     "GetPid", self.uuid)
-
+            
         node_id = self.simulation.invoke(self.node.uuid, "GetId")
         self._trace_filename["stdout"] = "files-%s/var/log/%s/stdout" % (node_id, pid)
         self._trace_filename["stderr"] = "files-%s/var/log/%s/stderr" % (node_id, pid)

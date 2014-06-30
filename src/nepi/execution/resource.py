@@ -1015,49 +1015,54 @@ class ResourceManager(Logger):
     def do_fail(self):
         self.set_failed()
 
-    def set_started(self):
+    def set_started(self, time = None):
         """ Mark ResourceManager as STARTED """
-        self.set_state(ResourceState.STARTED, "_start_time")
+        self.set_state(ResourceState.STARTED, "_start_time", time)
         self.debug("----- STARTED ---- ")
 
-    def set_stopped(self):
+    def set_stopped(self, time = None):
         """ Mark ResourceManager as STOPPED """
-        self.set_state(ResourceState.STOPPED, "_stop_time")
+        self.set_state(ResourceState.STOPPED, "_stop_time", time)
         self.debug("----- STOPPED ---- ")
 
-    def set_ready(self):
+    def set_ready(self, time = None):
         """ Mark ResourceManager as READY """
-        self.set_state(ResourceState.READY, "_ready_time")
+        self.set_state(ResourceState.READY, "_ready_time", time)
         self.debug("----- READY ---- ")
 
-    def set_released(self):
+    def set_released(self, time = None):
         """ Mark ResourceManager as REALEASED """
-        self.set_state(ResourceState.RELEASED, "_release_time")
+        self.set_state(ResourceState.RELEASED, "_release_time", time)
         self.debug("----- RELEASED ---- ")
 
-    def set_failed(self):
+    def set_failed(self, time = None):
         """ Mark ResourceManager as FAILED """
-        self.set_state(ResourceState.FAILED, "_failed_time")
+        self.set_state(ResourceState.FAILED, "_failed_time", time)
         self.debug("----- FAILED ---- ")
 
-    def set_discovered(self):
+    def set_discovered(self, time = None):
         """ Mark ResourceManager as DISCOVERED """
-        self.set_state(ResourceState.DISCOVERED, "_discover_time")
+        self.set_state(ResourceState.DISCOVERED, "_discover_time", time)
         self.debug("----- DISCOVERED ---- ")
 
-    def set_provisioned(self):
+    def set_provisioned(self, time = None):
         """ Mark ResourceManager as PROVISIONED """
-        self.set_state(ResourceState.PROVISIONED, "_provision_time")
+        self.set_state(ResourceState.PROVISIONED, "_provision_time", time)
         self.debug("----- PROVISIONED ---- ")
 
-    def set_state(self, state, state_time_attr):
+    def set_state(self, state, state_time_attr, time = None):
         """ Set the state of the RM while keeping a trace of the time """
 
         # Ensure that RM state will not change after released
         if self._state == ResourceState.RELEASED:
             return 
-   
-        setattr(self, state_time_attr, tnow())
+
+        time = time or tnow()
+        self.set_state_time(state, state_time_attr, time)
+  
+    def set_state_time(self, state, state_time_attr, time):
+        """ Set the time for the RM state change """
+        setattr(self, state_time_attr, time)
         self._state = state
 
 class ResourceFactory(object):

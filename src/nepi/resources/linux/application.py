@@ -360,6 +360,13 @@ class LinuxApplication(ResourceManager):
 
     def execute_deploy_command(self, command, prefix="deploy"):
         if command:
+            # replace application specific paths in the command
+            command = self.replace_paths(command)
+            
+            # replace application specific paths in the environment
+            env = self.get("env")
+            env = env and self.replace_paths(env)
+
             # Upload the command to a bash script and run it
             # in background ( but wait until the command has
             # finished to continue )

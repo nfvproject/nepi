@@ -22,6 +22,8 @@
 from nepi.execution.ec import ExperimentController 
 from nepi.execution.trace import TraceAttr
 
+from test_utils import skipIfNotAlive
+
 import os
 import time
 import unittest
@@ -45,15 +47,12 @@ def add_ns3_node(ec, simu):
     tcp = ec.register_resource("ns3::TcpL4Protocol")
     ec.register_connection(node, tcp)
 
-
     return node
 
-def add_point2point_device(ec, node, address = None,  prefix = None):
+def add_point2point_device(ec, node, ip, prefix):
     dev = ec.register_resource("ns3::PointToPointNetDevice")
-    if address:
-       ec.set(dev, "ip", address)
-    if prefix:
-       ec.set(dev, "prefix", prefix)
+    ec.set(dev, "ip", ip)
+    ec.set(dev, "prefix", prefix)
     ec.register_connection(node, dev)
 
     queue = ec.register_resource("ns3::DropTailQueue")
@@ -61,12 +60,10 @@ def add_point2point_device(ec, node, address = None,  prefix = None):
 
     return dev
 
-def add_csma_device(ec, node, address = None, prefix = None):
+def add_csma_device(ec, node, ip, prefix):
     dev = ec.register_resource("ns3::CsmaNetDevice")
-    if address:
-        ec.set(dev, "ip", address)
-    if prefix:
-        ec.set(dev, "prefix", prefix)
+    ec.set(dev, "ip", ip)
+    ec.set(dev, "prefix", prefix)
     ec.register_connection(node, dev)
 
     queue = ec.register_resource("ns3::DropTailQueue")
@@ -74,13 +71,11 @@ def add_csma_device(ec, node, address = None, prefix = None):
 
     return dev
 
-def add_wifi_device(ec, node, address = None, prefix = None, 
+def add_wifi_device(ec, node, ip, prefix, 
         access_point = False):
     dev = ec.register_resource("ns3::WifiNetDevice")
-    if address:
-        ec.set(dev, "ip", address)
-    if prefix:
-        ec.set(dev, "prefix", prefix)
+    ec.set(dev, "ip", ip)
+    ec.set(dev, "prefix", prefix)
     ec.register_connection(node, dev)
 
     phy = ec.register_resource("ns3::YansWifiPhy")
@@ -137,22 +132,23 @@ def add_wifi_channel(ec):
 
 class LinuxNS3DceApplicationTest(unittest.TestCase):
     def setUp(self):
-        #self.fedora_host = "nepi2.pl.sophia.inria.fr"
-        #self.fedora_host = "planetlabpc1.upf.edu"
-        #self.fedora_user = "inria_nepi"
-        #self.fedora_identity = "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'])
-        self.fedora_host = "mimas.inria.fr"
-        self.fedora_user = "aquereil"
-        self.fedora_identity = "%s/.ssh/id_rsa" % (os.environ['HOME'])
+        self.fedora_host = "nepi2.pl.sophia.inria.fr"
+        self.fedora_user = "inria_nepi"
+        self.fedora_identity = "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'])
 
-    def test_dce_ping(self):
+    @skipIfNotAlive
+    def t_dce_ping(self, host, user = None, identity = None):
         ec = ExperimentController(exp_id = "test-dce-ping")
-        
+
         node = ec.register_resource("LinuxNode")
-        ec.set(node, "hostname", self.fedora_host)
-        ec.set(node, "username", self.fedora_user)
-        ec.set(node, "identity", self.fedora_identity)
-        #ec.set(node, "cleanProcesses", True)
+        if host == "localhost":
+            ec.set(node, "hostname", host)
+        else:
+            ec.set(node, "hostname", host)
+            ec.set(node, "username", user)
+            ec.set(node, "identity", identity)
+
+        ec.set(node, "cleanProcesses", True)
         #ec.set(node, "cleanHome", True)
 
         simu = ec.register_resource("LinuxNS3Simulation")
@@ -182,7 +178,7 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
         ec.set (ping, "build", "tar xvjf ${SRC}/iputils-s20101006.tar.bz2 && "
                 "cd iputils-s20101006/ && "
                 "sed -i 's/CFLAGS=/CFLAGS+=/g' Makefile && "
-                "make CFLAGS=-fPIC LDFLAGS=-pie ping && "
+                "make CFLAGS=-fPIC LDFLAGS='-pie -rdynamic' ping && "
                 "cp ping ${BIN_DCE} && cd - ")
         ec.set (ping, "binary", "ping")
         ec.set (ping, "stackSize", 1<<20)
@@ -213,13 +209,18 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
 
         ec.shutdown()
 
-    def test_dce_ccn(self):
+    @skipIfNotAlive
+    def t_dce_ccn(self, host, user = None, identity = None):
         ec = ExperimentController(exp_id = "test-dce-ccn")
-        
+       
         node = ec.register_resource("LinuxNode")
-        ec.set(node, "hostname", self.fedora_host)
-        ec.set(node, "username", self.fedora_user)
-        ec.set(node, "identity", self.fedora_identity)
+        if host == "localhost":
+            ec.set(node, "hostname", host)
+        else:
+            ec.set(node, "hostname", host)
+            ec.set(node, "username", user)
+            ec.set(node, "identity", identity)
+
         #ec.set(node, "cleanProcesses", True)
         #ec.set(node, "cleanHome", True)
 
@@ -247,6 +248,7 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
         ### create applications
         ccnd1 = ec.register_resource("ns3::LinuxCCNDceApplication")
 
+        # NOTE THAT INSTALLATION MIGHT FAIL IF openjdk-6-jdk is not installed
         ec.set(ccnd1, "depends", "libpcap0.8-dev openjdk-6-jdk ant1.8 autoconf "
             "libssl-dev libexpat-dev libpcap-dev libecryptfs0 libxml2-utils auto"
             "make gawk gcc g++ git-core pkg-config libpcre3-dev openjdk-6-jre-lib")
@@ -254,7 +256,7 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
         ec.set (ccnd1, "build", "tar zxf ${SRC}/ccnx-0.7.2.tar.gz && "
                 "cd ccnx-0.7.2 && "
                 " INSTALL_BASE=${BIN_DCE}/.. ./configure && "
-                " make MORE_LDLIBS=-pie && "
+                " make MORE_LDLIBS='-pie -rdynamic' && "
                 " make install && "
                 " cp ${BIN_DCE}/../bin/ccn* ${BIN_DCE} && "
                 " cd -")
@@ -337,6 +339,18 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
         self.assertTrue(len(stdout) == expected , stdout)
 
         ec.shutdown()
+
+    def test_dce_ping_fedora(self):
+        self.t_dce_ping(self.fedora_host, self.fedora_user, self.fedora_identity)
+
+    def test_dce_ping_local(self):
+        self.t_dce_ping("localhost")
+
+    def test_dce_ccn_fedora(self):
+        self.t_dce_ccn(self.fedora_host, self.fedora_user, self.fedora_identity)
+
+    def test_dce_ccn_local(self):
+        self.t_dce_ccn("localhost")
 
 if __name__ == '__main__':
     unittest.main()
