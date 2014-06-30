@@ -544,7 +544,7 @@ class LinuxNS3SimulationTest(unittest.TestCase):
         ec.shutdown()
 
     @skipIfNotAlive
-    def t_routing(self, host, user = None, localhost = None):
+    def t_routing(self, host, user = None, identity = None):
         """ 
         network topology:
                                 n4
