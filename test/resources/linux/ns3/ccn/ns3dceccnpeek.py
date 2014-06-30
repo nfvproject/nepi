@@ -20,7 +20,8 @@
 
 
 from nepi.execution.ec import ExperimentController 
-from nepi.execution.trace import TraceAttr
+
+from test_utils import skipIfNotAlive
 
 import os
 import time
@@ -52,26 +53,24 @@ class LinuxNS3CCNPeekDceApplicationTest(unittest.TestCase):
         self.fedora_host = "nepi2.pl.sophia.inria.fr"
         self.fedora_user = "inria_nepi"
         self.fedora_identity = "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'])
-        self.fedora_host = "mimas.inria.fr"
-        self.fedora_user = "aquereil"
-        self.fedora_identity = "%s/.ssh/id_rsa" % (os.environ['HOME'])
 
-    def test_dce_ccnpeek(self):
+    @skipIfNotAlive
+    def t_dce_ccnpeek(self, host, user = None, identity = None):
         ec = ExperimentController(exp_id = "test-dce-ccnpeek")
-        
+
         node = ec.register_resource("LinuxNode")
-        ec.set(node, "hostname", self.fedora_host)
-        ec.set(node, "username", self.fedora_user)
-        ec.set(node, "identity", self.fedora_identity)
-        ec.set(node, "cleanExperiment", True)
-        #ec.set(node, "cleanProcesses", True)
+        if host == "localhost":
+            ec.set(node, "hostname", host)
+        else:
+            ec.set(node, "hostname", host)
+            ec.set(node, "username", user)
+            ec.set(node, "identity", identity)
+        
+        ec.set(node, "cleanProcesses", True)
         #ec.set(node, "cleanHome", True)
 
         simu = ec.register_resource("LinuxNS3Simulation")
         ec.set(simu, "verbose", True)
-        ec.set(simu, "ns3Version", "ns-3-dev")
-        ec.set(simu, "pybindgenVersion", "868")
-        ec.set(simu, "buildMode", "debug")
         ec.set(simu, "nsLog", "DceApplication")
         ec.register_connection(simu, node)
 
@@ -115,70 +114,23 @@ class LinuxNS3CCNPeekDceApplicationTest(unittest.TestCase):
 
         ec.shutdown()
 
-    def test_dce_ccnpeek_local(self):
-        ec = ExperimentController(exp_id = "test-dce-ccnpeek-local")
-        
-        node = ec.register_resource("LinuxNode")
-        ec.set(node, "hostname", "localhost")
-
-        simu = ec.register_resource("LinuxNS3Simulation")
-        ec.set(simu, "verbose", True)
-        #ec.set(simu, "ns3Version", "ns-3.19")
-        #ec.set(simu, "pybindgenVersion", "834")
-        ec.set(node, "cleanExperiment", True)
-        ec.register_connection(simu, node)
-
-        nsnode = add_ns3_node(ec, simu)
-
-        ### create applications
-        ccnd = ec.register_resource("ns3::LinuxDceCCND")
-        ec.set (ccnd, "stackSize", 1<<20)
-        ec.set (ccnd, "StartTime", "1s")
-        ec.register_connection(ccnd, nsnode)
-
-        ccnpoke = ec.register_resource("ns3::LinuxDceCCNPoke")
-        ec.set (ccnpoke, "contentName", "ccnx:/chunk0")
-        ec.set (ccnpoke, "content", "DATA")
-        ec.set (ccnpoke, "stackSize", 1<<20)
-        ec.set (ccnpoke, "StartTime", "2s")
-        ec.register_connection(ccnpoke, nsnode)
-
-        ccnpeek = ec.register_resource("ns3::LinuxDceCCNPeek")
-        ec.set (ccnpeek, "contentName", "ccnx:/chunk0")
-        ec.set (ccnpeek, "stackSize", 1<<20)
-        ec.set (ccnpeek, "StartTime", "4s")
-        ec.set (ccnpeek, "StopTime", "20s")
-        ec.register_connection(ccnpeek, nsnode)
-
-        ec.deploy()
-
-        ec.wait_finished([ccnpeek])
-
-        expected = "ccnpeek ccnx:/chunk0"
-        cmdline = ec.trace(ccnpeek, "cmdline")
-        self.assertTrue(cmdline.find(expected) > -1, cmdline)
-
-        expected = "Start Time: NS3 Time:          4s ("
-        status = ec.trace(ccnpeek, "status")
-        self.assertTrue(status.find(expected) > -1, status)
-
-        expected = "DATA"
-        stdout = ec.trace(ccnpeek, "stdout")
-        self.assertTrue(stdout.find(expected) > -1, stdout)
-
-        ec.shutdown()
-
-    def test_dce_ccnpeek_local_with_stack(self):
+    @skipIfNotAlive
+    def t_dce_ccnpeek_with_stack(self, host, user = None, identity = None):
         ec = ExperimentController(exp_id = "test-dce-peek-lostack")
         
         node = ec.register_resource("LinuxNode")
-        ec.set(node, "hostname", "localhost")
+        if host == "localhost":
+            ec.set(node, "hostname", host)
+        else:
+            ec.set(node, "hostname", host)
+            ec.set(node, "username", user)
+            ec.set(node, "identity", identity)
+        
+        ec.set(node, "cleanProcesses", True)
+        #ec.set(node, "cleanHome", True)
 
         simu = ec.register_resource("LinuxNS3Simulation")
         ec.set(simu, "verbose", True)
-        #ec.set(simu, "ns3Version", "ns-3.19")
-        #ec.set(simu, "pybindgenVersion", "834")
-        ec.set(node, "cleanExperiment", True)
         ec.register_connection(simu, node)
 
         nsnode = ec.register_resource("ns3::Node")
@@ -222,6 +174,19 @@ class LinuxNS3CCNPeekDceApplicationTest(unittest.TestCase):
         self.assertTrue(stdout.find(expected) > -1, stdout)
 
         ec.shutdown()
+
+    def test_dce_ccnpeek_fedora(self):
+        self.t_dce_ccnpeek(self.fedora_host, self.fedora_user, self.fedora_identity)
+
+    def test_dce_ccnpeek_local(self):
+        self.t_dce_ccnpeek("localhost")
+
+    def test_dce_ccnpeek_with_stack_fedora(self):
+        self.t_dce_ccnpeek_with_stack(self.fedora_host, 
+                self.fedora_user, self.fedora_identity)
+
+    def test_dce_ccnpeek_with_stack_local(self):
+        self.t_dce_ccnpeek_with_stack("localhost")
 
 
 if __name__ == '__main__':

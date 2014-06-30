@@ -172,7 +172,7 @@ class LinuxNS3DceCCND(LinuxNS3CCNDceApplication):
                 " tar zxf ${SRC}/%(tar)s  && "
                 " cd %(version)s && "
                 " INSTALL_BASE=${BIN_DCE}/.. ./configure && "
-                " make MORE_LDLIBS=-pie && "
+                " make MORE_LDLIBS='-pie -rdynamic' && "
                 " make install && "
                 " cp ${BIN_DCE}/../bin/ccn* ${BIN_DCE} && "
                 " cd -"
