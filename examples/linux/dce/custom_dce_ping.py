@@ -41,7 +41,6 @@ def add_ns3_node(ec, simu):
 
     return node
 
-
 def add_point2point_device(ec, node, ip,  prefix):
     dev = ec.register_resource("ns3::PointToPointNetDevice")
     ec.set(dev, "ip", ip)
