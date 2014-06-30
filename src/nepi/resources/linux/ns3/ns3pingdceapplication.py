@@ -198,7 +198,7 @@ class LinuxDcePing(LinuxNS3DceApplication):
                 "tar xvjf ${SRC}/iputils-s20101006.tar.bz2 && "
                 "cd iputils-s20101006/ && "
                 "sed -i 's/CFLAGS=/CFLAGS+=/g' Makefile && "
-                "make CFLAGS=-fPIC LDFLAGS=-pie ping && "
+                "make CFLAGS=-fPIC LDFLAGS='-pie -rdynamic' ping && "
                 "cp ping ${BIN_DCE} && cd - "
                 " )"   
                 )
