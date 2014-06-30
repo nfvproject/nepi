@@ -41,18 +41,7 @@ def add_ns3_node(ec, simu):
 
     return node
 
-def add_point2point_device(ec, node, ip,  prefix):
-    dev = ec.register_resource("ns3::PointToPointNetDevice")
-    ec.set(dev, "ip", ip)
-    ec.set(dev, "prefix", prefix)
-    ec.register_connection(node, dev)
-
-    queue = ec.register_resource("ns3::DropTailQueue")
-    ec.register_connection(dev, queue)
-
-    return dev
-
-ec = ExperimentController(exp_id = "dce-ping-app")
+ec = ExperimentController(exp_id = "dce-ccnpeek-app")
 
 node = ec.register_resource("LinuxNode")
 ec.set(node, "hostname", "localhost")
@@ -62,37 +51,34 @@ ec.set(node, "cleanProcesses", True)
 simu = ec.register_resource("LinuxNS3Simulation")
 ec.register_connection(simu, node)
 
-nsnode1 = add_ns3_node(ec, simu)
-p2p1 = add_point2point_device(ec, nsnode1, "10.0.0.1", "30")
-ec.set(p2p1, "DataRate", "5Mbps")
-
-nsnode2 = add_ns3_node(ec, simu)
-p2p2 = add_point2point_device(ec, nsnode2, "10.0.0.2", "30")
-ec.set(p2p2, "DataRate", "5Mbps")
-
-# Create channel
-chan = ec.register_resource("ns3::PointToPointChannel")
-ec.set(chan, "Delay", "2ms")
-
-ec.register_connection(chan, p2p1)
-ec.register_connection(chan, p2p2)
+nsnode = add_ns3_node(ec, simu)
 
 ### create applications
-ping = ec.register_resource("ns3::LinuxDcePing")
-ec.set (ping, "stackSize", 1<<20)
-ec.set (ping, "target", "10.0.0.2")
-ec.set (ping, "count", "10")
-ec.set (ping, "packetSize", "1000")
-ec.set (ping, "StartTime", "1s")
-ec.set (ping, "StopTime", "20s")
-ec.register_connection(ping, nsnode1)
+ccnd = ec.register_resource("ns3::LinuxDceCCND")
+ec.set (ccnd, "stackSize", 1<<20)
+ec.set (ccnd, "StartTime", "1s")
+ec.register_connection(ccnd, nsnode)
+
+ccnpoke = ec.register_resource("ns3::LinuxDceCCNPoke")
+ec.set (ccnpoke, "contentName", "ccnx:/chunk0")
+ec.set (ccnpoke, "content", "DATA")
+ec.set (ccnpoke, "stackSize", 1<<20)
+ec.set (ccnpoke, "StartTime", "2s")
+ec.register_connection(ccnpoke, nsnode)
+
+ccnpeek = ec.register_resource("ns3::LinuxDceCCNPeek")
+ec.set (ccnpeek, "contentName", "ccnx:/chunk0")
+ec.set (ccnpeek, "stackSize", 1<<20)
+ec.set (ccnpeek, "StartTime", "4s")
+ec.set (ccnpeek, "StopTime", "20s")
+ec.register_connection(ccnpeek, nsnode)
 
 ec.deploy()
 
-ec.wait_finished([ping])
+ec.wait_finished([ccnpeek])
 
-stdout = ec.trace(ping, "stdout") 
+stdout = ec.trace(ccnpeek, "stdout")
 
 ec.shutdown()
 
-print "PING OUTPUT", stdout
+print "PEEK received", stdout
