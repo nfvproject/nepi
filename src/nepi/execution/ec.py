@@ -201,19 +201,9 @@ class ExperimentController(object):
         # EC state
         self._state = ECState.RUNNING
 
-        # Blacklist file for PL nodes
-        nepi_home = os.path.join(os.path.expanduser("~"), ".nepi")
-        plblacklist_file = os.path.join(nepi_home, "plblacklist.txt")
-        if not os.path.exists(plblacklist_file):
-            if os.path.isdir(nepi_home):
-                open(plblacklist_file, 'w').close()
-            else:
-                os.makedirs(nepi_home)
-                open(plblacklist_file, 'w').close()
-                    
         # The runner is a pool of threads used to parallelize 
         # execution of tasks
-        nthreads = int(os.environ.get("NEPI_NTHREADS", "50"))
+        nthreads = int(os.environ.get("NEPI_NTHREADS", "3"))
         self._runner = ParallelRun(maxthreads = nthreads)
 
         # Event processing thread
@@ -332,7 +322,6 @@ class ExperimentController(object):
             :type guids: list
         
         """
-        
         if isinstance(guids, int):
             guids = [guids]
 
