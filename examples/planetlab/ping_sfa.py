@@ -19,6 +19,7 @@
 # Author: Lucia Guevgeozian <lucia.guevgeozian_odizzio@inria.fr>
 
 from nepi.execution.ec import ExperimentController
+from nepi.execution.resource import ResourceAction, ResourceState
 import os
 
 # Create the EC
@@ -32,7 +33,7 @@ sfaPrivateKey = os.environ.get('SFA_PK')
 
 # server
 node1 = ec.register_resource("PlanetlabSfaNode")
-ec.set(node1, "hostname", 'planetlab1.cs.vu.nl')
+ec.set(node1, "hostname", 'planetlab3.xeno.cl.cam.ac.uk')
 ec.set(node1, "username", username)
 ec.set(node1, "sfauser", sfauser)
 ec.set(node1, "sfaPrivateKey", sfaPrivateKey)
@@ -40,12 +41,16 @@ ec.set(node1, "cleanHome", True)
 ec.set(node1, "cleanProcesses", True)
 
 node2 = ec.register_resource("PlanetlabSfaNode")
-ec.set(node2, "hostname", 'onelab1.info.ucl.ac.be')
 ec.set(node2, "username", username)
 ec.set(node2, "sfauser", sfauser)
 ec.set(node2, "sfaPrivateKey", sfaPrivateKey)
 ec.set(node2, "cleanHome", True)
 ec.set(node2, "cleanProcesses", True)
+
+node3 = ec.register_resource("PlanetlabSfaNode")
+ec.set(node3, "username", username)
+ec.set(node3, "sfauser", sfauser)
+ec.set(node3, "sfaPrivateKey", sfaPrivateKey)
 
 app1 = ec.register_resource("LinuxApplication")
 command = "ping -c5 google.com" 
@@ -57,11 +62,18 @@ command = "ping -c5 google.com"
 ec.set(app2, "command", command)
 ec.register_connection(app2, node2)
 
+app3 = ec.register_resource("LinuxApplication")
+command = "ping -c5 google.com"
+ec.set(app3, "command", command)
+ec.register_connection(app3, node3)
+
+ec.register_condition(node2, ResourceAction.DEPLOY, node1, ResourceState.PROVISIONED)
+ec.register_condition(node3, ResourceAction.DEPLOY, node1, ResourceState.PROVISIONED)
 
 # Deploy
 ec.deploy()
 
-ec.wait_finished([app1, app2])
+ec.wait_finished([app1, app2, app3])
 
 ec.shutdown()
 

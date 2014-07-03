@@ -28,6 +28,7 @@ from nepi.util import sshfuncs
 
 from random import randint
 import re
+import os
 import time
 import socket
 import threading
@@ -205,6 +206,16 @@ class PlanetlabNode(LinuxNode):
         if self.get("gateway") or self.get("gatewayUser"):
             self.set("gateway", None)
             self.set("gatewayUser", None)
+
+        # Blacklist file
+        nepi_home = os.path.join(os.path.expanduser("~"), ".nepi")
+        plblacklist_file = os.path.join(nepi_home, "plblacklist.txt")
+        if not os.path.exists(plblacklist_file):
+            if os.path.isdir(nepi_home):
+                open(plblacklist_file, 'w').close()
+            else:
+                os.makedirs(nepi_home)
+                open(plblacklist_file, 'w').close()
 
     def _skip_provision(self):
         pl_user = self.get("pluser")
