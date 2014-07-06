@@ -17,11 +17,7 @@
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 #
-# Instructions to run this example:
-#
-# 1. First edit the script file where required (See ASSING messages)
-#
-# 2. Then, run the script:
+# Example of how to run this experiment (replace with your credentials):
 #
 # $ cd <path-to-nepi>
 # $ PYTHONPATH=$PYTHONPATH:~/repos/nepi/src python examples/linux/vlc_streaming.py -u inria_nepi -i ~/.ssh/id_rsa_planetlab -a planetlab1.u-strasbg.fr -b planetlab1.utt.fr | vlc -
@@ -32,7 +28,6 @@ from nepi.execution.resource import ResourceState, ResourceAction
 
 from optparse import OptionParser, SUPPRESS_HELP
 import os
-
 
 usage = ("usage: %prog -a <hostanme1> -b <hostname2> -u <username> -i <ssh-key>")
 
@@ -54,7 +49,7 @@ username = options.username
 ssh_key = options.ssh_key
 
 ## Create the experiment controller
-ec = ExperimentController(exp_id = "demo_CCN")
+ec = ExperimentController(exp_id = "vlc_streamming")
 
 ## Register node 1
 node1 = ec.register_resource("LinuxNode")
@@ -99,6 +94,7 @@ ec.set(server, "files", local_path_to_video)
 ec.set(server, "command", command)
 ec.register_connection(server, node1)
 
+# Register VLC client
 command = ("sudo -S dbus-uuidgen --ensure; sleep 3; "
         "vlc -I dummy rtp://%s:5004/%s "
         "--sout '#std{access=file,mux=ts,dst=VIDEO}'") % \
