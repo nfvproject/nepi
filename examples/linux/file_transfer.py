@@ -17,90 +17,129 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Author: Lucia Guevgeozian <lucia.guevgeozian_odizzio@inria.fr>
+#         Alina Quereilhac <alina.quereilhac@inria.fr>
+#
+#
+# Example of how to run this experiment (replace with your credentials):
+#
+# $ cd <path-to-nepi>
+# $ PYTHONPATH=$PYTHONPATH:~/repos/nepi/src python examples/linux/file_transfer.py -u inria_nepi -i ~/.ssh/id_rsa_planetlab -a planetlab1.u-strasbg.fr -b planetlab1.utt.fr
+
 
 from nepi.execution.ec import ExperimentController
 from nepi.execution.resource import ResourceAction, ResourceState
 
-def add_node(ec, host, user):
-    node = ec.register_resource("LinuxNode")
-    ec.set(node, "hostname", host)
-    ec.set(node, "username", user)
-    ec.set(node, "cleanHome", True)
-    ec.set(node, "cleanProcesses", True)
-    return node
+from optparse import OptionParser, SUPPRESS_HELP
+import os
 
-def add_app(ec, command, node, sudo=None, video=None, depends=None, forward_x11=None, \
-        env=None):
-    app = ec.register_resource("LinuxApplication")
-    if sudo is not None:
-        ec.set(app, "sudo", sudo)
-    if video is not None:
-        ec.set(app, "sources", video)
-    if depends is not None:
-        ec.set(app, "depends", depends)
-    if forward_x11 is not None:
-	ec.set(app, "forwardX11", forward_x11)
-    if env is not None:
-        ec.set(app, "env", env)
-    ec.set(app, "command", command)
-    ec.register_connection(app, node)
-    return app
+usage = ("usage: %prog -a <hostanme1> -b <hostname2> -u <username> -i <ssh-key>")
 
-exp_id = "transfer_file"
+parser = OptionParser(usage = usage)
+parser.add_option("-a", "--hostname1", dest="hostname1", 
+        help="Remote host 1", type="str")
+parser.add_option("-b", "--hostname2", dest="hostname2", 
+        help="Remote host 2", type="str")
+parser.add_option("-u", "--username", dest="username", 
+        help="Username to SSH to remote host", type="str")
+parser.add_option("-i", "--ssh-key", dest="ssh_key", 
+        help="Path to private SSH key to be used for connection", 
+        type="str")
+(options, args) = parser.parse_args()
 
-# Create the EC
-ec = ExperimentController(exp_id)
+hostname1 = options.hostname1
+hostname2 = options.hostname2
+username = options.username
+ssh_key = options.ssh_key
 
-# PlanetLab choosen nodes for the experiment, change for PlanetLab nodes in your slice or
-# other linux nodes
-server_name = "planetlab2.ionio.gr"
-client_name = "planetlab2.fri.uni-lj.si"
+## Create the experiment controller
+ec = ExperimentController(exp_id = "file_transfer")
 
-slicename = "inria_sfatest"
+## Register node 1
+node1 = ec.register_resource("LinuxNode")
+# Set the hostname of the first node to use for the experiment
+ec.set(node1, "hostname", hostname1)
+# username should be your SSH user 
+ec.set(node1, "username", username)
+# Absolute path to the SSH private key
+ec.set(node1, "identity", ssh_key)
+# Clean all files, results, etc, from previous experiments wit the same exp_id
+ec.set(node1, "cleanExperiment", True)
+# Kill all running processes in the node before running the experiment
+ec.set(node1, "cleanProcesses", True)
 
-# Location of the video in local machine
-video= "../big_buck_bunny_240p_mpeg4_lq.ts"
+## Register node 2 
+node2 = ec.register_resource("LinuxNode")
+# Set the hostname of the first node to use for the experiment
+ec.set(node2, "hostname", hostname2)
+# username should be your SSH user 
+ec.set(node2, "username", username)
+# Absolute path to the SSH private key
+ec.set(node2, "identity", ssh_key)
+# Clean all files, results, etc, from previous experiments wit the same exp_id
+ec.set(node2, "cleanExperiment", True)
+# Kill all running processes in the node before running the experiment
+ec.set(node2, "cleanProcesses", True)
 
-# Packets needed for running the experiment
-depends_server = "pv nc tcpdump"
-depends_client = "nc"
+# Register server
+video = "big_buck_bunny_240p_mpeg4_lq.ts"
+local_path_to_video = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)),
+            "..", video)
 
-# Add resource managers for the linux nodes
-server = add_node(ec, server_name, slicename)
-client = add_node(ec, client_name, slicename)
+command = "cat ${SHARE}/%s | pv -fbt 2> bw.txt | nc %s 1234" % ( 
+        video, hostname2 )
 
-# Add resource managers for the linux applications
-app_server =  add_app(ec, "cat ${SRC}/big_buck_bunny_240p_mpeg4_lq.ts | pv -fbt 2> \
-     bw.txt | nc %s 1234" % client_name, server, video=video, depends=depends_server)
+server = ec.register_resource("LinuxApplication")
+ec.set(server, "depends", "pv nc tcpdump")
+ec.set(server, "files", local_path_to_video)
+ec.set(server, "command", command)
+ec.register_connection(server, node1)
+
+# Register client
+command = ("sudo -S dbus-uuidgen --ensure; sleep 3; "
+        "vlc -I dummy rtp://%s:5004/%s "
+        "--sout '#std{access=file,mux=ts,dst=VIDEO}'") % \
+                (hostname2, video)
 
 # Note: is important to add the -d option in nc command to not attempt to read from the 
 # stdin
 # if not nc in the client side close the socket suddently if runned in background
-app_client =  add_app(ec, "nc -dl 1234 > big_buck_copied_movie.ts", client, \
-    depends=depends_client)
+command =  "nc -dl 1234 > %s" % video
 
-capture = add_app(ec, "tcpdump -ni eth0 -w video_transfer.pcap -s0 port 1234 2>&1", \
-    server, sudo=True)
+client = ec.register_resource("LinuxApplication")
+ec.set(client, "depends", "nc")
+ec.set(client, "command", command)
+ec.register_connection(client, node2)
+
+# Register a tcpdump in the server node to monitor the file transfer 
+command = "tcpdump -ni eth0 -w file_transfer.pcap -s0 port 1234 2>&1"
+
+capture = ec.register_resource("LinuxApplication")
+ec.set(capture, "depends", "tcpdump")
+ec.set(capture, "command", command)
+ec.set(capture, "sudo", True)
+ec.register_connection(capture, node1)
 
 # Register conditions 1. nodes ; 2. start tcpdump capture ; 3. client listen port 1234 ;
 # 4. server start sending video
-ec.register_condition(app_server, ResourceAction.START, app_client, ResourceState.STARTED) 
-ec.register_condition(app_client, ResourceAction.START, capture, ResourceState.STARTED)
+ec.register_condition(server, ResourceAction.START, client, ResourceState.STARTED) 
+ec.register_condition(client, ResourceAction.START, capture, ResourceState.STARTED)
 
 # Deploy
 ec.deploy()
 
 # Wait until the applications are finish to retrive the traces
-ec.wait_finished([app_server, app_client])
+ec.wait_finished([server, client])
 
-bw = ec.trace(app_server, "bw.txt")
-pcap = ec.trace(capture, "video_transfer.pcap")
+# Retrieve traces from nc and tcpdump
+bw = ec.trace(server, "bw.txt")
+pcap = ec.trace(capture, "file_transfer.pcap")
 
 # Choose a directory to store the traces, example f = open("/home/<user>/bw.txt", "w")
-f = open("examples/linux/transfer/bw.txt", "w")
+f = open("bw.txt", "w")
 f.write(bw)
 f.close()
-f = open("examples/linux/transfer/video_transfer.pcap", "w")
+f = open("video_transfer.pcap", "w")
 f.write(pcap)
 f.close()
 
