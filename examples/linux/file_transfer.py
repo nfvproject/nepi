@@ -32,32 +32,22 @@ from nepi.execution.resource import ResourceAction, ResourceState
 from optparse import OptionParser, SUPPRESS_HELP
 import os
 
-usage = ("usage: %prog -a <hostanme1> -b <hostname2> -u <username> -i <ssh-key>")
 
-parser = OptionParser(usage = usage)
-parser.add_option("-a", "--hostname1", dest="hostname1", 
-        help="Remote host 1", type="str")
-parser.add_option("-b", "--hostname2", dest="hostname2", 
-        help="Remote host 2", type="str")
-parser.add_option("-u", "--username", dest="username", 
-        help="Username to SSH to remote host", type="str")
-parser.add_option("-i", "--ssh-key", dest="ssh_key", 
-        help="Path to private SSH key to be used for connection", 
-        type="str")
-(options, args) = parser.parse_args()
-
-hostname1 = options.hostname1
-hostname2 = options.hostname2
-username = options.username
-ssh_key = options.ssh_key
+# The pluser and plpassword are the ones used to login in the PlanetLab web 
+# site. Replace with your own user and password account information.
+pl_password =  os.environ.get("PL_PASS")
+pl_user =  os.environ.get("PL_USER")
+username =  os.environ.get("PL_SLICE")
+ssh_key =  "/home/alina/.ssh/id_rsa_planetlab"
 
 ## Create the experiment controller
 ec = ExperimentController(exp_id = "file_transfer")
 
 ## Register node 1
-node1 = ec.register_resource("LinuxNode")
+node1 = ec.register_resource("PlanetlabNode")
 # Set the hostname of the first node to use for the experiment
-ec.set(node1, "hostname", hostname1)
+ec.set(node1, "pluser", pl_user)
+ec.set(node1, "plpassword", pl_password)
 # username should be your SSH user 
 ec.set(node1, "username", username)
 # Absolute path to the SSH private key
@@ -68,7 +58,10 @@ ec.set(node1, "cleanExperiment", True)
 ec.set(node1, "cleanProcesses", True)
 
 ## Register node 2 
-node2 = ec.register_resource("LinuxNode")
+node2 = ec.register_resource("PlanetlabNode")
+# Set the hostname of the first node to use for the experiment
+ec.set(node2, "pluser", pl_user)
+ec.set(node2, "plpassword", pl_password)
 # Set the hostname of the first node to use for the experiment
 ec.set(node2, "hostname", hostname2)
 # username should be your SSH user 
