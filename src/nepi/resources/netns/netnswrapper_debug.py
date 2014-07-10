@@ -18,9 +18,9 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 
-############ METHODS DEBUG NS3WRAPPER EXECUTION
+############ METHODS DEBUG NETNSWRAPPER EXECUTION
 ##
-## The ns3wrapper works in ditributed mode, receiving instructions from
+## The netnswrapper works in ditributed mode, receiving instructions from
 ## a remote client. This makes it very hard to debug scripting errors 
 ## in the client side. To simplify error debugging, when set to debug mode,
 ## the ns3wrapper dumps every executed line to a script that can be then
@@ -30,11 +30,9 @@
 
 import logging
 
-SINGLETON = "singleton::"
-
-class NS3WrapperDebuger(object):
+class NetNSWrapperDebuger(object):
     def __init__(self, enabled):
-        super(NS3WrapperDebuger, self).__init__()
+        super(NetNSWrapperDebuger, self).__init__()
         self._enabled = enabled
         self._script_path = "debug.py"
 
@@ -58,7 +56,7 @@ class NS3WrapperDebuger(object):
             return
 
         header = """
-from ns3wrapper import NS3Wrapper
+from netnswrapper import NetNSWrapper
 
 wrapper = NS3Wrapper()
 
