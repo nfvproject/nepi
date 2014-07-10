@@ -149,3 +149,18 @@ def skipIfNotSfi(func):
         return func(*args, **kwargs)
 
     return wrapped
+
+def skipIf(cond, text):
+    def wrapped(func, text):
+        name = func.__name__
+
+        def banner(*args, **kwargs):
+            sys.stderr.write("*** WARNING: Skipping test %s: `%s'\n" %
+                    (name, text))
+            return None
+        return banner
+
+    return (lambda func: wrapped(func, text)) if cond else lambda func: func
+
+
+
