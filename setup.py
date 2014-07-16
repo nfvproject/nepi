@@ -1,12 +1,11 @@
 #!/usr/bin/env python
-from nepi import __version__
 
 from distutils.core import setup
 import sys
 
 setup(
         name        = "nepi",
-        version     = __version__,
+        version     = "nepi-3-dev",
         description = "Network Experiment Management Framework",
         author      = "Alina Quereilhac, Julien Tribino, Lucia Guevgeozian",
         url         = "http://nepi.inria.fr",

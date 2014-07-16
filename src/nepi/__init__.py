@@ -21,8 +21,6 @@ import logging
 import os
 import traceback
 
-__version__ = "3.0"
-
 LOGLEVEL = os.environ.get("NEPI_LOGLEVEL", "INFO").upper()
 LOGLEVEL = getattr(logging, LOGLEVEL)
 FORMAT = "%(asctime)s %(name)s %(levelname)-4s %(message)s"
