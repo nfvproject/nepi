@@ -1090,7 +1090,7 @@ class ResourceFactory(object):
         return rclass(ec, guid)
 
 def populate_factory():
-    """Register all the possible RM that exists in the current version of Nepi.
+    """Find and rgister all available RMs
     """
     # Once the factory is populated, don't repopulate
     if not ResourceFactory.resource_types():
