@@ -127,7 +127,7 @@ def send_reply(conn, reply):
     conn.send("%s\n" % encoded)
 
 def get_options():
-    usage = ("usage: %prog -S <socket-name> -L <ns-log>  -D <enable-dump> -v ")
+    usage = ("usage: %prog -S <socket-name> -D <enable-dump> -v ")
     
     parser = OptionParser(usage = usage)
 
@@ -135,12 +135,8 @@ def get_options():
         help = "Name for the unix socket used to interact with this process", 
         default = "tap.sock", type="str")
 
-    parser.add_option("-L", "--ns-log", dest="ns_log",
-        help = "NS_LOG environmental variable to be set", 
-        default = "", type="str")
-
     parser.add_option("-D", "--enable-dump", dest="enable_dump",
-        help = "Enable dumping the remote executed ns-3 commands to a script "
+        help = "Enable dumping the remote executed commands to a script "
             "in order to later reproduce and debug the experiment",
         action = "store_true",
         default = False)
@@ -155,14 +151,10 @@ def get_options():
     return (options.socket_name, options.verbose, options.ns_log,
             options.enable_dump)
 
-def run_server(socket_name, level = logging.INFO, ns_log = None, 
+def run_server(socket_name, level = logging.INFO, 
         enable_dump = False):
 
-    # Sets NS_LOG environmental variable for NS debugging
-    if ns_log:
-        os.environ["NS_LOG"] = ns_log
-
-    ###### ns-3 wrapper instantiation
+    ###### wrapper instantiation
 
     wrapper = NetNSWrapper(loglevel=level, enable_dump = enable_dump)
     
@@ -209,7 +201,7 @@ def run_server(socket_name, level = logging.INFO, ns_log = None,
 
 if __name__ == '__main__':
             
-    (socket_name, verbose, ns_log, enable_dump) = get_options()
+    (socket_name, verbose, enable_dump) = get_options()
 
     ## configure logging
     FORMAT = "%(asctime)s %(name)s %(levelname)-4s %(message)s"
@@ -218,5 +210,5 @@ if __name__ == '__main__':
     logging.basicConfig(format = FORMAT, level = level)
 
     ## Run the server
-    run_server(socket_name, level, ns_log, enable_dump)
+    run_server(socket_name, level, enable_dump)
 

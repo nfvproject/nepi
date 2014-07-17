@@ -132,6 +132,8 @@ class NetNSWrapperTest(unittest.TestCase):
         expected = "1 packets transmitted, 1 received, 0% packet loss"
         self.assertTrue(s1.find(expected) > -1)
         self.assertTrue(s2.find(expected) > -1)
+        
+        wrapper.shutdown()
 
 if __name__ == '__main__':
     unittest.main()

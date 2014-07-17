@@ -133,42 +133,11 @@ wrapper = NS3Wrapper()
         
         self.dump_to_script(command)
 
-    def dump_start(self):
-        if not self.enabled:
-            return
-
-        command = "wrapper.start()\n\n"
-        self.dump_to_script(command)
-
-    def dump_stop(self, time = None):
-        if not self.enabled:
-            return
-
-        command = ("wrapper.stop(time=%(time)s)\n\n" 
-                ) % dict({
-                 "time": self.format_value(time) if time else "None",
-                })
-
-        self.dump_to_script(command)
-
     def dump_shutdown(self):
         if not self.enabled:
             return
 
         command = "wrapper.shutdown()\n\n"
-        self.dump_to_script(command)
-
-    def dump_add_static_route(self, uuid, args):
-        if not self.enabled:
-            return
-
-        command = ("args = %(args)s\n"
-                   "wrapper._add_static_route(%(uuid)s, *args)\n\n" 
-                ) % dict({
-                 "uuid": self.format_value(uuid),
-                 "args": self.format_args(args),
-                })
-
         self.dump_to_script(command)
 
     def format_value(self, value):

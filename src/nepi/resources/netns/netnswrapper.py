@@ -164,8 +164,12 @@ class NetNSWrapper(object):
         self.debuger.dump_shutdown()
         ########
 
+        ### FLUSH PIPES
         sys.stdout.flush()
         sys.stderr.flush()
+
+        ### RELEASE OBJECTS
+        del self._objects 
 
         ### DEBUG
         self.logger.debug("SHUTDOWN")
