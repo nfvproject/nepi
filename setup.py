@@ -22,6 +22,7 @@ setup(
             "nepi.resources.linux.ccn",
             "nepi.resources.linux.ns3",
             "nepi.resources.linux.ns3.ccn",
+            "nepi.resources.linux.netns",
             "nepi.resources.netns",
             "nepi.resources.ns3",
             "nepi.resources.ns3.classes",
