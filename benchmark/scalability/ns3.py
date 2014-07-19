@@ -216,7 +216,7 @@ else:
 
 timestmp = zero_time.strftime('%Y%m%d %H:%M:%S')
 
-f.write("%s|%s|%d|%d|%d|%d|%d|%d|%d\n" % (
+f.write("%s|%s|%d|%d|%d|%d|%d|%d|%s\n" % (
     platform,
     timestmp,
     run,
