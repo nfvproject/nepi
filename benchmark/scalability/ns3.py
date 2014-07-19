@@ -218,7 +218,7 @@ timestmp = zero_time.strftime('%Y%m%d %H:%M:%S')
 
 f.write("%s|%d|%d|%d|%d|%d|%d|%s\n" % (
     platform,
-    timestmp
+    timestmp,
     run,
     node_count,
     app_count,
