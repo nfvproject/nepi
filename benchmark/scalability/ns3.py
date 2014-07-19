@@ -68,7 +68,7 @@ mem_total = vmem.total
 mem_usage = []
 
 # Measure the CPU consumption before deployment
-cpu_usage_before = psutil.cpu_percent()
+cpu_usage_before = sum(psutil.cpu_percent(interval=1, percpu=True))
 
 # Measure the Memory usage before
 vmem = psutil.virtual_memory()
@@ -187,7 +187,8 @@ for dev in devs:
 zero_time = datetime.datetime.now()
 ec.deploy()
 
-cpu_usage1 = psutil.cpu_percent() - cpu_usage_before
+cpu_usage1 = sum(psutil.cpu_percent(interval=1, percpu=True))
+cpu_usage1 = cpu_usage1 - cpu_usage_before
 cpu_usage.append(cpu_usage1)
 
 vmem = psutil.virtual_memory()
@@ -199,7 +200,8 @@ ec.wait_deployed(nodes + apps + devs)
 # Time to deploy
 ttd_time = datetime.datetime.now()
 
-cpu_usage2 = psutil.cpu_percent() - cpu_usage_before
+cpu_usage2 = sum(psutil.cpu_percent(interval=1, percpu=True))
+cpu_usage2 = cpu_usage2 - cpu_usage_before
 cpu_usage.append(cpu_usage2)
 
 vmem = psutil.virtual_memory()
@@ -252,7 +254,7 @@ timestmp = zero_time.strftime('%Y%m%d %H:%M:%S')
 cpu_usage = sum(cpu_usage)/float(len(cpu_usage))
 mem_usage = sum(mem_usage)/float(len(mem_usage))
 
-f.write("%s|%s|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%s\n" % (
+f.write("%s|%s|%f|%d|%f|%d|%d|%d|%d|%d|%d|%d|%d|%s\n" % (
     timestmp,
     platform,
     cpu_usage,
