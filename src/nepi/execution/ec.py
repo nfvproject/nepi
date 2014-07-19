@@ -203,7 +203,7 @@ class ExperimentController(object):
 
         # The runner is a pool of threads used to parallelize 
         # execution of tasks
-        nthreads = int(os.environ.get("NEPI_NTHREADS", "3"))
+        nthreads = int(os.environ.get("NEPI_NTHREADS", "20"))
         self._runner = ParallelRun(maxthreads = nthreads)
 
         # Event processing thread
@@ -218,6 +218,14 @@ class ExperimentController(object):
 
         """
         return self._logger
+
+    @property
+    def failure_level(self):
+        """ Returns the level of FAILURE of th experiment
+
+        """
+
+        return self._fm._failure_level
 
     @property
     def ecstate(self):
