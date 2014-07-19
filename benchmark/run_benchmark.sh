@@ -1,8 +1,13 @@
 #!/bin/bash
+## Run instructions:
+## cd ~/repos/nepi/src/benchmark
+## PYTHONPATH=$PYTHONPATH:~/repos/nepi/src/ bash run_benchmark.sh
+
 
 ## SCALABILTY 
 #### NS3
 
+#runs=1
 runs=2
 nodes=(1 10) 
 apps=(1 10) 
