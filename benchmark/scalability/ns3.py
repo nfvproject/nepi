@@ -24,6 +24,7 @@ import os
 import datetime
 import ipaddr
 import random
+import psutil
 
 from optparse import OptionParser
 
@@ -58,6 +59,20 @@ clean_run = (run == 1)
 hostname = options.hostname
 username = options.username
 identity = options.ssh_key
+
+cpu_count = psutil.cpu_count()
+cpu_usage = []
+
+vmem = psutil.virtual_memory()
+mem_total = vmem.total
+mem_usage = []
+
+# Measure the CPU consumption before deployment
+cpu_usage_before = psutil.cpu_percent()
+
+# Measure the Memory usage before
+vmem = psutil.virtual_memory()
+mem_usage_before = vmem.percent
 
 platform = "ns3"
 
@@ -172,10 +187,24 @@ for dev in devs:
 zero_time = datetime.datetime.now()
 ec.deploy()
 
+cpu_usage1 = psutil.cpu_percent() - cpu_usage_before
+cpu_usage.append(cpu_usage1)
+
+vmem = psutil.virtual_memory()
+mem_usage1 = vmem.percent - mem_usage_before
+mem_usage.append(mem_usage1)
+
 # Wait until nodes and apps are deployed
 ec.wait_deployed(nodes + apps + devs)
 # Time to deploy
 ttd_time = datetime.datetime.now()
+
+cpu_usage2 = psutil.cpu_percent() - cpu_usage_before
+cpu_usage.append(cpu_usage2)
+
+vmem = psutil.virtual_memory()
+mem_usage2 = vmem.percent - mem_usage_before
+mem_usage.append(mem_usage2)
 
 # Wait until the apps are finished
 ec.wait_finished(apps)
@@ -186,7 +215,6 @@ ttr_time = datetime.datetime.now()
 ec.shutdown()
 # Time to release
 ttrel_time = datetime.datetime.now()
-
 
 # Get the failure level of the experiment (OK if no failure)
 status = ec.failure_level
@@ -216,15 +244,21 @@ remote = "local" if hostname == "localhost" else "remote"
 filename = "%s_scalability_%s.txt" % (platform, remote )
 if not os.path.exists(filename):
     f = open(filename, "w")
-    f.write("platform|time|run|node_count|app_count|thread_count|TTD(ms)|TTR(ms)|TTREL(ms)|status\n")
+    f.write("platform|time|cpu%|cpu_count|mem%|mem_total|run|node_count|app_count|thread_count|TTD(ms)|TTR(ms)|TTREL(ms)|status\n")
 else:
     f = open(filename, "a")
 
 timestmp = zero_time.strftime('%Y%m%d %H:%M:%S')
+cpu_usage = sum(cpu_usage)/float(len(cpu_usage))
+mem_usage = sum(mem_usage)/float(len(mem_usage))
 
-f.write("%s|%s|%d|%d|%d|%d|%d|%d|%d|%s\n" % (
+f.write("%s|%s|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%s\n" % (
     timestmp,
     platform,
+    cpu_usage,
+    cpu_count,
+    mem_usage,
+    mem_total,
     run,
     node_count,
     app_count,
