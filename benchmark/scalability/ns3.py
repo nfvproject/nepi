@@ -23,6 +23,7 @@ from nepi.execution.ec import ExperimentController
 import os
 import datetime
 import ipaddr
+import random
 
 from optparse import OptionParser
 
