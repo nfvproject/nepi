@@ -60,7 +60,7 @@ hostname = options.hostname
 username = options.username
 identity = options.ssh_key
 
-cpu_count = psutil.cpu_count()
+cpu_count = psutil.NUM_CPUS
 cpu_usage = []
 
 vmem = psutil.virtual_memory()
