@@ -210,13 +210,13 @@ ttrms =  (ttr.microseconds + ((ttr.seconds + ttr.days * 24 * 3600) * s2us)) / s2
 filename = "%s_scalability.txt" % platform
 if not os.path.exists(filename):
     f = open(filename, "w")
-    f.write("platform|time|run|node_count|app_count|thread_count|TTD(ms)|TTR(ms)|status|\n")
+    f.write("platform|time|run|node_count|app_count|thread_count|TTD(ms)|TTR(ms)|status\n")
 else:
     f = open(filename, "a")
 
 timestmp = zero_time.strftime('%Y%m%d %H:%M:%S')
 
-f.write("%s|%d|%d|%d|%d|%d|%d|%s\n" % (
+f.write("%s|%s|%d|%d|%d|%d|%d|%s\n" % (
     platform,
     timestmp,
     run,
