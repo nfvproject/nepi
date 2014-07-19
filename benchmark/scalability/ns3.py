@@ -173,7 +173,6 @@ zero_time = datetime.datetime.now()
 ec.deploy()
 
 # Wait until nodes and apps are deployed
-
 ec.wait_deployed(nodes + apps + devs)
 # Time to deploy
 ttd_time = datetime.datetime.now()
@@ -185,6 +184,9 @@ ttr_time = datetime.datetime.now()
 
 # Do the experiment controller shutdown
 ec.shutdown()
+# Time to release
+ttrel_time = datetime.datetime.now()
+
 
 # Get the failure level of the experiment (OK if no failure)
 status = ec.failure_level
@@ -205,27 +207,31 @@ ttdms =  (ttd.microseconds + ((ttd.seconds + ttd.days * 24 * 3600) * s2us)) / s2
 ttr = (ttr_time - ttd_time)
 ttrms =  (ttr.microseconds + ((ttr.seconds + ttr.days * 24 * 3600) * s2us)) / s2ms
 
+ttrel = (ttrel_time - ttr_time)
+ttrelms =  (ttrel.microseconds + ((ttrel.seconds + ttrel.days * 24 * 3600) * s2us)) / s2ms
+
 ############### Persist results
 
 remote = "local" if hostname == "localhost" else "remote"
 filename = "%s_scalability_%s.txt" % (platform, remote )
 if not os.path.exists(filename):
     f = open(filename, "w")
-    f.write("platform|time|run|node_count|app_count|thread_count|TTD(ms)|TTR(ms)|status\n")
+    f.write("platform|time|run|node_count|app_count|thread_count|TTD(ms)|TTR(ms)|TTREL(ms)|status\n")
 else:
     f = open(filename, "a")
 
 timestmp = zero_time.strftime('%Y%m%d %H:%M:%S')
 
-f.write("%s|%s|%d|%d|%d|%d|%d|%d|%s\n" % (
-    platform,
+f.write("%s|%s|%d|%d|%d|%d|%d|%d|%d|%s\n" % (
     timestmp,
+    platform,
     run,
     node_count,
     app_count,
     thread_count,
     ttdms,
     ttrms,
+    ttrelms,
     status
     ))
 
