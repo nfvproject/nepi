@@ -268,12 +268,6 @@ class NS3Wrapper(object):
             result = self.is_finished
         elif operation == "isAppRunning":
             result = self._is_app_running(uuid)
-        elif operation == "addStaticRoute":
-            ### DEBUG
-            self.debuger.dump_add_static_route(uuid, args)
-            ########
-
-            result = self._add_static_route(uuid, *args)
         else:
             newuuid = self.make_uuid()
 
@@ -281,27 +275,34 @@ class NS3Wrapper(object):
             self.debuger.dump_invoke(newuuid, uuid, operation, args, kwargs)
             ########
 
-            if uuid.startswith(SINGLETON):
-                obj = self._singleton(uuid)
+            if operation == "addStaticRoute":
+                result = self._add_static_route(uuid, *args)
+
+            elif operation == "retrieveObject":
+                result = self._retrieve_object(uuid, *args, **kwargs)
+
             else:
-                obj = self.get_object(uuid)
-            
-            method = getattr(obj, operation)
+                if uuid.startswith(SINGLETON):
+                    obj = self._singleton(uuid)
+                else:
+                    obj = self.get_object(uuid)
+                
+                method = getattr(obj, operation)
 
-            # arguments starting with 'uuid' identify ns-3 C++
-            # objects and must be replaced by the actual object
-            realargs = self.replace_args(args)
-            realkwargs = self.replace_kwargs(kwargs)
+                # arguments starting with 'uuid' identify ns-3 C++
+                # objects and must be replaced by the actual object
+                realargs = self.replace_args(args)
+                realkwargs = self.replace_kwargs(kwargs)
 
-            result = method(*realargs, **realkwargs)
+                result = method(*realargs, **realkwargs)
 
-            # If the result is an object (not a base value),
-            # then keep track of the object a return the object
-            # reference (newuuid)
-            if not (result is None or type(result) in [
-                    bool, float, long, str, int]):
-                self._objects[newuuid] = result
-                result = newuuid
+                # If the result is an object (not a base value),
+                # then keep track of the object a return the object
+                # reference (newuuid)
+                if not (result is None or type(result) in [
+                        bool, float, long, str, int]):
+                    self._objects[newuuid] = result
+                    result = newuuid
 
         ### DEBUG
         self.logger.debug("RET INVOKE %s%s = %s -> %s(%s, %s) " % (
@@ -631,4 +632,26 @@ class NS3Wrapper(object):
                 if ifindex == ifidx:
                     return ifindex
         return ifindex
+
+    def _retrieve_object(self, uuid, typeid, search = False):
+        obj = self.get_object(uuid)
+
+        type_id = self.ns3.TypeId()
+        tid = type_id.LookupByName(typeid)
+        nobj = obj.GetObject(tid)
+
+        newuuid = None
+        if search:
+            # search object
+            for ouuid, oobj in self._objects.iteritems():
+                if nobj == oobj:
+                    newuuid = ouuid
+                    break
+        else: 
+            newuuid = self.make_uuid()
+            self._objects[newuuid] = nobj
+
+        return newuuid
+
+
 

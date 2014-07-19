@@ -111,6 +111,17 @@ class NS3BaseNode(NS3Base):
         if self.get("enableStack"):
             uuid_stack_helper = self.simulation.create("InternetStackHelper")
             self.simulation.invoke(uuid_stack_helper, "Install", self.uuid)
+
+            # Retrieve IPV4 object
+            ipv4_uuid = self.simulation.invoke(self.uuid, "retrieveObject",
+                    "ns3::Ipv4L3Protocol")
+            
+            # Add IPv4 RM to the node
+            ipv4 = self.ec.register_resource("ns3::Ipv4L3Protocol")
+            self.ec.register_connection(self.guid, ipv4)
+            ipv4rm = self.ec.get_resource(ipv4)
+            ipv4rm._uuid = ipv4_uuid
+            ipv4rm.set_started()
         else:
             ### node.AggregateObject(PacketSocketFactory())
             uuid_packet_socket_factory = self.simulation.create("PacketSocketFactory")
@@ -121,17 +132,18 @@ class NS3BaseNode(NS3Base):
             self._add_dce(dceapplications)
 
     def _connect_object(self):
-        ipv4 = self.ipv4
-        if ipv4:
-            self.simulation.invoke(self.uuid, "AggregateObject", ipv4.uuid)
-            self._connected.add(ipv4.uuid)
-            ipv4._connected.add(self.uuid)
+        if not self.get("enableStack"):
+            ipv4 = self.ipv4
+            if ipv4:
+                self.simulation.invoke(self.uuid, "AggregateObject", ipv4.uuid)
+                self._connected.add(ipv4.uuid)
+                ipv4._connected.add(self.uuid)
 
-        arp = self.arp
-        if arp:
-            self.simulation.invoke(self.uuid, "AggregateObject", arp.uuid)
-            self._connected.add(arp.uuid)
-            arp._connected.add(self.uuid)
+            arp = self.arp
+            if arp:
+                self.simulation.invoke(self.uuid, "AggregateObject", arp.uuid)
+                self._connected.add(arp.uuid)
+                arp._connected.add(self.uuid)
 
         mobility = self.mobility
         if mobility:

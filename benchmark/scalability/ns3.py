@@ -91,17 +91,8 @@ def add_linux_node(ec, hostname, username, ssh_key, clean_run):
 
 def add_node(ec, simu):
     node = ec.register_resource("ns3::Node")
+    ec.set(node, "enableStack", True)
     ec.register_connection(node, simu)
-
-    # Add minimal stack
-    ipv4 = ec.register_resource("ns3::Ipv4L3Protocol")
-    ec.register_connection(node, ipv4)
-
-    arp = ec.register_resource("ns3::ArpL3Protocol")
-    ec.register_connection(node, arp)
-    
-    icmp = ec.register_resource("ns3::Icmpv4L4Protocol")
-    ec.register_connection(node, icmp)
 
     return node
 
@@ -138,6 +129,7 @@ lnode = add_linux_node(ec, hostname, username, identity, clean_run)
 
 # Add a simulation resource
 simu = ec.register_resource("LinuxNS3Simulation")
+ec.set(simu, "enableDump", True)
 ec.set(simu, "verbose", True)
 ec.register_connection(simu, lnode)
 

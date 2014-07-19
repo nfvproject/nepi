@@ -160,19 +160,6 @@ wrapper = NS3Wrapper()
         command = "wrapper.shutdown()\n\n"
         self.dump_to_script(command)
 
-    def dump_add_static_route(self, uuid, args):
-        if not self.enabled:
-            return
-
-        command = ("args = %(args)s\n"
-                   "wrapper._add_static_route(%(uuid)s, *args)\n\n" 
-                ) % dict({
-                 "uuid": self.format_value(uuid),
-                 "args": self.format_args(args),
-                })
-
-        self.dump_to_script(command)
-
     def format_value(self, value):
         if isinstance(value, str) and value.startswith("uuid"):
             return value.replace("-", "")
