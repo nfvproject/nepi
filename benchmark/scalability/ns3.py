@@ -196,12 +196,13 @@ else:
         
 # Get time deltas in miliseconds
 s2us = 1000000.0 # conversion factor s to microseconds = 10^6
+s2ms = 1000.0 # conversion factor s to microseconds = 10^3
 
 ttd = ttd_time - zero_time
-ttdms =  (ttd.microseconds + ((ttd.seconds + ttd.days * 24 * 3600) * s2us)) / s2us
+ttdms =  (ttd.microseconds + ((ttd.seconds + ttd.days * 24 * 3600) * s2us)) / s2ms
 
 ttr = ttr_time - zero_time
-ttrms =  (ttr.microseconds + ((ttr.seconds + ttr.days * 24 * 3600) * s2us)) / s2us
+ttrms =  (ttr.microseconds + ((ttr.seconds + ttr.days * 24 * 3600) * s2us)) / s2ms
 
 ############### Persist results
 
