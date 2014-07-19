@@ -18,11 +18,15 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 import logging
-import netns
 import time
 import os
 import sys
 import uuid
+
+try:
+    import netns
+except ImportError:
+    pass
 
 class NetNSWrapper(object):
     def __init__(self, loglevel = logging.INFO, enable_dump = False):
