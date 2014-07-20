@@ -69,8 +69,8 @@ mem_usage_before = vmem.percent
 ########## Declaration of dummy resources #####################################
 
 platform = "dummy"
-deploy_time = 1
-run_time = 1
+deploy_time = 0
+run_time = 0
 
 class Link(ResourceManager):
     _rtype = "dummy::Link"
@@ -86,7 +86,7 @@ class Interface(ResourceManager):
         node = self.get_connected(Node.get_rtype())[0]
         link = self.get_connected(Link.get_rtype())[0]
 
-        if node.state < ResourceState.PROVISIONED or \
+        if node.state < ResourceState.READY or \
                 link.state < ResourceState.READY:
             self.ec.schedule(reschedule_delay, self.deploy)
         else:
