@@ -20,18 +20,20 @@
 
 from nepi.execution.ec import ExperimentController
 from nepi.execution.resource import ResourceManager, ResourceState, \
-        clsinit_copy, ResourceAction, reschedule_delay, ResourceFactory
+        clsinit_copy, ResourceAction, ResourceFactory
 
 import os
 import datetime
 import random
 import psutil
 import time
+import threading
+import numpy
 
 from optparse import OptionParser
 
 usage = ("usage: %prog -n <node_count> -a <app_count> -t <thread_count> "
-        "-r <run>")
+        "-r <run> -d <delay> -o <opdelay>")
 
 parser = OptionParser(usage = usage)
 parser.add_option("-n", "--node-count", dest="node_count", 
@@ -42,6 +44,10 @@ parser.add_option("-t", "--thread-count", dest="thread_count",
         help="Number of threads processing experiment events", type="int")
 parser.add_option("-r", "--run", dest="run", 
         help="Run numbber", type="int")
+parser.add_option("-d", "--delay", dest="delay", 
+        help="Re-scheduling delay", type="float")
+parser.add_option("-o", "--opdelay", dest="opdelay", 
+        help="Opetation processing delay", type="float")
 
 (options, args) = parser.parse_args()
 
@@ -50,27 +56,56 @@ app_count = options.app_count
 thread_count = options.thread_count
 run = options.run
 clean_run = (run == 1)
+opdelay = options.opdelay
+delay = options.delay
+reschedule_delay = "0s" # "%0.1fs" % delay
+
+######### Resource consumption ################################################
 
 cpu_count = psutil.NUM_CPUS
-cpu_usage = []
+cpu_usage_deploy = []
+cpu_usage_start = []
 
 vmem = psutil.virtual_memory()
 mem_total = vmem.total
-mem_usage = []
+mem_usage_deploy = []
+mem_usage_start = []
 
-# Measure the CPU consumption before deployment
-cpu_usage_before = sum(psutil.cpu_percent(interval=1, percpu=True))
+stop_monitor_deploy = []
+stop_monitor_start = []
 
-# Measure the Memory usage before
-vmem = psutil.virtual_memory()
-mem_usage_before = vmem.percent
+def compute_estimator(samples):
+    x = numpy.array(samples)
+    n = len(samples)
+    std = x.std() 
+    m = x.mean()
 
+    return n, m, std
+
+def monitor_resources(cpu_usage, mem_usage, stop):
+    wait = 1
+
+    while not stop:
+        p = psutil.Process(os.getpid())
+        cpu = p.get_cpu_percent(interval=1)
+        cpu_usage.append(cpu)
+
+        mem = p.get_memory_percent()
+        mem_usage.append(mem)
+
+        time.sleep(wait)
+
+thread_monitor_deploy = threading.Thread(target=monitor_resources, 
+        args=(cpu_usage_deploy, mem_usage_deploy, stop_monitor_deploy))
+
+thread_monitor_start = threading.Thread(target=monitor_resources, 
+        args=(cpu_usage_start, mem_usage_start, stop_monitor_start))
 
 ########## Declaration of dummy resources #####################################
 
 platform = "dummy"
-deploy_time = 0
-run_time = 0
+deploy_time = opdelay
+run_time = opdelay
 
 class Link(ResourceManager):
     _rtype = "dummy::Link"
@@ -126,7 +161,7 @@ ResourceFactory.register_type(Node)
 ResourceFactory.register_type(Interface)
 ResourceFactory.register_type(Link)
 
-###############################################################################
+############## Run experiment #################################################
 
 # Set the number of threads. 
 # NOTE: This must be done before instantiating the EC.
@@ -161,38 +196,41 @@ for iface in ifaces:
 
 # Deploy the experiment
 zero_time = datetime.datetime.now()
+
+# Launch thread to monitor CPU and memory usage
+thread_monitor_deploy.start()
+
+# Deploy experiment
 ec.deploy()
-
-cpu_usage1 = sum(psutil.cpu_percent(interval=1, percpu=True))
-cpu_usage1 = cpu_usage1 - cpu_usage_before
-cpu_usage.append(cpu_usage1)
-
-vmem = psutil.virtual_memory()
-mem_usage1 = vmem.percent - mem_usage_before
-mem_usage.append(mem_usage1)
 
 # Wait until nodes and apps are deployed
 ec.wait_deployed(nodes + apps + ifaces)
+
 # Time to deploy
 ttd_time = datetime.datetime.now()
 
-cpu_usage2 = sum(psutil.cpu_percent(interval=1, percpu=True))
-cpu_usage2 = cpu_usage2 - cpu_usage_before
-cpu_usage.append(cpu_usage2)
+# Launch thread to monitor CPU and memory usage
+thread_monitor_start.start()
 
-vmem = psutil.virtual_memory()
-mem_usage2 = vmem.percent - mem_usage_before
-mem_usage.append(mem_usage2)
+# Stop deploy monitoring thread
+stop_monitor_deploy.append(0)
 
 # Wait until the apps are finished
 ec.wait_finished(apps)
+
 # Time to finish
 ttr_time = datetime.datetime.now()
 
+# Stop deploy monitoring thread
+stop_monitor_start.append(0)
+
 # Do the experiment controller shutdown
 ec.shutdown()
+
 # Time to release
 ttrel_time = datetime.datetime.now()
+
+##################### Format performance information ##########################
 
 # Get the failure level of the experiment (OK if no failure)
 status = ec.failure_level
@@ -218,24 +256,41 @@ ttrelms =  (ttrel.microseconds + ((ttrel.seconds + ttrel.days * 24 * 3600) * s2u
 
 ############### Persist results
 
-filename = "%s_scalability" % platform
+filename = "%s_scalability.out" % (platform)
 if not os.path.exists(filename):
     f = open(filename, "w")
-    f.write("platform|time|cpu%|cpu_count|mem%|mem_total|run|node_count|app_count|thread_count|TTD(ms)|TTR(ms)|TTREL(ms)|status\n")
+    f.write("time|platform|cpu_count(%)|cpu_deploy(%)|cpu_start|"
+    "mem_total(B)|mem_deploy(%)|mem_starts(%)|opdelay(s)|scheddelay(s)|run#|"
+    "node_count|app_count|thread_count|TTD(ms)|TTR(ms)|TTREL(ms)|status\n")
 else:
     f = open(filename, "a")
 
 timestmp = zero_time.strftime('%Y%m%d %H:%M:%S')
-cpu_usage = sum(cpu_usage)/float(len(cpu_usage))
-mem_usage = sum(mem_usage)/float(len(mem_usage))
 
-f.write("%s|%s|%f|%d|%f|%d|%d|%d|%d|%d|%d|%d|%d|%s\n" % (
+print "LALALAL", cpu_usage_deploy
+n,m,std = compute_estimator(cpu_usage_deploy)
+cpu_deploy = "%d,%0.2f,%0.2f" % (n,m,std)
+
+n,m,std = compute_estimator(cpu_usage_start)
+cpu_start = "%d,%0.2f,%0.2f" % (n,m,std)
+
+n,m,std = compute_estimator(mem_usage_deploy)
+mem_deploy = "%d,%0.2f,%0.2f" % (n,m,std)
+
+n,m,std = compute_estimator(mem_usage_start)
+mem_start = "%d,%0.2f,%0.2f" % (n,m,std)
+
+f.write("%s|%s|%d|%s|%s|%d|%s|%s|%0.1f|%0.1f|%d|%d|%d|%d|%d|%d|%d|%s\n" % (
     timestmp,
     platform,
-    cpu_usage,
     cpu_count,
-    mem_usage,
+    cpu_deploy,
+    cpu_start,
     mem_total,
+    mem_deploy,
+    mem_start,
+    opdelay,
+    delay,
     run,
     node_count,
     app_count,
@@ -247,3 +302,4 @@ f.write("%s|%s|%f|%d|%f|%d|%d|%d|%d|%d|%d|%d|%d|%s\n" % (
     ))
 
 f.close()
+
