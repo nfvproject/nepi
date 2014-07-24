@@ -124,6 +124,7 @@ class Interface(ResourceManager):
         if node.state < ResourceState.READY or \
                 link.state < ResourceState.READY:
             self.ec.schedule(reschedule_delay, self.deploy)
+            self.logger.debug(" -------- RESCHEDULING ------- ")
         else:
             time.sleep(deploy_time)
             super(Interface, self).do_deploy()
@@ -146,6 +147,7 @@ class Application(ResourceManager):
 
         if node.state < ResourceState.READY: 
             self.ec.schedule(reschedule_delay, self.deploy)
+            self.logger.debug(" -------- RESCHEDULING ------- ")
         else:
             time.sleep(deploy_time)
             super(Application, self).do_deploy()
@@ -267,7 +269,6 @@ else:
 
 timestmp = zero_time.strftime('%Y%m%d %H:%M:%S')
 
-print "LALALAL", cpu_usage_deploy
 n,m,std = compute_estimator(cpu_usage_deploy)
 cpu_deploy = "%d,%0.2f,%0.2f" % (n,m,std)
 
