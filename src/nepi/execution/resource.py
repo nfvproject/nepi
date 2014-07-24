@@ -353,7 +353,7 @@ class ResourceManager(Logger):
 
         # instance lock to synchronize exclusive state change methods (such
         # as deploy and release methods), in order to prevent them from being 
-        # executed at the same time
+        # executed at the same time and corrupt internal resource state
         self._release_lock = threading.Lock()
 
     @property
