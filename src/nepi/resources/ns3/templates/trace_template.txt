@@ -1,0 +1,4 @@
+        <TRACE_ID> = Trace("<TRACE_NAME>", "<TRACE_HELP>")
+
+        cls._register_trace(<TRACE_ID>)
+
