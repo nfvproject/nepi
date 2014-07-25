@@ -141,14 +141,15 @@ class ResourceFactoryTestCase(unittest.TestCase):
         ResourceFactory.register_type(MyResource)
         ResourceFactory.register_type(AnotherResource)
 
+        # Take into account default 'Critical' attribute
         self.assertEquals(MyResource.get_rtype(), "MyResource")
-        self.assertEquals(len(MyResource._attributes), 2)
+        self.assertEquals(len(MyResource._attributes), 3)
 
         self.assertEquals(ResourceManager.get_rtype(), "Resource")
-        self.assertEquals(len(ResourceManager._attributes), 1)
+        self.assertEquals(len(ResourceManager._attributes), 2)
 
         self.assertEquals(AnotherResource.get_rtype(), "AnotherResource")
-        self.assertEquals(len(AnotherResource._attributes), 1)
+        self.assertEquals(len(AnotherResource._attributes), 2)
 
         self.assertEquals(len(ResourceFactory.resource_types()), 2)
         
