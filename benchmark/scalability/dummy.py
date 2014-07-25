@@ -75,6 +75,9 @@ stop_monitor_deploy = []
 stop_monitor_start = []
 
 def compute_estimator(samples):
+    if len(samples) == 0:
+        return 0,0,0
+
     x = numpy.array(samples)
     n = len(samples)
     std = x.std() 
