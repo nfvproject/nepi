@@ -26,6 +26,7 @@ import os
 import datetime
 import random
 import psutil
+import subprocess
 import time
 import threading
 import numpy
@@ -59,6 +60,17 @@ clean_run = (run == 1)
 opdelay = options.opdelay
 delay = options.delay
 reschedule_delay = "0s" # "%0.1fs" % delay
+
+def get_nepi_revision():
+    p = subprocess.Popen(["hg", "tip"], 
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    (stdout, stderr) = p.communicate()
+
+    info = stdout.split("\n")
+    changeset = info[0].split(":")[-1]
+
+    return changeset
 
 ######### Resource consumption ################################################
 
@@ -166,7 +178,7 @@ ResourceFactory.register_type(Node)
 ResourceFactory.register_type(Interface)
 ResourceFactory.register_type(Link)
 
-############## Run experiment #################################################
+############## Experiment design and execution ################################
 
 # Set the number of threads. 
 # NOTE: This must be done before instantiating the EC.
@@ -261,7 +273,10 @@ ttrelms =  (ttrel.microseconds + ((ttrel.seconds + ttrel.days * 24 * 3600) * s2u
 
 ############### Persist results
 
-filename = "%s_scalability.out" % (platform)
+revision = get_nepi_revision()
+
+filename = "%s_scalability_benchmark_%s.data" % (platform, revision)
+
 if not os.path.exists(filename):
     f = open(filename, "w")
     f.write("time|platform|cpu_count(%)|cpu_deploy(%)|cpu_start|"
