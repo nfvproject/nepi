@@ -1,12 +1,24 @@
+
 #import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('GTK') 
 import matplotlib.pyplot as plt
 import numpy as np
 
+from optparse import OptionParser
+
+usage = ("usage: %prog -f <data-file>")
+
+parser = OptionParser(usage = usage)
+parser.add_option("-f", "--data-file", dest="data_file",
+        help="File containing data to plot", type="string")
+
+(options, args) = parser.parse_args()
+data_file = options.data_file
+
 data = dict()
 
-f = open("dummy_scalability1.out", "r")
+f = open(data_file, "r")
 for l in f:
     if l.startswith("time|"):
         continue
