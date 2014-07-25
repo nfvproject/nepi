@@ -274,8 +274,9 @@ ttrelms =  (ttrel.microseconds + ((ttrel.seconds + ttrel.days * 24 * 3600) * s2u
 ############### Persist results
 
 revision = get_nepi_revision()
+date = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
 
-filename = "%s_scalability_benchmark_%s.data" % (platform, revision)
+filename = "%s_scalability_benchmark_rev_%s_date_%s.data" % (platform, revision, date)
 
 if not os.path.exists(filename):
     f = open(filename, "w")
