@@ -67,7 +67,7 @@ class FailureManager(object):
 
     def eval_failure(self, guid):
         if self._failure_level == FailureLevel.OK:
-            rm = self.get_resource(guid)
+            rm = self.ec.get_resource(guid)
             state = rm.state
             critical = rm.get("critical")
 
