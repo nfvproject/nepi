@@ -274,7 +274,6 @@ class ResourceManager(Logger):
         """
         return copy.deepcopy(cls._attributes[name])
 
-
     @classmethod
     def get_traces(cls):
         """ Returns a copy of the traces
@@ -598,8 +597,12 @@ class ResourceManager(Logger):
         :rtype: str
         """
         attr = self._attrs[name]
+
+        """
+        A.Q. Commenting due to performance impact
         if attr.has_flag(Flags.Global):
             self.warning( "Attribute %s is global. Use get_global instead." % name)
+        """
             
         return attr.value
 
@@ -877,12 +880,12 @@ class ResourceManager(Logger):
             # Verify all start conditions are met
             for (group, state, time) in start_conditions:
                 # Uncomment for debug
-                unmet = []
-                for guid in group:
-                    rm = self.ec.get_resource(guid)
-                    unmet.append((guid, rm._state))
-                
-                self.debug("---- WAITED STATES ---- %s" % unmet )
+                #unmet = []
+                #for guid in group:
+                #    rm = self.ec.get_resource(guid)
+                #    unmet.append((guid, rm._state))
+                #
+                #self.debug("---- WAITED STATES ---- %s" % unmet )
 
                 reschedule, delay = self._needs_reschedule(group, state, time)
                 if reschedule:
@@ -942,6 +945,7 @@ class ResourceManager(Logger):
         # only can deploy when RM is either NEW, DISCOVERED or PROVISIONED 
         if self.state not in [ResourceState.NEW, ResourceState.DISCOVERED, 
                 ResourceState.PROVISIONED]:
+            #### XXX: A.Q. IT SHOULD FAIL IF DEPLOY IS CALLED IN OTHER STATES!
             reschedule = True
             self.debug("---- RESCHEDULING DEPLOY ---- state %s " % self.state )
         else:
@@ -1014,6 +1018,7 @@ class ResourceManager(Logger):
 
     def do_fail(self):
         self.set_failed()
+        self.ec.inform_failure(self.guid)
 
     def set_started(self, time = None):
         """ Mark ResourceManager as STARTED """
