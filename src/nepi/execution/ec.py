@@ -51,6 +51,7 @@ class FailureManager(object):
     def __init__(self, ec):
         self._ec = weakref.ref(ec)
         self._failure_level = FailureLevel.OK
+        self._abort = False
 
     @property
     def ec(self):
@@ -62,23 +63,19 @@ class FailureManager(object):
 
     @property
     def abort(self):
-        if self._failure_level == FailureLevel.OK:
-            for guid in self.ec.resources:
-                try:
-                    state = self.ec.state(guid)
-                    critical = self.ec.get(guid, "critical")
-                    if state == ResourceState.FAILED and critical:
-                        self._failure_level = FailureLevel.RM_FAILURE
-                        self.ec.logger.debug("RM critical failure occurred on guid %d." \
-                                " Setting EC FAILURE LEVEL to RM_FAILURE" % guid)
-                        break
-                except:
-                    # An error might occure because a RM was deleted abruptly.
-                    # In this case the error should be ignored.
-                    if guid in self.ec._resources:
-                        raise
+        return self._abort
 
-        return self._failure_level != FailureLevel.OK
+    def eval_failure(self, guid):
+        if self._failure_level == FailureLevel.OK:
+            rm = self.get_resource(guid)
+            state = rm.state
+            critical = rm.get("critical")
+
+            if state == ResourceState.FAILED and critical:
+                self._failure_level = FailureLevel.RM_FAILURE
+                self._abort = True
+                self.ec.logger.debug("RM critical failure occurred on guid %d." \
+                    " Setting EC FAILURE LEVEL to RM_FAILURE" % guid)
 
     def set_ec_failure(self):
         self._failure_level = FailureLevel.EC_FAILURE
@@ -257,6 +254,16 @@ class ExperimentController(object):
         """
         return self._fm.abort
 
+    def inform_failure(self, guid):
+        """ Reports a failure in a RM to the EC for evaluation
+
+            :param guid: Resource id
+            :type guid: int
+
+        """
+
+        return self._fm.eval_failure(guid)
+
     def wait_finished(self, guids):
         """ Blocking method that waits until all RMs in the 'guids' list 
         have reached a state >= STOPPED (i.e. STOPPED, FAILED or 
@@ -343,21 +350,20 @@ class ExperimentController(object):
                 break
 
             # If a guid reached one of the target states, remove it from list
-            guid = guids[0]
-            rstate = self.state(guid)
+            guid = guids.pop()
+            rm = self.get_resource(guid)
+            rstate = rm.state
             
-            hrrstate = ResourceState2str.get(rstate)
-            hrstate = ResourceState2str.get(state)
-
             if rstate >= state:
-                guids.remove(guid)
-                rm = self.get_resource(guid)
                 self.logger.debug(" %s guid %d DONE - state is %s, required is >= %s " % (
-                    rm.get_rtype(), guid, hrrstate, hrstate))
+                    rm.get_rtype(), guid, rstate, state))
             else:
                 # Debug...
                 self.logger.debug(" WAITING FOR guid %d - state is %s, required is >= %s " % (
-                    guid, hrrstate, hrstate))
+                    guid, rstate, state))
+
+                guids.append(guid)
+
                 time.sleep(0.5)
   
     def get_task(self, tid):
@@ -798,8 +804,8 @@ class ExperimentController(object):
         if not guids:
             # If no guids list was passed, all 'NEW' RMs will be deployed
             guids = []
-            for guid in self.resources:
-                if self.state(guid) == ResourceState.NEW:
+            for guid, rm in self._resources.iteritems():
+                if rm.state == ResourceState.NEW:
                     guids.append(guid)
                 
         if isinstance(guids, int):
