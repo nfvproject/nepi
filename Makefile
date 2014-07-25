@@ -4,7 +4,6 @@ TESTLIB  = $(TESTDIR)/lib
 BUILDDIR    = $(CURDIR)/build
 DISTDIR     = $(CURDIR)/dist
 
-# stupid distutils, it's broken in so many ways
 SUBBUILDDIR = $(shell python -c 'import distutils.util, sys; \
 	      print "lib.%s-%s" % (distutils.util.get_platform(), \
 	      sys.version[0:3])')
@@ -36,7 +35,7 @@ test: all
 
 test-one: all
 	echo $(file) $(case)
-	PYTHONPATH="$(PYPATH)" python $(file) $(case)
+	PYTHONPATH="$(PYPATH)" $(file) $(case)
 
 coverage: all
 	rm -f .coverage
