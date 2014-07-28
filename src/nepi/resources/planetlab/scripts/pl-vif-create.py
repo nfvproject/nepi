@@ -75,6 +75,9 @@ def stop_action():
     return "STOP-ACK"
 
 def passfd_action(fd, args):
+    """ Sends the file descriptor associated to the TAP device 
+    to another process through a unix socket.
+    """
     address = args.pop(0)
     print address
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)

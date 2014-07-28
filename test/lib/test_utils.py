@@ -30,9 +30,12 @@ class DummyEC(object):
 def create_node(hostname, username = None, identity = None):
     ec = DummyEC()
     node = LinuxNode(ec, 1)
+
     node.set("hostname", hostname)
+    
     if username:
         node.set("username", username)
+    
     if identity:
         node.set("identity", identity)
 
@@ -44,18 +47,18 @@ def create_node(hostname, username = None, identity = None):
 def skipIfNotAlive(func):
     name = func.__name__
     def wrapped(*args, **kwargs):
-        host = args[1]
-        if host != "localhost":
-            user = None
+        hostname = args[1]
+        if hostname != "localhost":
+            username = None
             identity = None
 
             if len(args) >= 3:
-                user = args[2]
+                username = args[2]
 
             if len(args) >= 4:
                 identity = args[3]
 
-            node, ec = create_node(host, user, identity)
+            node, ec = create_node(hostname, username, identity)
 
             if not node.is_alive():
                 print "*** WARNING: Skipping test %s: Node %s is not alive\n" % (
@@ -71,6 +74,7 @@ def skipIfAnyNotAlive(func):
     def wrapped(*args, **kwargs):
         argss = list(args)
         argss.pop(0)
+
         for i in xrange(len(argss)/2):
             username = argss[i*2]
             hostname = argss[i*2+1]
@@ -84,6 +88,28 @@ def skipIfAnyNotAlive(func):
         return func(*args, **kwargs)
     
     return wrapped
+
+def skipIfAnyNotAliveWithIdentity(func):
+    name = func.__name__
+    def wrapped(*args, **kwargs):
+        argss = list(args)
+        argss.pop(0)
+        for i in xrange(len(argss)/3):
+            username = argss[i*3]
+            hostname = argss[i*3+1]
+            identity = argss[i*3+2]
+
+            node, ec = create_node(hostname, username, identity)
+
+            if not node.is_alive():
+                print "*** WARNING: Skipping test %s: Node %s is not alive\n" % (
+                    name, node.get("hostname"))
+                return
+
+        return func(*args, **kwargs)
+    
+    return wrapped
+
 
 def skipInteractive(func):
     name = func.__name__
