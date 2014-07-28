@@ -22,9 +22,7 @@ import errno
 import passfd
 import socket
 import vsys
-from optparse import OptionParser, SUPPRESS_HELP
-
-# TODO: GRE OPTION!! CONFIGURE THE VIF-UP IN GRE MODE!!
+from optparse import OptionParser
 
 STOP_MSG = "STOP"
 PASSFD_MSG = "PASSFD"
@@ -87,7 +85,8 @@ def passfd_action(fd, args):
 
 def get_options():
     usage = ("usage: %prog -t <vif-type> -a <ip4-address> -n <net-prefix> "
-        "-s <snat> -p <pointopoint> -f <if-name-file> -S <socket-name>")
+        "-s <snat> -p <pointopoint> -q <txqueuelen> -f <vif-name-file> "
+        "-S <socket-name>")
     
     parser = OptionParser(usage = usage)
 
@@ -112,8 +111,13 @@ def get_options():
         help = "Peer end point for the interface  ", default = None,
         type="str")
 
-    parser.add_option("-f", "--if-name-file", dest="if_name_file",
-        help = "File to store the interface name assigned by the OS", 
+    parser.add_option("-q", "--txqueuelen", dest="txqueuelen",
+        help = "Size of transmision queue. Defaults to 0.",
+        default = 0,
+        type="int")
+
+    parser.add_option("-f", "--vif-name-file", dest="vif_name_file",
+        help = "File to store the virtual interface name assigned by the OS", 
         default = "if_name", type="str")
 
     parser.add_option("-S", "--socket-name", dest="socket_name",
@@ -126,20 +130,23 @@ def get_options():
     if options.vif_type and options.vif_type == "IFF_TUN":
         vif_type = vsys.IFF_TUN
 
-    return (vif_type, options.ip4_address, options.net_prefix, options.snat,
-            options.pointopoint, options.if_name_file, options.socket_name)
+    return (vif_type, options.ip4_address, options.net_prefix, 
+            options.snat, options.pointopoint, options.txqueuelen,
+            options.vif_name_file, options.socket_name)
 
 if __name__ == '__main__':
 
-    (vif_type, ip4_address, net_prefix, snat, pointopoint,
-            if_name_file, socket_name) = get_options()
+    (vif_type, ip4_address, net_prefix, snat, pointopoint, 
+            txqueuelen, vif_name_file, socket_name) = get_options()
 
-    (fd, if_name) = vsys.fd_tuntap(vif_type)
-    vsys.vif_up(if_name, ip4_address, net_prefix, snat, pointopoint)
-    
+    (fd, vif_name) = vsys.fd_tuntap(vif_type)
+  
+    vsys.vif_up(vif_name, ip4_address, net_prefix, snat = snat, 
+            pointopoint = pointopoint, txqueuelen = txqueuelen) 
+     
     # Saving interface name to 'if_name_file
-    f = open(if_name_file, 'w')
-    f.write(if_name)
+    f = open(vif_name_file, 'w')
+    f.write(vif_name)
     f.close()
 
     # create unix socket to receive instructions

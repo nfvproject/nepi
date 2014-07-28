@@ -18,17 +18,28 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
 import base64
-import errno
-import vsys
 import socket
-from optparse import OptionParser, SUPPRESS_HELP
+import vsys
+
+from optparse import OptionParser
 
 STOP_MSG = "STOP"
 
 def get_options():
-    usage = ("usage: %prog -S <socket-name>")
+    usage = ("usage: %prog -N <vif-name> -D <delete> -S <socket-name>")
     
     parser = OptionParser(usage = usage)
+
+    parser.add_option("-N", "--vif-name", dest="vif_name",
+        help = "The name of the virtual interface, or a "
+                "unique numeric identifier to name the interface "
+                "if GRE mode is used.",
+        type="str")
+
+    parser.add_option("-D", "--delete", dest="delete", 
+            action="store_true", 
+            default = False,
+            help="Removes virtual interface if GRE mode was used")
 
     parser.add_option("-S", "--socket-name", dest="socket_name",
         help = "Name for the unix socket used to interact with this process", 
@@ -36,21 +47,24 @@ def get_options():
 
     (options, args) = parser.parse_args()
     
-    return (options.socket_name)
+    return (options.vif_name, options.delete, options.socket_name)
 
 if __name__ == '__main__':
 
-    (socket_name) = get_options()
+    (vif_name, delete, socket_name) = get_options()
 
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    sock.connect(socket_name)
-    encoded = base64.b64encode(STOP_MSG)
-    sock.send("%s\n" % encoded)
-    reply = sock.recv(1024)
-    reply = base64.b64decode(reply)
+    # If a socket name is sent, send the STOP message and wait for a reply
+    if socket_name:
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        sock.connect(socket_name)
+        encoded = base64.b64encode(STOP_MSG)
+        sock.send("%s\n" % encoded)
+        reply = sock.recv(1024)
+        reply = base64.b64decode(reply)
+        print reply
 
-    print reply
-
-
+    # Else, use the vsys interface to set the virtual interface down
+    elif vif_name:
+        vsys.vif_down(vif_name, delete = delete)
 
 

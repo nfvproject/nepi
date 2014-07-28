@@ -25,6 +25,7 @@ from nepi.resources.planetlab.node import PlanetlabNode
 from nepi.util.timefuncs import tnow, tdiffsec
 
 import os
+import socket
 import time
 
 # TODO:
@@ -93,40 +94,48 @@ class PlanetlabTap(LinuxApplication):
         return None
 
     def upload_sources(self):
-        # upload vif-creation python script
+        scripts = []
+
+        # vif-creation python script
         pl_vif_create = os.path.join(os.path.dirname(__file__), "scripts",
                 "pl-vif-create.py")
 
-        self.node.upload(pl_vif_create,
-                os.path.join(self.node.src_dir, "pl-vif-create.py"),
-                overwrite = False)
+        scripts.append(pl_vif_create)
+        
+        # vif-up python script
+        pl_vif_up = os.path.join(os.path.dirname(__file__), "scripts",
+                "pl-vif-up.py")
+        
+        scripts.append(pl_vif_up)
 
-        # upload vif-stop python script
-        pl_vif_stop = os.path.join(os.path.dirname(__file__), "scripts",
-                "pl-vif-stop.py")
+        # vif-down python script
+        pl_vif_down = os.path.join(os.path.dirname(__file__), "scripts",
+                "pl-vif-down.py")
+        
+        scripts.append(pl_vif_down)
 
-        self.node.upload(pl_vif_stop,
-                os.path.join(self.node.src_dir, "pl-vif-stop.py"),
-                overwrite = False)
-
-        # upload vif-connect python script
+        # udp-connect python script
         pl_vif_connect = os.path.join(os.path.dirname(__file__), "scripts",
                 "pl-vif-udp-connect.py")
+        
+        scripts.append(pl_vif_connect)
 
-        self.node.upload(pl_vif_connect,
-                os.path.join(self.node.src_dir, "pl-vif-udp-connect.py"),
-                overwrite = False)
-
-        # upload tun-connect python script
+        # tunnel creation python script
         tunchannel = os.path.join(os.path.dirname(__file__), "..", "linux",
                 "scripts", "tunchannel.py")
 
-        self.node.upload(tunchannel,
-                os.path.join(self.node.src_dir, "tunchannel.py"),
+        scripts.append(tunchannel)
+
+        # Upload scripts
+        scripts = ";".join(scripts)
+
+        self.node.upload(scripts,
+                os.path.join(self.node.src_dir),
                 overwrite = False)
 
         # upload stop.sh script
         stop_command = self.replace_paths(self._stop_command)
+
         self.node.upload(stop_command,
                 os.path.join(self.app_home, "stop.sh"),
                 text = True,
@@ -152,8 +161,8 @@ class PlanetlabTap(LinuxApplication):
         # After creating the TAP, the pl-vif-create.py script
         # will write the name of the TAP to a file. We wait until
         # we can read the interface name from the file.
-        if_name = self.wait_if_name()
-        self.set("deviceName", if_name) 
+        vif_name = self.wait_vif_name()
+        self.set("deviceName", vif_name) 
 
     def do_deploy(self):
         if not self.node or self.node.state < ResourceState.PROVISIONED:
@@ -194,6 +203,10 @@ class PlanetlabTap(LinuxApplication):
             (out, err), proc = self.execute_command(command,
                     blocking = True)
 
+            if err:
+                msg = " Failed to stop command '%s' " % command
+                self.error(msg, out, err)
+
             self.set_stopped()
 
     @property
@@ -217,8 +230,9 @@ class PlanetlabTap(LinuxApplication):
     def do_release(self):
         # Node needs to wait until all associated RMs are released
         # to be released
-        from nepi.resources.linux.udptunnel import UdpTunnel
-        rms = self.get_connected(UdpTunnel.get_rtype())
+        from nepi.resources.linux.tunnel import LinuxTunnel
+        rms = self.get_connected(LinuxTunnel.get_rtype())
+
         for rm in rms:
             if rm.state < ResourceState.STOPPED:
                 self.ec.schedule(reschedule_delay, self.release)
@@ -226,14 +240,14 @@ class PlanetlabTap(LinuxApplication):
 
         super(PlanetlabTap, self).do_release()
 
-    def wait_if_name(self):
-        """ Waits until the if_name file for the command is generated, 
-            and returns the if_name for the device """
-        if_name = None
+    def wait_vif_name(self):
+        """ Waits until the vif_name file for the command is generated, 
+            and returns the vif_name for the device """
+        vif_name = None
         delay = 0.5
 
         for i in xrange(20):
-            (out, err), proc = self.node.check_output(self.run_home, "if_name")
+            (out, err), proc = self.node.check_output(self.run_home, "vif_name")
 
             if proc.poll() > 0:
                 (out, err), proc = self.node.check_errors(self.run_home)
@@ -242,21 +256,34 @@ class PlanetlabTap(LinuxApplication):
                     raise RuntimeError, err
 
             if out:
-                if_name = out.strip()
+                vif_name = out.strip()
                 break
             else:
                 time.sleep(delay)
                 delay = delay * 1.5
         else:
-            msg = "Couldn't retrieve if_name"
+            msg = "Couldn't retrieve vif_name"
             self.error(msg, out, err)
             raise RuntimeError, msg
 
-        return if_name
+        return vif_name
 
-    def udp_connect_command(self, remote_ip, local_port_file, 
-            remote_port_file, ret_file, cipher, cipher_key,
-            bwlimit, txqueuelen):
+    def udp_connect_command(self, remote_endpoint, connection_run_home, 
+            cipher, cipher_key, bwlimit, txqueuelen):
+
+        # Generate UDP connect command
+        remote_ip = socket.gethostbyname(
+                remote_endpoint.node.get("hostname"))
+
+        local_port_file = os.path.join(connection_run_home, 
+                "local_port")
+
+        remote_port_file = os.path.join(connection_run_home, 
+                "remote_port")
+
+        ret_file = os.path.join(connection_run_home, 
+                "ret_file")
+
         command = ["sudo -S "]
         command.append("PYTHONPATH=$PYTHONPATH:${SRC}")
         command.append("python ${SRC}/pl-vif-udp-connect.py")
@@ -277,6 +304,8 @@ class PlanetlabTap(LinuxApplication):
 
         command = " ".join(command)
         command = self.replace_paths(command)
+
+        # TODO: RECONFIGUTE THE TAP WITH THE INFORMATION ENDPOINT!
         return command
 
     @property
@@ -286,10 +315,12 @@ class PlanetlabTap(LinuxApplication):
         command.append("-t %s" % self.vif_type)
         command.append("-a %s" % self.get("ip4"))
         command.append("-n %d" % self.get("prefix4"))
-        command.append("-f %s " % self.if_name_file)
+        command.append("-f %s " % self.vif_name_file)
         command.append("-S %s " % self.sock_name)
+
         if self.get("snat") == True:
             command.append("-s")
+
         if self.get("pointopoint"):
             command.append("-p %s" % self.get("pointopoint"))
 
@@ -297,7 +328,7 @@ class PlanetlabTap(LinuxApplication):
 
     @property
     def _stop_command(self):
-        command = ["sudo -S python ${SRC}/pl-vif-stop.py"]
+        command = ["sudo -S python ${SRC}/pl-vif-down.py"]
         
         command.append("-S %s " % self.sock_name)
         return " ".join(command)
@@ -307,8 +338,8 @@ class PlanetlabTap(LinuxApplication):
         return "IFF_TAP"
 
     @property
-    def if_name_file(self):
-        return os.path.join(self.run_home, "if_name")
+    def vif_name_file(self):
+        return os.path.join(self.run_home, "vif_name")
 
     @property
     def sock_name(self):

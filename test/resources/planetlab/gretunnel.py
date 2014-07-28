@@ -26,7 +26,7 @@ import os
 import time
 import unittest
 
-class UdpTunnelTestCase(unittest.TestCase):
+class GRETunnelTestCase(unittest.TestCase):
     def setUp(self):
         #self.host1 = "nepi2.pl.sophia.inria.fr"
         #self.host2 = "nepi5.pl.sophia.inria.fr"
@@ -38,10 +38,10 @@ class UdpTunnelTestCase(unittest.TestCase):
         self.netblock = "192.168.3"
 
     @skipIfAnyNotAliveWithIdentity
-    def t_tap_udp_tunnel(self, user1, host1, identity1, user2, host2, 
+    def t_tap_gre_tunnel(self, user1, host1, identity1, user2, host2, 
             identity2):
 
-        ec = ExperimentController(exp_id = "test-tap-udp-tunnel")
+        ec = ExperimentController(exp_id = "test-tap-gre-tunnel")
         
         node1 = ec.register_resource("PlanetlabNode")
         ec.set(node1, "hostname", host1)
@@ -52,7 +52,6 @@ class UdpTunnelTestCase(unittest.TestCase):
 
         tap1 = ec.register_resource("PlanetlabTap")
         ec.set(tap1, "ip4", "%s.1" % self.netblock)
-        ec.set(tap1, "pointopoint", "%s.2" % self.netblock)
         ec.set(tap1, "prefix4", 24)
         ec.register_connection(tap1, node1)
 
@@ -65,13 +64,12 @@ class UdpTunnelTestCase(unittest.TestCase):
 
         tap2 = ec.register_resource("PlanetlabTap")
         ec.set(tap2, "ip4", "%s.2" % self.netblock)
-        ec.set(tap2, "pointopoint", "%s.1" % self.netblock)
         ec.set(tap2, "prefix4", 24)
         ec.register_connection(tap2, node2)
 
-        udptun = ec.register_resource("LinuxUdpTunnel")
-        ec.register_connection(tap1, udptun)
-        ec.register_connection(tap2, udptun)
+        gretun = ec.register_resource("GRETunnel")
+        ec.register_connection(tap1, gretun)
+        ec.register_connection(tap2, gretun)
 
         app = ec.register_resource("LinuxApplication")
         cmd = "ping -c3 %s.2" % self.netblock
@@ -86,18 +84,19 @@ class UdpTunnelTestCase(unittest.TestCase):
         expected = """3 packets transmitted, 3 received, 0% packet loss"""
         self.assertTrue(ping.find(expected) > -1)
         
-        vif_name = ec.get(tap1, "deviceName")
-        self.assertTrue(vif_name.startswith("tap"))
+        if_name = ec.get(tap1, "deviceName")
+        self.assertTrue(if_name.startswith("tap"))
         
-        vif_name = ec.get(tap2, "deviceName")
-        self.assertTrue(vif_name.startswith("tap"))
+        if_name = ec.get(tap2, "deviceName")
+        self.assertTrue(if_name.startswith("tap"))
 
         ec.shutdown()
 
     @skipIfAnyNotAliveWithIdentity
-    def t_tun_udp_tunnel(self, user1, host1, identity1, user2, host2, identity2):
+    def t_tun_udp_tunnel(self, user1, host1, identity1, user2, host2, 
+            identity2):
 
-        ec = ExperimentController(exp_id = "test-tun-udp-tunnel")
+        ec = ExperimentController(exp_id = "test-tun-gre-tunnel")
         
         node1 = ec.register_resource("PlanetlabNode")
         ec.set(node1, "hostname", host1)
@@ -125,7 +124,7 @@ class UdpTunnelTestCase(unittest.TestCase):
         ec.set(tun2, "prefix4", 24)
         ec.register_connection(tun2, node2)
 
-        udptun = ec.register_resource("LinuxUdpTunnel")
+        udptun = ec.register_resource("UdpTunnel")
         ec.register_connection(tun1, udptun)
         ec.register_connection(tun2, udptun)
 
@@ -142,11 +141,11 @@ class UdpTunnelTestCase(unittest.TestCase):
         expected = """3 packets transmitted, 3 received, 0% packet loss"""
         self.assertTrue(ping.find(expected) > -1)
         
-        vif_name = ec.get(tun1, "deviceName")
-        self.assertTrue(vif_name.startswith("tun"))
+        if_name = ec.get(tun1, "deviceName")
+        self.assertTrue(if_name.startswith("tun"))
         
-        vif_name = ec.get(tun2, "deviceName")
-        self.assertTrue(vif_name.startswith("tun"))
+        if_name = ec.get(tun2, "deviceName")
+        self.assertTrue(if_name.startswith("tun"))
 
         ec.shutdown()
 

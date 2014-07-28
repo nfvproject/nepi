@@ -8,7 +8,7 @@ import time
 import tunchannel
 import vsys
 
-from optparse import OptionParser, SUPPRESS_HELP
+from optparse import OptionParser
 
 PASSFD_MSG = "PASSFD"
 
@@ -146,7 +146,7 @@ if __name__ == '__main__':
     # xxx: There seems to be a weird behavior where
     #       even if the file exists and had the port number,
     #       the read operation returns empty string!
-    #       Maybe a raise condition?
+    #       Maybe a race condition?
     for i in xrange(10):
         f = open(remote_port_file, 'r')
         remote_port = f.read()
