@@ -52,7 +52,6 @@ class UdpTunnelTestCase(unittest.TestCase):
 
         tap1 = ec.register_resource("PlanetlabTap")
         ec.set(tap1, "ip4", "%s.1" % self.netblock)
-        ec.set(tap1, "pointopoint", "%s.2" % self.netblock)
         ec.set(tap1, "prefix4", 24)
         ec.register_connection(tap1, node1)
 
@@ -65,7 +64,6 @@ class UdpTunnelTestCase(unittest.TestCase):
 
         tap2 = ec.register_resource("PlanetlabTap")
         ec.set(tap2, "ip4", "%s.2" % self.netblock)
-        ec.set(tap2, "pointopoint", "%s.1" % self.netblock)
         ec.set(tap2, "prefix4", 24)
         ec.register_connection(tap2, node2)
 
@@ -108,7 +106,6 @@ class UdpTunnelTestCase(unittest.TestCase):
 
         tun1 = ec.register_resource("PlanetlabTun")
         ec.set(tun1, "ip4", "%s.1" % self.netblock)
-        ec.set(tun1, "pointopoint", "%s.2" % self.netblock)
         ec.set(tun1, "prefix4", 24)
         ec.register_connection(tun1, node1)
 
@@ -121,7 +118,6 @@ class UdpTunnelTestCase(unittest.TestCase):
 
         tun2 = ec.register_resource("PlanetlabTun")
         ec.set(tun2, "ip4", "%s.2" % self.netblock)
-        ec.set(tun2, "pointopoint", "%s.1" % self.netblock )
         ec.set(tun2, "prefix4", 24)
         ec.register_connection(tun2, node2)
 
