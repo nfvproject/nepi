@@ -172,7 +172,6 @@ class PlanetlabNode(LinuxNode):
                     default = False,
                     flags = Flags.Global)
 
-
         cls._register_attribute(ip)
         cls._register_attribute(pl_url)
         cls._register_attribute(pl_ptn)

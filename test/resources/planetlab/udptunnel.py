@@ -20,7 +20,7 @@
 
 from nepi.execution.ec import ExperimentController 
 
-from test_utils import skipIfAnyNotAlive
+from test_utils import skipIfAnyNotAliveWithIdentity
 
 import os
 import time
@@ -28,36 +28,44 @@ import unittest
 
 class UdpTunnelTestCase(unittest.TestCase):
     def setUp(self):
-        self.host1 = "nepi2.pl.sophia.inria.fr"
-        self.host2 = "nepi5.pl.sophia.inria.fr"
+        #self.host1 = "nepi2.pl.sophia.inria.fr"
+        #self.host2 = "nepi5.pl.sophia.inria.fr"
+        self.host1 = "planetlab1.informatik.uni-erlangen.de"
+        self.host2 = "planetlab1.informatik.uni-goettingen.de"
         self.user = "inria_nepi"
+        self.identity = "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'])
+        #self.netblock = "192.168.1"
+        self.netblock = "192.168.3"
 
-    @skipIfAnyNotAlive
-    def t_tap_udp_tunnel(self, user1, host1, user2, host2):
+    @skipIfAnyNotAliveWithIdentity
+    def t_tap_udp_tunnel(self, user1, host1, identity1, user2, host2, 
+            identity2):
 
         ec = ExperimentController(exp_id = "test-tap-udp-tunnel")
         
         node1 = ec.register_resource("PlanetlabNode")
         ec.set(node1, "hostname", host1)
         ec.set(node1, "username", user1)
+        ec.set(node1, "identity", identity1)
         ec.set(node1, "cleanHome", True)
         ec.set(node1, "cleanProcesses", True)
 
         tap1 = ec.register_resource("PlanetlabTap")
-        ec.set(tap1, "ip4", "192.168.1.1")
-        ec.set(tap1, "pointopoint", "192.168.1.2")
+        ec.set(tap1, "ip4", "%s.1" % self.netblock)
+        ec.set(tap1, "pointopoint", "%s.2" % self.netblock)
         ec.set(tap1, "prefix4", 24)
         ec.register_connection(tap1, node1)
 
         node2 = ec.register_resource("PlanetlabNode")
         ec.set(node2, "hostname", host2)
         ec.set(node2, "username", user2)
+        ec.set(node2, "identity", identity2)
         ec.set(node2, "cleanHome", True)
         ec.set(node2, "cleanProcesses", True)
 
         tap2 = ec.register_resource("PlanetlabTap")
-        ec.set(tap2, "ip4", "192.168.1.2")
-        ec.set(tap2, "pointopoint", "192.168.1.1")
+        ec.set(tap2, "ip4", "%s.2" % self.netblock)
+        ec.set(tap2, "pointopoint", "%s.1" % self.netblock)
         ec.set(tap2, "prefix4", 24)
         ec.register_connection(tap2, node2)
 
@@ -66,7 +74,7 @@ class UdpTunnelTestCase(unittest.TestCase):
         ec.register_connection(tap2, udptun)
 
         app = ec.register_resource("LinuxApplication")
-        cmd = "ping -c3 192.168.1.2"
+        cmd = "ping -c3 %s.2" % self.netblock
         ec.set(app, "command", cmd)
         ec.register_connection(app, node1)
 
@@ -86,32 +94,34 @@ class UdpTunnelTestCase(unittest.TestCase):
 
         ec.shutdown()
 
-    @skipIfAnyNotAlive
-    def t_tun_udp_tunnel(self, user1, host1, user2, host2):
+    @skipIfAnyNotAliveWithIdentity
+    def t_tun_udp_tunnel(self, user1, host1, identity1, user2, host2, identity2):
 
         ec = ExperimentController(exp_id = "test-tap-udp-tunnel")
         
         node1 = ec.register_resource("PlanetlabNode")
         ec.set(node1, "hostname", host1)
         ec.set(node1, "username", user1)
+        ec.set(node1, "identity", identity1)
         ec.set(node1, "cleanHome", True)
         ec.set(node1, "cleanProcesses", True)
 
         tun1 = ec.register_resource("PlanetlabTun")
-        ec.set(tun1, "ip4", "192.168.1.1")
-        ec.set(tun1, "pointopoint", "192.168.1.2")
+        ec.set(tun1, "ip4", "%s.1" % self.netblock)
+        ec.set(tun1, "pointopoint", "%s.2" % self.netblock)
         ec.set(tun1, "prefix4", 24)
         ec.register_connection(tun1, node1)
 
         node2 = ec.register_resource("PlanetlabNode")
         ec.set(node2, "hostname", host2)
         ec.set(node2, "username", user2)
+        ec.set(node2, "identity", identity2)
         ec.set(node2, "cleanHome", True)
         ec.set(node2, "cleanProcesses", True)
 
         tun2 = ec.register_resource("PlanetlabTun")
-        ec.set(tun2, "ip4", "192.168.1.2")
-        ec.set(tun2, "pointopoint", "192.168.1.1")
+        ec.set(tun2, "ip4", "%s.2" % self.netblock)
+        ec.set(tun2, "pointopoint", "%s.1" % self.netblock )
         ec.set(tun2, "prefix4", 24)
         ec.register_connection(tun2, node2)
 
@@ -120,7 +130,7 @@ class UdpTunnelTestCase(unittest.TestCase):
         ec.register_connection(tun2, udptun)
 
         app = ec.register_resource("LinuxApplication")
-        cmd = "ping -c3 192.168.1.2"
+        cmd = "ping -c3 %s.2" % self.netblock
         ec.set(app, "command", cmd)
         ec.register_connection(app, node1)
 
@@ -141,10 +151,12 @@ class UdpTunnelTestCase(unittest.TestCase):
         ec.shutdown()
 
     def test_tap_udp_tunnel(self):
-        self.t_tap_udp_tunnel(self.user, self.host1, self.user, self.host2)
+        self.t_tap_udp_tunnel(self.user, self.host1, self.identity,
+                self.user, self.host2, self.identity)
 
     def test_tun_udp_tunnel(self):
-        self.t_tun_udp_tunnel(self.user, self.host1, self.user, self.host2)
+        self.t_tun_udp_tunnel(self.user, self.host1, self.identity,
+                self.user, self.host2, self.identity)
 
 if __name__ == '__main__':
     unittest.main()

@@ -27,7 +27,7 @@ from nepi.util.timefuncs import tnow, tdiffsec
 import os
 import time
 
-# TODO: - routes!!!
+# TODO:
 #       - CREATE GRE - PlanetlabGRE - it only needs to set the gre and remote
 #               properties when configuring the vif_up
 
@@ -137,19 +137,21 @@ class PlanetlabTap(LinuxApplication):
 
     def upload_start_command(self):
         # Overwrite file every time. 
-        # The stop.sh has the path to the socket, wich should change
+        # The start.sh has the path to the socket, wich should change
         # on every experiment run.
         super(PlanetlabTap, self).upload_start_command(overwrite = True)
 
         # We want to make sure the device is up and running
-        # before the deploy finishes (so things will be ready
-        # before other stuff starts running).
-        # Run the command as a bash script in background,
-        # in the host ( but wait until the command has
-        # finished to continue )
+        # before the deploy finishes, so we execute now the 
+        # start script. We run it in background, because the 
+        # TAP will live for as long as the process that 
+        # created it is running, and wait until the TAP  
+        # is created. 
         self._run_in_background()
         
-        # Retrive if_name
+        # After creating the TAP, the pl-vif-create.py script
+        # will write the name of the TAP to a file. We wait until
+        # we can read the interface name from the file.
         if_name = self.wait_if_name()
         self.set("deviceName", if_name) 
 
@@ -228,10 +230,16 @@ class PlanetlabTap(LinuxApplication):
         """ Waits until the if_name file for the command is generated, 
             and returns the if_name for the device """
         if_name = None
-        delay = 1.0
+        delay = 0.5
 
         for i in xrange(20):
             (out, err), proc = self.node.check_output(self.run_home, "if_name")
+
+            if proc.poll() > 0:
+                (out, err), proc = self.node.check_errors(self.run_home)
+                
+                if err.strip():
+                    raise RuntimeError, err
 
             if out:
                 if_name = out.strip()

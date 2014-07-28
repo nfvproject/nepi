@@ -34,7 +34,6 @@ class UdpTunnel(LinuxApplication):
     _help = "Constructs a tunnel between two Linux endpoints using a UDP connection "
     _backend = "linux"
 
-
     @classmethod
     def _register_attributes(cls):
         cipher = Attribute("cipher",
@@ -225,7 +224,7 @@ class UdpTunnel(LinuxApplication):
                 (out2, err2), proc2 = self.endpoint2.node.kill(self._pid2, 
                         self._ppid2, sudo = True) 
 
-                if err1 or err2 or proc1.poll() or proc2.poll():
+                if (proc1.poll() and err1) or (proc2.poll() and err2):
                     # check if execution errors occurred
                     msg = " Failed to STOP tunnel"
                     self.error(msg, err1, err2)
