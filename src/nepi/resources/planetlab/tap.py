@@ -284,7 +284,21 @@ class PlanetlabTap(LinuxApplication):
         ret_file = os.path.join(connection_run_home, 
                 "ret_file")
 
-        command = ["sudo -S "]
+        # Use pl-vif-up.py script to configure TAP with peer info
+        command = ["( sudo -S "]
+        command.append("PYTHONPATH=$PYTHONPATH:${SRC}")
+        command.append("python ${SRC}/pl-vif-up.py")
+        command.append("-N %s" % self.get("deviceName"))
+        command.append("-t %s" % self.vif_type)
+        command.append("-a %s" % self.get("ip4"))
+        command.append("-n %d" % self.get("prefix4"))
+        if self.get("snat") == True:
+            command.append("-s")
+        command.append("-p %s" % remote_endpoint.get("ip4"))
+
+        # Use pl-vid-udp-connect.py to stablish the tunnel between endpoints
+        command.append(") & (")
+        command.append("sudo -S")
         command.append("PYTHONPATH=$PYTHONPATH:${SRC}")
         command.append("python ${SRC}/pl-vif-udp-connect.py")
         command.append("-t %s" % self.vif_type)
@@ -302,10 +316,11 @@ class PlanetlabTap(LinuxApplication):
         if bwlimit:
             command.append("-b %s " % bwlimit)
 
+        command.append(")")
+
         command = " ".join(command)
         command = self.replace_paths(command)
 
-        # TODO: RECONFIGUTE THE TAP WITH THE INFORMATION ENDPOINT!
         return command
 
     @property

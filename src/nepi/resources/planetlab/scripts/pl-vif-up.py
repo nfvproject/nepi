@@ -86,7 +86,7 @@ def get_options():
 if __name__ == '__main__':
 
     (vif_name, vif_type, ip4_address, net_prefix, snat, pointopoint,
-        pointopoint, txqueuelen, gre_key, gre_remote) = get_options()
+        txqueuelen, gre_key, gre_remote) = get_options()
 
     if (gre_key):
         import pwd
