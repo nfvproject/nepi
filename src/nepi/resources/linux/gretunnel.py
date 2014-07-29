@@ -24,9 +24,10 @@ from nepi.resources.linux.tunnel import LinuxTunnel
 from nepi.util.sshfuncs import ProcStatus
 from nepi.util.timefuncs import tnow, tdiffsec
 
-import os
+import re
 import socket
 import time
+import os
 
 @clsinit_copy
 class LinuxGRETunnel(LinuxTunnel):
@@ -59,7 +60,7 @@ class LinuxGRETunnel(LinuxTunnel):
 
         # upload command to connect.sh script
         shfile = os.path.join(self.app_home(endpoint), "gre-connect.sh")
-        endpoint.node.upload(udp_connect_command,
+        endpoint.node.upload(gre_connect_command,
                 shfile,
                 text = True, 
                 overwrite = False)
@@ -71,7 +72,7 @@ class LinuxGRETunnel(LinuxTunnel):
         # check if execution errors occurred
         msg = " Failed to connect endpoints "
         
-        if proc.poll():
+        if proc.poll() or err:
             self.error(msg, out, err)
             raise RuntimeError, msg
     
@@ -87,6 +88,12 @@ class LinuxGRETunnel(LinuxTunnel):
                 msg = " Failed to start command '%s' " % command
                 self.error(msg, out, err)
                 raise RuntimeError, msg
+        
+        # After creating the TAP, the pl-vif-create.py script
+        # will write the name of the TAP to a file. We wait until
+        # we can read the interface name from the file.
+        vif_name = endpoint.wait_vif_name()
+        endpoint.set("deviceName", vif_name) 
 
         # Wait if name
         return True
@@ -95,14 +102,23 @@ class LinuxGRETunnel(LinuxTunnel):
         pass
 
     def verify_connection(self, endpoint, remote_endpoint):
-        # Execute a ping from both sides to verify that the tunnel works
-        pass
+        remote_ip = socket.gethostbyname(remote_endpoint.node.get("hostname"))
+
+        command = "ping -c 4 %s" % remote_ip
+        (out, err), proc = endpoint.node.execute(command,
+                blocking = True)
+
+        m = re.search("(\d+)% packet loss", str(out))
+        if not m or int(m.groups()[0]) == 100:
+             msg = " Erroro establishing GRE Tunnel"
+             self.error(msg, out, err)
+             raise RuntimeError, msg
 
     def terminate_connection(self, endpoint, remote_endpoint):
         pass
 
-    def check_state_connection(self, endpoint, remote_endpoint):
-        raise NotImplementedError
+    def check_state_connection(self):
+        pass
 
     def valid_connection(self, guid):
         # TODO: Validate!

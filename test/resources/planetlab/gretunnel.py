@@ -67,7 +67,7 @@ class GRETunnelTestCase(unittest.TestCase):
         ec.set(tap2, "prefix4", 24)
         ec.register_connection(tap2, node2)
 
-        gretun = ec.register_resource("GRETunnel")
+        gretun = ec.register_resource("LinuxGRETunnel")
         ec.register_connection(tap1, gretun)
         ec.register_connection(tap2, gretun)
 
@@ -93,7 +93,7 @@ class GRETunnelTestCase(unittest.TestCase):
         ec.shutdown()
 
     @skipIfAnyNotAliveWithIdentity
-    def t_tun_udp_tunnel(self, user1, host1, identity1, user2, host2, 
+    def t_tun_gre_tunnel(self, user1, host1, identity1, user2, host2, 
             identity2):
 
         ec = ExperimentController(exp_id = "test-tun-gre-tunnel")
@@ -107,7 +107,6 @@ class GRETunnelTestCase(unittest.TestCase):
 
         tun1 = ec.register_resource("PlanetlabTun")
         ec.set(tun1, "ip4", "%s.1" % self.netblock)
-        ec.set(tun1, "pointopoint", "%s.2" % self.netblock)
         ec.set(tun1, "prefix4", 24)
         ec.register_connection(tun1, node1)
 
@@ -120,11 +119,10 @@ class GRETunnelTestCase(unittest.TestCase):
 
         tun2 = ec.register_resource("PlanetlabTun")
         ec.set(tun2, "ip4", "%s.2" % self.netblock)
-        ec.set(tun2, "pointopoint", "%s.1" % self.netblock )
         ec.set(tun2, "prefix4", 24)
         ec.register_connection(tun2, node2)
 
-        udptun = ec.register_resource("UdpTunnel")
+        udptun = ec.register_resource("LinuxGRETunnel")
         ec.register_connection(tun1, udptun)
         ec.register_connection(tun2, udptun)
 
@@ -149,12 +147,12 @@ class GRETunnelTestCase(unittest.TestCase):
 
         ec.shutdown()
 
-    def test_tap_udp_tunnel(self):
-        self.t_tap_udp_tunnel(self.user, self.host1, self.identity,
+    def test_tap_gre_tunnel(self):
+        self.t_tap_gre_tunnel(self.user, self.host1, self.identity,
                 self.user, self.host2, self.identity)
 
-    def test_tun_udp_tunnel(self):
-        self.t_tun_udp_tunnel(self.user, self.host1, self.identity,
+    def test_tun_gre_tunnel(self):
+        self.t_tun_gre_tunnel(self.user, self.host1, self.identity,
                 self.user, self.host2, self.identity)
 
 if __name__ == '__main__':

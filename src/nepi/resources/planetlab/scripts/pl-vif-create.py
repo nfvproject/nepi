@@ -122,7 +122,7 @@ def get_options():
 
     parser.add_option("-S", "--socket-name", dest="socket_name",
         help = "Name for the unix socket used to interact with this process", 
-        default = "tap.sock", type="str")
+        type="str")
 
     (options, args) = parser.parse_args()
     

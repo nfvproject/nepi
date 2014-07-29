@@ -28,10 +28,6 @@ import os
 import socket
 import time
 
-# TODO:
-#       - CREATE GRE - PlanetlabGRE - it only needs to set the gre and remote
-#               properties when configuring the vif_up
-
 PYTHON_VSYS_VERSION = "1.0"
 
 @clsinit_copy
@@ -353,13 +349,13 @@ class PlanetlabTap(LinuxApplication):
     def gre_connect_command(self, remote_endpoint, connection_run_home): 
         # Set the remote endpoint
         self.set("pointopoint", remote_endpoint.get("ip4"))
-        self.set("gre_remote", socket.gethostbyname(
+        self.set("greRemote", socket.gethostbyname(
             remote_endpoint.node.get("hostname")))
 
         # Generate GRE connect command
 
         # Use vif_down command to first kill existing TAP in GRE mode
-        vif_down_command = self._vif_command_command
+        vif_down_command = self._vif_down_command
 
         # Use pl-vif-up.py script to configure TAP with peer info
         vif_up_command = self._vif_up_command
@@ -402,7 +398,7 @@ class PlanetlabTap(LinuxApplication):
     @property
     def _stop_command(self):
         if self.gre_enabled:
-            command = self._vif_down_command()
+            command = self._vif_down_command
         else:
             command = ["sudo -S "]
             command.append("PYTHONPATH=$PYTHONPATH:${SRC}")
@@ -423,7 +419,8 @@ class PlanetlabTap(LinuxApplication):
         command = ["sudo -S "]
         command.append("PYTHONPATH=$PYTHONPATH:${SRC}")
         command.append("python ${SRC}/pl-vif-up.py")
-        command.append("-N %s" % self.get("deviceName"))
+        command.append("-u %s" % self.node.get("username"))
+        command.append("-N %s" % device_name)
         command.append("-t %s" % self.vif_type)
         command.append("-a %s" % self.get("ip4"))
         command.append("-n %d" % self.get("prefix4"))
@@ -438,8 +435,8 @@ class PlanetlabTap(LinuxApplication):
             command.append("-q %s" % self.get("txqueuelen"))
 
         if self.gre_enabled:
-            command.append("-g %s" % self.gre("greKey"))
-            command.append("-G %s" % self.gre("greRemote"))
+            command.append("-g %s" % self.get("greKey"))
+            command.append("-G %s" % self.get("greRemote"))
         
         command.append("-f %s " % self.vif_name_file)
 
@@ -447,11 +444,20 @@ class PlanetlabTap(LinuxApplication):
 
     @property
     def _vif_down_command(self):
+        if self.gre_enabled:
+            device_name = "%s" % self.guid
+        else:
+            device_name = self.get("deviceName")
+
         command = ["sudo -S "]
         command.append("PYTHONPATH=$PYTHONPATH:${SRC}")
         command.append("python ${SRC}/pl-vif-down.py")
-        command.append("-D")
-        command.append("-N %s " % self.get("deviceName"))
+        command.append("-N %s " % device_name)
+        
+        if self.gre_enabled:
+            command.append("-u %s" % self.node.get("username"))
+            command.append("-t %s" % self.vif_type)
+            command.append("-D")
 
         return " ".join(command)
 
