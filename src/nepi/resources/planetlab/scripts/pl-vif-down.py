@@ -61,7 +61,7 @@ def get_options():
         vif_type = vsys.IFF_TUN
 
     return (options.socket_name, options.vif_name, options.slicename, 
-            options.vif_type, options.delete)
+            vif_type, options.delete)
 
 if __name__ == '__main__':
 
