@@ -294,7 +294,90 @@ class PlanetlabTap(LinuxApplication):
 
         return vif_name
 
-    def udp_connect_command(self, remote_endpoint, connection_run_home, 
+    def gre_connect(self, remote_endpoint, connection_app_home,
+            connection_run_home):
+        gre_connect_command = self._gre_connect_command(
+                remote_endpoint, connection_run_home)
+
+        # upload command to connect.sh script
+        shfile = os.path.join(connection_app_home, "gre-connect.sh")
+        self.node.upload(gre_connect_command,
+                shfile,
+                text = True, 
+                overwrite = False)
+
+        # invoke connect script
+        cmd = "bash %s" % shfile
+        (out, err), proc = self.node.run(cmd, connection_run_home) 
+             
+        # check if execution errors occurred
+        msg = " Failed to connect endpoints "
+        
+        if proc.poll() or err:
+            self.error(msg, out, err)
+            raise RuntimeError, msg
+    
+        # Wait for pid file to be generated
+        pid, ppid = self.node.wait_pid(connection_run_home)
+        
+        # If the process is not running, check for error information
+        # on the remote machine
+        if not pid or not ppid:
+            (out, err), proc = self.node.check_errors(connection_run_home)
+            # Out is what was written in the stderr file
+            if err:
+                msg = " Failed to start command '%s' " % command
+                self.error(msg, out, err)
+                raise RuntimeError, msg
+        
+        # After creating the TAP, the pl-vif-create.py script
+        # will write the name of the TAP to a file. We wait until
+        # we can read the interface name from the file.
+        vif_name = self.wait_vif_name()
+        self.set("deviceName", vif_name) 
+
+        return True
+
+    def udp_connect(self, remote_endpoint, connection_app_home, 
+            connection_run_home, cipher, cipher_key, bwlimit, txqueuelen):
+        udp_connect_command = self._udp_connect_command(
+                remote_endpoint, connection_run_home,
+                cipher, cipher_key, bwlimit, txqueuelen)
+
+        # upload command to connect.sh script
+        shfile = os.path.join(connection_app_home, "udp-connect.sh")
+        self.node.upload(udp_connect_command,
+                shfile,
+                text = True, 
+                overwrite = False)
+
+        # invoke connect script
+        cmd = "bash %s" % shfile
+        (out, err), proc = self.node.run(cmd, connection_run_home) 
+             
+        # check if execution errors occurred
+        msg = "Failed to connect endpoints "
+        
+        if proc.poll():
+            self.error(msg, out, err)
+            raise RuntimeError, msg
+    
+        # Wait for pid file to be generated
+        pid, ppid = self.node.wait_pid(connection_run_home)
+        
+        # If the process is not running, check for error information
+        # on the remote machine
+        if not pid or not ppid:
+            (out, err), proc = self.node.check_errors(connection_run_home)
+            # Out is what was written in the stderr file
+            if err:
+                msg = " Failed to start command '%s' " % command
+                self.error(msg, out, err)
+                raise RuntimeError, msg
+
+        return pid, ppid
+
+    def _udp_connect_command(self, remote_endpoint, connection_run_home, 
             cipher, cipher_key, bwlimit, txqueuelen):
 
         # Set the remote endpoint
@@ -346,7 +429,7 @@ class PlanetlabTap(LinuxApplication):
 
         return command
 
-    def gre_connect_command(self, remote_endpoint, connection_run_home): 
+    def _gre_connect_command(self, remote_endpoint, connection_run_home): 
         # Set the remote endpoint
         self.set("pointopoint", remote_endpoint.get("ip4"))
         self.set("greRemote", socket.gethostbyname(

@@ -84,7 +84,7 @@ class LinuxUdpTunnel(LinuxTunnel):
         connected = []
         for guid in self.connections:
             rm = self.ec.get_resource(guid)
-            if hasattr(rm, "udp_connect_command"):
+            if hasattr(rm, "udp_connect"):
                 connected.append(rm)
         return connected
 
@@ -96,43 +96,14 @@ class LinuxUdpTunnel(LinuxTunnel):
        
         # Return the command to execute to initiate the connection to the
         # other endpoint
+        connection_app_home = self.app_home(endpoint)
         connection_run_home = self.run_home(endpoint)
-        udp_connect_command = endpoint.udp_connect_command(
-                remote_endpoint, connection_run_home,
+        pid, ppid = endpoint.udp_connect(
+                remote_endpoint, 
+                connection_app_home,
+                connection_run_home, 
                 cipher, cipher_key, bwlimit, txqueuelen)
 
-        # upload command to connect.sh script
-        shfile = os.path.join(self.app_home(endpoint), "udp-connect.sh")
-        endpoint.node.upload(udp_connect_command,
-                shfile,
-                text = True, 
-                overwrite = False)
-
-        # invoke connect script
-        cmd = "bash %s" % shfile
-        (out, err), proc = endpoint.node.run(cmd, self.run_home(endpoint)) 
-             
-        # check if execution errors occurred
-        msg = "Failed to connect endpoints "
-        
-        if proc.poll():
-            self.error(msg, out, err)
-            raise RuntimeError, msg
-    
-        # Wait for pid file to be generated
-        pid, ppid = endpoint.node.wait_pid(self.run_home(endpoint))
-        
-        # If the process is not running, check for error information
-        # on the remote machine
-        if not pid or not ppid:
-            (out, err), proc = endpoint.node.check_errors(self.run_home(endpoint))
-            # Out is what was written in the stderr file
-            if err:
-                msg = " Failed to start command '%s' " % command
-                self.error(msg, out, err)
-                raise RuntimeError, msg
-
-        # wait until port is written to file
         port = self.wait_local_port(endpoint)
 
         self._pids[endpoint] = (pid, ppid)
@@ -227,5 +198,4 @@ class LinuxUdpTunnel(LinuxTunnel):
                 os.path.join(self.run_home(endpoint), "remote_port"),
                 text = True, 
                 overwrite = False)
-
 

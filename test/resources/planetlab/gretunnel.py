@@ -26,7 +26,7 @@ import os
 import time
 import unittest
 
-class GRETunnelTestCase(unittest.TestCase):
+class PlanetLabGRETunnelTestCase(unittest.TestCase):
     def setUp(self):
         #self.host1 = "nepi2.pl.sophia.inria.fr"
         #self.host2 = "nepi5.pl.sophia.inria.fr"

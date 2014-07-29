@@ -155,7 +155,6 @@ class LinuxTunnel(LinuxApplication):
 
         return self._state
 
-
     def valid_connection(self, guid):
         # TODO: Validate!
         return True
