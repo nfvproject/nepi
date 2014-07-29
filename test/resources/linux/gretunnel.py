@@ -149,7 +149,7 @@ class LinuxGRETunnelTestCase(unittest.TestCase):
         self.t_tap_gre_tunnel(self.user1, self.host1, self.identity,
                 self.user2, self.host2, self.identity)
 
-    def ztest_tun_gre_tunnel(self):
+    def test_tun_gre_tunnel(self):
         self.t_tun_gre_tunnel(self.user1, self.host1, self.identity,
                 self.user2, self.host2, self.identity)
 
