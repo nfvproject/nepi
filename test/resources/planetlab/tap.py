@@ -28,27 +28,34 @@ import unittest
 
 class PlanetlabTapTestCase(unittest.TestCase):
     def setUp(self):
-        self.host = "nepi5.pl.sophia.inria.fr"
+        self.host = "planetlab1.informatik.uni-erlangen.de"
         self.user = "inria_nepi"
+        self.identity = "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'])
+        self.netblock = "192.168.3"
+        #self.host = "nepi2.pl.sophia.inria.fr"
+        #self.user = "inria_nepi"
+        #self.identity = None
+        #self.netblock = "192.168.1"
 
     @skipIfNotAlive
-    def t_tap_create(self, host, user):
+    def t_tap_create(self, host, user, identity):
 
         ec = ExperimentController(exp_id = "test-tap-create")
         
         node = ec.register_resource("PlanetlabNode")
         ec.set(node, "hostname", host)
         ec.set(node, "username", user)
+        ec.set(node, "identity", identity)
         ec.set(node, "cleanHome", True)
         ec.set(node, "cleanProcesses", True)
 
         tap = ec.register_resource("PlanetlabTap")
-        ec.set(tap, "ip4", "192.168.1.1")
+        ec.set(tap, "ip4", "%s.1" % self.netblock)
         ec.set(tap, "prefix4", 24)
         ec.register_connection(tap, node)
 
         app = ec.register_resource("LinuxApplication")
-        cmd = "ping -c3 192.168.1.1"
+        cmd = "ping -c3 %s.1" % self.netblock
         ec.set(app, "command", cmd)
         ec.register_connection(app, node)
 
@@ -66,7 +73,7 @@ class PlanetlabTapTestCase(unittest.TestCase):
         ec.shutdown()
 
     def test_tap_create(self):
-        self.t_tap_create(self.host, self.user)
+        self.t_tap_create(self.host, self.user, self.identity)
 
 if __name__ == '__main__':
     unittest.main()

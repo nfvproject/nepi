@@ -23,8 +23,8 @@ from optparse import OptionParser
 
 def get_options():
     usage = ("usage: %prog -N <vif-name> -t <vif-type> -a <ip4-address> "
-                    "-n <net-prefix> -s <snat> -p <pointopoint> "
-                    "-q <txqueuelen> -g <gre_key> -G <gre_remote> ")
+                    "-n <net-prefix> -s <snat> -p <pointopoint> -q <txqueuelen> "
+                    "-g <gre_key> -G <gre_remote> -f <vif-name-file> ")
  
     parser = OptionParser(usage = usage)
 
@@ -73,6 +73,10 @@ def get_options():
         default = None,
         type="str")
 
+    parser.add_option("-f", "--vif-name-file", dest="vif_name_file",
+        help = "File to store the virtual interface name assigned by the OS", 
+        default = "vif_name", type="str")
+
     (options, args) = parser.parse_args()
     
     vif_type = vsys.IFF_TAP
@@ -81,12 +85,13 @@ def get_options():
 
     return (options.vif_name, vif_type, options.ip4_address, 
             options.net_prefix, options.snat, options.pointopoint, 
-            options.txqueuelen, options.gre_key, options.gre_remote)
+            options.txqueuelen, options.gre_key, options.gre_remote,
+            options.vif_name_file)
 
 if __name__ == '__main__':
 
     (vif_name, vif_type, ip4_address, net_prefix, snat, pointopoint,
-        txqueuelen, gre_key, gre_remote) = get_options()
+        txqueuelen, gre_key, gre_remote, vif_name_file) = get_options()
 
     if (gre_key):
         import pwd
@@ -106,4 +111,10 @@ if __name__ == '__main__':
     vsys.vif_up(vif_name, ip4_address, net_prefix, snat = snat, 
             pointopoint = pointopoint, txqueuelen = txqueuelen, 
             gre_key = gre_key, gre_remote = gre_remote)
-    
+
+    # Saving interface name to vif_name_file
+    f = open(vif_name_file, 'w')
+    f.write(vif_name)
+    f.close()
+
+

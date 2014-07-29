@@ -46,12 +46,7 @@ class LinuxTunnel(LinuxApplication):
     def get_endpoints(self):
         """ Returns the list of RM that are endpoints to the tunnel 
         """
-        connected = []
-        for guid in self.connections:
-            rm = self.ec.get_resource(guid)
-            if hasattr(rm, "udp_connect_command"):
-                connected.append(rm)
-        return connected
+        raise NotImplementedError
 
     @property
     def endpoint1(self):
