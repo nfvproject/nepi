@@ -218,7 +218,7 @@ class LinuxTap(LinuxApplication):
 
         # upload command to connect.sh script
         shfile = os.path.join(connection_app_home, "gre-connect.sh")
-        endpoint.node.upload(gre_connect_command,
+        self.node.upload(gre_connect_command,
                 shfile,
                 text = True, 
                 overwrite = False)
@@ -297,12 +297,12 @@ class LinuxTap(LinuxApplication):
                 socket.gethostbyname(self.node.get("hostname")),
                 self.get("greKey")
             ))
-        command.append("sudo -S addr add dev %s %s/%d peer %s/%d" % (
-                self.get("deviceName"),
+        command.append("sudo -S ip addr add %s/%d peer %s/%d dev %s" % (
                 self.get("ip4"),
                 self.get("prefix4"),
                 self.get("pointopoint"),
                 self.get("prefix4"),
+                self.get("deviceName"),
                 ))
         command.append("sudo -S ip link set %s up " % self.get("deviceName"))
 

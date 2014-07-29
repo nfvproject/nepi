@@ -56,8 +56,9 @@ class LinuxGRETunnel(LinuxTunnel):
         # other endpoint
         connection_run_home = self.run_home(endpoint)
         connection_app_home = self.app_home(endpoint)
-        data = endpoint.gre_connect(remote_endpoint, connection_run_home, 
-                connection_app_home)
+        data = endpoint.gre_connect(remote_endpoint, 
+                connection_app_home,
+                connection_run_home) 
         return data
 
     def establish_connection(self, endpoint, remote_endpoint, data):
