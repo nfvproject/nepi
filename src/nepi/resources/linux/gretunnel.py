@@ -47,7 +47,7 @@ class LinuxGRETunnel(LinuxTunnel):
         connected = []
         for guid in self.connections:
             rm = self.ec.get_resource(guid)
-            if hasattr(rm, "gre_connect_command"):
+            if hasattr(rm, "gre_connect"):
                 connected.append(rm)
         return connected
 
@@ -55,48 +55,10 @@ class LinuxGRETunnel(LinuxTunnel):
         # Return the command to execute to initiate the connection to the
         # other endpoint
         connection_run_home = self.run_home(endpoint)
-        gre_connect_command = endpoint.gre_connect_command(
-                remote_endpoint, connection_run_home)
-
-        # upload command to connect.sh script
-        shfile = os.path.join(self.app_home(endpoint), "gre-connect.sh")
-        endpoint.node.upload(gre_connect_command,
-                shfile,
-                text = True, 
-                overwrite = False)
-
-        # invoke connect script
-        cmd = "bash %s" % shfile
-        (out, err), proc = endpoint.node.run(cmd, self.run_home(endpoint)) 
-             
-        # check if execution errors occurred
-        msg = " Failed to connect endpoints "
-        
-        if proc.poll() or err:
-            self.error(msg, out, err)
-            raise RuntimeError, msg
-    
-        # Wait for pid file to be generated
-        pid, ppid = endpoint.node.wait_pid(self.run_home(endpoint))
-        
-        # If the process is not running, check for error information
-        # on the remote machine
-        if not pid or not ppid:
-            (out, err), proc = endpoint.node.check_errors(self.run_home(endpoint))
-            # Out is what was written in the stderr file
-            if err:
-                msg = " Failed to start command '%s' " % command
-                self.error(msg, out, err)
-                raise RuntimeError, msg
-        
-        # After creating the TAP, the pl-vif-create.py script
-        # will write the name of the TAP to a file. We wait until
-        # we can read the interface name from the file.
-        vif_name = endpoint.wait_vif_name()
-        endpoint.set("deviceName", vif_name) 
-
-        # Wait if name
-        return True
+        connection_app_home = self.app_home(endpoint)
+        data = endpoint.gre_connect(remote_endpoint, connection_run_home, 
+                connection_app_home)
+        return data
 
     def establish_connection(self, endpoint, remote_endpoint, data):
         pass
