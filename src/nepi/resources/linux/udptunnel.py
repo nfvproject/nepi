@@ -78,6 +78,16 @@ class LinuxUdpTunnel(LinuxTunnel):
                 self.endpoint2.node.get("hostname"), 
                 msg)
 
+    def get_endpoints(self):
+        """ Returns the list of RM that are endpoints to the tunnel 
+        """
+        connected = []
+        for guid in self.connections:
+            rm = self.ec.get_resource(guid)
+            if hasattr(rm, "udp_connect_command"):
+                connected.append(rm)
+        return connected
+
     def initiate_connection(self, endpoint, remote_endpoint):
         cipher = self.get("cipher")
         cipher_key = self.get("cipherKey")
@@ -103,7 +113,7 @@ class LinuxUdpTunnel(LinuxTunnel):
         (out, err), proc = endpoint.node.run(cmd, self.run_home(endpoint)) 
              
         # check if execution errors occurred
-        msg = " Failed to connect endpoints "
+        msg = "Failed to connect endpoints "
         
         if proc.poll():
             self.error(msg, out, err)

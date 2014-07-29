@@ -118,7 +118,7 @@ def get_options():
 
     parser.add_option("-f", "--vif-name-file", dest="vif_name_file",
         help = "File to store the virtual interface name assigned by the OS", 
-        default = "if_name", type="str")
+        default = "vif_name", type="str")
 
     parser.add_option("-S", "--socket-name", dest="socket_name",
         help = "Name for the unix socket used to interact with this process", 
@@ -144,7 +144,7 @@ if __name__ == '__main__':
     vsys.vif_up(vif_name, ip4_address, net_prefix, snat = snat, 
             pointopoint = pointopoint, txqueuelen = txqueuelen) 
      
-    # Saving interface name to 'if_name_file
+    # Saving interface name to vif_name_file
     f = open(vif_name_file, 'w')
     f.write(vif_name)
     f.close()

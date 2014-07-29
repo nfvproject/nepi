@@ -69,8 +69,23 @@ class PlanetlabTap(LinuxApplication):
         pointopoint = Attribute("pointopoint", "Peer IP address", 
                 flags = Flags.Design)
 
-        tear_down = Attribute("tearDown", "Bash script to be executed before " + \
-                "releasing the resource",
+        txqueuelen = Attribute("txqueuelen", "Length of transmission queue", 
+                flags = Flags.Design)
+
+        txqueuelen = Attribute("txqueuelen", "Length of transmission queue", 
+                flags = Flags.Design)
+
+        gre_key = Attribute("greKey", 
+                "GRE key to be used to configure GRE tunnel", 
+                default = "1",
+                flags = Flags.Design)
+
+        gre_remote = Attribute("greRemote", 
+                "Public IP of remote endpoint for GRE tunnel", 
+                flags = Flags.Design)
+
+        tear_down = Attribute("tearDown", 
+                "Bash script to be executed before releasing the resource",
                 flags = Flags.Design)
 
         cls._register_attribute(ip4)
@@ -81,17 +96,30 @@ class PlanetlabTap(LinuxApplication):
         cls._register_attribute(up)
         cls._register_attribute(snat)
         cls._register_attribute(pointopoint)
+        cls._register_attribute(txqueuelen)
+        cls._register_attribute(gre_key)
+        cls._register_attribute(gre_remote)
         cls._register_attribute(tear_down)
 
     def __init__(self, ec, guid):
         super(PlanetlabTap, self).__init__(ec, guid)
         self._home = "tap-%s" % self.guid
+        self._gre_enabled = False
 
     @property
     def node(self):
         node = self.get_connected(PlanetlabNode.get_rtype())
         if node: return node[0]
         return None
+
+    @property
+    def gre_enabled(self):
+        if not self._gre_enabled:
+            from nepi.resources.linux.gretunnel import LinuxGRETunnel
+            gre = self.get_connected(LinuxGRETunnel.get_rtype())
+            if gre: self._gre_enabled = True
+
+        return self._gre_enabled
 
     def upload_sources(self):
         scripts = []
@@ -140,29 +168,32 @@ class PlanetlabTap(LinuxApplication):
                 os.path.join(self.app_home, "stop.sh"),
                 text = True,
                 # Overwrite file every time. 
-                # The stop.sh has the path to the socket, wich should change
+                # The stop.sh has the path to the socket, which should change
                 # on every experiment run.
                 overwrite = True)
 
     def upload_start_command(self):
-        # Overwrite file every time. 
-        # The start.sh has the path to the socket, wich should change
-        # on every experiment run.
-        super(PlanetlabTap, self).upload_start_command(overwrite = True)
+        # If GRE mode is enabled, TAP creation is delayed until the
+        # tunnel is established
+        if not self.gre_enabled:
+            # Overwrite file every time. 
+            # The start.sh has the path to the socket, wich should change
+            # on every experiment run.
+            super(PlanetlabTap, self).upload_start_command(overwrite = True)
 
-        # We want to make sure the device is up and running
-        # before the deploy finishes, so we execute now the 
-        # start script. We run it in background, because the 
-        # TAP will live for as long as the process that 
-        # created it is running, and wait until the TAP  
-        # is created. 
-        self._run_in_background()
-        
-        # After creating the TAP, the pl-vif-create.py script
-        # will write the name of the TAP to a file. We wait until
-        # we can read the interface name from the file.
-        vif_name = self.wait_vif_name()
-        self.set("deviceName", vif_name) 
+            # We want to make sure the device is up and running
+            # before the deploy finishes, so we execute now the 
+            # start script. We run it in background, because the 
+            # TAP will live for as long as the process that 
+            # created it is running, and wait until the TAP  
+            # is created. 
+            self._run_in_background()
+            
+            # After creating the TAP, the pl-vif-create.py script
+            # will write the name of the TAP to a file. We wait until
+            # we can read the interface name from the file.
+            vif_name = self.wait_vif_name()
+            self.set("deviceName", vif_name) 
 
     def do_deploy(self):
         if not self.node or self.node.state < ResourceState.PROVISIONED:
@@ -211,7 +242,6 @@ class PlanetlabTap(LinuxApplication):
 
     @property
     def state(self):
-        # First check if the ccnd has failed
         state_check_delay = 0.5
         if self._state == ResourceState.STARTED and \
                 tdiffsec(tnow(), self._last_state_check) > state_check_delay:
@@ -271,7 +301,9 @@ class PlanetlabTap(LinuxApplication):
     def udp_connect_command(self, remote_endpoint, connection_run_home, 
             cipher, cipher_key, bwlimit, txqueuelen):
 
-        # Generate UDP connect command
+        # Set the remote endpoint
+        self.set("pointopoint", remote_endpoint.get("ip4"))
+
         remote_ip = socket.gethostbyname(
                 remote_endpoint.node.get("hostname"))
 
@@ -284,17 +316,12 @@ class PlanetlabTap(LinuxApplication):
         ret_file = os.path.join(connection_run_home, 
                 "ret_file")
 
+        # Generate UDP connect command
         # Use pl-vif-up.py script to configure TAP with peer info
-        command = ["( sudo -S "]
-        command.append("PYTHONPATH=$PYTHONPATH:${SRC}")
-        command.append("python ${SRC}/pl-vif-up.py")
-        command.append("-N %s" % self.get("deviceName"))
-        command.append("-t %s" % self.vif_type)
-        command.append("-a %s" % self.get("ip4"))
-        command.append("-n %d" % self.get("prefix4"))
-        if self.get("snat") == True:
-            command.append("-s")
-        command.append("-p %s" % remote_endpoint.get("ip4"))
+        vif_up_command = self._vif_up_command
+        
+        command = ["( "]
+        command.append(vif_up_command)
 
         # Use pl-vid-udp-connect.py to stablish the tunnel between endpoints
         command.append(") & (")
@@ -323,29 +350,109 @@ class PlanetlabTap(LinuxApplication):
 
         return command
 
+    def gre_connect_command(self, remote_endpoint, connection_run_home): 
+        # Set the remote endpoint
+        self.set("pointopoint", remote_endpoint.get("ip4"))
+        self.set("gre_remote", socket.gethostbyname(
+            remote_endpoint.node.get("hostname")))
+
+        # Generate GRE connect command
+
+        # Use vif_down command to first kill existing TAP in GRE mode
+        vif_down_command = self._vif_command_command
+
+        # Use pl-vif-up.py script to configure TAP with peer info
+        vif_up_command = self._vif_up_command
+        
+        command = ["("]
+        command.append(vif_down_command)
+        command.append(") ; (")
+        command.append(vif_up_command)
+        command.append(")")
+
+        command = " ".join(command)
+        command = self.replace_paths(command)
+
+        return command
+
     @property
     def _start_command(self):
-        command = ["sudo -S python ${SRC}/pl-vif-create.py"]
-        
+        if self.gre_enabled:
+            command = []
+        else:
+            command = ["sudo -S python ${SRC}/pl-vif-create.py"]
+            
+            command.append("-t %s" % self.vif_type)
+            command.append("-a %s" % self.get("ip4"))
+            command.append("-n %d" % self.get("prefix4"))
+            command.append("-f %s " % self.vif_name_file)
+            command.append("-S %s " % self.sock_name)
+
+            if self.get("snat") == True:
+                command.append("-s")
+
+            if self.get("pointopoint"):
+                command.append("-p %s" % self.get("pointopoint"))
+            
+            if self.get("txqueuelen"):
+                command.append("-q %s" % self.get("txqueuelen"))
+
+        return " ".join(command)
+
+    @property
+    def _stop_command(self):
+        if self.gre_enabled:
+            command = self._vif_down_command()
+        else:
+            command = ["sudo -S "]
+            command.append("PYTHONPATH=$PYTHONPATH:${SRC}")
+            command.append("python ${SRC}/pl-vif-down.py")
+            command.append("-S %s " % self.sock_name)
+            command = " ".join(command)
+
+        return command
+
+    @property
+    def _vif_up_command(self):
+        if self.gre_enabled:
+            device_name = "%s" % self.guid
+        else:
+            device_name = self.get("deviceName")
+
+        # Use pl-vif-up.py script to configure TAP
+        command = ["sudo -S "]
+        command.append("PYTHONPATH=$PYTHONPATH:${SRC}")
+        command.append("python ${SRC}/pl-vif-up.py")
+        command.append("-N %s" % self.get("deviceName"))
         command.append("-t %s" % self.vif_type)
         command.append("-a %s" % self.get("ip4"))
         command.append("-n %d" % self.get("prefix4"))
-        command.append("-f %s " % self.vif_name_file)
-        command.append("-S %s " % self.sock_name)
 
         if self.get("snat") == True:
             command.append("-s")
 
         if self.get("pointopoint"):
             command.append("-p %s" % self.get("pointopoint"))
+        
+        if self.get("txqueuelen"):
+            command.append("-q %s" % self.get("txqueuelen"))
+
+        if self.gre_enabled:
+            command.append("-g %s" % self.gre("greKey"))
+            command.append("-G %s" % self.gre("greRemote"))
+        
+        command.append("-f %s " % self.vif_name_file)
 
         return " ".join(command)
 
     @property
-    def _stop_command(self):
-        command = ["sudo -S python ${SRC}/pl-vif-down.py"]
-        
-        command.append("-S %s " % self.sock_name)
+    def _vif_down_command(self):
+        command = ["sudo -S "]
+        command.append("PYTHONPATH=$PYTHONPATH:${SRC}")
+        command.append("python ${SRC}/pl-vif-down.py")
+        command.append("-D")
+        command.append("-N %s " % self.get("deviceName"))
+
         return " ".join(command)
 
     @property
