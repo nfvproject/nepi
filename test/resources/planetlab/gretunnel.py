@@ -32,6 +32,7 @@ class PlanetLabGRETunnelTestCase(unittest.TestCase):
         #self.host2 = "nepi5.pl.sophia.inria.fr"
         self.host1 = "planetlab1.informatik.uni-erlangen.de"
         self.host2 = "planetlab1.informatik.uni-goettingen.de"
+        self.host3 = "roseval.pl.sophia.inria.fr"
         self.user = "inria_nepi"
         self.identity = "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'])
         #self.netblock = "192.168.1"
@@ -147,6 +148,61 @@ class PlanetLabGRETunnelTestCase(unittest.TestCase):
 
         ec.shutdown()
 
+    @skipIfAnyNotAliveWithIdentity
+    def t_tun_hybrid_gre_tunnel(self, user1, host1, identity1, 
+            user2, host2, identity2):
+
+        ec = ExperimentController(exp_id = "test-tap-hybrid-gre-tunnel")
+        
+        node1 = ec.register_resource("PlanetlabNode")
+        ec.set(node1, "hostname", host1)
+        ec.set(node1, "username", user1)
+        ec.set(node1, "identity", identity1)
+        ec.set(node1, "cleanHome", True)
+        ec.set(node1, "cleanProcesses", True)
+
+        tun1 = ec.register_resource("PlanetlabTun")
+        ec.set(tun1, "ip4", "%s.1" % self.netblock)
+        ec.set(tun1, "prefix4", 24)
+        ec.register_connection(tun1, node1)
+
+        node2 = ec.register_resource("LinuxNode")
+        ec.set(node2, "hostname", host2)
+        ec.set(node2, "username", user2)
+        ec.set(node2, "identity", identity2)
+        ec.set(node2, "cleanHome", True)
+        ec.set(node2, "cleanProcesses", True)
+
+        tun2 = ec.register_resource("LinuxTun")
+        ec.set(tun2, "ip4", "%s.2" % self.netblock)
+        ec.set(tun2, "prefix4", 24)
+        ec.register_connection(tun2, node2)
+
+        gretun = ec.register_resource("LinuxGRETunnel")
+        ec.register_connection(tun1, gretun)
+        ec.register_connection(tun2, gretun)
+
+        app = ec.register_resource("LinuxApplication")
+        cmd = "ping -c3 %s.2" % self.netblock
+        ec.set(app, "command", cmd)
+        ec.register_connection(app, node1)
+
+        ec.deploy()
+
+        ec.wait_finished(app)
+
+        ping = ec.trace(app, 'stdout')
+        expected = """3 packets transmitted, 3 received, 0% packet loss"""
+        self.assertTrue(ping.find(expected) > -1)
+        
+        if_name = ec.get(tun1, "deviceName")
+        self.assertTrue(if_name.startswith("tun"))
+        
+        if_name = ec.get(tun2, "deviceName")
+        self.assertTrue(if_name.startswith("tun"))
+
+        ec.shutdown()
+
     def test_tap_gre_tunnel(self):
         self.t_tap_gre_tunnel(self.user, self.host1, self.identity,
                 self.user, self.host2, self.identity)
@@ -154,6 +210,11 @@ class PlanetLabGRETunnelTestCase(unittest.TestCase):
     def test_tun_gre_tunnel(self):
         self.t_tun_gre_tunnel(self.user, self.host1, self.identity,
                 self.user, self.host2, self.identity)
+
+    def test_tun_hybrid_gre_tunnel(self):
+        self.t_tun_hybrid_gre_tunnel(self.user, self.host1, self.identity, 
+                self.user, self.host3, self.identity)
+
 
 if __name__ == '__main__':
     unittest.main()
