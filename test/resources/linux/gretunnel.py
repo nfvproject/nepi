@@ -29,9 +29,9 @@ import unittest
 class LinuxGRETunnelTestCase(unittest.TestCase):
     def setUp(self):
         self.host1 = "roseval.pl.sophia.inria.fr"
-        self.host2 = "truckers.pl.sophia.inria.fr"
+        self.host2 = "138.96.118.11"
         self.user1 = "inria_nepi"
-        self.user2 = "aquereil"
+        self.user2 = "omflab"
         self.identity = "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'])
         self.netblock = "192.168.1"
 
@@ -50,7 +50,7 @@ class LinuxGRETunnelTestCase(unittest.TestCase):
 
         tap1 = ec.register_resource("LinuxTap")
         ec.set(tap1, "ip4", "%s.1" % self.netblock)
-        ec.set(tap1, "prefix4", 24)
+        ec.set(tap1, "prefix4", 32)
         ec.register_connection(tap1, node1)
 
         node2 = ec.register_resource("LinuxNode")
@@ -62,7 +62,7 @@ class LinuxGRETunnelTestCase(unittest.TestCase):
 
         tap2 = ec.register_resource("LinuxTap")
         ec.set(tap2, "ip4", "%s.2" % self.netblock)
-        ec.set(tap2, "prefix4", 24)
+        ec.set(tap2, "prefix4", 32)
         ec.register_connection(tap2, node2)
 
         gretun = ec.register_resource("LinuxGRETunnel")
@@ -105,7 +105,7 @@ class LinuxGRETunnelTestCase(unittest.TestCase):
 
         tun1 = ec.register_resource("LinuxTun")
         ec.set(tun1, "ip4", "%s.1" % self.netblock)
-        ec.set(tun1, "prefix4", 24)
+        ec.set(tun1, "prefix4", 32)
         ec.register_connection(tun1, node1)
 
         node2 = ec.register_resource("LinuxNode")
@@ -117,7 +117,7 @@ class LinuxGRETunnelTestCase(unittest.TestCase):
 
         tun2 = ec.register_resource("LinuxTun")
         ec.set(tun2, "ip4", "%s.2" % self.netblock)
-        ec.set(tun2, "prefix4", 24)
+        ec.set(tun2, "prefix4", 32)
         ec.register_connection(tun2, node2)
 
         udptun = ec.register_resource("LinuxGRETunnel")
