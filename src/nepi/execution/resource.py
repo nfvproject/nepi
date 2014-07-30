@@ -749,6 +749,18 @@ class ResourceManager(Logger):
                 connected.append(rm)
         return connected
 
+    def is_rm_instance(self, rtype):
+        """ Returns True if the RM is instance of 'rtype'
+
+        :param rtype: Type of the RM we look for
+        :type rtype: str
+        :return: True|False
+        """
+        rclass = ResourceFactory.get_resource_type(rtype)
+        if isinstance(self, rclass):
+            return True
+        return False
+
     @failtrap
     def _needs_reschedule(self, group, state, time):
         """ Internal method that verify if 'time' has elapsed since 

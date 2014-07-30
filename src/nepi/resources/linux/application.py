@@ -711,6 +711,7 @@ class LinuxApplication(ResourceManager):
     def execute_command(self, command, 
             env = None,
             sudo = False,
+            tty = False,
             forward_x11 = False,
             blocking = False):
 
@@ -722,6 +723,7 @@ class LinuxApplication(ResourceManager):
 
         return self.node.execute(command,
                 sudo = sudo,
+                tty = tty,
                 forward_x11 = forward_x11,
                 blocking = blocking)
 

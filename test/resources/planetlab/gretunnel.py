@@ -183,7 +183,9 @@ class PlanetLabGRETunnelTestCase(unittest.TestCase):
         ec.register_connection(tun2, gretun)
 
         app = ec.register_resource("LinuxApplication")
-        cmd = "ping -c3 %s.2" % self.netblock
+        # It seems the hybrid tunnel takes some time to setup... we add a sleep 5
+        # XXX: Debug this to see if it can be fixed on the RMs
+        cmd = "sleep 5; ping -c3 %s.2" % self.netblock
         ec.set(app, "command", cmd)
         ec.register_connection(app, node1)
 
