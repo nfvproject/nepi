@@ -20,6 +20,7 @@
 
 import os
 
+from nepi.util.timefuncs import tnow
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
         ResourceState, reschedule_delay
 from nepi.execution.attribute import Attribute, Flags 
@@ -96,6 +97,14 @@ class OMFApplication(OMFResource):
         self._start_cnt = 0
         self.release_id = None
         self._release_cnt = 0
+
+        # For performance tests
+        self.begin_deploy_time = None
+        self.begin_start_time = None
+        self.begin_release_time = None
+        self.dperf = True
+        self.sperf = True
+        self.rperf = True
 
         self.add_set_hook()
 
@@ -175,6 +184,11 @@ class OMFApplication(OMFResource):
             self.ec.schedule(reschedule_delay, self.deploy)
             return
 
+        ## For performance test
+        if self.dperf:
+            self.begin_deploy_time = tnow()
+            self.dperf = False
+
         self._init_command()
 
         self.set('xmppUser',self.node.get('xmppUser'))
@@ -204,6 +218,9 @@ class OMFApplication(OMFResource):
                self.get('xmppPassword'), exp_id = self.exp_id)
 
         if self.get('version') == "5":
+
+            self.begin_deploy_time = tnow()
+
             if self.get('sources'):
                 gateway = ResourceGateway.AMtoGateway[self.get('xmppServer')]
                 user = self.get('sshUser') or self.get('xmppUser')
@@ -256,11 +273,16 @@ class OMFApplication(OMFResource):
          to execute the application. 
 
         """
+        ## For performance test
+        if self.sperf:
+            self.begin_start_time = tnow()
+            self.sperf = False
 
         if not self.get('env'):
             self.set('env', " ")
 
         if self.get('version') == "5":
+            self.begin_start_time = tnow()
             # Some information to check the command for OMF5
             msg = " " + self.get_rtype() + " ( Guid : " + str(self._guid) +") : " + \
                 self.get('appid') + " : " + self._path + " : " + \
@@ -334,6 +356,11 @@ class OMFApplication(OMFResource):
         """ Clean the RM at the end of the experiment and release the API.
 
         """
+        ## For performance test
+        if self.rperf:
+            self.begin_release_time = tnow()
+            self.rperf = False
+
         if self._omf_api:
             if self.get('version') == "6" and self._topic_app:
                 if not self.release_id:
