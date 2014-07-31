@@ -268,6 +268,44 @@ class OMFApplication(OMFResource):
             return uid
         return False
 
+    def trace_filepath(self, filename):
+        return os.path.join('~/', filename)
+
+    def trace(self, name, attr = TraceAttr.ALL, block = 512, offset = 0):
+        self.info("Retrieving '%s' trace %s " % (name, attr))
+
+        path = self.trace_filepath(str(self.guid) + '_' + name)
+        
+        command = "(test -f %s && echo 'success') || echo 'error'" % path
+        (out, err), proc = self.node.execute(command)
+
+        if (err and proc.poll()) or out.find("error") != -1:
+            msg = " Couldn't find trace %s " % name
+            self.error(msg, out, err)
+            return None
+    
+        if attr == TraceAttr.PATH:
+            return path
+
+        if attr == TraceAttr.ALL:
+            (out, err), proc = self.node.check_output(self.run_home, name)
+            
+            if proc.poll():
+                msg = " Couldn't read trace %s " % name
+                self.error(msg, out, err)
+                return None
+
+            return out
+
+        return out
+
+    def check_output(self, home, filename):
+        """ Retrives content of file """
+        (out, err), proc = self.execute("cat %s" % 
+            os.path.join(home, filename), retry = 1, with_lock = True)
+        return (out, err), proc
+
+
     def do_start(self):
         """ Start the RM. It means : Send Xmpp Message Using OMF protocol 
          to execute the application. 
