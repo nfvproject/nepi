@@ -201,7 +201,7 @@ class SSHfuncsTestCase(unittest.TestCase):
         source = [dirpath, f1.name]
         destdir = tempfile.mkdtemp()
         dest = "%s@%s:%s" % (user, host, destdir)
-        rcopy(source, dest, port = env.port, agent = True, recursive = True)
+        rcopy(source, dest, port = env.port, recursive = True)
 
         files = []
         def recls(files, dirname, names):
@@ -233,7 +233,7 @@ class SSHfuncsTestCase(unittest.TestCase):
         source = [dirpath, f1.name]
         destdir = tempfile.mkdtemp()
         dest = "%s@%s:%s" % (user, host, destdir)
-        ((out, err), proc) = rcopy(source, dest, port = env.port, agent = True, recursive = True)
+        ((out, err), proc) = rcopy(source, dest, port = env.port, recursive = True)
 
         files = []
         def recls(files, dirname, names):
