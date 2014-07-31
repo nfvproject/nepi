@@ -150,10 +150,10 @@ def add_app(ec, command, node):
 platform = "omf6"
 
 # Create the list of nodes and ips
-hostnames = ['servernode', 'client1node',  'client2node', 'client3node', 'client4node', 'client5node' ]
+#hostnames = ['servernode', 'client1node',  'client2node', 'client3node', 'client4node', 'client5node' ]
 
-host_suffix = ".nepivlcexperiment.nepi.wilab2.ilabt.iminds.be"
-#host_suffix = ".nepiperformance.nepi.wilab2.ilabt.iminds.be"
+#host_suffix = ".nepivlcexperiment.nepi.wilab2.ilabt.iminds.be"
+host_suffix = ".nepiperformance.nepi.wilab2.ilabt.iminds.be"
 
 # Set the number of threads. 
 # NOTE: This must be done before instantiating the EC.
@@ -164,7 +164,7 @@ exp_id = "%s_bench" % platform
 ec = ExperimentController(exp_id)
 
 # App to run on each node
-command = "ping -c5 192.168.0.10"
+command = "ping -c2 192.168.0.10"
 
 # Add simulated nodes and applications
 nodes = list()
@@ -174,8 +174,8 @@ ifaces = list()
 channel = create_chan(ec,"6")
 
 for i in xrange(node_count):
-    #node = create_node(ec,"node" + str(i) + host_suffix)
-    node = create_node(ec,hostnames[i] + host_suffix)
+    node = create_node(ec,"node" + str(i) + host_suffix)
+    #node = create_node(ec,hostnames[i] + host_suffix)
     nodes.append(node)
 
     iface = create_iface(ec, 'wlan0', 'adhoc', 'g', 'ping', "192.168.0.1" + str(i)+"/24", node)
@@ -185,7 +185,7 @@ for i in xrange(node_count):
     for j in xrange(app_count):
         app = add_app(ec, command, node)
         apps.append(app)
-        ec.register_condition(apps, ResourceAction.STOP, apps, ResourceState.STARTED , "10s")
+        ec.register_condition(apps, ResourceAction.STOP, apps, ResourceState.STARTED , "3s")
 
 
 # Deploy the experiment
@@ -276,27 +276,44 @@ mem_deploy = "%d,%0.2f,%0.2f" % (n,m,std)
 n,m,std = compute_estimator(mem_usage_start)
 mem_start = "%d,%0.2f,%0.2f" % (n,m,std)
 
+rm_ttdall_list = list()
 rm_ttd_list = list()
+rm_tts_list = list()
 rm_ttr_list = list()
 rm_ttrel_list = list()
 
 for guid in ec.resources:
     rm = ec.get_resource(guid)
 
-    rm_d = rm.ready_time - zero_time
-    d = (rm_d.microseconds + ((rm_d.seconds + rm_d.days * 24 * 3600) * s2us)) / s2ms
-    rm_ttd_list.append(d)
+    rm_d_all = rm.ready_time - rm.begin_deploy_time
+    dall = (rm_d_all.microseconds + ((rm_d_all.seconds + rm_d_all.days * 24 * 3600) * s2us)) / s2ms
+    rm_ttdall_list.append(dall)
 
-    rm_r = rm.start_time - zero_time
-    r = (rm_r.microseconds + ((rm_r.seconds + rm_r.days * 24 * 3600) * s2us)) / s2ms
-    rm_ttr_list.append(r)
+    if rm.get_rtype() == "OMFApplication" :
+        rm_d = rm.ready_time - rm.begin_deploy_time
+        d = (rm_d.microseconds + ((rm_d.seconds + rm_d.days * 24 * 3600) * s2us)) / s2ms
+        rm_ttd_list.append(d)
 
-    rm_rel = rm.release_time - zero_time
-    rel = (rm_rel.microseconds + ((rm_rel.seconds + rm_rel.days * 24 * 3600) * s2us)) / s2ms
-    rm_ttrel_list.append(rel)
+        rm_s = rm.start_time - rm.begin_start_time
+        r = (rm_s.microseconds + ((rm_s.seconds + rm_s.days * 24 * 3600) * s2us)) / s2ms    
+        rm_tts_list.append(r)
+    
+        rm_r = rm.stop_time - rm.start_time
+        r = (rm_r.microseconds + ((rm_r.seconds + rm_r.days * 24 * 3600) * s2us)) / s2ms
+        rm_ttr_list.append(r)
+    
+        rm_rel = rm.release_time - rm.begin_release_time
+        rel = (rm_rel.microseconds + ((rm_rel.seconds + rm_rel.days * 24 * 3600) * s2us)) / s2ms
+        rm_ttrel_list.append(rel)
+
+n,m,std = compute_estimator(rm_ttdall_list)
+rm_ttdall = "%d,%0.2f,%0.2f" % (n,m,std)
 
 n,m,std = compute_estimator(rm_ttd_list)
 rm_ttd = "%d,%0.2f,%0.2f" % (n,m,std)
+
+n,m,std = compute_estimator(rm_tts_list)
+rm_tts = "%d,%0.2f,%0.2f" % (n,m,std)
 
 n,m,std = compute_estimator(rm_ttr_list)
 rm_ttr = "%d,%0.2f,%0.2f" % (n,m,std)
@@ -304,7 +321,7 @@ rm_ttr = "%d,%0.2f,%0.2f" % (n,m,std)
 n,m,std = compute_estimator(rm_ttrel_list)
 rm_ttrel = "%d,%0.2f,%0.2f" % (n,m,std)
 
-f.write("%s|%s|%d|%s|%s|%d|%s|%s|%0.1f|%d|%d|%d|%d|%d|%d|%d|%s|%s|%s|%s|\n" % (
+f.write("%s|%s|%d|%s|%s|%d|%s|%s|%0.1f|%d|%d|%d|%d|%d|%d|%d|%s|%s|%s|%s|%s|%s|\n" % (
     timestmp,
     platform,
     cpu_count,
@@ -321,10 +338,12 @@ f.write("%s|%s|%d|%s|%s|%d|%s|%s|%0.1f|%d|%d|%d|%d|%d|%d|%d|%s|%s|%s|%s|\n" % (
     ttdms,
     ttrms,
     ttrelms,
+    status,
+    rm_ttdall,
     rm_ttd,
+    rm_tts,
     rm_ttr,
-    rm_ttrel,
-    status
+    rm_ttrel
     ))
 
 f.close()

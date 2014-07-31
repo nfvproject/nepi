@@ -18,6 +18,7 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 #         Julien Tribino <julien.tribino@inria.fr>
 
+from nepi.util.timefuncs import tnow
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
         ResourceState, reschedule_delay
 from nepi.execution.attribute import Attribute, Flags 
@@ -68,6 +69,11 @@ class OMFNode(OMFResource):
 
         self._omf_api = None 
 
+        # For performance tests
+        self.perf = True
+        self.begin_deploy_time = None
+
+
     @property
     def exp_id(self):
         return self.ec.exp_id
@@ -99,6 +105,11 @@ class OMFNode(OMFResource):
             to enroll the node into the experiment.
 
         """ 
+      ## For performance test
+        if self.perf:
+            self.begin_deploy_time = tnow()
+            self.perf = False
+
         if not self.get('xmppServer'):
             msg = "XmppServer is not initialzed. XMPP Connections impossible"
             self.error(msg)

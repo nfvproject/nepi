@@ -19,6 +19,7 @@
 #         Julien Tribino <julien.tribino@inria.fr>
 
 import os, time
+from nepi.util.timefuncs import tnow
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
         ResourceState, reschedule_delay
 from nepi.execution.attribute import Attribute, Flags 
@@ -82,6 +83,9 @@ class OMFWifiInterface(OMFResource):
         self._omf_api = None
         self._type = ""
 
+        # For performance tests
+        self.perf = True
+        self.begin_deploy_time = None
 
     def valid_connection(self, guid):
         """ Check if the connection with the guid in parameter is possible. 
@@ -210,6 +214,11 @@ class OMFWifiInterface(OMFResource):
                        % self.channel.state )
             self.ec.schedule(reschedule_delay, self.deploy)
             return
+
+        ## For performance test
+        if self.perf:
+            self.begin_deploy_time = tnow()
+            self.perf = False
 
         self.set('xmppUser',self.node.get('xmppUser'))
         self.set('xmppServer',self.node.get('xmppServer'))

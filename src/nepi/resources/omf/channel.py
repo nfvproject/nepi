@@ -18,6 +18,7 @@
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 #         Julien Tribino <julien.tribino@inria.fr>
 
+from nepi.util.timefuncs import tnow
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
         ResourceState, reschedule_delay
 from nepi.execution.attribute import Attribute, Flags 
@@ -81,6 +82,11 @@ class OMFChannel(OMFResource):
 
         self._omf_api = None
 
+        # For performance tests
+        self.perf = True
+        self.begin_deploy_time = None
+
+
     @property
     def exp_id(self):
         return self.ec.exp_id
@@ -139,6 +145,12 @@ class OMFChannel(OMFResource):
         using OMF 5.4 or 6 protocol to configure the channel.
 
         """   
+
+      ## For performance test
+        if self.perf:
+            self.begin_deploy_time = tnow()
+            self.perf = False
+
         if not self.get('channel'):
             msg = "Channel's value is not initialized"
             self.error(msg)
@@ -148,7 +160,6 @@ class OMFChannel(OMFResource):
             self.frequency = self.get_frequency(self.get('channel'))
             super(OMFChannel, self).do_deploy()
             return
-
 
         if not self.get('xmppServer'):
             msg = "XmppServer is not initialzed. XMPP Connections impossible"
@@ -166,8 +177,6 @@ class OMFChannel(OMFResource):
                self.get('xmppPassword'), exp_id = self.exp_id)
 
         self._nodes_guid = self._get_target(self._connections)
-
-
 
         if self._nodes_guid == "reschedule" :
             self.ec.schedule("1s", self.deploy)
