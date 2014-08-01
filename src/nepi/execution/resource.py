@@ -31,7 +31,7 @@ import sys
 import threading
 import weakref
 
-reschedule_delay = "1s"
+reschedule_delay = "0.5s"
 
 class ResourceAction:
     """ Action that a user can order to a Resource Manager
