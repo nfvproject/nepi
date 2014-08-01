@@ -252,10 +252,17 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
         ### create applications
         ccnd1 = ec.register_resource("ns3::LinuxCCNDceApplication")
 
-        # NOTE THAT INSTALLATION MIGHT FAIL IF openjdk-6-jdk is not installed
-        ec.set(ccnd1, "depends", "libpcap0.8-dev openjdk-6-jdk ant1.8 autoconf "
-            "libssl-dev libexpat-dev libpcap-dev libecryptfs0 libxml2-utils auto"
-            "make gawk gcc g++ git-core pkg-config libpcre3-dev openjdk-6-jre-lib")
+        if host == self.fedora_host:
+            depends = ( " autoconf openssl-devel  expat-devel libpcap-devel "
+                " ecryptfs-utils-devel libxml2-devel automake gawk " 
+                " gcc gcc-c++ git pcre-devel make ")
+        else: # UBUNTU
+            # NOTE THAT INSTALLATION MIGHT FAIL IF openjdk-6-jdk is not installed
+            depends = ( "libpcap0.8-dev openjdk-6-jdk ant1.8 autoconf "
+                    "libssl-dev libexpat-dev libpcap-dev libecryptfs0 libxml2-utils auto"
+                    "make gawk gcc g++ git-core pkg-config libpcre3-dev openjdk-6-jre-lib")
+
+        ec.set (ccnd1, "depends", depends)
         ec.set (ccnd1, "sources", "http://www.ccnx.org/releases/ccnx-0.7.2.tar.gz")
         ec.set (ccnd1, "build", "tar zxf ${SRC}/ccnx-0.7.2.tar.gz && "
                 "cd ccnx-0.7.2 && "
@@ -345,7 +352,7 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
         ec.shutdown()
 
     def test_dce_ping_fedora(self):
-        self.t_dce_ping(self.fedora_host, self.fedora_user, self.fedora_identity)
+        self.t_dce_ping(self.fedora_host, self.fedora_user, self.fedora_identity) 
 
     def test_dce_ping_ubuntu(self):
         self.t_dce_ping(self.ubuntu_host, self.ubuntu_user, self.ubuntu_identity)

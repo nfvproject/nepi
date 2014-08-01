@@ -80,7 +80,7 @@ class NS3Base(ResourceManager):
 
         kwargs = dict()
         for attr in self._attrs.values():
-            if not ( attr.has_flag(Flags.Construct) and attr.has_changed() ):
+            if not ( attr.has_flag(Flags.Construct) and attr.has_changed ):
                 continue
 
             kwargs[attr.name] = attr._value
