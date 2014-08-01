@@ -229,6 +229,69 @@ main (void)
         ec.shutdown()
 
     @skipIfNotAlive
+    def t_condition_serialize(self, host, user, depends):
+
+        dirpath = tempfile.mkdtemp()
+
+        ec = ExperimentController(exp_id="test-condition-serial")
+        
+        node = ec.register_resource("LinuxNode")
+        ec.set(node, "hostname", host)
+        ec.set(node, "username", user)
+        ec.set(node, "cleanHome", True)
+        ec.set(node, "cleanProcesses", True)
+
+        server = ec.register_resource("LinuxApplication")
+        cmd = "echo 'HOLA' | nc -l 3333"
+        ec.set(server, "command", cmd)
+        ec.set(server, "depends", depends)
+        ec.register_connection(server, node)
+
+        client = ec.register_resource("LinuxApplication")
+        cmd = "nc 127.0.0.1 3333"
+        ec.set(client, "command", cmd)
+        ec.register_connection(client, node)
+
+        ec.register_condition(client, ResourceAction.START, server, ResourceState.STARTED)
+
+        apps = [client, server]
+        
+        filepath = ec.save(dirpath)
+        
+        ec.deploy()
+
+        ec.wait_finished(apps)
+
+        self.assertTrue(ec.state(node) == ResourceState.STARTED)
+        self.assertTrue(ec.state(server) == ResourceState.STOPPED)
+        self.assertTrue(ec.state(client) == ResourceState.STOPPED)
+
+        stdout = ec.trace(client, "stdout")
+        self.assertTrue(stdout.strip() == "HOLA")
+
+        ec.shutdown()
+
+        # Load serialized experiment
+        ec2 = ExperimentController.load(filepath)
+        
+        ec2.deploy()
+        ec2.wait_finished(apps)
+        
+        self.assertEquals(len(ec.resources), len(ec2.resources))
+        
+        self.assertTrue(ec2.state(node) == ResourceState.STARTED)
+        self.assertTrue(ec2.state(server) == ResourceState.STOPPED)
+        self.assertTrue(ec2.state(client) == ResourceState.STOPPED)
+
+        stdout = ec2.trace(client, "stdout")
+
+        self.assertTrue(stdout.strip() == "HOLA")
+        
+        ec2.shutdown()
+
+        shutil.rmtree(dirpath)
+
+    @skipIfNotAlive
     def t_http_sources(self, host, user):
 
         ec = ExperimentController(exp_id="test-http-sources")
@@ -249,6 +312,7 @@ main (void)
         ec.set(app, "command", command)
 
         ec.register_connection(app, node)
+
 
         ec.deploy()
 
@@ -357,6 +421,12 @@ main (void)
 
     def test_condition_ubuntu(self):
         self.t_condition(self.ubuntu_host, self.ubuntu_user, "netcat")
+
+    def test_condition_serialize_fedora(self):
+        self.t_condition_serialize(self.fedora_host, self.fedora_user, "nc")
+
+    def test_condition_serialize_ubuntu(self):
+        self.t_condition_serialize(self.ubuntu_host, self.ubuntu_user, "netcat")
 
     def test_http_sources_fedora(self):
         self.t_http_sources(self.fedora_host, self.fedora_user)

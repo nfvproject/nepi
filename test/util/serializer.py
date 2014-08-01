@@ -22,8 +22,10 @@ from nepi.execution.ec import ExperimentController
 from nepi.execution.resource import ResourceManager, ResourceState, \
         clsinit_copy, ResourceAction, ResourceFactory
 
+import os
 import tempfile
 import time
+import shutil
 import unittest
 
 reschedule_delay = "0.5s"
@@ -119,7 +121,6 @@ class SerializeTestCase(unittest.TestCase):
             ec.register_connection(link, iface)
 
         filepath = ec.save(dirpath)
-        print filepath
 
         ec.deploy()
 
@@ -129,6 +130,7 @@ class SerializeTestCase(unittest.TestCase):
         # Do the experiment controller shutdown
         ec.shutdown()
 
+        # Load serialized experiment
         ec2 = ExperimentController.load(filepath)
         apps = ec2.get_resources_by_type("dummy::Application")
         ec2.deploy()
@@ -137,6 +139,7 @@ class SerializeTestCase(unittest.TestCase):
         
         self.assertEquals(len(ec.resources), len(ec2.resources))
 
+        shutil.rmtree(dirpath)
                        
 if __name__ == '__main__':
     unittest.main()
