@@ -136,6 +136,10 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
         self.fedora_user = "inria_nepi"
         self.fedora_identity = "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'])
 
+        self.ubuntu_host = "roseval.pl.sophia.inria.fr"
+        self.ubuntu_user = "inria_nepi"
+        self.ubuntu_identity = "%s/.ssh/id_rsa" % (os.environ['HOME'])
+ 
     @skipIfNotAlive
     def t_dce_ping(self, host, user = None, identity = None):
         ec = ExperimentController(exp_id = "test-dce-ping")
@@ -343,11 +347,17 @@ class LinuxNS3DceApplicationTest(unittest.TestCase):
     def test_dce_ping_fedora(self):
         self.t_dce_ping(self.fedora_host, self.fedora_user, self.fedora_identity)
 
+    def test_dce_ping_ubuntu(self):
+        self.t_dce_ping(self.ubuntu_host, self.ubuntu_user, self.ubuntu_identity)
+
     def test_dce_ping_local(self):
         self.t_dce_ping("localhost")
 
     def test_dce_ccn_fedora(self):
         self.t_dce_ccn(self.fedora_host, self.fedora_user, self.fedora_identity)
+
+    def test_dce_ccn_ubuntu(self):
+        self.t_dce_ccn(self.ubuntu_host, self.ubuntu_user, self.ubuntu_identity)
 
     def test_dce_ccn_local(self):
         self.t_dce_ccn("localhost")
