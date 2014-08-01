@@ -374,8 +374,6 @@ class LinuxNS3SimulationSerializationTest(unittest.TestCase):
 
         simu = ec.register_resource("LinuxNS3Simulation")
         ec.set(simu, "verbose", True)
-        #ec.set(simu, "buildMode", "debug")
-        #ec.set(simu, "nsLog", "DceApplication")
         ec.register_connection(simu, node)
 
         nsnode1 = add_ns3_node(ec, simu)
@@ -411,11 +409,14 @@ class LinuxNS3SimulationSerializationTest(unittest.TestCase):
         ec.register_connection(udp_perf_client, nsnode2)
 
         filepath = ec.save(dirpath)
-        print filepath
         
         ec.deploy()
 
         ec.wait_finished([udp_perf_client])
+
+        # Give time to flush the streams
+        import time
+        time.sleep(5) 
 
         expected = "udp-perf --duration=10 --nodes=2"
         cmdline = ec.trace(udp_perf, "cmdline")
@@ -429,10 +430,6 @@ class LinuxNS3SimulationSerializationTest(unittest.TestCase):
         stdout = ec.trace(udp_perf, "stdout")
         self.assertTrue(stdout.find(expected) > -1, stdout)
 
-        stderr = ec.trace(simu, "stderr")
-        expected = "DceApplication:StartApplication"
-        self.assertTrue(stderr.find(expected) > -1, stderr)
-
         ec.shutdown()
 
         # Load serialized experiment
@@ -440,7 +437,10 @@ class LinuxNS3SimulationSerializationTest(unittest.TestCase):
         
         ec2.deploy()
         ec2.wait_finished([udp_perf_client])
-        
+
+        # Give time to flush the streams
+        time.sleep(5) 
+       
         self.assertEquals(len(ec.resources), len(ec2.resources))
  
         expected = "udp-perf --duration=10 --nodes=2"
@@ -455,10 +455,6 @@ class LinuxNS3SimulationSerializationTest(unittest.TestCase):
         stdout = ec2.trace(udp_perf, "stdout")
         self.assertTrue(stdout.find(expected) > -1, stdout)
 
-        stderr = ec2.trace(simu, "stderr")
-        expected = "DceApplication:StartApplication"
-        self.assertTrue(stderr.find(expected) > -1, stderr)
-        
         ec2.shutdown()
 
         shutil.rmtree(dirpath)
