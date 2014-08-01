@@ -25,6 +25,7 @@ from nepi.execution.resource import ResourceFactory, ResourceAction, \
 from nepi.execution.scheduler import HeapScheduler, Task, TaskStatus
 from nepi.execution.trace import TraceAttr
 from nepi.util.serializer import ECSerializer, SFormats
+from nepi.util.plotter import ECPlotter, PFormats
 
 # TODO: use multiprocessing instead of threading
 # TODO: Allow to reconnect to a running experiment instance! (reconnect mode vs deploy mode)
@@ -380,6 +381,12 @@ class ExperimentController(object):
                 guids.append(guid)
 
                 time.sleep(0.5)
+
+    def plot(self, fpath = None, format= PFormats.FIGURE, persist = False):
+        plotter = ECPlotter()
+        fpath = plotter.plot(self, fpath = fpath, format= format, 
+                persist = persist)
+        return fpath
 
     def serialize(self, format = SFormats.XML):
         serializer = ECSerializer()
