@@ -615,7 +615,7 @@ class ResourceManager(Logger):
         :rtype: str
         """
         attr = self._attrs[name]
-        return attr.has_changed()
+        return attr.has_changed
 
     def has_flag(self, name, flag):
         """ Returns true if the attribute has the flag 'flag'

@@ -13,7 +13,6 @@ setup(
         platforms   = "Linux, OSX",
         packages    = [
             "nepi",
-            "nepi.design",
             "nepi.execution",
             "nepi.resources",
             "nepi.resources.all",
@@ -27,7 +26,8 @@ setup(
             "nepi.resources.omf",
             "nepi.resources.planetlab",
             "nepi.resources.planetlab.openvswitch",
-            "nepi.util"],
+            "nepi.util",
+            "nepi.util.parsers"],
         package_dir = {"": "src"},
         package_data = {
             "nepi.resources.planetlab" : [ "scripts/*.py" ],
