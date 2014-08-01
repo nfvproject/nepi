@@ -21,11 +21,11 @@
 from nepi.execution.ec import ExperimentController
 from nepi.execution.resource import ResourceManager, ResourceState, \
         clsinit_copy, ResourceAction, ResourceFactory
+from nepi.util.plotter import PFormats
 
 import os
 import tempfile
 import time
-import shutil
 import unittest
 
 reschedule_delay = "0.5s"
@@ -88,14 +88,12 @@ ResourceFactory.register_type(Node)
 ResourceFactory.register_type(Interface)
 ResourceFactory.register_type(Link)
 
-class SerializerTestCase(unittest.TestCase):
+class PlotterTestCase(unittest.TestCase):
     def test_serialize(self):
         node_count = 4
         app_count = 2
 
-        dirpath = tempfile.mkdtemp()
-
-        ec = ExperimentController(exp_id = "serialize-test")
+        ec = ExperimentController(exp_id = "plotter-test")
        
         # Add simulated nodes and applications
         nodes = list()
@@ -119,28 +117,22 @@ class SerializerTestCase(unittest.TestCase):
 
         for iface in ifaces:
             ec.register_connection(link, iface)
+       
+        fpath = ec.plot(persist = True)
+        statinfo = os.stat(fpath)
+        size = statinfo.st_size
+        self.assertTrue(size > 0)
+        self.assertTrue(fpath.endswith(".png"))
 
-        filepath = ec.save(dirpath)
+        fpath = ec.plot(persist = True, format = PFormats.DOT)
+        statinfo = os.stat(fpath)
+        size = statinfo.st_size
+        self.assertTrue(size > 0)
+        self.assertTrue(fpath.endswith(".dot"))
 
-        ec.deploy()
+        print fpath
 
-        # Wait until nodes and apps are deployed
-        ec.wait_finished(apps)
 
-        # Do the experiment controller shutdown
-        ec.shutdown()
-
-        # Load serialized experiment
-        ec2 = ExperimentController.load(filepath)
-        apps = ec2.get_resources_by_type("dummy::Application")
-        ec2.deploy()
-        ec2.wait_finished(apps)
-        ec2.shutdown()
-        
-        self.assertEquals(len(ec.resources), len(ec2.resources))
-
-        shutil.rmtree(dirpath)
-                       
 if __name__ == '__main__':
     unittest.main()
 
