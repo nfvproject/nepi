@@ -278,8 +278,7 @@ class LinuxNode(ResourceManager):
         if self._os:
             return self._os
 
-        if self.get("hostname") not in ["localhost", "127.0.0.1"] and \
-                not self.get("username"):
+        if not self.localhost and not self.get("username"):
             msg = "Can't resolve OS, insufficient data "
             self.error(msg)
             raise RuntimeError, msg
@@ -333,7 +332,7 @@ class LinuxNode(ResourceManager):
 
     @property
     def localhost(self):
-        return self.get("hostname") in ['localhost', '127.0.0.7', '::1']
+        return self.get("hostname") in ['localhost', '127.0.0.1', '::1']
 
     def do_provision(self):
         # check if host is alive
@@ -404,8 +403,8 @@ class LinuxNode(ResourceManager):
 
     def clean_processes(self):
         self.info("Cleaning up processes")
- 
-        if self.get("hostname") in ["localhost", "127.0.0.2"]:
+
+        if self.localhost:
             return 
         
         if self.get("username") != 'root':
