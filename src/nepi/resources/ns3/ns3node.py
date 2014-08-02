@@ -25,6 +25,15 @@ from nepi.resources.ns3.ns3base import NS3Base
 class NS3BaseNode(NS3Base):
     _rtype = "abstract::ns3::Node"
 
+    def __init__(self, ec, guid):
+        super(NS3BaseNode, self).__init__(ec, guid)
+        self._simulation = None
+        self._ipv4 = None
+        self._arp = None
+        self._mobility = None
+        self._devices = None
+        self._dceapplications = None
+
     @classmethod
     def _register_attributes(cls):
         enablestack = Attribute("enableStack", 
@@ -38,55 +47,72 @@ class NS3BaseNode(NS3Base):
 
     @property
     def simulation(self):
-        from nepi.resources.ns3.ns3simulation import NS3Simulation
-        for guid in self.connections:
-            rm = self.ec.get_resource(guid)
-            if isinstance(rm, NS3Simulation):
-                return rm
+        if not self._simulation:
+            from nepi.resources.ns3.ns3simulation import NS3Simulation
+            for guid in self.connections:
+                rm = self.ec.get_resource(guid)
+                if isinstance(rm, NS3Simulation):
+                    self._simulation = rm
+            
+            if not self._simulation:
+                msg = "Node not connected to simulation"
+                self.error(msg)
+                raise RuntimeError, msg
 
-        msg = "Node not connected to simulation"
-        self.error(msg)
-        raise RuntimeError, msg
- 
+        return self._simulation
+         
     @property
     def ipv4(self):
-        from nepi.resources.ns3.ns3ipv4l3protocol import NS3BaseIpv4L3Protocol
-        ipv4s = self.get_connected(NS3BaseIpv4L3Protocol.get_rtype())
-        if ipv4s: return ipv4s[0]
-        return None
+        if not self._ipv4:
+            from nepi.resources.ns3.ns3ipv4l3protocol import NS3BaseIpv4L3Protocol
+            ipv4s = self.get_connected(NS3BaseIpv4L3Protocol.get_rtype())
+            if ipv4s: 
+                self._ipv4 = ipv4s[0]
+        
+        return self._ipv4
 
     @property
     def arp(self):
-        from nepi.resources.ns3.ns3arpl3protocol import NS3BaseArpL3Protocol
-        arps = self.get_connected(NS3BaseArpL3Protocol.get_rtype())
-        if arps: return arps[0]
-        return None
+        if not self._arp:
+            from nepi.resources.ns3.ns3arpl3protocol import NS3BaseArpL3Protocol
+            arps = self.get_connected(NS3BaseArpL3Protocol.get_rtype())
+            if arps: 
+                self._arp = arps[0]
+
+        return self._arp
 
     @property
     def mobility(self):
-        from nepi.resources.ns3.ns3mobilitymodel import NS3BaseMobilityModel
-        mobility = self.get_connected(NS3BaseMobilityModel.get_rtype())
-        if mobility: return mobility[0]
-        return None
+        if not self._mobility:
+            from nepi.resources.ns3.ns3mobilitymodel import NS3BaseMobilityModel
+            mobility = self.get_connected(NS3BaseMobilityModel.get_rtype())
+            if mobility: 
+                self._mobility = mobility[0]
+
+        return self._mobility
 
     @property
     def devices(self):
-        from nepi.resources.ns3.ns3netdevice import NS3BaseNetDevice
-        devices = self.get_connected(NS3BaseNetDevice.get_rtype())
+        if not self._devices:
+            from nepi.resources.ns3.ns3netdevice import NS3BaseNetDevice
+            devices = self.get_connected(NS3BaseNetDevice.get_rtype())
 
-        if not devices: 
-            msg = "Node not connected to devices"
-            self.error(msg)
-            raise RuntimeError, msg
+            if not devices: 
+                msg = "Node not connected to devices"
+                self.error(msg)
+                raise RuntimeError, msg
 
-        return devices
+            self._devices = devices
+
+        return self._devices
 
     @property
     def dceapplications(self):
-        from nepi.resources.ns3.ns3dceapplication import NS3BaseDceApplication
-        dceapplications = self.get_connected(NS3BaseDceApplication.get_rtype())
+        if not self._dceapplications:
+            from nepi.resources.ns3.ns3dceapplication import NS3BaseDceApplication
+            self._dceapplications = self.get_connected(NS3BaseDceApplication.get_rtype())
 
-        return dceapplications
+        return self._dceapplications
 
     @property
     def _rms_to_wait(self):
