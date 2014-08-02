@@ -1,0 +1,10 @@
+        <ATTR_ID> = Attribute("<ATTR_NAME>",
+            "<ATTR_HELP>",
+            type = <ATTR_TYPE>,
+            default = "<ATTR_DEFAULT>",  
+            allowed = <ATTR_ALLOWED>,
+            range = <ATTR_RANGE>,    
+            flags = <ATTR_FLAGS>)
+
+        cls._register_attribute(<ATTR_ID>)
+

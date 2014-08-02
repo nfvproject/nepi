@@ -1,0 +1,230 @@
+The Planetlab node resource inherits every feature of the Linux node, but adds the ability to choose for your experiment, healthy nodes from the Planetlab testbed. By healthy we mean alive nodes, accessible via ssh using your authentication information, with a checked filesystem in order to discard future problems during run-time.
+
+\subsection{How to get an account}
+
+  \subsubsection{Register}
+
+If you want to use nodes from the Planetlab testbed, first you need to have an account, if you don't have one, you can register on the planetlab europe portal www.planet-lab.eu (see Create an account). 
+
+  \subsubsection{Add your account to a Slice}
+
+Then, in order to have access to the nodes needed for your experiment, you will need a slice. A slice is a subset of the planetlab resources, capable of running an experiment. Usually, once you own an account, you ask someone from your institue for a slice creation. The granted person ( called PI ) can then create a slice for you or associate you to an already existing slice.
+
+  \subsubsection{Differences between PLE and PLC}
+
+Different instamces of PlanetLab exist like PlanetLab Central, PlanetLab Europe, PlanetLab Japan,...  PlanetLab Europe (PLE) is the European portion of the publicly available PlanetLab (PLC) testbed. They main operational difference is related to credentials. If the testbed that issues the credentials is the european testbed, then for the PlanetLab Europe nodes the user can query more status information. Having more information can be beneficial when defining selection filters for the nodes. Anyway, PLE and PLC are federated, meaning the discovery and provisioning is always possible.
+
+\subsection{The Planetlab Node RM}
+
+In order for NEPI to select healthy nodes for your experiment and add them to your slice, it is necessary to set three attributes after resource registration : username, pluser and plpassword. username is the name to ssh login in your nodes, for Planetlab testbed it will always be your slice
+name. pluser and plpassword are the user and password used for authenticate yourself in the Planetlab web page (www.planet-lab.eu). For example, when registering a Planetlab node for your experiment, the
+experiment description will look a lot like this:
+\begin{lstlisting}[language=Python]
+node = ec.register_resource("PlanetlabNode")
+ec.set(node, "username", "institute_project")
+ec.set(node, "pluser", "​​john.doe@institute.edu")
+ec.set(node, "plpassword", "guessit")
+\end{lstlisting}
+When you log in with your credential to the Planetlab testbed portal (www.planet-lab.eu), you should be able to see the slices associated to your user as well as the set of nodes currently in your slices, and all the nodes provided by the testbed. Moreover, the web page allows the user to browse these resources and find out more characteristics about them. However, using the web site is not really convenient for large experiment involving hundreds of nodes. NEPI can do this job for you.
+
+The portal retrieves the node's information by quering a service called MyPLC, NEPI queries the same service to efficiently select the most suitable nodes for the experiment. The user and password to query this service are the ones introduced before as pluser, and plpassword.
+
+NEPI allows the user to filter among the Planetlab nodes according to different criterias, aiming to select a specific set of nodes for the experiment. For example, one experiment could only require nodes with OS Fedora 14, so the user should use the OS filter available for the Planetlab node resource when describing the node.
+
+Current list of filters available :
+\begin{itemize}
+  \item city
+  \item country
+  \item region
+  \item architecture
+  \item operating\_system
+  \item min\_reliability
+  \item max\_reliability
+  \item min\_bandwidth
+  \item max\_bandwidth
+  \item min\_load
+  \item max\_load
+  \item min\_cpu
+  \item max\_cpu
+\end{itemize}
+
+We have already mentionned that, in order to use MyPLC service, it is necessary to set the attributes pluser and plpassword.  Filters are also represented by attributes and can be set by the user. Different type of filter exist, each one corresponding to a specific kind of value (String, Enumerate, ...). For each attribute, more information can be found in the help associated to this attribute as well as in its definition.
+
+For example, for the attribute operating system, one can find the help, type, values allowed, etc. in its definition (src/nepi/resources/planetlab/node.py):
+\begin{lstlisting}[language=Python]
+operating_system = Attribute("operatingSystem", 
+  "Constraint operating system during resource discovery.",
+        type = Types.Enumerate,
+        allowed = ["f8",
+        "f12",
+        "f14",
+        "centos",
+        "other"],
+        flags = Flags.Filter)
+\end{lstlisting}
+Now we know how to add a filter to the node description:
+\begin{lstlisting}[language=Python]
+    node = ec.register_resource("PlanetlabNode??")
+    ec.set(node, "username", "institute_project")
+    ec.set(node, "pluser", "​​jhon.doe@institute.edu")
+    ec.set(node, "plpassword", "guessit")
+    ec.set(node, "operatingSystem", "f14")
+\end{lstlisting}
+In case of more filters, an AND between the filters will be applied:
+
+\begin{lstlisting}[language=Python]
+    node = ec.register_resource("PlanetlabNode??")
+    ec.set(node, "username", "institute_project")
+    ec.set(node, "pluser", "​​jhon.doe@institute.edu")
+    ec.set(node, "plpassword", "guessit")
+    ec.set(node, "operatingSystem", "f14")
+    ec.set(node, "minCpu", 50)
+\end{lstlisting}
+
+Note that minCpu = 50 means that at least 50\% of the CPU has to be free in the node, to make the node suitable for the experiment.
+
+
+\subsubsection{The hostname attribute}
+
+Another attribute that the user can define for the node is the hostname. This attribute has priority over the others filters. When the experiment needs more than one node, it is necessary to register conditions in order to ensure that the nodes identified by its hostname are selected before the others nodes (the ones identified by filters or just not identified at all).
+
+For example, imagine we need two nodes for our experiment :
+Current list of filters available :
+\begin{itemize}
+  \item For one of them, we are completly sure that we want to use a specific one, so we identify it by its hostname
+  \item For the other one, we just want to fulfill the restriction of OS fedora 8 and country France.
+\end{itemize}
+
+In this case, our experiment description will look like this:
+\begin{lstlisting}[language=Python]
+node1 = ec.register_resource("PlanetlabNode")
+ec.set(node1, "username", "institute_project")
+ec.set(node1, "pluser", "​​john.doe@institute.edu")
+ec.set(node1, "plpassword", "guessit")
+ec.set(node1, "hostname", "planetlab2.utt.fr") 
+## planetlab2.utt.fr is the specific node we want to use
+
+node2 = ec.register_resource("PlanetlabNode")
+ec.set(node2, "username", "institute_project")
+ec.set(node2, "pluser", "​​john.doe@institute.edu")
+ec.set(node2, "plpassword", "guessit")
+ec.set(node2, "operatingSystem", "f8")
+ec.set(node2, "country", "France")
+\end{lstlisting}
+The nodes that are identified by their hostnames have to be provisioned before the rest of the nodes. This assures that no other resource will use the identified node even if the constraints matchs. Meaning that, even if the host "planetlab2.utt.fr" fulfills the conditions OS fedora 8 and country France, the node2 resource should not select from the planetlab testbed "planetlab2.utt.fr", the node1 must select it. We can enforce this to happen using the register\_condition method of the ec. Therefore, after registering the node and setting its attributes, we need to add this line:
+\begin{lstlisting}[language=Python]
+ec.register_condition(node2,ResourceAction.DEPLOY, node1, ResourceState.PROVISIONED)
+\end{lstlisting}
+For a better example on how to use filters and register conditions, there is the ping experiment example (examples/planetlab/ping\_experiment.py). In this example we define 5 nodes, and 4 ping applications running in 4 of the nodes, with the 5th one as destination. Then we collect the traces in our local machine.
+
+
+\subsubsection{Persist blacklisted nodes}
+
+PlanetLab nodes may fail for different reasons, ssh authentication failure, file system corrupted, nodes unreachable, between others. Moreover, the mal functioning nodes can vary from one experiment run to the next one. In NEPI there is the ability to register these mal functioning nodes in order run the experiment in a more efficient way. Also, this information can be use to evaluate the performance of the experiment and the nodes themselves.
+
+The PlanetlabNode resource, is instantiated for each Planetlab node defined in the experiment. The node discovery and provisioning occurs in parallel for every node defined, so a list of the nodes failures is needed while deploying, in order to avoid to repeat the provision of mal functioning nodes. This list of blacklisted nodes during the experiment, can be saved and maintain for following run of the same experiment or others experiments. This list it is called blacklist. Moreover, the nodes in the blacklist in the moment the experiment is started, can be use to directly discard from the node discover and provision the unwanted nodes.
+
+There is an attribute available for this matter, is called 'persist\_blacklist' and is a global attribute, meaning that if set, is set for every resource of type PlanetlabNode.
+The blacklist file is stored in ~/.nepi/plblacklist.txt.
+
+Example on how to use the attribute:
+
+Two Planetlab nodes that read from the blacklist at the beginning of the experiment, and write new blacklisted nodes (if any) at the end.
+\begin{lstlisting}[language=Python]
+node1 = ec.register_resource("PlanetlabNode")
+ec.set(node1, "username", username)
+ec.set(node1, "pluser", pl_user)
+ec.set(node1, "plpassword", pl_password)
+ec.set(node1, "cleanHome", True)
+ec.set(node1, "cleanProcesses", True)
+
+node2 = ec.register_resource("PlanetlabNode")
+ec.set(node2, "username", username)
+ec.set(node2, "pluser", pl_user)
+ec.set(node2, "plpassword", pl_password)
+ec.set(node2, "cleanHome", True)
+ec.set(node2, "cleanProcesses", True)
+
+ec.set_global('PlanetlabNode', 'persist_blacklist', True)
+\end{lstlisting}
+The attribute can be retrieved with the method get\_global :
+\begin{lstlisting}[language=Python]
+ec.get_global('PlanetlabNode', 'persist_blacklist').
+\end{lstlisting}
+\subsection{SFA Support}
+
+\subsubsection{Why using SFA for discovery and provision of resources in NEPI?}
+
+In order to be able to reserve resources for cross testbed experiments without having to deal with different types of credentials, is important that testbed adopt the SFA interface and the users have at least one set of credentials in one testbed. With the SFA user credential, slice credential and authority credential, the user can list resources, allocate them, provision them, delete them from his slice, plus, add or remove slices when is allowed, in any SFA compliant testbed that trust each others registry. The last assures an uniform control plane operation layer (discovery, reservation, and provisioning) for every type of resource in any SFA compliant testbed.
+
+NEPI developed the appropriate framework to be able to solve control plane operations through SFA. Based on the sfi client, NEPI developed an API that implement for the user, the corresponding SFA AM calls to handle the first steps of the experiment lifecycle. This is transparent for the user, who doesn't need to deal with SFA calls specifics, or understanding RSpecs (Resource specification). Moreover, NEPI implemented functions to assist in the selection of a set of reservable resources.
+
+The use of SFA then, requires that the user installs the sfi client (version\_tag="3.1-4"), you can check http://svn.planet-lab.org/wiki/SFATutorial\#SFATutorial for more information. 
+
+\subsubsection{SFA in PlanetLab}
+
+This should not add complexity for the user, for example, for the Planetlab node, the experiment description is very similar:
+\begin{lstlisting}[language=Python]
+from nepi.execution.ec import ExperimentController
+import os
+
+# Create the EC
+exp_id = "sfa_test"
+ec = ExperimentController(exp_id)
+
+username = os.environ.get('SFA_SLICE')  --- for example 'inria_lguevgeo'
+sfauser = os.environ.get('SFA_USER')  --- for example 'ple.inria.lucia_guevgeozian_odizzio'
+sfaPrivateKey = os.environ.get('SFA_PK')  --- for example '/home/.sfi/lucia_guevgeozian_odizzio.pkey'
+
+node1 = ec.register_resource("PlanetlabSfaNode")
+ec.set(node1, "hostname", 'planetlab1.cs.vu.nl')
+ec.set(node1, "username", username)
+ec.set(node1, "sfauser", sfauser)
+ec.set(node1, "sfaPrivateKey", sfaPrivateKey)
+ec.set(node1, "cleanHome", True)
+ec.set(node1, "cleanProcesses", True)
+\end{lstlisting}
+\subsubsection{SFA with iMinds Testbed (w-iLab.t)}
+
+The control and management software running in w-iLab.t is OMF 6, but its resources can be discover and provisioned using SFA, the experiment description for the WilabtSfaNode in NEPI is similar to the one in PlanetlabNode. Below is an example :
+\begin{lstlisting}[language=Python]
+from nepi.execution.ec import ExperimentController
+import os
+
+# Create the EC
+exp_id = "sfa_test"
+ec = ExperimentController(exp_id)
+
+slicename = 'ple.inria.lguevgeo'
+sfauser = os.environ.get('SFA_USER')
+sfaPrivateKey = os.environ.get('SFA_PK')
+
+# nodes
+node1 = ec.register_resource("WilabtSfaNode")
+ec.set(node1, "hostname", 'zotacM20')
+ec.set(node1, "slicename", slicename)
+ec.set(node1, "sfauser", sfauser)
+ec.set(node1, "sfaPrivateKey", sfaPrivateKey)
+ec.set(node1, "gatewayUser", "nepi")
+ec.set(node1, "gateway", "bastion.test.iminds.be")
+ec.set(node1, "cleanHome", True)
+ec.set(node1, "cleanProcesses", True)
+\end{lstlisting}
+
+Note that the w-iLab.t testbed is a private testbed, and resources can be accessed only through a gateway. The node description must have two attributes defined as gatewayUser and gateway. The appropriate ssh key settings in the gateway must be pre-arranged with the testbed administrators, in order to enable the ssh access.
+
+The gateway feature is not only possible for the w-iLab.t testbed, but for any testbed that allow ssh key authentication. The ability to store the blacklisted nodes is also possible for the w-iLab.t testbed.
+
+
+
+
+\subsection{The vsys system}
+    TO DO
+
+  \subsubsection{Python Vsys}
+    TO DO
+
+  \subsubsection{TAP/TUN/TUNNEL}
+    TO DO
+
+

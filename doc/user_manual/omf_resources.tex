@@ -1,0 +1,94 @@
+This section aims at providing some information about OMF and its implementation in NEPI. Regarding to OMF itself, this user manual is not the official OMF Documenation and must be considered only as a complement to the official one (https://mytestbed.net/), gathering information collected during few years working with OMF.
+
+\subsection{OMF 5.4 vs OMF 6}
+
+Two versions really different of OMF exists and are already deployed in different testbed. OMF 5.4.x is the oldest one and is not anymore under development. Many testbed use this version in their testbed and start step by step to migrate towards OMF 6. This latter is still under development. Some projects, as Fed4Fire, want to use this technology and put many efforts to deploy this new version. 
+
+Among the main differences between these two versions, we can noticed :
+\begin{itemize}
+\item OMF 5.4 use a Resource Controller (RC) that handles messages received throught XMPP. OMF 6 use a Resource Proxy (RP) that allow the posibility to create a Resource Controller to control an entity. So There is only one RP but one RC for each entity involved in the experiment.
+\item The message protocol in OMF 5.4 use some specific keywords to create action, or configure data. It is not really flexible and was not prepared for extension. In OMF6, the protocol is well-defined and highly thought to be extensible as mush as possible. It is base on 5 routines that allow any action. This protocol is called FRCP.
+\item Both of them use OEDL as description language. 
+\end{itemize}
+
+\subsection{Available OMF Testbed}
+
+This subsection gather some information about well-known OMF Testbed. This list is not exhaustive and many others OMF-testbeds are under deployment.
+
+\subsubsection{Nicta Testbed : Norbit}
+
+Nicta is the main developers institute of OMF. It has also its own testbed, called Norbit, containing around 40 nodes deployed on a building. These nodes are usually ALIX nodes, with small power consumption and CPU performance. 
+More details can be found on their website : 
+http://mytestbed.net/projects/1/wiki/OMFatNICTA
+
+\subsubsection{Nitos Testbed : NitLab}
+
+Nitos is deployed in Greece on a 4th, 5th and 6th floor of a building in the city. Different nodes are deployed as commell or diskless node, but some new powerful nodes will be deployed soon, called Icarus Node, with high CPU performance. The total number of nodes deployed on this testbed is around 50.
+
+More details can be found on their website : 
+http://nitlab.inf.uth.gr/NITlab/
+
+\subsubsection{iMinds Testbed : W-ilab.t}
+
+iMinds is deployed in Belgium. The W-ilab.t testbed gather more that one testbed. Among them, there is one in Zwijnaarde that use OMF. Around 60 nodes are deployed on the ceil of their building and one room is reserved for mobile nodes ( using Roomba ). Around 10 mobile nodes will be deployed and operationnal in 2014.
+
+More details can be found on their website : 
+http://www.crew-project.eu/portal/wilab/basic-tutorial-your-first-experiment-w-ilabt
+
+\subsection{How to get an Account}
+
+Usually, the creation of the account need to be asked by email. Specific instructions are provided below about how to request an account : 
+\begin{itemize}
+\item Nicta : Ask thierry.rakotoarivelo@nicta.com.au 
+\item Nitos : Use your onelab account (if you already have one) or create a new account directly on their website 
+( http://nitlab.inf.uth.gr/NITlab/index.php/testbed )
+\item iMinds : You need a VPN access and a Testbed Account. For the VPN Account, ask stefan.bouckaert@iminds.be and check the tips below to install OpenVPN. For the Testbed Account, ask pieter.becue@intec.ugent.be or directly on the w-iLabt.t web interface (It will required the VPN Access)
+\end{itemize}
+
+\subsubsection{Tips about OpenVPN}
+
+To install OpenVPN from the sources, be sure that lib-lzo and lib-ssl are installed. If not, ./configure will allow to disable it by doing --disable-lzo or --disable-crypto. You should NOT do it unless you know what you are doing.
+To install the components, follow these commands :
+\begin{itemize}
+\item For Lzo : 
+\begin{itemize}
+\item sudo apt-get install liblzo2-2 liblzo2-dev 
+\item OR from the ​source (http://www.oberhumer.com/opensource/lzo/\#download) following these instructions 
+(http://www.linuxfromscratch.org/blfs/view/6.3/general/LZO.html)
+\end{itemize}
+\item For Openssl : sudo apt-get install libssl-dev 
+\end{itemize}
+Finally, You will have to launch OpenVPN using the credentials you received from the testbed owner. The command will be something like :
+sudo openvpn file.ovpn
+
+\subsection{How to reserve some nodes}
+
+After creating your account, you need to reserve some nodes to deploy your experiment on them. Different policies are used until now but it will move toward a common policy called Broker. 
+
+This is the list of the current reservation method :
+\begin{itemize}
+\item Nicta : Use google calendar for a gentleman's agreement. Add your reservations directly in the google calendar. This functionality is enable only after asking the Nicta team to add your Gmail address.
+\item Nitos : While logged into the website, you can use the Nitos ​Scheduler to reserve some nodes and some channels for a maximum period of 4hours
+\item iMinds : Reserve your experiment on their website 
+http://boss.wilab2.ilabt.iminds.be/reservation/. Your experiment should be swapped in automatically. If it is not the case, turn on your experiment on their website 
+(https://www.wilab2.ilabt.iminds.be/) and the provisionning will be done by their tools. The number of nodes you required through the interfaces will be allocated for you with the image you declare (default image is Ubuntu 12.04 if nothing has been specified)
+\end{itemize}
+
+
+\subsection{XMPP}
+
+The default communication layer used in OMF is XMPP. Xmpp is a PubSub communication system based on group. A group respresent a set of resource that can subscribe to this group. Each resource can then publish to this group and consequently send some messages to each resource that also subscribed.
+Even if AMQP is supported by OMF, NEPI support only XMPP as it is mainly deployed on all the testbed.
+
+The implementation of the XMPP client is based on the library SleekXmpp. Each method has been overwritten to fit the requirement we need to OMF. 
+
+Finally, There is an OMF XMPP Factory that allow for each OMF Resource Manager to share the same Xmpp Client. Based on some credentials as the user or the password, the OMF XMPP factory store the different XMPP Client. When an OMF RM wants to communicate, it ask the Factory to retrieve one XMPP Client using the credentials it has or to create one if it doesn't exists. The factory store the number of RM that use each XMPP Client and delete it when no RM use it.
+
+
+
+
+
+
+
+
+

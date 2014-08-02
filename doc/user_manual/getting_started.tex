@@ -1,0 +1,496 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%    NEPI, a framework to manage network experiments
+%    Copyright (C) 2013 INRIA
+%
+%    This program is free software: you can redistribute it and/or modify
+%    it under the terms of the GNU General Public License as published by
+%    the Free Software Foundation, either version 3 of the License, or
+%    (at your option) any later version.
+%
+%    This program is distributed in the hope that it will be useful,
+%    but WITHOUT ANY WARRANTY; without even the implied warranty of
+%    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+%    GNU General Public License for more details.
+%
+%    You should have received a copy of the GNU General Public License
+%    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+%
+% Author: Alina Quereilhac <alina.quereilhac@inria.fr>
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+NEPI is written in Python, so you will need to install Python before 
+being able to run experiments with NEPI. 
+NEPI is known to work on Linux (Fedore, Debian, Ubuntu) and Mac (OS X).
+
+\section{Dependencies}
+
+Dependencies for NEPI vary according to the features you want to enable.
+Make sure the following dependencies are correctly installed in your system
+before using NEPI. \\
+
+Mandatory dependencies:
+\begin{itemize}
+    \item Python 2.6+
+    \item Mercurial 
+\end{itemize}
+
+Optional dependencies:
+\begin{itemize}
+    \item SleekXMPP - Required to run experiments on OMF testbeds
+\end{itemize}
+
+\subsection{Install dependencies on Debian/Ubuntu}
+
+\begingroup
+    \fontsize{10pt}{12pt}\selectfont
+
+\begin{verbatim}
+    $ sudo aptitude install -y python mercurial
+\end{verbatim}
+
+\endgroup
+
+\subsection{Install dependencies on Fedora}
+
+\begingroup
+    \fontsize{10pt}{12pt}\selectfont
+
+\begin{verbatim}
+    $ sudo yum install -y python mercurial
+\end{verbatim}
+
+\endgroup
+
+\subsection{Install dependencies on Mac}
+
+First install homebrew (\url{http://mxcl.github.io/homebrew/}),
+then install Python.
+
+\begingroup
+    \fontsize{10pt}{12pt}\selectfont
+
+\begin{verbatim}
+    $ brew install python
+\end{verbatim}
+
+\endgroup
+
+\subsection{Install SleekXMPP}
+
+You will need \textit{git} to get the SleekXMPP sources.
+
+\begingroup
+    \fontsize{10pt}{12pt}\selectfont
+
+\begin{verbatim}
+    $ git clone -b develop git://github.com/fritzy/SleekXMPP.git
+    $ cd SleekXMPP
+    $ sudo python setup.py install
+\end{verbatim}
+
+\endgroup
+
+\section{The source code}
+
+To get NEPI's source code you will need Mercurial version 
+control system. The Mercurial NEPI repo can also be browsed online at: \\
+
+\url{http://nepi.inria.fr/code/nepi/} 
+
+\subsection{Clone the repo}
+
+\begingroup
+    \fontsize{10pt}{12pt}\selectfont
+
+\begin{verbatim}
+$ hg clone http://nepi.inria.fr/code/nepi -r nepi-3.0-release
+\end{verbatim}
+
+\endgroup
+
+\section{Install NEPI in your system}
+
+You don't need to install NEPI in your system to be able to run 
+experiments. However this might be convenient if you don't 
+plan to modify or extend the sources.
+
+To install NEPI, just run \emph{make install} in the NEPI source
+folder.
+
+\begingroup
+    \fontsize{10pt}{12pt}\selectfont
+
+\begin{verbatim}
+    $ cd nepi
+    $ make install 
+\end{verbatim}
+
+\endgroup
+
+If you are developing your own NEPI extensions, the installed 
+NEPI version might interfere with your work.
+In this case it is probably more convenient to tell
+Python where to find the NEPI sources, using the PYTHONPATH
+environmental variable, when you run a NEPI script.
+
+\begingroup
+    \fontsize{10pt}{12pt}\selectfont
+
+\begin{verbatim}
+    $ PYTHONPATH=$PYTHONPATH:<path-to-nepi>/src python experiment.py
+\end{verbatim}
+
+\endgroup
+
+\section{Run experiments}
+
+There are two ways you can use NEPI to run your experiments.
+The first one is writing a Python script, which will import
+NEPI libraries, and run it. 
+The second one is in interactive mode by using Python console.
+
+\subsection{Run from script}
+
+Writing a simple NEPI expeiment script is easy.
+Take a look at the example in the FAQ section \ref{faq:ping_example}.
+Once you have written down the script, you can run it using
+Python. Note that since NEPI is not yet installed in your system,
+you will need to export the path to NEPI's source code to 
+the PYTHONPATH environment variable, so that Python can find
+NEPI's libraries.
+
+\begingroup
+    \fontsize{10pt}{12pt}\selectfont
+
+\begin{verbatim}
+    $ export PYTHONPATH=<path-to-nepi>/src:$PYTHONPATH
+    $ python first-experiment.py 
+\end{verbatim}
+
+\endgroup
+
+\subsection{Run NEPI interactively}
+
+The IPython console can be used as an interactive interpreter to 
+execute Python instructions. We can take advantage of this feature, 
+to interactively run NEPI experiments. 
+We will use the IPython console for the example below. 
+
+You can easily install IPython on Debian, Ubuntu, Fedora or Mac as follows:\\
+
+\textbf{Debian/Ubuntu}
+
+\begingroup
+    \fontsize{10pt}{12pt}\selectfont
+
+\begin{verbatim}
+
+$ sudo apt-get install ipython
+
+\end{verbatim}
+
+\endgroup
+
+\textbf{Fedora}\\
+
+\begingroup
+    \fontsize{10pt}{12pt}\selectfont
+
+\begin{verbatim}
+
+$ sudo yum install ipython
+
+\end{verbatim}
+
+\endgroup
+
+\textbf{Mac}\\
+
+\begingroup
+    \fontsize{10pt}{12pt}\selectfont
+
+\begin{verbatim}
+
+$ pip install ipython
+
+\end{verbatim}
+
+\endgroup
+
+Before starting, make sure to add Python and IPython source directory 
+path to the PYTHONPATH environment variable
+
+\begingroup
+    \fontsize{10pt}{12pt}\selectfont
+
+\begin{verbatim}
+
+$ export PYTHONPATH=$PYTHONPATH:/usr/local/lib/python:/usr/local/share/python/ipython
+
+\end{verbatim}
+
+\endgroup
+
+Then you can start IPython as follows: 
+
+\begin{verbatim}
+$ export PYTHONPATH=<path-to-nepi>/src:$PYTHONPATH
+$ ipython
+Python 2.7.3 (default, Jan  2 2013, 13:56:14) 
+Type "copyright", "credits" or "license" for more information.
+
+IPython 0.13.1 -- An enhanced Interactive Python.
+?         -> Introduction and overview of IPython's features.
+%quickref -> Quick reference.
+help      -> Python's own help system.
+object?   -> Details about 'object', use 'object??' for extra details.
+
+\end{verbatim}
+
+If you want to paste many lines at once in IPython, you will need 
+to type \emph{\%cpaste} and finish the paste block with \emph{\-\-}.
+
+The first thing we need to do to describe an experiment with NEPI 
+is to import the NEPI Python modules. 
+In particular we need to import the ExperimentController class. 
+To do this type the following in the Python console: 
+
+\begin{lstlisting}[language=Python]
+
+from nepi.execution.ec import ExperimentController
+
+\end{lstlisting}
+
+After importing the ExperimentController class, it is possible to 
+create a new instance of an the ExperimentController (EC) for 
+your experiment. 
+The <exp-id> argument is the name you want to give the experiment 
+to identify it and distinguish it from other experiments. 
+
+\begin{lstlisting}[language=Python]
+
+ec = ExperimentController(exp_id = "<your-exp-id>")
+
+\end{lstlisting}
+
+Next we will define two Python functions: \emph{add\_node} and \emph{add\_app}.
+The first one to register \textit{LinuxNodes} resources and the second one to 
+register LinuxApplications resources. 
+
+\begin{lstlisting}[language=Python]
+
+%cpaste
+def add_node(ec, hostname, username, ssh_key):
+    node = ec.register_resource("LinuxNode")
+    ec.set(node, "hostname", hostname)
+    ec.set(node, "username", username)
+    ec.set(node, "identity", ssh_key)
+    ec.set(node, "cleanHome", True)
+    ec.set(node, "cleanProcesses", True)
+    return node
+
+def add_app(ec, command, node):
+    app = ec.register_resource("LinuxApplication")
+    ec.set(app, "command", command)
+    ec.register_connection(app, node)
+    return app
+--
+
+\end{lstlisting}
+
+The method \textit{register\_resource} registers a resource instance with the 
+ExperimentController. The method \textit{register\_connection} indicates
+that two resources will interact during the experiment. 
+Note that invoking \textit{add\_node} or \textit{add\_app} has no effect other
+than informing the EC about the resources that will be used during the experiment.
+The actual deployment of the experiment requires the method \textit{deploy} to
+be invoked.
+
+The \textit{LinuxNode} resource exposes the hostname, username and identity 
+attributes. This attributes provide information about the SSH credentials 
+needed to log in to the Linux host. 
+The \textit{hostname} is the one that identifies the physical host you want
+to access during the experiment. The \textit{username} must correspond to a
+valid account on that host, and the \textit{identity} attribute is the 
+'absolute' path to the SSH private key in your local computer that allows you 
+to log in to the host.
+
+The \textit{command} attribute of the \textit{LinuxApplication} resource 
+expects a BASH command line string to be executed in the remote host.
+Apart from the \emph{command} attribute, the \emph{LinuxApplication} 
+resource exposes several other attributes that allow to upload, 
+compile and install arbitrary sources. 
+The add\_app function registers a connection between a \textit{LinuxNode} and a 
+\textit{LinuxApplication}. 
+
+Lets now use these functions to describe a simple experiment. 
+Choose a host where you have an account, and can access using SSH
+key authentication. 
+
+\begin{lstlisting}[language=Python]
+
+hostname = "<the-hostname>"
+username = "<my-username>"
+identity = "</home/myuser/.ssh/id_rsa>"
+
+node = add_node(ec, hostname, username, ssh_key)
+app = add_app(ec, "ping -c3 nepi.inria.fr",  node)
+
+\end{lstlisting}
+
+The values returned by the functions add\_node and add\_app are global 
+unique identifiers (guid) of the resources that were registered with the EC. 
+The guid is used to reference the ResourceManager associated to a registered
+resource (for instance to retrieve results or change attribute values).
+
+Now that we have registered some resources, we can ask the ExperimentController
+(EC) to deploy them. 
+Invoking the \emph{deploy} command will not only configure the 
+resource but also automatically launch the applications.
+
+\begin{lstlisting}[language=Python]
+
+ ec.deploy()
+
+\end{lstlisting}
+
+After some seconds, we should see some output messages informing us about the
+progress in the host deployment.
+If you now open another terminal and you connect to the host using 
+SSH (as indicated below), you should see that a directory for your experiment 
+has been created in the host. In the remote host you will see that two NEPI 
+directories were created in the \$HOME directory: \emph{nepi-src} and \emph{nepi-exp}. 
+The first one is where NEPI will store files that might be re used by many 
+experiments (e.g. source code, input files) . The second directory \emph{nepi-exp}, 
+is where experiment specific files (e.g. results, deployment scripts) will be stored. 
+
+\begingroup
+    \fontsize{10pt}{12pt}\selectfont
+
+\begin{verbatim}
+
+$ ssh -i identity username@hostname
+
+\end{verbatim}
+
+\endgroup
+
+Inside the \emph{nepi-exp} directory, you will find another directory with 
+the <exp-id> assigned to your EC, and inside that directory you should find 
+one directory named node-1 which will contain the files (e.g. result traces) 
+associated to the LinuxNode reosurce you just deployed. 
+In fact for every resource deployed associated to that host (e.g. each 
+LinuxApplication), NEPI will create a directory to place files related to it. 
+The name of the directory identifies the type of resources (e.g. 'node', 
+'app', etc) and it is followed by the global unique identifier (guid).
+
+We can see if a resource finished deploying by querying its state through the EC 
+
+\begin{lstlisting}[language=Python]
+
+ec.state(app, hr=True)
+
+\end{lstlisting}
+
+Once a \textit{LinuxApplication} has reached the state 'STARTED', 
+we can retrieve the 'stdout' trace, which should contain the output 
+of the PING command. 
+
+\begin{lstlisting}[language=Python]
+
+ ec.trace(app, "stdout")
+
+\end{lstlisting}
+
+That is it. We can terminate the experiment by invoking the method \emph{shutdown}.
+
+\begin{lstlisting}[language=Python]
+
+ ec.shutdown()
+
+\end{lstlisting}
+
+\subsection{Define a workflow}
+
+Now that we have introduced to the basics of NEPI, we will register 
+two more applications and define a workflow where one application 
+will start after the other one has finished executing. 
+For this we will use the EC \textit{register\_condition} method described below:
+
+\begin{lstlisting}[language=Python]
+
+register_condition(self, guids1, action, guids2, state, time=None):
+    Registers an action START, STOP or DEPLOY for all RM on list
+    guids1 to occur at time 'time' after all elements in list guids2 
+    have reached state 'state'.
+    
+        :param guids1: List of guids of RMs subjected to action
+        :type guids1: list
+    
+        :param action: Action to perform (either START, STOP or DEPLOY)
+        :type action: ResourceAction
+    
+        :param guids2: List of guids of RMs to we waited for
+        :type guids2: list
+    
+        :param state: State to wait for on RMs of list guids2 (STARTED,
+            STOPPED, etc)
+        :type state: ResourceState
+    
+        :param time: Time to wait after guids2 has reached status 
+        :type time: string
+
+\end{lstlisting}
+
+To use the \textit{register\_condition} method we will need to import the 
+ResourceState and the ResourceAction classes
+
+\begin{lstlisting}[language=Python]
+
+from nepi.execution.resource import ResourceState, ResourceAction
+
+\end{lstlisting}
+
+Then, we register the two applications. The first application will 
+wait for 5 seconds and the create a file in the host called "greetings" 
+with the content "HELLO WORLD". 
+The second application will read the content of the file and output it 
+to standard output. If the file doesn't exist il will instead output the 
+string "FAILED".
+
+\begin{lstlisting}[language=Python]
+
+app1 = add_app(ec, "sleep 5; echo 'HELLO WORLD!' > ~/greetings", node)
+app2 = add_app(ec, "cat ~/greetings || echo 'FAILED'", node)
+
+\end{lstlisting}
+
+In order to guarantee that the second application is successful, we need to 
+make sure that the first application is executed first. For this we register 
+a condition:
+
+\begin{lstlisting}[language=Python]
+
+ec.register_condition (app2, ResourceAction.START, app1, ResourceState.STOPPED)
+
+\end{lstlisting}
+
+We then deploy the two application:
+
+\begin{lstlisting}[language=Python]
+
+ec.deploy(guids=[app1,app2])
+
+\end{lstlisting}
+
+Finally, we retrieve the standard output of the second application, 
+which should return the string "HELLO WORLD!".
+
+\begin{lstlisting}[language=Python]
+
+ec.trace(app2, "stdout")
+
+\end{lstlisting}
+
