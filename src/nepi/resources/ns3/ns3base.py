@@ -32,6 +32,7 @@ class NS3Base(ResourceManager):
         self._uuid = None
         self._connected = set()
         self._trace_filename = dict()
+        self._node = None
 
     @property
     def connected(self):
@@ -47,10 +48,12 @@ class NS3Base(ResourceManager):
 
     @property
     def node(self):
-        from nepi.resources.ns3.ns3node import NS3BaseNode
-        nodes = self.get_connected(NS3BaseNode.get_rtype())
-        if nodes: return nodes[0]
-        return None
+        if not self._node:
+            from nepi.resources.ns3.ns3node import NS3BaseNode
+            nodes = self.get_connected(NS3BaseNode.get_rtype())
+            if nodes: self._nodes[0]
+
+        return self._node
 
     def trace(self, name, attr = TraceAttr.ALL, block = 512, offset = 0):
         filename = self._trace_filename.get(name)
@@ -80,7 +83,7 @@ class NS3Base(ResourceManager):
 
         kwargs = dict()
         for attr in self._attrs.values():
-            if not ( attr.has_flag(Flags.Construct) and attr.has_changed() ):
+            if not ( attr.has_flag(Flags.Construct) and attr.has_changed ):
                 continue
 
             kwargs[attr.name] = attr._value
