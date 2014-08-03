@@ -28,7 +28,7 @@ import tempfile
 
 @clsinit_copy
 class Collector(ResourceManager):
-    """ The collector is reponsible of collecting traces
+    """ The collector entity is reponsible of collecting traces
     of a same type associated to RMs into a local directory.
 
     .. class:: Class Args :

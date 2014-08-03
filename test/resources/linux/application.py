@@ -250,6 +250,7 @@ main (void)
 
         ec.register_connection(app, node)
 
+
         ec.deploy()
 
         ec.wait_finished([app])

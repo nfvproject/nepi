@@ -190,6 +190,7 @@ class Attribute(object):
         adequate validation"""
         return True
 
+    @property
     def has_changed(self):
         """ Returns true if the value has changed from the default """
         return self.value != self.default

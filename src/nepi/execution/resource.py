@@ -31,7 +31,7 @@ import sys
 import threading
 import weakref
 
-reschedule_delay = "1s"
+reschedule_delay = "0.5s"
 
 class ResourceAction:
     """ Action that a user can order to a Resource Manager
@@ -615,7 +615,7 @@ class ResourceManager(Logger):
         :rtype: str
         """
         attr = self._attrs[name]
-        return attr.has_changed()
+        return attr.has_changed
 
     def has_flag(self, name, flag):
         """ Returns true if the attribute has the flag 'flag'
