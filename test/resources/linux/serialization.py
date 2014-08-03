@@ -30,7 +30,7 @@ import time
 import tempfile
 import unittest
 
-class LinuxApplicationSerializationTestCase(unittest.TestCase):
+class LinuxSerializationTestCase(unittest.TestCase):
     def setUp(self):
         self.fedora_host = "nepi2.pl.sophia.inria.fr"
         self.fedora_user = "inria_nepi"
