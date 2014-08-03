@@ -64,7 +64,7 @@ class ExperimentRunner(object):
         :param compute_metric_callback: function to invoke after each 
             experiment run, to compute an experiment metric. 
             It will be invoked with the ec and the run count as arguments,
-            and it must return the value of the computed metric:
+            and it must return a numeric value for the computed metric:
 
                 metric = compute_metric_callback(ec, run)
             
@@ -119,11 +119,12 @@ class ExperimentRunner(object):
 
             if compute_metric_callback:
                 metric = compute_metric_callback(ec, run)
-                samples.append(metric)
+                if metric is not None:
+                    samples.append(metric)
 
-            if run >= min_runs and evaluate_convergence_callback:
-                if evaluate_convergence_callback(ec, run, samples):
-                    break
+                    if run >= min_runs and evaluate_convergence_callback:
+                        if evaluate_convergence_callback(ec, run, samples):
+                            break
             del ec
 
         return run
@@ -132,7 +133,7 @@ class ExperimentRunner(object):
         if len(samples) == 0:
             msg = "0 samples collected"
             raise RuntimeError, msg
-
+        
         x = numpy.array(samples)
         n = len(samples)
         std = x.std()
