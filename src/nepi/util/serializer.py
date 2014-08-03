@@ -24,12 +24,12 @@ class SFormats:
     XML = "xml"
     
 class ECSerializer(object):
-    def load(self, path, format = SFormats.XML):
+    def load(self, filepath, format = SFormats.XML):
         if format == SFormats.XML:
             from nepi.util.parsers.xml_parser import ECXMLParser
             
             parser = ECXMLParser()
-            f = open(path, "r")
+            f = open(filepath, "r")
             xml = f.read()
             f.close()
 
@@ -46,16 +46,20 @@ class ECSerializer(object):
 
         return sec
 
-    def save(self, ec, path, format = SFormats.XML):
+    def save(self, ec, dirpath = None, format = SFormats.XML):
+        if not dirpath:
+            import tempfile
+            dirpath = tempfile.mkdtemp()
+ 
         date = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
         filename = "%s_%s" % (ec.exp_id, date)
 
         if format == SFormats.XML:
-            path = os.path.join(path, "%s.xml" % filename)
+            filepath = os.path.join(dirpath, "%s.xml" % filename)
             sec = self.serialize(ec, format = format)
-            f = open(path, "w")
+            f = open(filepath, "w")
             f.write(sec)
             f.close()
 
-        return path
+        return filepath
 

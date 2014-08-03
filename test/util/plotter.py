@@ -118,20 +118,21 @@ class PlotterTestCase(unittest.TestCase):
         for iface in ifaces:
             ec.register_connection(link, iface)
        
-        fpath = ec.plot(persist = True)
+        fpath = ec.plot()
         statinfo = os.stat(fpath)
         size = statinfo.st_size
         self.assertTrue(size > 0)
         self.assertTrue(fpath.endswith(".png"))
 
-        fpath = ec.plot(persist = True, format = PFormats.DOT)
+        os.remove(fpath)
+
+        fpath = ec.plot(format = PFormats.DOT)
         statinfo = os.stat(fpath)
         size = statinfo.st_size
         self.assertTrue(size > 0)
         self.assertTrue(fpath.endswith(".dot"))
 
-        print fpath
-
+        os.remove(fpath)
 
 if __name__ == '__main__':
     unittest.main()
