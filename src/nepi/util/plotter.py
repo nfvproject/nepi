@@ -25,16 +25,17 @@ class PFormats:
     FIGURE = "figure"
 
 class ECPlotter(object):
-    def plot(self, ec, fpath = None, format= PFormats.FIGURE, persist = False):
+    def plot(self, ec, dirpath = None, format= PFormats.FIGURE, 
+            show = False):
         graph, labels = self._ec2graph(ec)
 
         add_extension = False
 
-        if persist and not fpath:
+        if not dirpath:
             import tempfile
             dirpath = tempfile.mkdtemp()
-            fpath = os.path.join(dirpath, "%s_%s" % (ec.exp_id, ec.run_id)) 
-            add_extension = True
+        
+        fpath = os.path.join(dirpath, "%s_%s" % (ec.exp_id, ec.run_id)) 
 
         if format == PFormats.FIGURE:
             import matplotlib.pyplot as plt
@@ -43,23 +44,21 @@ class ECPlotter(object):
                     node_size = 500, with_labels=True)
            
             label = "\n".join(map(lambda v: "%s: %s" % (v[0], v[1]), labels.iteritems()))
-            plt.annotate(label, xy=(0.0, 0.95), xycoords='axes fraction')
-            
-            if persist:
-                if add_extension:
-                    fpath += ".png"
+            plt.annotate(label, xy=(0.05, 0.95), xycoords='axes fraction')
+           
+            fpath += ".png"
 
-                plt.savefig(fpath, bbox_inches="tight")
-            else:
+            plt.savefig(fpath, bbox_inches="tight")
+            
+            if show:
                 plt.show()
 
         elif format == PFormats.DOT:
-            if persist:
-                if add_extension:
-                    fpath += ".dot"
+            fpath += ".dot"
 
-                networkx.write_dot(graph, fpath)
-            else:
+            networkx.write_dot(graph, fpath)
+            
+            if show:
                 import subprocess
                 subprocess.call(["dot", "-Tps", fpath, "-o", "%s.ps" % fpath])
                 subprocess.call(["evince","%s.ps" % fpath])

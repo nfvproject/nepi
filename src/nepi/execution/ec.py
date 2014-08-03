@@ -154,9 +154,9 @@ class ExperimentController(object):
     """
 
     @classmethod
-    def load(cls, path, format = SFormats.XML):
+    def load(cls, filepath, format = SFormats.XML):
         serializer = ECSerializer()
-        ec = serializer.load(path)
+        ec = serializer.load(filepath)
         return ec
 
     def __init__(self, exp_id = None): 
@@ -382,10 +382,10 @@ class ExperimentController(object):
 
                 time.sleep(0.5)
 
-    def plot(self, fpath = None, format= PFormats.FIGURE, persist = False):
+    def plot(self, dirpath = None, format= PFormats.FIGURE, show = False):
         plotter = ECPlotter()
-        fpath = plotter.plot(self, fpath = fpath, format= format, 
-                persist = persist)
+        fpath = plotter.plot(self, dirpath = dirpath, format= format, 
+                show = show)
         return fpath
 
     def serialize(self, format = SFormats.XML):
@@ -393,9 +393,9 @@ class ExperimentController(object):
         sec = serializer.load(self, format = format)
         return sec
 
-    def save(self, path, format = SFormats.XML):
+    def save(self, dirpath = None, format = SFormats.XML):
         serializer = ECSerializer()
-        path = serializer.save(self, path, format = format)
+        path = serializer.save(self, dirpath  = None, format = format)
         return path
 
     def get_task(self, tid):
