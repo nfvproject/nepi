@@ -195,8 +195,9 @@ class LinuxNode(ResourceManager):
         gateway = Attribute("gateway", "Hostname of the gateway machine",
                 flags = Flags.Design)
 
-        ip = Attribute("ip", "Linux host public IP address",
-                    flags = Flags.NoWrite)
+        ip = Attribute("ip", "Linux host public IP address. "
+                   "Must not be modified by the user unless hostname is 'localhost'",
+                    flags = Flags.Design)
 
         cls._register_attribute(hostname)
         cls._register_attribute(username)
@@ -367,12 +368,13 @@ class LinuxNode(ResourceManager):
         self.mkdir(paths)
 
         # Get Public IP address
-        if self.localhost:
-            ip = socket.gethostbyname(socket.gethostname())
-        else:
-            ip = socket.gethostbyname(self.get("hostname"))
+        if not self.get("ip"):
+            if self.localhost:
+                ip = socket.gethostbyname(socket.gethostname())
+            else:
+                ip = socket.gethostbyname(self.get("hostname"))
 
-        self.set("ip", ip)
+            self.set("ip", ip)
 
         super(LinuxNode, self).do_provision()
 

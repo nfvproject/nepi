@@ -25,7 +25,6 @@ from nepi.resources.planetlab.node import PlanetlabNode
 from nepi.util.timefuncs import tnow, tdiffsec
 
 import os
-import socket
 import time
 
 PYTHON_VSYS_VERSION = "1.0"
@@ -386,8 +385,8 @@ class PlanetlabTap(LinuxApplication):
         # Set the remote endpoint
         self.set("pointopoint", remote_endpoint.get("ip4"))
 
-        remote_ip = socket.gethostbyname(
-                remote_endpoint.node.get("ip"))
+        print "REMOTE IP", remote_ip
+        remote_ip = remote_endpoint.node.get("ip")
 
         local_port_file = os.path.join(connection_run_home, 
                 "local_port")
@@ -435,8 +434,7 @@ class PlanetlabTap(LinuxApplication):
     def _gre_connect_command(self, remote_endpoint, connection_run_home): 
         # Set the remote endpoint
         self.set("pointopoint", remote_endpoint.get("ip4"))
-        self.set("greRemote", socket.gethostbyname(
-            remote_endpoint.node.get("ip")))
+        self.set("greRemote", remote_endpoint.node.get("ip"))
 
         # Generate GRE connect command
 
