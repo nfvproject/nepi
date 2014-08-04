@@ -107,7 +107,7 @@ class LinuxTap(LinuxApplication):
     def node(self):
         node = self.get_connected(LinuxNode.get_rtype())
         if node: return node[0]
-        return None
+        raise RuntimeError, "TAP/TUN devices must be connected to Node"
 
     @property
     def gre_enabled(self):
@@ -254,9 +254,8 @@ class LinuxTap(LinuxApplication):
 
         # upload command to connect.sh script
         shfile = os.path.join(connection_app_home, "gre-connect.sh")
-        self.node.upload(gre_connect_command,
-                shfile,
-                text = True, 
+        self.node.upload_command(gre_connect_command,
+                shfile = shfile,
                 overwrite = False)
 
         # invoke connect script
@@ -294,9 +293,8 @@ class LinuxTap(LinuxApplication):
 
         # upload command to connect.sh script
         shfile = os.path.join(connection_app_home, "udp-connect.sh")
-        self.node.upload(udp_connect_command,
-                shfile,
-                text = True, 
+        self.node.upload_command(udp_connect_command,
+                shfile = shfile,
                 overwrite = False)
 
         # invoke connect script
@@ -337,7 +335,7 @@ class LinuxTap(LinuxApplication):
             self.set("pi", True)
 
         remote_ip = socket.gethostbyname(
-                remote_endpoint.node.get("hostname"))
+                remote_endpoint.node.get("ip"))
 
         local_port_file = os.path.join(connection_run_home, 
                 "local_port")
@@ -388,7 +386,7 @@ class LinuxTap(LinuxApplication):
         # Set the remote endpoint
         self.set("pointopoint", remote_endpoint.get("ip4"))
         self.set("greRemote", socket.gethostbyname(
-            remote_endpoint.node.get("hostname")))
+            remote_endpoint.node.get("ip")))
 
         # Generate GRE connect command
         command = ["("]

@@ -30,8 +30,9 @@ class PlanetlabUdpTunnelTestCase(unittest.TestCase):
     def setUp(self):
         #self.host1 = "nepi2.pl.sophia.inria.fr"
         #self.host2 = "nepi5.pl.sophia.inria.fr"
+        #self.host2 = "planetlab1.informatik.uni-goettingen.de" 
         self.host1 = "planetlab1.informatik.uni-erlangen.de"
-        self.host2 = "planetlab1.informatik.uni-goettingen.de"
+        self.host2 = "planck227ple.test.ibbt.be"
         self.user = "inria_nepi"
         self.identity = "%s/.ssh/id_rsa_planetlab" % (os.environ['HOME'])
         #self.netblock = "192.168.1"
@@ -47,7 +48,8 @@ class PlanetlabUdpTunnelTestCase(unittest.TestCase):
         ec.set(node1, "hostname", host1)
         ec.set(node1, "username", user1)
         ec.set(node1, "identity", identity1)
-        ec.set(node1, "cleanHome", True)
+        #ec.set(node1, "cleanHome", True)
+        ec.set(node1, "cleanExperiment", True)
         ec.set(node1, "cleanProcesses", True)
 
         tap1 = ec.register_resource("PlanetlabTap")
@@ -59,7 +61,8 @@ class PlanetlabUdpTunnelTestCase(unittest.TestCase):
         ec.set(node2, "hostname", host2)
         ec.set(node2, "username", user2)
         ec.set(node2, "identity", identity2)
-        ec.set(node2, "cleanHome", True)
+        #ec.set(node2, "cleanHome", True)
+        ec.set(node2, "cleanExperiment", True)
         ec.set(node2, "cleanProcesses", True)
 
         tap2 = ec.register_resource("PlanetlabTap")
@@ -101,7 +104,8 @@ class PlanetlabUdpTunnelTestCase(unittest.TestCase):
         ec.set(node1, "hostname", host1)
         ec.set(node1, "username", user1)
         ec.set(node1, "identity", identity1)
-        ec.set(node1, "cleanHome", True)
+        #ec.set(node1, "cleanHome", True)
+        ec.set(node1, "cleanExperiment", True)
         ec.set(node1, "cleanProcesses", True)
 
         tun1 = ec.register_resource("PlanetlabTun")
@@ -113,7 +117,8 @@ class PlanetlabUdpTunnelTestCase(unittest.TestCase):
         ec.set(node2, "hostname", host2)
         ec.set(node2, "username", user2)
         ec.set(node2, "identity", identity2)
-        ec.set(node2, "cleanHome", True)
+        #ec.set(node2, "cleanHome", True)
+        ec.set(node2, "cleanExperiment", True)
         ec.set(node2, "cleanProcesses", True)
 
         tun2 = ec.register_resource("PlanetlabTun")

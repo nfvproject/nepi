@@ -196,7 +196,7 @@ class LinuxApplication(ResourceManager):
     def node(self):
         node = self.get_connected(LinuxNode.get_rtype())
         if node: return node[0]
-        return None
+        raise RuntimeError, "Application must be connected to Node"
 
     @property
     def app_home(self):

@@ -28,6 +28,7 @@ import collections
 import os
 import random
 import re
+import socket
 import tempfile
 import time
 import threading
@@ -194,6 +195,9 @@ class LinuxNode(ResourceManager):
         gateway = Attribute("gateway", "Hostname of the gateway machine",
                 flags = Flags.Design)
 
+        ip = Attribute("ip", "Linux host public IP address",
+                    flags = Flags.NoWrite)
+
         cls._register_attribute(hostname)
         cls._register_attribute(username)
         cls._register_attribute(port)
@@ -206,6 +210,7 @@ class LinuxNode(ResourceManager):
         cls._register_attribute(tear_down)
         cls._register_attribute(gateway_user)
         cls._register_attribute(gateway)
+        cls._register_attribute(ip)
 
     def __init__(self, ec, guid):
         super(LinuxNode, self).__init__(ec, guid)
@@ -360,6 +365,14 @@ class LinuxNode(ResourceManager):
             self.node_home]
 
         self.mkdir(paths)
+
+        # Get Public IP address
+        if self.localhost:
+            ip = socket.gethostbyname(socket.gethostname())
+        else:
+            ip = socket.gethostbyname(self.get("hostname"))
+
+        self.set("ip", ip)
 
         super(LinuxNode, self).do_provision()
 
