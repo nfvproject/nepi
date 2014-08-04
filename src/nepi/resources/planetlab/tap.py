@@ -385,7 +385,6 @@ class PlanetlabTap(LinuxApplication):
         # Set the remote endpoint
         self.set("pointopoint", remote_endpoint.get("ip4"))
 
-        print "REMOTE IP", remote_ip
         remote_ip = remote_endpoint.node.get("ip")
 
         local_port_file = os.path.join(connection_run_home, 
