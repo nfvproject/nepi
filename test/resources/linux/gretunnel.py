@@ -26,6 +26,8 @@ import os
 import time
 import unittest
 
+## TODO: VALIDATE THIS TEST!
+
 class LinuxGRETunnelTestCase(unittest.TestCase):
     def setUp(self):
         self.host1 = "roseval.pl.sophia.inria.fr"

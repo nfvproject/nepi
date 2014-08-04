@@ -106,7 +106,7 @@ class PlanetlabTap(LinuxApplication):
     def node(self):
         node = self.get_connected(PlanetlabNode.get_rtype())
         if node: return node[0]
-        return None
+        raise RuntimeError, "TAP/TUN devices must be connected to Node"
 
     @property
     def gre_enabled(self):
@@ -160,9 +160,8 @@ class PlanetlabTap(LinuxApplication):
         # upload stop.sh script
         stop_command = self.replace_paths(self._stop_command)
 
-        self.node.upload(stop_command,
-                os.path.join(self.app_home, "stop.sh"),
-                text = True,
+        self.node.upload_command(stop_command,
+                shfile = os.path.join(self.app_home, "stop.sh"),
                 # Overwrite file every time. 
                 # The stop.sh has the path to the socket, which should change
                 # on every experiment run.
@@ -266,17 +265,23 @@ class PlanetlabTap(LinuxApplication):
 
         super(PlanetlabTap, self).do_release()
 
-    def wait_vif_name(self):
+    def wait_vif_name(self, exec_run_home = None):
         """ Waits until the vif_name file for the command is generated, 
             and returns the vif_name for the device """
         vif_name = None
         delay = 0.5
 
+        # The vif_name file will be created in the tap-home, while the
+        # current execution home might be elsewhere to check for errors
+        # (e.g. could be a tunnel-home)
+        if not exec_run_home:
+            exec_run_home = self.run_home
+
         for i in xrange(20):
             (out, err), proc = self.node.check_output(self.run_home, "vif_name")
 
             if proc.poll() > 0:
-                (out, err), proc = self.node.check_errors(self.run_home)
+                (out, err), proc = self.node.check_errors(exec_run_home)
                 
                 if err.strip():
                     raise RuntimeError, err
@@ -301,9 +306,8 @@ class PlanetlabTap(LinuxApplication):
 
         # upload command to connect.sh script
         shfile = os.path.join(connection_app_home, "gre-connect.sh")
-        self.node.upload(gre_connect_command,
-                shfile,
-                text = True, 
+        self.node.upload_command(gre_connect_command,
+                shfile = shfile,
                 overwrite = False)
 
         # invoke connect script
@@ -333,7 +337,7 @@ class PlanetlabTap(LinuxApplication):
         # After creating the TAP, the pl-vif-create.py script
         # will write the name of the TAP to a file. We wait until
         # we can read the interface name from the file.
-        vif_name = self.wait_vif_name()
+        vif_name = self.wait_vif_name(exec_run_home = connection_run_home)
         self.set("deviceName", vif_name) 
 
         return True
@@ -346,9 +350,8 @@ class PlanetlabTap(LinuxApplication):
 
         # upload command to connect.sh script
         shfile = os.path.join(connection_app_home, "udp-connect.sh")
-        self.node.upload(udp_connect_command,
-                shfile,
-                text = True, 
+        self.node.upload_command(udp_connect_command,
+                shfile = shfile,
                 overwrite = False)
 
         # invoke connect script
@@ -384,7 +387,7 @@ class PlanetlabTap(LinuxApplication):
         self.set("pointopoint", remote_endpoint.get("ip4"))
 
         remote_ip = socket.gethostbyname(
-                remote_endpoint.node.get("hostname"))
+                remote_endpoint.node.get("ip"))
 
         local_port_file = os.path.join(connection_run_home, 
                 "local_port")
@@ -433,7 +436,7 @@ class PlanetlabTap(LinuxApplication):
         # Set the remote endpoint
         self.set("pointopoint", remote_endpoint.get("ip4"))
         self.set("greRemote", socket.gethostbyname(
-            remote_endpoint.node.get("hostname")))
+            remote_endpoint.node.get("ip")))
 
         # Generate GRE connect command
 
