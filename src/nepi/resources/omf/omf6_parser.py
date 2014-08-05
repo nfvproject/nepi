@@ -51,8 +51,11 @@ class OMF6Parser(Logger):
         """
         super(OMF6Parser, self).__init__("OMF6API")
         self.mailbox={}
+        self.traces={}
+        self.trace='NULL'
 
         self.init_mailbox()
+
 
     def init_mailbox(self):
         self.mailbox['create'] = []
@@ -169,18 +172,40 @@ class OMF6Parser(Logger):
         """
         props = self._check_for_props(root, namespaces)
         uid = self._check_for_tag(root, namespaces, "uid")
-        msg = "STATUS -- "
+        event = self._check_for_tag(root, namespaces, "event")
+
+        if event == "STDOUT":
+            if not uid+'out' in self.traces:
+                f = open('/tmp/'+ uid + '.out','w')
+                self.traces[uid+'out'] = f
+            self.trace = self.traces[uid+'out']
+        elif event == "STDERR" :
+            if not uid+'err' in self.traces:
+                g = open('/tmp/'+ uid + '.err','w')
+                self.traces[uid+'err'] = g
+            self.trace = self.traces[uid+'err']
+        elif event == "EXIT" :
+            if uid+'out' in self.traces:
+                self.traces[uid+'out'].close()
+            if uid+'err' in self.traces:
+                self.traces[uid+'err'].close()
+            
+        log = "STATUS -- "
         for elt in props.keys():
             ns, tag = elt.split('}')
             if tag == "it":
-                msg = msg + "membership : " + props[elt]+" -- "
+                log = log + "membership : " + props[elt]+" -- "
             elif tag == "event":
                 self.mailbox['started'].append(uid)
-                msg = msg + "event : " + props[elt]+" -- "
+                log = log + "event : " + props[elt]+" -- "
+            elif tag == "msg":
+                if event == "STDOUT" or event == "STDERR" :
+                    self.trace.write(props[elt]+'\n')
+                log = log + tag +" : " + props[elt]+" -- "
             else:
-                msg = msg + tag +" : " + props[elt]+" -- "
-        msg = msg + " STATUS "
-        self.info(msg)
+                log = log + tag +" : " + props[elt]+" -- "
+        log = log + " STATUS "
+        self.info(log)
 
     def _inform_released(self, root, namespaces):
         """ Parse and Display RELEASED message
