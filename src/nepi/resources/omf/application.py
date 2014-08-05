@@ -23,6 +23,7 @@ import os
 from nepi.util.timefuncs import tnow
 from nepi.execution.resource import ResourceManager, clsinit_copy, \
         ResourceState, reschedule_delay
+from nepi.execution.trace import Trace, TraceAttr
 from nepi.execution.attribute import Attribute, Flags 
 from nepi.resources.omf.omf_resource import ResourceGateway, OMFResource
 from nepi.resources.omf.node import OMFNode, confirmation_counter, reschedule_check
@@ -268,42 +269,29 @@ class OMFApplication(OMFResource):
             return uid
         return False
 
-    def trace_filepath(self, filename):
-        return os.path.join('~/', filename)
-
     def trace(self, name, attr = TraceAttr.ALL, block = 512, offset = 0):
         self.info("Retrieving '%s' trace %s " % (name, attr))
+        if name == 'stdout' :
+            suffix = '.out'
+        elif name == 'stderr' :
+            suffix = '.err'
+        else :
+            suffix = '.misc'
 
-        path = self.trace_filepath(str(self.guid) + '_' + name)
-        
-        command = "(test -f %s && echo 'success') || echo 'error'" % path
-        (out, err), proc = self.node.execute(command)
+        trace_path = '/tmp/'+ self._topic_app + suffix
 
-        if (err and proc.poll()) or out.find("error") != -1:
-            msg = " Couldn't find trace %s " % name
-            self.error(msg, out, err)
-            return None
-    
         if attr == TraceAttr.PATH:
-            return path
+            return trace_path
 
         if attr == TraceAttr.ALL:
-            (out, err), proc = self.node.check_output(self.run_home, name)
-            
-            if proc.poll():
-                msg = " Couldn't read trace %s " % name
-                self.error(msg, out, err)
-                return None
-
-            return out
-
+            try:
+                f = open(trace_path ,'r')
+            except IOError:
+                print "File with traces has not been found"
+                return False
+            out = f.read()
+            f.close()
         return out
-
-    def check_output(self, home, filename):
-        """ Retrives content of file """
-        (out, err), proc = self.execute("cat %s" % 
-            os.path.join(home, filename), retry = 1, with_lock = True)
-        return (out, err), proc
 
 
     def do_start(self):
@@ -373,6 +361,8 @@ class OMFApplication(OMFResource):
         State is set to STOPPED after the message is sent.
 
         """
+
+
         if self.get('version') == 5:
             self._omf_api.exit(self.node.get('hostname'),self.get('appid'))
         super(OMFApplication, self).do_stop()
@@ -415,6 +405,12 @@ class OMFApplication(OMFResource):
                     msg = "Couldn't retrieve the confirmation of the release"
                     self.error(msg)
 
+                # Remove the stdout and stderr of the application
+                try:
+                    os.remove('/tmp/'+self._topic_app +'.out')
+                    os.remove('/tmp/'+self._topic_app +'.err')
+                except OSError:
+                    pass
 
             OMFAPIFactory.release_api(self.get('version'), 
               self.get('xmppServer'), self.get('xmppUser'), self.get('xmppPort'),

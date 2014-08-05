@@ -249,6 +249,9 @@ class OMF6API(Logger):
         """ Delete the session and logger topics. Then disconnect 
 
         """
+        # To receive the last messages
+        time.sleep(2)
+
         self._client.delete(self._nepi_topic)
        
         # Wait the send queue to be empty before disconnect

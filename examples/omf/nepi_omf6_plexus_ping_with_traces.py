@@ -88,6 +88,20 @@ ec.deploy()
 
 ec.wait_finished([app1,app2])
 
+stdout_1 = ec.trace(app1, "stdout")
+stdout_2 = ec.trace(app2, "stdout")
+
+# Choose a directory to store the traces, by default
+# It it the folder ehere you run Nepi.
+ 
+f = open("app1.txt", "w")
+f.write(stdout_1)
+f.close()
+
+g = open("app2.txt", "w")
+g.write(stdout_2)
+g.close()
+
 # Stop Experiment
 ec.shutdown()
 
