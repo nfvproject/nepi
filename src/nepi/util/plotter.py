@@ -17,8 +17,23 @@
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
-import networkx
+import logger
 import os
+
+try:
+    import networkx
+except ImportError:
+    msg = ("Networkx library is not installed, you will not be able to plot.")
+    logger = Logger("Plotter")
+    logger.debug(msg)
+
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    msg = ("Matplotlib library is not installed, you will not be able "
+        "generate PNG plots.")
+    logger = Logger("Plotter")
+    logger.debug(msg)
 
 class PFormats:
     DOT = "dot"
@@ -38,7 +53,6 @@ class ECPlotter(object):
         fpath = os.path.join(dirpath, "%s_%s" % (ec.exp_id, ec.run_id)) 
 
         if format == PFormats.FIGURE:
-            import matplotlib.pyplot as plt
             pos = networkx.graphviz_layout(graph, prog="neato")
             networkx.draw(graph, pos = pos, node_color="white", 
                     node_size = 500, with_labels=True)
