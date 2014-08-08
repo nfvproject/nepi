@@ -92,10 +92,9 @@ def add_stream(ec, ccnd, content_name):
 
     return app
 
-def add_collector(ec, trace_name, store_dir):
+def add_collector(ec, trace_name):
     collector = ec.register_resource("Collector")
     ec.set(collector, "traceName", trace_name)
-    ec.set(collector, "storeDir", store_dir)
 
     return collector
 
@@ -136,7 +135,7 @@ if __name__ == '__main__':
     
     ( pl_user, movie, exp_id, pl_ssh_key, results_dir ) = get_options()
 
-    ec = ExperimentController(exp_id = exp_id)
+    ec = ExperimentController(exp_id = exp_id, local_dir = results_dir)
 
     # hosts in the US
     #host1 = "planetlab4.wail.wisc.edu"
@@ -214,7 +213,7 @@ if __name__ == '__main__':
             app, ResourceState.STARTED, time = "10s")
 
     # Register a collector to automatically collect traces
-    collector = add_collector(ec, "stderr", results_dir)
+    collector = add_collector(ec, "stderr")
     for ccnd in ccnds.values():
         ec.register_connection(collector, ccnd)
 

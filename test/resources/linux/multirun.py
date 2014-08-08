@@ -49,7 +49,8 @@ class LinuxMultiRunTestCase(unittest.TestCase):
 
         dirpath = tempfile.mkdtemp()
 
-        ec = ExperimentController(exp_id="test-condition-multirun")
+        ec = ExperimentController(exp_id = "test-condition-multirun", 
+                local_dir = dirpath)
         
         node = ec.register_resource("LinuxNode")
         ec.set(node, "hostname", host)
@@ -63,8 +64,6 @@ class LinuxMultiRunTestCase(unittest.TestCase):
 
         collector = ec.register_resource("Collector")
         ec.set(collector, "traceName", "stdout")
-        ec.set(collector, "storeDir", dirpath)
-        ec.set(collector, "useRunId", True)
         ec.register_connection(ping, collector)
 
         def compute_metric_callback(ping, ec, run):
@@ -87,8 +86,9 @@ class LinuxMultiRunTestCase(unittest.TestCase):
         self.assertTrue(runs >= 5)
 
         dircount = 0
-        for d in os.listdir(dirpath):
-            path = os.path.join(dirpath, d)
+
+        for d in os.listdir(ec.exp_dir):
+            path = os.path.join(ec.exp_dir, d)
             if os.path.isdir(path):
                 dircount += 1
                 logs = glob.glob(os.path.join(path, "*.stdout"))

@@ -36,8 +36,11 @@ pl_pass = ######## <<< ASSIGN the password used to login to the PlanetLab websit
 pl_ssh_key = ####### <<< ASSING the absolute path to the private SSH key used for Planetlab >>>
 slicename = ####### <<< ASSING the PlanetLab slicename >>>
 
+results_dir = "/tmp/demo_CCN_results"
+
 ## Create the experiment controller
-ec = ExperimentController(exp_id = "demo_CCN")
+ec = ExperimentController(exp_id = "demo_CCN", 
+        local_dir = results_dir)
 
 ## Register node 1
 node1 = ec.register_resource("PlanetlabNode")
@@ -137,16 +140,13 @@ ec.register_connection(app, ccnd2)
 
 # Register a collector to automatically collect the ccnd logs
 # to a local directory
-results_dir = "/tmp/demo_CCN_results"
 col1 = ec.register_resource("Collector")
 ec.set(col1, "traceName", "stderr")
-ec.set(col1, "storeDir", results_dir)
 ec.set(col1, "subDir", hostname1)
 ec.register_connection(col1, ccnd1)
 
 col2 = ec.register_resource("Collector")
 ec.set(col2, "traceName", "stderr")
-ec.set(col2, "storeDir", results_dir)
 ec.set(col2, "subDir", hostname2)
 ec.register_connection(col2, ccnd2)
 

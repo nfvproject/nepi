@@ -51,18 +51,6 @@ class Collector(ResourceManager):
                 "Name of the trace to be collected", 
                 flags = Flags.Design)
 
-        store_dir = Attribute("storeDir", 
-                "Path to local directory to store trace results", 
-                default = tempfile.gettempdir(),
-                flags = Flags.Design)
-
-        use_run_id = Attribute("useRunId", 
-                "If set to True stores traces into a sub directory named after "
-                "the RUN ID assigned by the EC", 
-                type = Types.Bool,
-                default = False,
-                flags = Flags.Design)
-
         sub_dir = Attribute("subDir", 
                 "Sub directory to collect traces into", 
                 flags = Flags.Design)
@@ -72,10 +60,8 @@ class Collector(ResourceManager):
                 flags = Flags.Design)
 
         cls._register_attribute(trace_name)
-        cls._register_attribute(store_dir)
         cls._register_attribute(sub_dir)
         cls._register_attribute(rename)
-        cls._register_attribute(use_run_id)
 
     def __init__(self, ec, guid):
         super(Collector, self).__init__(ec, guid)
@@ -94,17 +80,14 @@ class Collector(ResourceManager):
             self.error(msg)
             raise RuntimeError, msg
 
-        self._store_path = self.get("storeDir")
-
-        if self.get("useRunId"):
-            self._store_path = os.path.join(self._store_path, self.ec.run_id)
+        self._store_path = self.ec.run_dir
 
         subdir = self.get("subDir")
         if subdir:
-            self._store_path = os.path.join(self._store_path, subdir)
+            self._store_path = os.path.join(self.store_path, subdir)
         
         msg = "Creating local directory at %s to store %s traces " % (
-            self._store_path, trace_name)
+                self.store_path, trace_name)
         self.info(msg)
 
         try:
