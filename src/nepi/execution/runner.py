@@ -40,26 +40,21 @@ class ExperimentRunner(object):
         """ Re-runs a same experiment multiple times
 
         :param ec: Experiment description of experiment to run
-        :type name: ExperimentController
-        :rtype: EperimentController
+        :type ec: ExperimentController
 
         :param min_runs: Minimum number of repetitions for experiment
-        :type name: int
-        :rtype: int
+        :type min_runs: int
 
         :param max_runs: Maximum number of repetitions for experiment
-        :type name: int
-        :rtype: int
+        :type max_runs: int
 
         :param wait_time: Time to wait in seconds between invoking
             ec.deploy() and ec.release()
-        :type name: float
-        :rtype: float
+        :type wait_time: float
 
         :param wait_guids: List of guids to pass to ec.wait_finished
             after invoking ec.deploy()
-        :type name: list 
-        :rtype: list of int
+        :type wait_guids: list 
 
         :param compute_metric_callback: function to invoke after each 
             experiment run, to compute an experiment metric. 
@@ -68,8 +63,7 @@ class ExperimentRunner(object):
 
                 metric = compute_metric_callback(ec, run)
             
-        :type name: function 
-        :rtype: function
+        :type compute_metric_callback: function 
 
         :param evaluate_convergence_callback: function to evaluate whether the 
             collected metric samples have converged and the experiment runner
@@ -81,8 +75,7 @@ class ExperimentRunner(object):
 
             If stop is True, then the runner will exit.
             
-        :type name: function 
-        :rtype: function
+        :type evaluate_convergence_callback: function 
 
         """
 
@@ -96,11 +89,8 @@ class ExperimentRunner(object):
                     "Experiment will stop when the standard error with 95% "
                     "confidence interval is >= 5% of the mean of the collected samples ")
         
-        # Set useRunId = True in Collectors to make sure results are
-        # independently stored.
-        collectors = ec.get_resources_by_type("Collector")
-        for collector in collectors:
-            collector.set("useRunId", True)
+        # Force persistence of experiment controller
+        ec._persist = True
 
         dirpath = tempfile.mkdtemp()
         filepath = ec.save(dirpath)

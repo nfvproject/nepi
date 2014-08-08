@@ -91,6 +91,8 @@ class ECXMLParser(object):
         ecnode.setAttribute("exp_id", xmlencode(ec.exp_id))
         ecnode.setAttribute("run_id", xmlencode(ec.run_id))
         ecnode.setAttribute("nthreads", xmlencode(ec.nthreads))
+        ecnode.setAttribute("local_dir", xmlencode(ec.local_dir))
+        ecnode.setAttribute("exp_dir", xmlencode(ec.exp_dir))
         doc.appendChild(ecnode)
 
         for guid, rm in ec._resources.iteritems():
@@ -188,10 +190,11 @@ class ECXMLParser(object):
             if ecnode.nodeType == doc.ELEMENT_NODE:
                 exp_id = xmldecode(ecnode.getAttribute("exp_id"))
                 run_id = xmldecode(ecnode.getAttribute("run_id"))
+                local_dir = xmldecode(ecnode.getAttribute("local_dir"))
                 nthreads = xmldecode(ecnode.getAttribute("nthreads"))
             
                 os.environ["NEPI_NTHREADS"] = nthreads
-                ec = ExperimentController(exp_id = exp_id)
+                ec = ExperimentController(exp_id = exp_id, local_dir = local_dir)
 
                 connections = set()
 
