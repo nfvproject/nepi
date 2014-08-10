@@ -126,12 +126,12 @@ class LinuxFIBEntry(LinuxApplication):
         if name == "ping":
             if not self.ping:
                 return None
-            return self.ec.trace(self.ping, "stdout", attr, block, offset)
+            return self.ec.trace(self.ping.guid, "stdout", attr, block, offset)
 
         if name == "traceroute":
             if not self.traceroute:
                 return None
-            return self.ec.trace(self.traceroute, "stdout", attr, block, offset)
+            return self.ec.trace(self.traceroute.guid, "stdout", attr, block, offset)
 
         return super(LinuxFIBEntry, self).trace(name, attr, block, offset)
     
@@ -204,6 +204,7 @@ class LinuxFIBEntry(LinuxApplication):
             self.ec.set(traceroute, "target", self.get("host"))
             self.ec.set(traceroute, "earlyStart", True)
             self.ec.register_connection(traceroute, self.node.guid)
+            self.ec.register_connection(traceroute, self.guid)
             # schedule mtr deploy
             self.ec.deploy(guids=[traceroute], group = self.deployment_group)
 

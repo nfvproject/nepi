@@ -26,6 +26,7 @@ from nepi.execution.runner import ExperimentRunner
 from nepi.util.netgraph import NetGraph, TopologyType
 import nepi.data.processing.ccn.parser as ccn_parser
 
+import networkx
 import socket
 import os
 
@@ -152,8 +153,6 @@ def avg_interests(ec, run):
     ## Process logs
     logs_dir = ec.run_dir
 
-    print ec.netgraph
-
     (graph,
         content_names,
         interest_expiry_count,
@@ -161,7 +160,7 @@ def avg_interests(ec, run):
         interest_count,
         content_count) = ccn_parser.process_content_history_logs(
                 logs_dir, 
-                ec.netgraph)
+                ec.netgraph.topology)
 
     shortest_path = networkx.shortest_path(graph, 
             source = ec.netgraph.sources()[0], 
@@ -170,11 +169,15 @@ def avg_interests(ec, run):
     ### Compute metric: Avg number of Interests seen per content name
     ###                 normalized by the number of nodes in the shortest path
     content_name_count = len(content_names.values())
-    nodes_in_shortest_path = len(content_names.values())
-    metric = interest_count / float(content_name_count) / float(nodes_in_shortest_path)
+    nodes_in_shortest_path = len(shortest_path) - 1
+    metric = interest_count / (float(content_name_count) * float(nodes_in_shortest_path))
 
     # TODO: DUMP RESULTS TO FILE
     # TODO: DUMP GRAPH DELAYS!
+    f = open("/tmp/metric", "w+")
+    f.write("%.2f\n" % metric)
+    f.close()
+    print " METRIC", metric
 
     return metric
 

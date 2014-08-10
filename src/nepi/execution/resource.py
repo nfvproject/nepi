@@ -566,7 +566,7 @@ class ResourceManager(Logger):
 
                 import traceback
                 err = traceback.format_exc()
-                msg = " %s guid %d ----- FAILED TO RELEASED ----- \n %s " % (
+                msg = " %s guid %d ----- FAILED TO RELEASE ----- \n %s " % (
                         self._rtype, self.guid, err)
                 logger = Logger(self._rtype)
                 logger.debug(msg)

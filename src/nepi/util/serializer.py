@@ -46,11 +46,7 @@ class ECSerializer(object):
 
         return sec
 
-    def save(self, ec, dirpath = None, format = SFormats.XML):
-        if not dirpath:
-            import tempfile
-            dirpath = tempfile.mkdtemp()
- 
+    def save(self, ec, dirpath, format = SFormats.XML):
         date = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
         filename = "%s_%s" % (ec.exp_id, date)
 

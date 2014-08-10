@@ -204,7 +204,7 @@ class ExperimentController(object):
 
         # Local path where to store experiment related files (results, etc)
         if not local_dir:
-            local_dir = tempfile.mkdtemp()
+            local_dir = tempfile.gettempdir() # /tmp
 
         self._local_dir = local_dir
         self._exp_dir = os.path.join(local_dir, self.exp_id)
@@ -244,7 +244,7 @@ class ExperimentController(object):
 
         # Automatically construct experiment description 
         self._netgraph = None
-        if add_node_callback and add_edge_callback:
+        if add_node_callback or add_edge_callback or kwargs.get("topology"):
             self._build_from_netgraph(add_node_callback, add_edge_callback, 
                     **kwargs)
 
@@ -474,8 +474,16 @@ class ExperimentController(object):
         return sec
 
     def save(self, dirpath = None, format = SFormats.XML):
+        if dirpath == None:
+            dirpath = self.run_dir
+
+        try:
+            os.makedirs(dirpath)
+        except OSError:
+            pass
+
         serializer = ECSerializer()
-        path = serializer.save(self, dirpath  = None, format = format)
+        path = serializer.save(self, dirpath, format = format)
         return path
 
     def get_task(self, tid):
@@ -1038,7 +1046,7 @@ class ExperimentController(object):
         self.wait_released(guids)
 
         if self.persist:
-            self.save(dirpath = self.run_dir)
+            self.save()
 
         for guid in guids:
             if self.get(guid, "hardRelease"):
@@ -1229,12 +1237,13 @@ class ExperimentController(object):
         """
         self._netgraph = NetGraph(**kwargs)
 
-        ### Add resources to the EC
-        for nid in self.netgraph.graph.nodes():
-            add_node_callback(self, nid)
+        if add_node_callback:
+            ### Add resources to the EC
+            for nid in self.netgraph.nodes():
+                add_node_callback(self, nid)
 
-        #### Add connections between resources
-        for nid1, nid2 in self.netgraph.graph.edges():
-            add_edge_callback(self, nid1, nid2)
-
+        if add_edge_callback:
+            #### Add connections between resources
+            for nid1, nid2 in self.netgraph.edges():
+                add_edge_callback(self, nid1, nid2)
 

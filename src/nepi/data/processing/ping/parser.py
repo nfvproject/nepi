@@ -27,7 +27,9 @@
 # This library contains functions to parse log files generated using ping. 
 #
 
+import collections
 import re
+import os
 
 # RE to match line starting "traceroute to"
 _rre = re.compile("\d+ bytes from ((?P<hostname>[^\s]+) )?\(?(?P<ip>[^\s]+)\)??: icmp_.eq=\d+ ttl=\d+ time=(?P<time>[^\s]+) ms")
@@ -64,7 +66,7 @@ def parse_file(filename):
 
     return data
 
-def annotate_cn_node(graph, nid1, ips2nids, data):
+def annotate_cn_node(graph, nid1, ips2nid, data):
     for (target_ip, target_hostname, time) in data:
         nid2 = ips2nid[target_ip]
 
@@ -80,12 +82,12 @@ def annotate_cn_graph(logs_dir, graph):
     ping.
 
     """
-    ips2nids = dict()
+    ips2nid = dict()
 
     for nid in graph.nodes():
         ips = graph.node[nid]["ips"]
         for ip in ips:
-            ips2nids[ip] = nid
+            ips2nid[ip] = nid
 
     # Walk through the ping logs...
     for dirpath, dnames, fnames in os.walk(logs_dir):
@@ -100,7 +102,7 @@ def annotate_cn_graph(logs_dir, graph):
             if fname.endswith(".ping"):
                 filename = os.path.join(dirpath, fname)
                 data = parse_file(filename)
-                annotate_cn_node(graph, nid, ips2nids, data)
+                annotate_cn_node(graph, nid, ips2nid, data)
 
     # Take as weight the most frequent value
     for nid1, nid2 in graph.edges():

@@ -113,10 +113,11 @@ class Collector(ResourceManager):
 
         rms = self.get_connected()
         for rm in rms:
-            result = self.ec.trace(rm.guid, trace_name)
             fpath = os.path.join(self.store_path, "%d.%s" % (rm.guid, 
-                rename))
+                 rename))
+
             try:
+                result = self.ec.trace(rm.guid, trace_name)
                 f = open(fpath, "w")
                 f.write(result)
                 f.close()
