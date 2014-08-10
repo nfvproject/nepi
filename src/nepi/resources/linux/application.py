@@ -648,7 +648,7 @@ class LinuxApplication(ResourceManager):
                     if (proc and proc.poll()) or err:
                         msg = " Failed to STOP command '%s' " % self.get("command")
                         self.error(msg, out, err)
-        
+            
             super(LinuxApplication, self).do_stop()
 
     def do_release(self):

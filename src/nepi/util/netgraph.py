@@ -43,8 +43,8 @@ class NetGraph(object):
         """ A graph can be generated using a specified pattern 
         (LADDER, MESH, TREE, etc), or provided as an argument.
 
-            :param graph: Undirected graph to use as internal representation 
-            :type graph: networkx.Graph
+            :param topology: Undirected graph to use as internal representation 
+            :type topology: networkx.Graph
 
             :param topo_type: One of TopologyType.{LINEAR,LADDER,MESH,TREE,STAR}
             used to automatically generate the topology graph. 
@@ -78,25 +78,25 @@ class NetGraph(object):
                 edge (hyperedge) can not be modeled for the moment).
 
         """
-        self._graph = kwargs.get("graph") 
-        self._topo_type = TopologyType.ADHOC
+        self._topology = kwargs.get("topology")
+        self._topo_type = kwargs.get("topo_type", TopologyType.ADHOC)
 
-        if not self._graph and kwargs.get("topo_type") and \
-                kwargs.get("node_count"):
-            topo_type = kwargs["topo_type"]
-            node_count = kwargs["node_count"]
-            branches = kwargs.get("branches")
+        if not self.topology:
+            if kwargs.get("node_count"):
+                node_count = kwargs["node_count"]
+                branches = kwargs.get("branches")
 
-            self._topo_type = topo_type
-            self._graph = self.generate_graph(topo_type, node_count, 
-                    branches = branches)
+                self._topology = self.generate_topology(self.topo_type, 
+                        node_count, branches = branches)
+            else:
+                self._topology = networkx.Graph()
 
         if kwargs.get("assign_ips"):
             network = kwargs.get("network", "10.0.0.0")
             prefix = kwargs.get("prefix", 8)
             version = kwargs.get("version", 4)
 
-            self.assign_p2p_ips(self, network = network, prefix = prefix, 
+            self.assign_p2p_ips(network = network, prefix = prefix, 
                     version = version)
 
         if kwargs.get("assign_st"):
@@ -104,8 +104,8 @@ class NetGraph(object):
             self.select_random_leaf_source()
 
     @property
-    def graph(self):
-        return self._graph
+    def topology(self):
+        return self._topology
 
     @property
     def topo_type(self):
@@ -113,17 +113,15 @@ class NetGraph(object):
 
     @property
     def order(self):
-        return self.graph.order()
+        return self.topology.order()
 
-    @property
     def nodes(self):
-        return self.graph.nodes()
+        return self.topology.nodes()
 
-    @property
     def edges(self):
-        return self.graph.edges()
+        return self.topology.edges()
 
-    def generate_graph(self, topo_type, node_count, branches = None):
+    def generate_topology(self, topo_type, node_count, branches = None):
         if topo_type == TopologyType.LADDER:
             total_nodes = node_count/2
             graph = networkx.ladder_graph(total_nodes)
@@ -164,8 +162,8 @@ class NetGraph(object):
     def add_node(self, nid):
         nid = str(nid)
 
-        if nid not in self.graph:
-            self.graph.add_node(nid)
+        if nid not in self.topology: 
+            self.topology.add_node(nid)
 
     def add_edge(self, nid1, nid2):
         nid1 = str(nid1)
@@ -174,37 +172,61 @@ class NetGraph(object):
         self.add_node(nid1)
         self.add_node( nid2)
 
-        if nid1 not in self.graph[nid2]:
-            self.graph.add_edge(nid2, nid1)
-
-            # The weight of the edge is the delay of the link
-            self.graph.edge[nid1][nid2]["weight"] = None
-            # confidence interval of the mean RTT
-            self.graph.edge[nid1][nid2]["weight_ci"] = None
+        if nid1 not in self.topology[nid2]:
+            self.topology.add_edge(nid2, nid1)
 
     def annotate_node_ip(self, nid, ip):
-        if "ips" not in self.graph.node[nid]:
-            self.graph.node[nid]["ips"] = list()
+        if "ips" not in self.topology.node[nid]:
+            self.topology.node[nid]["ips"] = list()
 
-        self.graph.node[nid]["ips"].append(ip)
-    
+        self.topology.node[nid]["ips"].append(ip)
+ 
+    def node_ip_annotations(self, nid):
+        return self.topology.node[nid].get("ips", [])
+   
     def annotate_node(self, nid, name, value):
-        self.graph.node[nid][name] = value
+        if not isinstance(value, str) and not isinstance(value, int) and \
+                not isinstance(value, float) and not isinstance(value, bool):
+            raise RuntimeError, "Non-serializable annotation"
+
+        self.topology.node[nid][name] = value
     
     def node_annotation(self, nid, name):
-        return self.graph.node[nid].get(name)
+        return self.topology.node[nid].get(name)
+
+    def node_annotations(self, nid):
+        return self.topology.node[nid].keys()
     
     def del_node_annotation(self, nid, name):
-        del self.graph.node[nid][name]
+        del self.topology.node[nid][name]
 
     def annotate_edge(self, nid1, nid2, name, value):
-        self.graph.edge[nid1][nid2][name] = value
-    
+        if not isinstance(value, str) and not isinstance(value, int) and \
+                not isinstance(value, float) and not isinstance(value, bool):
+            raise RuntimeError, "Non-serializable annotation"
+
+        self.topology.edge[nid1][nid2][name] = value
+   
+    def annotate_edge_net(self, nid1, nid2, ip1, ip2, mask, network, 
+            prefixlen):
+        self.topology.edge[nid1][nid2]["net"] = dict()
+        self.topology.edge[nid1][nid2]["net"][nid1] = ip1
+        self.topology.edge[nid1][nid2]["net"][nid2] = ip2
+        self.topology.edge[nid1][nid2]["net"]["mask"] = mask
+        self.topology.edge[nid1][nid2]["net"]["network"] = network
+        self.topology.edge[nid1][nid2]["net"]["prefix"] = prefixlen
+
+    def edge_net_annotation(self, nid1, nid2):
+        return self.topology.edge[nid1][nid2].get("net", dict())
+ 
     def edge_annotation(self, nid1, nid2, name):
-        return self.graph.edge[nid1][nid2].get(name)
+        return self.topoplogy.edge[nid1][nid2].get(name)
+ 
+    def edge_annotations(self, nid1, nid2):
+        return self.topology.edge[nid1][nid2].keys()
     
     def del_edge_annotation(self, nid1, nid2, name):
-        del self.graph.edge[nid1][nid2][name]
+        del self.topology.edge[nid1][nid2][name]
 
     def assign_p2p_ips(self, network = "10.0.0.0", prefix = 8, version = 4):
         """ Assign IP addresses to each end of each edge of the network graph,
@@ -221,7 +243,7 @@ class NetGraph(object):
             :type version: int
 
         """
-        if len(networkx.connected_components(self.graph)) > 1:
+        if networkx.number_connected_components(self.topology) > 1:
             raise RuntimeError("Disconnected graph!!")
 
         # Assign IP addresses to host
@@ -236,13 +258,13 @@ class NetGraph(object):
             raise RuntimeError, "Invalid IP version %d" % version
         
         ## Clear all previusly assigned IPs
-        for nid in self.graph.node():
-            self.graph.node[nid]["ips"] = list()
+        for nid in self.topology.nodes():
+            self.topology.node[nid]["ips"] = list()
 
         ## Generate and assign new IPs
         sub_itr = net.iter_subnets(new_prefix = new_prefix)
         
-        for nid1, nid2 in self.graph.edges():
+        for nid1, nid2 in self.topology.edges():
             #### Compute subnets for each link
             
             # get a subnet of base_add with prefix /30
@@ -258,36 +280,38 @@ class NetGraph(object):
 
             ip1 = addr1.exploded
             ip2 = addr2.exploded
-            self.graph.edge[nid1][nid2]["net"] = dict()
-            self.graph.edge[nid1][nid2]["net"][nid1] = ip1
-            self.graph.edge[nid1][nid2]["net"][nid2] = ip2
-            self.graph.edge[nid1][nid2]["net"]["mask"] = mask
-            self.graph.edge[nid1][nid2]["net"]["network"] = mask
-            self.graph.edge[nid1][nid2]["net"]["prefix"] = prefixlen
+            self.annotate_edge_net(nid1, nid2, ip1, ip2, mask, network, 
+                    prefixlen)
 
             self.annotate_node_ip(nid1, ip1)
             self.annotate_node_ip(nid2, ip2)
 
     def get_p2p_info(self, nid1, nid2):
-        net = self.graph.edge[nid1][nid2]["net"]
+        net = self.topology.edge[nid1][nid2]["net"]
         return ( net[nid1], net[nid2], net["mask"], net["network"], 
                 net["prefixlen"] )
 
     def set_source(self, nid):
-        self.graph.node[nid]["source"] = True
+        self.topology.node[nid]["source"] = True
+
+    def is_source(self, nid):
+        return self.topology.node[nid].get("source")
 
     def set_target(self, nid):
-        self.graph.node[nid]["target"] = True
+        self.topology.node[nid]["target"] = True
+
+    def is_target(self, nid):
+        return self.topology.node[nid].get("target")
 
     def targets(self):
         """ Returns the nodes that are targets """
-        return [nid for nid in self.graph.nodes() \
-                if self.graph.node[nid].get("target")]
+        return [nid for nid in self.topology.nodes() \
+                if self.topology.node[nid].get("target")]
 
     def sources(self):
         """ Returns the nodes that are sources """
-        return [nid for nid in self.graph.nodes() \
-                if self.graph.node[nid].get("source")]
+        return [nid for nid in self.topology.nodes() \
+                if self.topology.node[nid].get("source")]
 
     def select_target_zero(self):
         """ Marks the node 0 as target
@@ -307,9 +331,9 @@ class NetGraph(object):
             source = leaves.pop(random.randint(0, len(leaves) - 1))
         else:
             # options must not be already sources or targets
-            options = [ k for k,v in self.graph.degree().iteritems() \
-                    if v == 1 and not self.graph.node[k].get("source") \
-                        and not self.graph.node[k].get("target")]
+            options = [ k for k,v in self.topology.degree().iteritems() \
+                    if v == 1 and not self.topology.node[k].get("source") \
+                        and not self.topology.node[k].get("target")]
 
             source = options.pop(random.randint(0, len(options) - 1))
         

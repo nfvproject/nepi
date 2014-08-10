@@ -22,7 +22,6 @@ from nepi.execution.ec import ExperimentController, ECState
 import math
 import numpy
 import os
-import tempfile
 import time
 
 class ExperimentRunner(object):
@@ -92,20 +91,18 @@ class ExperimentRunner(object):
         # Force persistence of experiment controller
         ec._persist = True
 
-        dirpath = tempfile.mkdtemp()
-        filepath = ec.save(dirpath)
+        filepath = ec.save(dirpath = ec.exp_dir)
 
         samples = []
         run = 0
-        while True: 
+        stop = False
+
+        while not stop: 
             run += 1
 
             ec = self.run_experiment(filepath, wait_time, wait_guids)
             
             ec.logger.info(" RUN %d \n" % run)
-
-            if run >= min_runs and max_runs > -1 and run >= max_runs :
-                break
 
             if compute_metric_callback:
                 metric = compute_metric_callback(ec, run)
@@ -114,7 +111,11 @@ class ExperimentRunner(object):
 
                     if run >= min_runs and evaluate_convergence_callback:
                         if evaluate_convergence_callback(ec, run, samples):
-                            break
+                            stop = True
+
+            if run >= min_runs and max_runs > -1 and run >= max_runs :
+                stop = True
+
             del ec
 
         return run

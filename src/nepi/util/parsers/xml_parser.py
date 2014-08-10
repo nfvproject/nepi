@@ -17,6 +17,7 @@
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
+from nepi.util.netgraph import NetGraph, TopologyType 
 from nepi.util.timefuncs import stformat, tsformat
 
 from xml.dom import minidom
@@ -92,18 +93,84 @@ class ECXMLParser(object):
         ecnode.setAttribute("run_id", xmlencode(ec.run_id))
         ecnode.setAttribute("nthreads", xmlencode(ec.nthreads))
         ecnode.setAttribute("local_dir", xmlencode(ec.local_dir))
-        ecnode.setAttribute("exp_dir", xmlencode(ec.exp_dir))
-
         doc.appendChild(ecnode)
 
+        if ec.netgraph != None:
+            self._netgraph_to_xml(doc, ecnode, ec)
+
+        rmsnode = doc.createElement("rms")
+        ecnode.appendChild(rmsnode)
+
         for guid, rm in ec._resources.iteritems():
-            self._rm_to_xml(doc, ecnode, ec, guid, rm)
+            self._rm_to_xml(doc, rmsnode, ec, guid, rm)
 
         return doc
     
     def _netgraph_to_xml(self, doc, ecnode, ec):
+        ngnode = doc.createElement("topology")
+        ngnode.setAttribute("topo-type", xmlencode(ec.netgraph.topo_type))
+        ecnode.appendChild(ngnode)
+        
+        self. _netgraph_nodes_to_xml(doc, ngnode, ec)
+        self. _netgraph_edges_to_xml(doc, ngnode, ec)
+        
+    def _netgraph_nodes_to_xml(self, doc, ngnode, ec):
+        ngnsnode = doc.createElement("nodes")
+        ngnode.appendChild(ngnsnode)
 
-    def _rm_to_xml(self, doc, ecnode, ec, guid, rm):
+        for nid in ec.netgraph.nodes():
+            ngnnode = doc.createElement("node")
+            ngnnode.setAttribute("nid", xmlencode(nid))
+            ngnsnode.appendChild(ngnnode)
+
+            # Mark ources and targets
+            if ec.netgraph.is_source(nid):
+                ngnnode.setAttribute("source", xmlencode(True))
+
+            if ec.netgraph.is_target(nid):
+                ngnnode.setAttribute("target", xmlencode(True))
+
+            # Node annotations
+            annosnode = doc.createElement("node-annotations")
+            add_annotations = False
+            for name in ec.netgraph.node_annotations(nid):
+                add_annotations = True
+                value = ec.netgraph.node_annotation(nid, name)
+                annonode = doc.createElement("node-annotation")
+                annonode.setAttribute("name", xmlencode(name))
+                annonode.setAttribute("value", xmlencode(value))
+                annonode.setAttribute("type", from_type(value))
+                annosnode.appendChild(annonode)
+
+            if add_annotations:
+                ngnnode.appendChild(annosnode)
+
+    def _netgraph_edges_to_xml(self, doc, ngnode, ec):
+        ngesnode = doc.createElement("edges")
+        ngnode.appendChild(ngesnode)
+
+        for nid1, nid2 in ec.netgraph.edges():
+            ngenode = doc.createElement("edge")
+            ngenode.setAttribute("nid1", xmlencode(nid1))
+            ngenode.setAttribute("nid2", xmlencode(nid2))
+            ngesnode.appendChild(ngenode)
+
+            # Edge annotations
+            annosnode = doc.createElement("edge-annotations")
+            add_annotations = False
+            for name in ec.netgraph.edge_annotations(nid1, nid2):
+                add_annotations = True
+                value = ec.netgraph.edge_annotation(nid1, nid2, name)
+                annonode = doc.createElement("edge-annotation")
+                annonode.setAttribute("name", xmlencode(name))
+                annonode.setAttribute("value", xmlencode(value))
+                annonode.setAttribute("type", from_type(value))
+                annosnode.appendChild(annonode)
+
+            if add_annotations:
+                ngenode.appendChild(annosnode)
+
+    def _rm_to_xml(self, doc, rmsnode, ec, guid, rm):
         rmnode = doc.createElement("rm")
         rmnode.setAttribute("guid", xmlencode(guid))
         rmnode.setAttribute("rtype", xmlencode(rm._rtype))
@@ -122,7 +189,7 @@ class ECXMLParser(object):
             rmnode.setAttribute("release_time", xmlencode(rm._release_time))
         if rm._failed_time:
             rmnode.setAttribute("failed_time", xmlencode(rm._failed_time))
-        ecnode.appendChild(rmnode)
+        rmsnode.appendChild(rmnode)
 
         anode = doc.createElement("attributes")
         attributes = False
@@ -194,17 +261,27 @@ class ECXMLParser(object):
                 exp_id = xmldecode(ecnode.getAttribute("exp_id"))
                 run_id = xmldecode(ecnode.getAttribute("run_id"))
                 local_dir = xmldecode(ecnode.getAttribute("local_dir"))
+
+                # Configure number of preocessing threads
                 nthreads = xmldecode(ecnode.getAttribute("nthreads"))
-            
                 os.environ["NEPI_NTHREADS"] = nthreads
-                ec = ExperimentController(exp_id = exp_id, local_dir = local_dir)
+
+                # Deserialize netgraph
+                netgraph = self._netgraph_from_xml(doc, ecnode)
+                topo_type = netgraph.topo_type if netgraph else None
+
+                # Instantiate EC
+                ec = ExperimentController(exp_id = exp_id, local_dir = local_dir, 
+                        topology = netgraph.topology, topo_type = topo_type)
 
                 connections = set()
 
-                rmnode_list = ecnode.getElementsByTagName("rm")
-                for rmnode in rmnode_list:
-                    if rmnode.nodeType == doc.ELEMENT_NODE:
-                        self._rm_from_xml(doc, rmnode, ec, connections)
+                rmsnode_list = ecnode.getElementsByTagName("rms")
+                if rmsnode_list:
+                    rmnode_list = rmsnode_list[0].getElementsByTagName("rm") 
+                    for rmnode in rmnode_list:
+                        if rmnode.nodeType == doc.ELEMENT_NODE:
+                            self._rm_from_xml(doc, rmnode, ec, connections)
 
                 for (guid1, guid2) in connections:
                     ec.register_connection(guid1, guid2)
@@ -212,6 +289,70 @@ class ECXMLParser(object):
                 break
 
         return ec
+
+    def _netgraph_from_xml(self, doc, ecnode):
+        netgraph = None
+
+        topology = ecnode.getElementsByTagName("topology")
+        if topology:
+            topology = topology[0]
+            topo_type = xmldecode(topology.getAttribute("topo-type"))
+
+            netgraph = NetGraph(topo_type = topo_type)
+
+            ngnsnode_list = topology.getElementsByTagName("nodes")
+            if ngnsnode_list:
+                ngnsnode = ngnsnode_list[0].getElementsByTagName("node") 
+                for ngnnode in ngnsnode:
+                    nid = xmldecode(ngnnode.getAttribute("nid"))
+                    netgraph.add_node(nid)
+
+                    if ngnnode.hasAttribute("source"):
+                        netgraph.set_source(nid)
+                    if ngnnode.hasAttribute("target"):
+                        netgraph.set_target(nid)
+
+                    annosnode_list = ngnnode.getElementsByTagName("node-annotations")
+                    
+                    if annosnode_list:
+                        annosnode = annosnode_list[0].getElementsByTagName("node-annotation") 
+                        for annonode in annosnode:
+                            name = xmldecode(annonode.getAttribute("name"))
+
+                            if name == "ips":
+                                ips = xmldecode(annonode.getAttribute("value"), eval) # list
+                                for ip in ips:
+                                    netgraph.annotate_node_ip(nid, ip)
+                            else:
+                                value = xmldecode(annonode.getAttribute("value"))
+                                tipe = xmldecode(annonode.getAttribute("type"))
+                                value = to_type(tipe, value)
+                                netgraph.annotate_node(nid, name, value)
+
+            ngesnode_list = topology.getElementsByTagName("edges") 
+            if ngesnode_list:
+                ngesnode = ngesnode_list[0].getElementsByTagName("edge") 
+                for ngenode in ngesnode:
+                    nid1 = xmldecode(ngenode.getAttribute("nid1"))
+                    nid2 = xmldecode(ngenode.getAttribute("nid2"))
+                    netgraph.add_edge(nid1, nid2)
+
+                    annosnode_list = ngenode.getElementsByTagName("edge-annotations")
+                    if annosnode_list:
+                        annosnode = annosnode_list[0].getElementsByTagName("edge-annotation") 
+                        for annonode in annosnode:
+                            name = xmldecode(annonode.getAttribute("name"))
+
+                            if name == "net":
+                                net = xmldecode(annonode.getAttribute("value"), eval) # dict
+                                netgraph.annotate_edge_net(net[nid1], net[nid2], net["ip1"],
+                                        net["ip2"], net["mask"], net["network"], net["prefix"])
+                            else:
+                                value = xmldecode(annonode.getAttribute("value"))
+                                tipe = xmldecode(annonode.getAttribute("type"))
+                                value = to_type(tipe, value)
+                                netgraph.annotate_edge(nid1, nid2, name, value)
+        return netgraph
 
     def _rm_from_xml(self, doc, rmnode, ec, connections):
         start_time = None
@@ -292,7 +433,7 @@ class ECXMLParser(object):
             ccnnode_list = cnnode_list[0].getElementsByTagName("condition") 
             for ccnnode in ccnnode_list:
                 action = xmldecode(ccnnode.getAttribute("action"), int)
-                group = xmldecode(ccnnode.getAttribute("group"), eval)
+                group = xmldecode(ccnnode.getAttribute("group"), eval) # list
                 state = xmldecode(ccnnode.getAttribute("state"), int)
                 time = xmldecode(ccnnode.getAttribute("time"))
                 time = to_type('STRING', time)

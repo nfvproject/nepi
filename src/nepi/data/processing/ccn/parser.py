@@ -135,12 +135,12 @@ def parse_file(filename):
 
         # If no external IP address was identified for this face
         # asume it is a local face
-        hostip = "localhost"
+        peer = "localhost"
 
         if face_id in faces:
-            hostip, port = faces[face_id]
+            peer, port = faces[face_id]
 
-        data.append((content_name, timestamp, message_type, hostip, face_id, 
+        data.append((content_name, timestamp, message_type, peer, face_id, 
             size, nonce, line))
 
     f.close()
@@ -162,18 +162,12 @@ def load_content_history(fname):
     return content_history
 
 def annotate_cn_node(graph, nid, ips2nid, data, content_history):
-    for (content_name, timestamp, message_type, hostip, face_id, 
+    for (content_name, timestamp, message_type, peer, face_id, 
             size, nonce, line) in data:
-
-        # Ignore local messages for the time being. 
-        # They could later be used to calculate the processing times
-        # of messages.
-        if peer == "localhost":
-            return
 
         # Ignore control messages for the time being
         if is_control(content_name):
-            return
+            continue
 
         if message_type == "interest_from" and \
                 peer == "localhost":
@@ -181,6 +175,12 @@ def annotate_cn_node(graph, nid, ips2nid, data, content_history):
         elif message_type == "content_from" and \
                 peer == "localhost":
             graph.node[nid]["ccn_producer"] = True
+
+        # Ignore local messages for the time being. 
+        # They could later be used to calculate the processing times
+        # of messages.
+        if peer == "localhost":
+            continue
 
         # remove digest
         if message_type in ["content_from", "content_to"]:
@@ -190,7 +190,7 @@ def annotate_cn_node(graph, nid, ips2nid, data, content_history):
             content_history[content_name] = list()
       
         peernid = ips2nid[peer]
-        add_edge(graph, nid, peernid)
+        graph.add_edge(nid, peernid)
 
         content_history[content_name].append((timestamp, message_type, nid, 
             peernid, nonce, size, line))
@@ -202,12 +202,12 @@ def annotate_cn_graph(logs_dir, graph, parse_ping_logs = False):
     # Make a copy of the graph to ensure integrity
     graph = graph.copy()
 
-    ips2nids = dict()
+    ips2nid = dict()
 
     for nid in graph.nodes():
         ips = graph.node[nid]["ips"]
         for ip in ips:
-            ips2nids[ip] = nid
+            ips2nid[ip] = nid
 
     # Now walk through the ccnd logs...
     for dirpath, dnames, fnames in os.walk(logs_dir):
@@ -224,7 +224,7 @@ def annotate_cn_graph(logs_dir, graph, parse_ping_logs = False):
             if fname.endswith(".log"):
                 filename = os.path.join(dirpath, fname)
                 data = parse_file(filename)
-                annotate_cn_node(graph, nid, ips2nids, data, content_history)
+                annotate_cn_node(graph, nid, ips2nid, data, content_history)
 
         # Avoid storing everything in memory, instead dump to a file
         # and reference the file
@@ -358,7 +358,8 @@ def process_content_history(graph):
         content_names[content_name]["rtt"] = rtt
         content_names[content_name]["lapse"] = (interest_timestamp, content_timestamp)
 
-    return (content_names,
+    return (graph,
+        content_names,
         interest_expiry_count,
         interest_dupnonce_count,
         interest_count,
@@ -377,8 +378,8 @@ def process_content_history_logs(logs_dir, graph):
         print "Skipping: Error parsing ccnd logs", logs_dir
         raise
 
-    source = consumers(graph)[0]
-    target = producers(graph)[0]
+    source = ccn_consumers(graph)[0]
+    target = ccn_producers(graph)[0]
 
     # Process the data from the ccnd logs, but do not re compute
     # the link delay. 
