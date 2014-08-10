@@ -26,6 +26,7 @@ from nepi.execution.scheduler import HeapScheduler, Task, TaskStatus
 from nepi.execution.trace import TraceAttr
 from nepi.util.serializer import ECSerializer, SFormats
 from nepi.util.plotter import ECPlotter, PFormats
+from nepi.util.netgraph import NetGraph, TopologyType 
 
 # TODO: use multiprocessing instead of threading
 # TODO: Allow to reconnect to a running experiment instance! (reconnect mode vs deploy mode)
@@ -101,7 +102,7 @@ class ExperimentController(object):
     .. note::
 
     An experiment, or scenario, is defined by a concrete set of resources,
-    behavior, configuration and interconnection of those resources. 
+    and the behavior, configuration and interconnection of those resources. 
     The Experiment Description (ED) is a detailed representation of a
     single experiment. It contains all the necessary information to 
     allow repeating the experiment. NEPI allows to describe
@@ -116,7 +117,7 @@ class ExperimentController(object):
     recreated (and re-run) by instantiating an EC and recreating 
     the same experiment description. 
 
-    In NEPI, an experiment is represented as a graph of interconnected
+    An experiment is represented as a graph of interconnected
     resources. A resource is a generic concept in the sense that any
     component taking part of an experiment, whether physical of
     virtual, is considered a resource. A resources could be a host, 
@@ -126,10 +127,9 @@ class ExperimentController(object):
     single resource. ResourceManagers are specific to a resource
     type (i.e. An RM to control a Linux application will not be
     the same as the RM used to control a ns-3 simulation).
-    To support a new type of resource in NEPI, a new RM must be 
-    implemented. NEPI already provides a variety of
-    RMs to control basic resources, and new can be extended from
-    the existing ones.
+    To support a new type of resource, a new RM must be implemented. 
+    NEPI already provides a variety of RMs to control basic resources, 
+    and new can be extended from the existing ones.
 
     Through the EC interface the user can create ResourceManagers (RMs),
     configure them and interconnect them, to describe an experiment.
@@ -160,22 +160,31 @@ class ExperimentController(object):
         ec = serializer.load(filepath)
         return ec
 
-    def __init__(self, exp_id = None, local_dir = None, persist = False):
-        """ ExperimentController entity to model an execute a network experiment.
+    def __init__(self, exp_id = None, local_dir = None, persist = False,
+            add_node_callback = None, add_edge_callback = None, **kwargs):
+        """ ExperimentController entity to model an execute a network 
+        experiment.
         
         :param exp_id: Human readable name to identify the experiment
-        :type name: str
+        :type exp_id: str
 
         :param local_dir: Path to local directory where to store experiment
             related files
-        :type name: str
+        :type local_dir: str
 
         :param persist: Save an XML description of the experiment after 
         completion at local_dir
-        :type name: bool
+        :type persist: bool
+
+        :param add_node_callback: Callback to invoke for node instantiation
+        when automatic topology creation mode is used 
+        :type add_node_callback: function
+
+        :param add_edge_callback: Callback to invoke for edge instantiation 
+        when automatic topology creation mode is used 
+        :type add_edge_callback: function
 
         """
-
         super(ExperimentController, self).__init__()
 
         # Logging
@@ -232,6 +241,12 @@ class ExperimentController(object):
 
         # EC state
         self._state = ECState.RUNNING
+
+        # Automatically construct experiment description 
+        self._netgraph = None
+        if add_node_callback and add_edge_callback:
+            self._build_from_netgraph(add_node_callback, add_edge_callback, 
+                    **kwargs)
 
         # The runner is a pool of threads used to parallelize 
         # execution of tasks
@@ -313,10 +328,19 @@ class ExperimentController(object):
 
     @property
     def persist(self):
-        """ If Trie persist the ExperimentController to XML format upon completion
+        """ If True, persists the ExperimentController to XML format upon 
+        experiment completion
 
         """
         return self._persist
+
+    @property
+    def netgraph(self):
+        """ Return NetGraph instance if experiment description was automatically 
+        generated
+
+        """
+        return self._netgraph
 
     @property
     def abort(self):
@@ -478,7 +502,7 @@ class ExperimentController(object):
         return rm
 
     def get_resources_by_type(self, rtype):
-        """ Returns a registered ResourceManager by its guid
+        """ Returns the ResourceManager objects of type rtype
 
             :param rtype: Resource type
             :type rtype: string
@@ -488,7 +512,7 @@ class ExperimentController(object):
         """
         rms = []
         for guid, rm in self._resources.iteritems():
-            if rm.get_rtype() == type: 
+            if rm.get_rtype() == rtype: 
                 rms.append(rm)
         return rms
 
@@ -497,15 +521,30 @@ class ExperimentController(object):
 
     @property
     def resources(self):
-        """ Returns the set() of guids of all the ResourceManager
+        """ Returns the guids of all ResourceManagers 
 
             :return: Set of all RM guids
-            :rtype: set
+            :rtype: list
 
         """
         keys = self._resources.keys()
 
         return keys
+
+    def filter_resources(self, rtype):
+        """ Returns the guids of all ResourceManagers of type rtype
+
+            :param rtype: Resource type
+            :type rtype: string
+            
+            :rtype: list of guids
+            
+        """
+        rms = []
+        for guid, rm in self._resources.iteritems():
+            if rm.get_rtype() == rtype: 
+                rms.append(rm.guid)
+        return rms
 
     def register_resource(self, rtype, guid = None):
         """ Registers a new ResourceManager of type 'rtype' in the experiment
@@ -1183,4 +1222,19 @@ class ExperimentController(object):
         self._cond.acquire()
         self._cond.notify()
         self._cond.release()
+
+    def _build_from_netgraph(self, add_node_callback, add_edge_callback, 
+            **kwargs):
+        """ Automates experiment description using a NetGraph instance.
+        """
+        self._netgraph = NetGraph(**kwargs)
+
+        ### Add resources to the EC
+        for nid in self.netgraph.graph.nodes():
+            add_node_callback(self, nid)
+
+        #### Add connections between resources
+        for nid1, nid2 in self.netgraph.graph.edges():
+            add_edge_callback(self, nid1, nid2)
+
 

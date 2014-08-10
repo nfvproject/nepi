@@ -85,14 +85,37 @@ class LinuxFIBEntry(LinuxApplication):
         super(LinuxFIBEntry, self).__init__(ec, guid)
         self._home = "fib-%s" % self.guid
         self._ping = None
-        self._mtr = None
         self._traceroute = None
+        self._ccnd = None
 
     @property
     def ccnd(self):
-        ccnd = self.get_connected(LinuxCCND.get_rtype())
-        if ccnd: return ccnd[0]
-        return None
+        if not self._ccnd:
+            ccnd = self.get_connected(LinuxCCND.get_rtype())
+            if ccnd: 
+                self._ccnd = ccnd[0]
+            
+        return self._ccnd
+
+    @property
+    def ping(self):
+        if not self._ping:
+            from nepi.resources.linux.ping import LinuxPing
+            ping = self.get_connected(LinuxPing.get_rtype())
+            if ping: 
+                self._ping = ping[0]
+            
+        return self._ping
+
+    @property
+    def traceroute(self):
+        if not self._traceroute:
+            from nepi.resources.linux.traceroute import LinuxTraceroute
+            traceroute = self.get_connected(LinuxTraceroute.get_rtype())
+            if traceroute: 
+                self._traceroute = traceroute[0]
+            
+        return self._traceroute
 
     @property
     def node(self):
@@ -101,11 +124,14 @@ class LinuxFIBEntry(LinuxApplication):
 
     def trace(self, name, attr = TraceAttr.ALL, block = 512, offset = 0):
         if name == "ping":
-            return self.ec.trace(self._ping, "stdout", attr, block, offset)
-        if name == "mtr":
-            return self.ec.trace(self._mtr, "stdout", attr, block, offset)
+            if not self.ping:
+                return None
+            return self.ec.trace(self.ping, "stdout", attr, block, offset)
+
         if name == "traceroute":
-            return self.ec.trace(self._traceroute, "stdout", attr, block, offset)
+            if not self.traceroute:
+                return None
+            return self.ec.trace(self.traceroute, "stdout", attr, block, offset)
 
         return super(LinuxFIBEntry, self).trace(name, attr, block, offset)
     
@@ -159,38 +185,27 @@ class LinuxFIBEntry(LinuxApplication):
             raise RuntimeError, msg
         
     def configure(self):
-        if self.trace_enabled("ping"):
+        if self.trace_enabled("ping") and not self.ping:
             self.info("Configuring PING trace")
-            self._ping = self.ec.register_resource("LinuxPing")
-            self.ec.set(self._ping, "printTimestamp", True)
-            self.ec.set(self._ping, "target", self.get("host"))
-            self.ec.set(self._ping, "earlyStart", True)
-            self.ec.register_connection(self._ping, self.node.guid)
+            ping = self.ec.register_resource("LinuxPing")
+            self.ec.set(ping, "printTimestamp", True)
+            self.ec.set(ping, "target", self.get("host"))
+            self.ec.set(ping, "earlyStart", True)
+            self.ec.register_connection(ping, self.node.guid)
+            self.ec.register_connection(ping, self.guid)
             # schedule ping deploy
-            self.ec.deploy(guids=[self._ping], group = self.deployment_group)
+            self.ec.deploy(guids=[ping], group = self.deployment_group)
 
-        if self.trace_enabled("mtr"):
-            self.info("Configuring MTR trace")
-            self._mtr = self.ec.register_resource("LinuxMtr")
-            self.ec.set(self._mtr, "noDns", True)
-            self.ec.set(self._mtr, "printTimestamp", True)
-            self.ec.set(self._mtr, "continuous", True)
-            self.ec.set(self._mtr, "target", self.get("host"))
-            self.ec.set(self._mtr, "earlyStart", True)
-            self.ec.register_connection(self._mtr, self.node.guid)
-            # schedule mtr deploy
-            self.ec.deploy(guids=[self._mtr], group = self.deployment_group)
-
-        if self.trace_enabled("traceroute"):
+        if self.trace_enabled("traceroute") and not self.traceroute:
             self.info("Configuring TRACEROUTE trace")
-            self._traceroute = self.ec.register_resource("LinuxTraceroute")
-            self.ec.set(self._traceroute, "printTimestamp", True)
-            self.ec.set(self._traceroute, "continuous", True)
-            self.ec.set(self._traceroute, "target", self.get("host"))
-            self.ec.set(self._traceroute, "earlyStart", True)
-            self.ec.register_connection(self._traceroute, self.node.guid)
+            traceroute = self.ec.register_resource("LinuxTraceroute")
+            self.ec.set(traceroute, "printTimestamp", True)
+            self.ec.set(traceroute, "continuous", True)
+            self.ec.set(traceroute, "target", self.get("host"))
+            self.ec.set(traceroute, "earlyStart", True)
+            self.ec.register_connection(traceroute, self.node.guid)
             # schedule mtr deploy
-            self.ec.deploy(guids=[self._traceroute], group = self.deployment_group)
+            self.ec.deploy(guids=[traceroute], group = self.deployment_group)
 
     def do_start(self):
         if self.state == ResourceState.READY:

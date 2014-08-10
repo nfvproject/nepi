@@ -17,7 +17,7 @@
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
-from nepi.execution.ec import ExperimentController
+from nepi.execution.ec import ExperimentController, ECState
 
 import math
 import numpy
@@ -140,11 +140,14 @@ class ExperimentRunner(object):
         ec = ExperimentController.load(filepath)
 
         ec.deploy()
-
+    
         ec.wait_finished(wait_guids)
         time.sleep(wait_time)
 
         ec.release()
+
+        if ec.state == ECState.FAILED:
+            raise RuntimeError, "Experiment failed"
 
         return ec
 

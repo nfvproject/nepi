@@ -173,7 +173,9 @@ class LinuxApplication(ResourceManager):
         super(LinuxApplication, self).__init__(ec, guid)
         self._pid = None
         self._ppid = None
+        self._node = None
         self._home = "app-%s" % self.guid
+
         # whether the command should run in foreground attached
         # to a terminal
         self._in_foreground = False
@@ -194,9 +196,16 @@ class LinuxApplication(ResourceManager):
 
     @property
     def node(self):
-        node = self.get_connected(LinuxNode.get_rtype())
-        if node: return node[0]
-        raise RuntimeError, "Application must be connected to Node"
+        if not self._node:
+            node = self.get_connected(LinuxNode.get_rtype())
+            if not node: 
+                msg = "Application %s guid %d NOT connected to Node" % (
+                        self._rtype, self.guid)
+                raise RuntimeError, msg
+
+            self._node = node[0]
+
+        return self._node
 
     @property
     def app_home(self):

@@ -17,17 +17,30 @@
 #
 # Author: Alina Quereilhac <alina.quereilhac@inria.fr>
 
-# FIXME: This class is not thread-safe. 
-# Should it be made thread-safe?
-class GuidGenerator(object):
-    def __init__(self):
-        self._last_guid = 0
+import math
+import numpy
+from scipy import stats
 
-    def next(self, guid = None):
-        if guid == None:
-            guid = self._last_guid + 1
+def compute_mean(sample):
+    # TODO: Discard outliers !!!!
 
-        self._last_guid = self._last_guid if guid <= self._last_guid else guid
+    if not sample:
+        print " CANNOT COMPUTE STATS for ", sample
+        return (0, 0, 0, 0)
 
-        return guid
+    x = numpy.array(sample)
+
+    # sample mean and standard deviation
+    n, min_max, mean, var, skew, kurt = stats.describe(x)
+    std = math.sqrt(var)
+
+    # for the population mean and std ...
+    # mean = x.mean()
+    # std = x.std()
+    
+    # Calculate confidence interval t-distribution
+    ## BUG: Use quantil of NORMAL distribution, not t-student quantil distribution
+    ci = stats.t.interval(0.95, n-1, loc = mean, scale = std/math.sqrt(n))
+
+    return (mean, std, ci[0], ci[1])
 

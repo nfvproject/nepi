@@ -55,6 +55,7 @@ class Flags:
     # Attribute global is set to all resources of rtype
     Global  = 1 << 7 # 128
 
+
 class Attribute(object):
     """
     .. class:: Class Args :

@@ -113,11 +113,13 @@ def failtrap(func):
         try:
             return func(self, *args, **kwargs)
         except:
+            self.fail()
+            
             import traceback
             err = traceback.format_exc()
-            self.error(err)
-            self.debug("SETTING guid %d to state FAILED" % self.guid)
-            self.fail()
+            logger = Logger(self._rtype)
+            logger.error(err)
+            logger.error("SETTING guid %d to state FAILED" % self.guid)
             raise
     
     return wrapped
@@ -560,11 +562,14 @@ class ResourceManager(Logger):
             try:
                 self.do_release()
             except:
+                self.set_released()
+
                 import traceback
                 err = traceback.format_exc()
-                self.error(err)
-
-                self.set_released()
+                msg = " %s guid %d ----- FAILED TO RELEASED ----- \n %s " % (
+                        self._rtype, self.guid, err)
+                logger = Logger(self._rtype)
+                logger.debug(msg)
 
     def fail(self):
         """ Sets the RM to state FAILED.
@@ -1050,12 +1055,18 @@ class ResourceManager(Logger):
     def set_released(self, time = None):
         """ Mark ResourceManager as REALEASED """
         self.set_state(ResourceState.RELEASED, "_release_time", time)
-        self.debug("----- RELEASED ---- ")
+
+        msg = " %s guid %d ----- RELEASED ----- " % (self._rtype, self.guid)
+        logger = Logger(self._rtype)
+        logger.debug(msg)
 
     def set_failed(self, time = None):
         """ Mark ResourceManager as FAILED """
         self.set_state(ResourceState.FAILED, "_failed_time", time)
-        self.debug("----- FAILED ---- ")
+
+        msg = " %s guid %d ----- FAILED ----- " % (self._rtype, self.guid)
+        logger = Logger(self._rtype)
+        logger.debug(msg)
 
     def set_discovered(self, time = None):
         """ Mark ResourceManager as DISCOVERED """

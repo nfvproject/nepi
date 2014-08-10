@@ -39,7 +39,7 @@ class NetGraph(object):
 
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         """ A graph can be generated using a specified pattern 
         (LADDER, MESH, TREE, etc), or provided as an argument.
 
@@ -88,7 +88,7 @@ class NetGraph(object):
             branches = kwargs.get("branches")
 
             self._topo_type = topo_type
-            self._graph = self.generate_grap(topo_type, node_count, 
+            self._graph = self.generate_graph(topo_type, node_count, 
                     branches = branches)
 
         if kwargs.get("assign_ips"):
@@ -124,21 +124,21 @@ class NetGraph(object):
         return self.graph.edges()
 
     def generate_graph(self, topo_type, node_count, branches = None):
-        if topo_type == LADDER:
+        if topo_type == TopologyType.LADDER:
             total_nodes = node_count/2
             graph = networkx.ladder_graph(total_nodes)
 
-        elif topo_type == LINEAR:
+        elif topo_type == TopologyType.LINEAR:
             graph = networkx.path_graph(node_count)
 
-        elif topo_type == MESH:
+        elif topo_type == TopologyType.MESH:
             graph = networkx.complete_graph(node_count)
 
-        elif topo_type == TREE:
+        elif topo_type == TopologyType.TREE:
             h = math.log(node_count + 1)/math.log(2) - 1
             graph = networkx.balanced_tree(2, h)
 
-        elif topo_type == STAR:
+        elif topo_type == TopologyType.STAR:
             graph = networkx.Graph()
             graph.add_node(0)
 
@@ -155,9 +155,8 @@ class NetGraph(object):
 
         # node ids are int, make them str
         g = networkx.Graph()
-        g.add_nodes_from(map(lambda nid: NODES[str(nid)], 
-            graph.nodes()))
-        g.add_edges_from(map(lambda t: (NODES[str(t[0])], NODES[str(t[1])]), 
+        g.add_nodes_from(map(lambda nid: str(nid), graph.nodes()))
+        g.add_edges_from(map(lambda t: (str(t[0]), str(t[1])), 
             graph.edges()))
 
         return g
@@ -182,6 +181,30 @@ class NetGraph(object):
             self.graph.edge[nid1][nid2]["weight"] = None
             # confidence interval of the mean RTT
             self.graph.edge[nid1][nid2]["weight_ci"] = None
+
+    def annotate_node_ip(self, nid, ip):
+        if "ips" not in self.graph.node[nid]:
+            self.graph.node[nid]["ips"] = list()
+
+        self.graph.node[nid]["ips"].append(ip)
+    
+    def annotate_node(self, nid, name, value):
+        self.graph.node[nid][name] = value
+    
+    def node_annotation(self, nid, name):
+        return self.graph.node[nid].get(name)
+    
+    def del_node_annotation(self, nid, name):
+        del self.graph.node[nid][name]
+
+    def annotate_edge(self, nid1, nid2, name, value):
+        self.graph.edge[nid1][nid2][name] = value
+    
+    def edge_annotation(self, nid1, nid2, name):
+        return self.graph.edge[nid1][nid2].get(name)
+    
+    def del_edge_annotation(self, nid1, nid2, name):
+        del self.graph.edge[nid1][nid2][name]
 
     def assign_p2p_ips(self, network = "10.0.0.0", prefix = 8, version = 4):
         """ Assign IP addresses to each end of each edge of the network graph,
@@ -211,9 +234,14 @@ class NetGraph(object):
             new_prefix = 31
         else:
             raise RuntimeError, "Invalid IP version %d" % version
+        
+        ## Clear all previusly assigned IPs
+        for nid in self.graph.node():
+            self.graph.node[nid]["ips"] = list()
 
+        ## Generate and assign new IPs
         sub_itr = net.iter_subnets(new_prefix = new_prefix)
-
+        
         for nid1, nid2 in self.graph.edges():
             #### Compute subnets for each link
             
@@ -237,16 +265,19 @@ class NetGraph(object):
             self.graph.edge[nid1][nid2]["net"]["network"] = mask
             self.graph.edge[nid1][nid2]["net"]["prefix"] = prefixlen
 
+            self.annotate_node_ip(nid1, ip1)
+            self.annotate_node_ip(nid2, ip2)
+
     def get_p2p_info(self, nid1, nid2):
         net = self.graph.edge[nid1][nid2]["net"]
         return ( net[nid1], net[nid2], net["mask"], net["network"], 
                 net["prefixlen"] )
 
     def set_source(self, nid):
-        graph.node[nid]["source"] = True
+        self.graph.node[nid]["source"] = True
 
     def set_target(self, nid):
-        graph.node[nid]["target"] = True
+        self.graph.node[nid]["target"] = True
 
     def targets(self):
         """ Returns the nodes that are targets """
@@ -256,7 +287,7 @@ class NetGraph(object):
     def sources(self):
         """ Returns the nodes that are sources """
         return [nid for nid in self.graph.nodes() \
-                if self.graph.node[nid].get("sources")]
+                if self.graph.node[nid].get("source")]
 
     def select_target_zero(self):
         """ Marks the node 0 as target
@@ -276,9 +307,9 @@ class NetGraph(object):
             source = leaves.pop(random.randint(0, len(leaves) - 1))
         else:
             # options must not be already sources or targets
-            options = [ k for k,v in graph.degree().iteritems() \
-                    if v == 1 and not graph.node[k].get("source") \
-                        and not graph.node[k].get("target")]
+            options = [ k for k,v in self.graph.degree().iteritems() \
+                    if v == 1 and not self.graph.node[k].get("source") \
+                        and not self.graph.node[k].get("target")]
 
             source = options.pop(random.randint(0, len(options) - 1))
         
