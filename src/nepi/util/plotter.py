@@ -23,7 +23,7 @@ import os
 try:
     import networkx
 except ImportError:
-    msg = ("Networkx library is not installed, you will not be able to plot.")
+    msg = "Networkx library is not installed, you will not be able to plot."
     logger = Logger("Plotter")
     logger.debug(msg)
 

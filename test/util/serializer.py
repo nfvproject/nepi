@@ -132,7 +132,7 @@ class SerializerTestCase(unittest.TestCase):
 
         # Load serialized experiment
         ec2 = ExperimentController.load(filepath)
-        apps = ec2.get_resources_by_type("dummy::Application")
+        apps = ec2.filter_resources("dummy::Application")
         ec2.deploy()
         ec2.wait_finished(apps)
         ec2.shutdown()

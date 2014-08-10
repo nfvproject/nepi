@@ -113,3 +113,11 @@ def stabsformat(sdate, dbase = None):
 
     return None
 
+def compute_delay_ms(timestamp2, timestamp1):
+    d1 = datetime.datetime.fromtimestamp(float(timestamp1))
+    d2 = datetime.datetime.fromtimestamp(float(timestamp2))
+    delay = d2 - d1
+
+    # round up resolution - round up to miliseconds
+    return delay.total_seconds() * 1000
+

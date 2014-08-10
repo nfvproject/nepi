@@ -93,12 +93,15 @@ class ECXMLParser(object):
         ecnode.setAttribute("nthreads", xmlencode(ec.nthreads))
         ecnode.setAttribute("local_dir", xmlencode(ec.local_dir))
         ecnode.setAttribute("exp_dir", xmlencode(ec.exp_dir))
+
         doc.appendChild(ecnode)
 
         for guid, rm in ec._resources.iteritems():
             self._rm_to_xml(doc, ecnode, ec, guid, rm)
 
         return doc
+    
+    def _netgraph_to_xml(self, doc, ecnode, ec):
 
     def _rm_to_xml(self, doc, ecnode, ec, guid, rm):
         rmnode = doc.createElement("rm")
