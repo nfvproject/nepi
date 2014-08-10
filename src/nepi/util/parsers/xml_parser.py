@@ -345,8 +345,8 @@ class ECXMLParser(object):
 
                             if name == "net":
                                 net = xmldecode(annonode.getAttribute("value"), eval) # dict
-                                netgraph.annotate_edge_net(net[nid1], net[nid2], net["ip1"],
-                                        net["ip2"], net["mask"], net["network"], net["prefix"])
+                                netgraph.annotate_edge_net(nid1, nid2, net[nid1], net[nid2], 
+                                        net["mask"], net["network"], net["prefix"])
                             else:
                                 value = xmldecode(annonode.getAttribute("value"))
                                 tipe = xmldecode(annonode.getAttribute("type"))

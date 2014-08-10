@@ -220,7 +220,7 @@ class NetGraph(object):
         return self.topology.edge[nid1][nid2].get("net", dict())
  
     def edge_annotation(self, nid1, nid2, name):
-        return self.topoplogy.edge[nid1][nid2].get(name)
+        return self.topology.edge[nid1][nid2].get(name)
  
     def edge_annotations(self, nid1, nid2):
         return self.topology.edge[nid1][nid2].keys()
@@ -250,10 +250,10 @@ class NetGraph(object):
         netblock = "%s/%d" % (network, prefix)
         if version == 4:
             net = ipaddr.IPv4Network(netblock)
-            new_prefix = 31
+            new_prefix = 30
         elif version == 6:
             net = ipaddr.IPv6Network(netblock)
-            new_prefix = 31
+            new_prefix = 30
         else:
             raise RuntimeError, "Invalid IP version %d" % version
         
