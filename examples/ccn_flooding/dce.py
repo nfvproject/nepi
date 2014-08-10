@@ -150,6 +150,7 @@ def add_dce_net_iface(ec, nid1, nid2):
     prefix = net["prefix"]
 
     dev = ec.register_resource("ns3::PointToPointNetDevice")
+    ec.set(dev,"DataRate", "5Mbps")
     ec.set(dev, "ip", ip1)
     ec.set(dev, "prefix", prefix)
     ec.register_connection(host, dev)
